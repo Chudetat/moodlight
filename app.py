@@ -563,7 +563,7 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
 else:
     st.info("No engagement data available yet.")
 
-        st.markdown("---")
+st.markdown("---")
 
 # ========================================
 # SECTION 6: VIRALITY × EMPATHY
@@ -651,7 +651,7 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
 else:
     st.info("No engagement data available.")
 
-        st.markdown("---")
+st.markdown("---")
 
 # ========================================
 # NEW SECTION: VELOCITY × LONGEVITY
@@ -726,7 +726,7 @@ try:
 except FileNotFoundError:
     st.info("Run calculate_longevity.py first to generate topic analysis")
 
-    st.markdown("---")
+st.markdown("---")
 
 # ========================================
 # DENSITY ANALYSIS
@@ -782,7 +782,7 @@ try:
         for _, row in deep.iterrows():
             st.caption(f"{row['topic']}")
 
-    st.markdown("---")
+st.markdown("---")
 
 except FileNotFoundError:
     st.info("Run calculate_density.py to generate density analysis")
@@ -844,7 +844,7 @@ try:
     # Key insight
     st.info(f"Insight: {len(scarcity_df[scarcity_df['opportunity'] == 'HIGH'])} topics have HIGH scarcity - white space opportunities for thought leadership.")
 
-    st.markdown("---")
+st.markdown("---")
 
 except FileNotFoundError:
     st.info("Run calculate_scarcity.py to generate scarcity analysis")
