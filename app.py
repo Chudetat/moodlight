@@ -350,6 +350,106 @@ else:
 st.markdown("---")
 
 # ========================================
+# MOOD VS MARKET COMPARISON
+# ========================================
+st.markdown("## Mood vs Market: Leading Indicators")
+st.caption("Track how social sentiment compares to market performance over time")
+
+# Check if we have enough historical data
+if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not df_markets.empty:
+    # Calculate daily social mood for last 7 days
+    now = datetime.now(timezone.utc)
+    seven_days_ago = now - timedelta(days=7)
+    
+    df_hist = df_all[["created_at", "empathy_score"]].copy()
+    df_hist = df_hist.dropna()
+    df_hist = df_hist[df_hist["created_at"] >= seven_days_ago]
+    
+    if len(df_hist) > 0:
+        df_hist["date"] = df_hist["created_at"].dt.date
+        
+        # Daily average social mood
+        daily_social = (
+            df_hist.groupby("date")["empathy_score"]
+            .mean()
+            .reset_index()
+        )
+        daily_social = daily_social.rename(columns={'empathy_score': 'social_mood'})
+        daily_social["social_mood"] = (daily_social["social_mood"] * 100).round().astype(int)
+        daily_social["type"] = "Social Mood"
+        
+        # Get market sentiment (currently just today's value, will build history over time)
+        market_value = int(round(df_markets["market_sentiment"].iloc[0] * 100))
+        
+        # Create market data point for today
+        today = datetime.now(timezone.utc).date()
+        market_data = pd.DataFrame({
+            "date": [today],
+            "social_mood": [market_value],  # Using social_mood column for consistency
+            "type": ["Market Mood"]
+        })
+        
+        # Combine data
+        combined = pd.concat([
+            daily_social.rename(columns={'social_mood': 'score'}).assign(metric='Social Mood'),
+            market_data.rename(columns={'social_mood': 'score'}).assign(metric='Market Mood')
+        ])
+        
+        # Create comparison chart
+        comparison_chart = (
+            alt.Chart(combined)
+            .mark_line(point=True, strokeWidth=3)
+            .encode(
+                x=alt.X("date:T", title="Date", axis=alt.Axis(format='%b %d')),
+                y=alt.Y("score:Q", title="Sentiment Score (0-100)", scale=alt.Scale(domain=[0, 100])),
+                color=alt.Color("metric:N", 
+                              title="Sentiment Type",
+                              scale=alt.Scale(domain=['Social Mood', 'Market Mood'],
+                                            range=['#1f77b4', '#2E7D32'])),
+                tooltip=[
+                    alt.Tooltip("date:T", format="%B %d, %Y"),
+                    alt.Tooltip("metric:N", title="Type"),
+                    alt.Tooltip("score:Q", title="Score")
+                ]
+            )
+            .properties(height=300)
+            .interactive()
+        )
+        
+        st.altair_chart(comparison_chart, use_container_width=True)
+        
+        # Show divergence analysis
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            latest_social = daily_social["social_mood"].iloc[-1] if len(daily_social) > 0 else 50
+            st.metric("Latest Social Mood", latest_social)
+        
+        with col2:
+            st.metric("Latest Market Mood", market_value)
+        
+        with col3:
+            divergence = abs(latest_social - market_value)
+            if divergence > 20:
+                status = "⚠️ High Divergence"
+                color = "🔴"
+            elif divergence > 10:
+                status = "⚡ Moderate Divergence"
+                color = "🟡"
+            else:
+                status = "✅ Aligned"
+                color = "🟢"
+            
+            st.metric("Alignment", status)
+            st.caption(f"{color} {divergence} point difference")
+    else:
+        st.info("Building historical data... Check back after a few days for trend comparison")
+else:
+    st.info("Insufficient data for comparison. Run data fetch to populate.")
+
+st.markdown("---")
+
+# ========================================
 # SECTION 2: DETAILED ANALYSIS
 # ========================================
 st.markdown("## Detailed Analysis (Last 48 Hours)")
