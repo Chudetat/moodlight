@@ -781,11 +781,11 @@ try:
         deep = density_df[density_df['conversation_depth'] == 'Deep (active debate)'].head(3)
         for _, row in deep.iterrows():
             st.caption(f"{row['topic']}")
-
-st.markdown("---")
-
+            
 except FileNotFoundError:
     st.info("Run calculate_density.py to generate density analysis")
+
+st.markdown("---")
 
 # ========================================
 # SCARCITY ANALYSIS
@@ -844,10 +844,10 @@ try:
     # Key insight
     st.info(f"Insight: {len(scarcity_df[scarcity_df['opportunity'] == 'HIGH'])} topics have HIGH scarcity - white space opportunities for thought leadership.")
 
-st.markdown("---")
-
 except FileNotFoundError:
     st.info("Run calculate_scarcity.py to generate scarcity analysis")
+
+st.markdown("---")
 
 # ========================================
 # SECTION 7: 7-DAY MOOD HISTORY
