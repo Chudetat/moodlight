@@ -349,7 +349,7 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
                 axis=alt.Axis(values=[0,1,2,3],
                               labelExpr='["🥶 Cold","😐 Neutral","🙂 Warm","❤️ Empathetic"][datum.value]')),
         color=alt.Color("label:N", 
-                      scale=alt.Scale(domain=EMPATHY_LEVELS[::-1]),  # Reverses the list
+                      scale=alt.Scale(domain=EMPATHY_LEVELS),
                       legend=alt.Legend(
                           symbolType="square",
                           labelExpr='{"Cold / Hostile": "🥶 Cold / Hostile", "Detached / Neutral": "😐 Detached / Neutral", "Warm / Supportive": "🙂 Warm / Supportive", "Highly Empathetic": "❤️ Highly Empathetic"}[datum.label]'
