@@ -529,8 +529,6 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
         .interactive()
     )
     st.altair_chart(trending_chart, use_container_width=True)
-
-    st.altair_chart(trending_chart, use_container_width=True)
     
     # Show headline insights
     st.markdown("#### Headline Insights")
@@ -553,7 +551,7 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
         bottom_empathy = df_trending.nsmallest(1, 'empathy_score').iloc[0]
         st.caption(f"**{bottom_empathy['source_display']}** (Score: {bottom_empathy['empathy_score']:.2f})")
         st.caption(f"_{bottom_empathy['text'][:100]}..._")
-        
+
 else:
     st.info("No engagement data available yet.")
 
