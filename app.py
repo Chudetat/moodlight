@@ -364,7 +364,56 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
             )
         )
         st.altair_chart(chart, use_container_width=True)
+
+# ========================================
+# EMOTIONAL BREAKDOWN
+# ========================================
+if "emotion_top_1" in df_filtered.columns and len(df_filtered):
+    st.markdown("### Emotional Breakdown")
+    st.caption("Dominant emotions detected across all posts")
+    
+    emotion_counts = df_filtered["emotion_top_1"].value_counts()
+    
+    if len(emotion_counts) > 0:
+        chart_df = emotion_counts.reset_index()
+        chart_df.columns = ["emotion", "posts"]
         
+        # Define emotion colors
+        emotion_colors = {
+            "joy": "#FFD700",
+            "sadness": "#4682B4", 
+            "anger": "#DC143C",
+            "fear": "#8B008B",
+            "surprise": "#FF8C00",
+            "disgust": "#556B2F",
+            "neutral": "#808080"
+        }
+        
+        chart = (
+            alt.Chart(chart_df)
+            .mark_bar()
+            .encode(
+                x=alt.X("posts:Q", title="Number of Posts"),
+                y=alt.Y("emotion:N", sort="-x", title="Emotion"),
+                color=alt.Color("emotion:N", 
+                              scale=alt.Scale(domain=list(emotion_colors.keys()),
+                                            range=list(emotion_colors.values())),
+                              legend=None),
+                tooltip=["emotion", "posts"]
+            )
+        )
+        st.altair_chart(chart, use_container_width=True)
+        
+        # Show percentages
+        col1, col2, col3 = st.columns(3)
+        total = emotion_counts.sum()
+        top3 = emotion_counts.head(3)
+        
+        for idx, (col, (emotion, count)) in enumerate(zip([col1, col2, col3], top3.items())):
+            with col:
+                pct = (count / total * 100)
+                st.metric(f"{emotion.title()}", f"{pct:.1f}%", f"{count} posts")
+                        
 # ========================================
 # SECTION 3: EMPATHY DISTRIBUTION
 # ========================================
