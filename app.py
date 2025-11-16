@@ -66,7 +66,7 @@ def clean_source_name(source: str) -> str:
 # -------------------------------
 # Data loading
 # -------------------------------
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=10)
 def load_data() -> pd.DataFrame:
     sources = [
         ("social_scored.csv", None),
