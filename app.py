@@ -293,9 +293,6 @@ else:
         st.metric("Mood (0-100)", world_score)
     with c2:
         st.markdown(f"**{world_emoji} {world_label}**  \n*Based on {len(df_48h)} posts*")
-    with c3:
-        latest = df_48h["created_at"].max()
-        st.caption(f"Latest: {latest.strftime('%b %d, %H:%M UTC')}")
 
 st.caption(f"X query: *{custom_query.strip() or '[default timeline]'}*")
 
