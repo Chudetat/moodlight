@@ -352,7 +352,6 @@ st.markdown("---")
 # ========================================
 # SECTION 2: DETAILED ANALYSIS
 # ========================================
-st.markdown("---")
 st.markdown("## Detailed Analysis (Last 48 Hours)")
 
 df_filtered = df_48h.copy()
