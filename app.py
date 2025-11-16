@@ -726,8 +726,6 @@ try:
 except FileNotFoundError:
     st.info("Run calculate_longevity.py first to generate topic analysis")
 
-    st.markdown("---")
-
 # ========================================
 # DENSITY ANALYSIS
 # ========================================
@@ -784,8 +782,6 @@ try:
 
 except FileNotFoundError:
     st.info("Run calculate_density.py to generate density analysis")
-
-    st.markdown("---")
 
 # ========================================
 # SCARCITY ANALYSIS
@@ -847,8 +843,6 @@ try:
 except FileNotFoundError:
     st.info("Run calculate_scarcity.py to generate scarcity analysis")
 
-    st.markdown("---")
-
 # ========================================
 # SECTION 7: 7-DAY MOOD HISTORY
 # ========================================
@@ -902,8 +896,6 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns:
         st.info(f"No data in the last 7 days.")
 else:
     st.info("No historical data available.")
-
-    st.markdown("---")
 
 # ========================================
 # SECTION 8: WORLD VIEW
