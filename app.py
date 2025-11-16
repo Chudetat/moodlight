@@ -602,6 +602,38 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
         )
         st.altair_chart(virality_chart, use_container_width=True)
         
+        # Show virality insights
+        st.markdown("#### Virality Insights")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("**🚀 Fastest Rising**")
+            fastest = vdf_high.nlargest(1, 'virality').iloc[0]
+            st.caption(f"**{fastest['source_display']}** ({fastest['virality']:.1f} eng/hr)")
+            st.caption(f"_{fastest['text'][:100]}..._")
+        
+        with col2:
+            st.markdown("**❤️ Most Engaging Empathetic**")
+            # Filter for empathetic posts (score > 0.6)
+            empathetic = vdf_high[vdf_high['empathy_score'] > 0.6]
+            if len(empathetic) > 0:
+                top_emp = empathetic.nlargest(1, 'engagement').iloc[0]
+                st.caption(f"**{top_emp['source_display']}** ({top_emp['engagement']:,.0f} eng)")
+                st.caption(f"_{top_emp['text'][:100]}..._")
+            else:
+                st.caption("No highly empathetic viral posts")
+        
+        with col3:
+            st.markdown("**🥶 Most Engaging Hostile**")
+            # Filter for hostile posts (score < 0.4)
+            hostile = vdf_high[vdf_high['empathy_score'] < 0.4]
+            if len(hostile) > 0:
+                top_host = hostile.nlargest(1, 'engagement').iloc[0]
+                st.caption(f"**{top_host['source_display']}** ({top_host['engagement']:,.0f} eng)")
+                st.caption(f"_{top_host['text'][:100]}..._")
+            else:
+                st.caption("No hostile viral posts")
+                
         source_counts = vdf_high["source"].value_counts()
         st.caption(f"Source breakdown: {dict(source_counts)}")
     else:
