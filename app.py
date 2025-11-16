@@ -400,7 +400,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             alt.Chart(combined)
             .mark_line(point=True, strokeWidth=3)
             .encode(
-                x=alt.X("date:T", title="Date", axis=alt.Axis(format='%b %d')),
+                x=alt.X("date:T", title="Date", axis=alt.Axis(format='%b %d', tickCount=7)),
                 y=alt.Y("score:Q", title="Sentiment Score (0-100)", scale=alt.Scale(domain=[0, 100])),
                 color=alt.Color("metric:N", 
                               title="Sentiment Type",
