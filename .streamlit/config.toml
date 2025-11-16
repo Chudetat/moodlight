@@ -1,0 +1,7 @@
+[server]
+runOnSave = true
+fileWatcherType = "auto"
+
+[client]
+showErrorDetails = true
+toolbarMode = "minimal"

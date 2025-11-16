@@ -1,0 +1,54 @@
+name: Fetch and Score Data
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Daily at noon UTC
+  workflow_dispatch:      # Allow manual trigger
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install requests pandas python-dotenv openai transformers torch sentencepiece feedparser
+      
+      - name: Fetch and score X data
+        env:
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python fetch_posts.py
+          python score_empathy.py social.csv social_scored.csv
+      
+      - name: Fetch and score News data
+        env:
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python fetch_news_rss.py
+          python score_empathy.py news.csv news_scored.csv
+      
+      - name: Run analysis scripts
+        run: |
+          python calculate_longevity.py || true
+          python calculate_density.py || true
+          python calculate_scarcity.py || true
+      
+      - name: Commit and push updated data
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add *.csv
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto: Update data $(date -u)" && git push)

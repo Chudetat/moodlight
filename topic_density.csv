@@ -1,0 +1,24 @@
+topic,density_score,primary_region,geo_diversity,primary_platform,conversation_depth,depth_score,post_count
+economics,0.7595238095238095,Global,0.35714285714285715,Social Media (X),Deep (active debate),1.0,107
+sports,0.7142857142857143,Global,0.2857142857142857,Social Media (X),Deep (active debate),1.0,142
+housing,0.6714285714285714,Global,0.42857142857142855,Social Media (X),Deep (active debate),1.0,21
+religion & values,0.661904761904762,Global,0.07142857142857142,Social Media (X),Medium (some discussion),0.5,4
+war & foreign policy,0.65,Global,0.5,Social Media (X),Deep (active debate),1.0,561
+politics,0.65,Global,0.5,Social Media (X),Deep (active debate),1.0,123
+technology & ai,0.65,Global,0.5,Social Media (X),Deep (active debate),1.0,509
+culture & identity,0.530952380952381,Other,0.2857142857142857,News Media,Medium (some discussion),0.5,15
+branding & advertising,0.530952380952381,Other,0.2857142857142857,News Media,Medium (some discussion),0.5,15
+crime & safety,0.5095238095238095,Global,0.35714285714285715,Social Media (X),Medium (some discussion),0.5,21
+entertainment,0.4642857142857143,Other,0.2857142857142857,News Media,Medium (some discussion),0.5,10
+race & ethnicity,0.4642857142857143,Global,0.2857142857142857,News Media,Medium (some discussion),0.5,16
+healthcare & wellbeing,0.4642857142857143,Global,0.2857142857142857,News Media,Medium (some discussion),0.5,13
+labor & work,0.44285714285714284,Global,0.35714285714285715,News Media,Medium (some discussion),0.5,8
+business & corporate,0.4214285714285714,Other,0.42857142857142855,News Media,Medium (some discussion),0.5,18
+climate & environment,0.4214285714285714,Other,0.42857142857142855,News Media,Medium (some discussion),0.5,32
+creative & design,0.4214285714285714,Other,0.42857142857142855,News Media,Medium (some discussion),0.5,11
+government,0.4,UK/Europe,0.5,News Media,Medium (some discussion),0.5,60
+media & journalism,0.2595238095238095,Global,0.35714285714285715,Social Media (X),Surface (shares only),0.0,34
+gender & sexuality,0.21428571428571427,Global,0.2857142857142857,Social Media (X),Surface (shares only),0.0,16
+immigration,0.19285714285714284,Global,0.35714285714285715,Social Media (X),Surface (shares only),0.0,13
+education,0.1714285714285714,Global,0.42857142857142855,Social Media (X),Surface (shares only),0.0,47
+other,0.15,Global,0.5,Social Media (X),Surface (shares only),0.0,293
