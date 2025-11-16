@@ -310,7 +310,6 @@ st.caption(f"X query: *{custom_query.strip() or '[default timeline]'}*")
 # ========================================
 # MARKET MOOD
 # ========================================
-st.markdown("---")
 st.markdown("## Market Mood")
 
 df_markets = load_market_data()
