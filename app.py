@@ -132,8 +132,7 @@ def load_data() -> pd.DataFrame:
 def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
     msg_parts = []
     has_error = False
-    st.error("DEBUG: Fetch function called!")
-    
+
     # Prepare environment with API keys
     import os
     env = os.environ.copy()
@@ -152,9 +151,6 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
     try:
         x_proc = subprocess.run(cmd_x, capture_output=True, text=True, timeout=300, check=False, env=env)
         
-        st.error(f"DEBUG: X returncode = {x_proc.returncode}")
-        st.error(f"DEBUG: X stderr = {x_proc.stderr[:200]}")
-
         if x_proc.returncode == 2:
             msg_parts.append("X quota hit - kept previous data")
         elif x_proc.returncode != 0:
