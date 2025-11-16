@@ -250,7 +250,7 @@ with st.sidebar:
         help="Leave empty for default.",
     )
 
-    if st.button("Refresh from X + News now"):
+    if st.button("Refresh"):
         with st.spinner("Fetching & scoring..."):
             ok, msg = run_fetch_and_score(custom_query.strip() or None)
             st.cache_data.clear()
@@ -264,7 +264,7 @@ with st.sidebar:
 df_all = load_data()
 
 if df_all.empty:
-    st.error("No data available. Click 'Refresh from X + News now' to fetch data.")
+    st.error("No data available. Click 'Refresh' to fetch data.")
     st.stop()
 
 # Create 48-hour filtered dataset
