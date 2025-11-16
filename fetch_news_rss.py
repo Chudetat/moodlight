@@ -400,6 +400,8 @@ def main():
         combined_df["created_at"] = pd.to_datetime(combined_df["created_at"], errors="coerce")
         combined_df = combined_df.sort_values("created_at", ascending=False)
         # Convert back to ISO format strings
+        # Only convert if it's actually datetime type
+    if pd.api.types.is_datetime64_any_dtype(combined_df["created_at"]):
         combined_df["created_at"] = combined_df["created_at"].dt.strftime("%Y-%m-%dT%H:%M:%S%z")
 
     # Save to CSV
