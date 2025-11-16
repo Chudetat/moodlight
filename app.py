@@ -369,6 +369,23 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
     )
 )
         st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, use_container_width=True)
+        
+        # Show topic insights
+        st.markdown("#### Topic Insights")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**🔥 Most Empathetic Topics**")
+            top_empathetic = topic_avg.nlargest(3, 'avg_empathy')
+            for _, row in top_empathetic.iterrows():
+                st.caption(f"• **{row['topic']}** - {row['label']} ({row['avg_empathy']:.2f})")
+        
+        with col2:
+            st.markdown("**🥶 Coldest/Most Hostile Topics**")
+            bottom_empathetic = topic_avg.nsmallest(3, 'avg_empathy')
+            for _, row in bottom_empathetic.iterrows():
+                st.caption(f"• **{row['topic']}** - {row['label']} ({row['avg_empathy']:.2f})")
 
 # ========================================
 # EMOTIONAL BREAKDOWN
