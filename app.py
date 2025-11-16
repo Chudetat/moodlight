@@ -243,7 +243,8 @@ def compute_world_mood(df: pd.DataFrame) -> tuple[int | None, str | None, str]:
 # -------------------------------
 # UI
 # -------------------------------
-st.title("moodlight")
+st.title("MoodLight")
+st.caption("Real-time global news and culture analysis, prediction, and actionable intelligence")
 
 with st.sidebar:
     st.header("Controls")
@@ -290,7 +291,7 @@ if world_score is None or len(df_48h) == 0:
 else:
     c1, c2, c3 = st.columns([1, 2, 1])
     with c1:
-        st.metric("Mood (0-100)", world_score)
+        st.metric("Global Mood Score (0-100)", world_score)
     with c2:
         st.markdown(f"**{world_emoji} {world_label}**  \n*Based on {len(df_48h)} posts*")
 
