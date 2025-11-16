@@ -434,6 +434,17 @@ if "empathy_label" in df_filtered.columns and len(df_filtered):
     )
     st.altair_chart(chart, use_container_width=True)
 
+    # Show percentages for top 3 empathy levels
+    col1, col2, col3 = st.columns(3)
+    total = counts.sum()
+    top3 = counts.nlargest(3)
+    
+    for col, (label, count) in zip([col1, col2, col3], top3.items()):
+        if count > 0:
+            with col:
+                pct = (count / total * 100)
+                st.metric(label, f"{pct:.1f}%", f"{count} posts")
+
 # ========================================
 # SECTION 4: TOPIC DISTRIBUTION
 # ========================================
