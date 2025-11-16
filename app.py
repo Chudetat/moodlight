@@ -129,6 +129,20 @@ def load_data() -> pd.DataFrame:
 
     return df
 
+@st.cache_data(ttl=10)
+def load_market_data() -> pd.DataFrame:
+    """Load market sentiment data"""
+    try:
+        df = pd.read_csv("markets.csv")
+        if df.empty:
+            return pd.DataFrame()
+        return df
+    except FileNotFoundError:
+        return pd.DataFrame()
+    except Exception as e:
+        st.warning(f"Error loading market data: {str(e)[:100]}")
+        return pd.DataFrame()
+
 def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
     msg_parts = []
     has_error = False
@@ -292,6 +306,49 @@ else:
         st.markdown(f"**{world_emoji} {world_label}**  \n*Based on {len(df_48h)} posts*")
 
 st.caption(f"X query: *{custom_query.strip() or '[default timeline]'}*")
+
+# ========================================
+# MARKET MOOD
+# ========================================
+st.markdown("---")
+st.markdown("## Market Mood")
+
+df_markets = load_market_data()
+
+if not df_markets.empty and "market_sentiment" in df_markets.columns:
+    market_score = df_markets["market_sentiment"].iloc[0]
+    market_pct = int(round(market_score * 100))
+    
+    if market_pct < 40:
+        market_label = "Bearish 🐻"
+        market_color = "#DC143C"
+    elif market_pct < 60:
+        market_label = "Neutral ⚖️"
+        market_color = "#808080"
+    else:
+        market_label = "Bullish 🐂"
+        market_color = "#2E7D32"
+    
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.metric("Market Sentiment", market_pct)
+    with col2:
+        st.markdown(f"**{market_label}**")
+        st.caption(f"Based on {len(df_markets)} global indices")
+    
+    # Show individual indices
+    st.markdown("#### Global Markets")
+    cols = st.columns(4)
+    for idx, (_, row) in enumerate(df_markets.iterrows()):
+        with cols[idx % 4]:
+            change = float(row['change_percent'])
+            emoji = "🟢" if change > 0 else "🔴" if change < 0 else "⚪"
+            st.caption(f"{emoji} **{row['name']}**")
+            st.caption(f"{change:+.2f}%")
+else:
+    st.info("Market data not available. Run fetch_markets.py to fetch.")
+
+st.markdown("---")
 
 # ========================================
 # SECTION 2: DETAILED ANALYSIS
