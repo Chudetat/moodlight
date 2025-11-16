@@ -485,6 +485,18 @@ if "topic" in df_filtered.columns and len(df_filtered):
         )
     )
     st.altair_chart(chart, use_container_width=True)
+    
+    # Show top topics
+    if len(counts) > 0:
+        st.markdown("#### Top Discussed Topics")
+        col1, col2, col3 = st.columns(3)
+        top3 = counts.head(3)
+        
+        for idx, (col, (topic, count)) in enumerate(zip([col1, col2, col3], top3.items())):
+            with col:
+                rank = ["🥇", "🥈", "🥉"][idx]
+                pct = (count / counts.sum() * 100)
+                st.metric(f"{rank} {topic}", f"{pct:.1f}%", f"{count} posts")
 
 # ========================================
 # SECTION 5: TRENDING HEADLINES
