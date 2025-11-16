@@ -331,6 +331,40 @@ if "empathy_score" in df_filtered.columns and len(df_filtered):
     avg = df_filtered["empathy_score"].mean()
     st.metric("Average empathy (filtered)", empathy_label_from_score(avg) or "N/A", f"{avg:.3f}")
 
+# Average Empathy by Topic
+if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and len(df_filtered):
+    st.markdown("### Average Empathy by Topic")
+    topic_avg = (
+        df_filtered.groupby("topic")["empathy_score"]
+        .agg(['mean', 'count'])
+        .reset_index()
+        .rename(columns={'mean': 'avg_empathy'})
+    )
+    topic_avg = topic_avg[topic_avg['count'] >= 2]
+    topic_avg["label"] = topic_avg["avg_empathy"].apply(empathy_label_from_score)
+    topic_avg["idx"] = topic_avg["label"].apply(empathy_index_from_label)
+    topic_avg = topic_avg.dropna(subset=["idx"])
+
+    if len(topic_avg):
+        chart = (
+            alt.Chart(topic_avg)
+            .mark_bar()
+            .encode(
+                y=alt.Y("topic:N", sort="-x", title="Topic"),
+                x=alt.X("idx:Q", title="Empathy Level", scale=alt.Scale(domain=[0, 3]),
+                        axis=alt.Axis(values=[0,1,2,3],
+                                      labelExpr='["Cold","Neutral","Warm","Empathetic"][datum.value]')),
+                color=alt.Color("label:N", scale=alt.Scale(domain=EMPATHY_LEVELS)),
+                tooltip=[
+                    "topic", 
+                    "label", 
+                    alt.Tooltip("avg_empathy", format=".3f", title="Score"),
+                    alt.Tooltip("count", title="Posts")
+                ]
+            )
+        )
+        st.altair_chart(chart, use_container_width=True)
+        
 # ========================================
 # SECTION 3: EMPATHY DISTRIBUTION
 # ========================================
@@ -370,40 +404,6 @@ if "topic" in df_filtered.columns and len(df_filtered):
         )
     )
     st.altair_chart(chart, use_container_width=True)
-
-# Average Empathy by Topic
-if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and len(df_filtered):
-    st.markdown("### Average Empathy by Topic")
-    topic_avg = (
-        df_filtered.groupby("topic")["empathy_score"]
-        .agg(['mean', 'count'])
-        .reset_index()
-        .rename(columns={'mean': 'avg_empathy'})
-    )
-    topic_avg = topic_avg[topic_avg['count'] >= 2]
-    topic_avg["label"] = topic_avg["avg_empathy"].apply(empathy_label_from_score)
-    topic_avg["idx"] = topic_avg["label"].apply(empathy_index_from_label)
-    topic_avg = topic_avg.dropna(subset=["idx"])
-
-    if len(topic_avg):
-        chart = (
-            alt.Chart(topic_avg)
-            .mark_bar()
-            .encode(
-                y=alt.Y("topic:N", sort="-x", title="Topic"),
-                x=alt.X("idx:Q", title="Empathy Level", scale=alt.Scale(domain=[0, 3]),
-                        axis=alt.Axis(values=[0,1,2,3],
-                                      labelExpr='["Cold","Neutral","Warm","Empathetic"][datum.value]')),
-                color=alt.Color("label:N", scale=alt.Scale(domain=EMPATHY_LEVELS)),
-                tooltip=[
-                    "topic", 
-                    "label", 
-                    alt.Tooltip("avg_empathy", format=".3f", title="Score"),
-                    alt.Tooltip("count", title="Posts")
-                ]
-            )
-        )
-        st.altair_chart(chart, use_container_width=True)
 
 # ========================================
 # SECTION 5: TRENDING HEADLINES
