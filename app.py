@@ -385,6 +385,8 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
         for _, row in bottom_empathetic.iterrows():
             st.caption(f"• **{row['topic']}** - {row['label']} ({row['avg_empathy']:.2f})")
 
+    st.markdown("---")
+
 # ========================================
 # EMOTIONAL BREAKDOWN
 # ========================================
@@ -434,6 +436,8 @@ if "emotion_top_1" in df_filtered.columns and len(df_filtered):
                 pct = (count / total * 100)
                 st.metric(f"{emotion.title()}", f"{pct:.1f}%", f"{count} posts")
                         
+        st.markdown("---")
+
 # ========================================
 # SECTION 3: EMPATHY DISTRIBUTION
 # ========================================
@@ -466,6 +470,8 @@ if "empathy_label" in df_filtered.columns and len(df_filtered):
                 pct = (count / total * 100)
                 st.metric(label, f"{pct:.1f}%", f"{count} posts")
 
+    st.markdown("---")
+
 # ========================================
 # SECTION 4: TOPIC DISTRIBUTION
 # ========================================
@@ -497,6 +503,8 @@ if "topic" in df_filtered.columns and len(df_filtered):
                 rank = ["🥇", "🥈", "🥉"][idx]
                 pct = (count / counts.sum() * 100)
                 st.metric(f"{rank} {topic}", f"{pct:.1f}%", f"{count} posts")
+
+    st.markdown("---")
 
 # ========================================
 # SECTION 5: TRENDING HEADLINES
@@ -554,6 +562,8 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
 
 else:
     st.info("No engagement data available yet.")
+
+    st.markdown("---")
 
 # ========================================
 # SECTION 6: VIRALITY × EMPATHY
@@ -633,13 +643,15 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
                 st.caption(f"_{top_host['text'][:100]}..._")
             else:
                 st.caption("No hostile viral posts")
-                
+
         source_counts = vdf_high["source"].value_counts()
         st.caption(f"Source breakdown: {dict(source_counts)}")
     else:
         st.info("No high-virality posts in last 7 days yet.")
 else:
     st.info("No engagement data available.")
+
+    st.markdown("---")
 
 # ========================================
 # NEW SECTION: VELOCITY × LONGEVITY
@@ -714,6 +726,8 @@ try:
 except FileNotFoundError:
     st.info("Run calculate_longevity.py first to generate topic analysis")
 
+    st.markdown("---")
+
 # ========================================
 # DENSITY ANALYSIS
 # ========================================
@@ -770,6 +784,8 @@ try:
 
 except FileNotFoundError:
     st.info("Run calculate_density.py to generate density analysis")
+
+    st.markdown("---")
 
 # ========================================
 # SCARCITY ANALYSIS
@@ -831,6 +847,8 @@ try:
 except FileNotFoundError:
     st.info("Run calculate_scarcity.py to generate scarcity analysis")
 
+    st.markdown("---")
+
 # ========================================
 # SECTION 7: 7-DAY MOOD HISTORY
 # ========================================
@@ -884,6 +902,8 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns:
         st.info(f"No data in the last 7 days.")
 else:
     st.info("No historical data available.")
+
+    st.markdown("---")
 
 # ========================================
 # SECTION 8: WORLD VIEW
