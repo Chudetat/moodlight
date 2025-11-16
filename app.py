@@ -424,6 +424,7 @@ if "emotion_top_1" in df_filtered.columns and len(df_filtered):
 # ========================================
 if "empathy_label" in df_filtered.columns and len(df_filtered):
     st.markdown("### Empathy Distribution")
+    st.caption("How empathetically people are communicating (tone and approach)")
     counts = df_filtered["empathy_label"].value_counts().reindex(EMPATHY_LEVELS, fill_value=0)
     chart_df = counts.reset_index()
     chart_df.columns = ["label", "posts"]
