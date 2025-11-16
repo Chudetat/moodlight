@@ -36,6 +36,8 @@ NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 TOTAL_MAX_TWEETS = 500
 TOTAL_MAX_NEWS = 400
 OUTPUT_CSV = "social.csv"
+SEARCH_URL = "https://api.twitter.com/2/tweets/search/recent"
+NEWSAPI_URL = "https://newsapi.org/v2/everything"
 
 # -------------------------------
 # Default queries (with viral filter)
