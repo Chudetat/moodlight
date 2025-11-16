@@ -347,22 +347,27 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
 
     if len(topic_avg):
         chart = (
-            alt.Chart(topic_avg)
-            .mark_bar()
-            .encode(
-                y=alt.Y("topic:N", sort="-x", title="Topic"),
-                x=alt.X("idx:Q", title="Empathy Level", scale=alt.Scale(domain=[0, 3]),
-                        axis=alt.Axis(values=[0,1,2,3],
-                                      labelExpr='["Cold","Neutral","Warm","Empathetic"][datum.value]')),
-                color=alt.Color("label:N", scale=alt.Scale(domain=EMPATHY_LEVELS)),
-                tooltip=[
-                    "topic", 
-                    "label", 
-                    alt.Tooltip("avg_empathy", format=".3f", title="Score"),
-                    alt.Tooltip("count", title="Posts")
-                ]
-            )
-        )
+    alt.Chart(topic_avg)
+    .mark_bar()
+    .encode(
+        y=alt.Y("topic:N", sort="-x", title="Topic"),
+        x=alt.X("idx:Q", title="Empathy Level", scale=alt.Scale(domain=[0, 3]),
+                axis=alt.Axis(values=[0,1,2,3],
+                              labelExpr='["🥶 Cold","😐 Neutral","🙂 Warm","❤️ Empathetic"][datum.value]')),
+        color=alt.Color("label:N", 
+                      scale=alt.Scale(domain=EMPATHY_LEVELS),
+                      legend=alt.Legend(
+                          symbolType="square",
+                          labelExpr='{"Cold / Hostile": "🥶 Cold / Hostile", "Detached / Neutral": "😐 Detached / Neutral", "Warm / Supportive": "🙂 Warm / Supportive", "Highly Empathetic": "❤️ Highly Empathetic"}[datum.label]'
+                      )),
+        tooltip=[
+            "topic", 
+            "label", 
+            alt.Tooltip("avg_empathy", format=".3f", title="Score"),
+            alt.Tooltip("count", title="Posts")
+        ]
+    )
+)
         st.altair_chart(chart, use_container_width=True)
 
 # ========================================
