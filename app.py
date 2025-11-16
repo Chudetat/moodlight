@@ -395,6 +395,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             market_data.rename(columns={'social_mood': 'score'}).assign(metric='Market Mood')
         ])
         
+        st.write("DEBUG:", combined)
         # Create comparison chart
         comparison_chart = (
             alt.Chart(combined)
