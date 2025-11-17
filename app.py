@@ -259,7 +259,7 @@ st.caption("Real-time global news and culture analysis, prediction, and actionab
 with st.sidebar:
     st.header("Controls")
     custom_query = st.text_input(
-        "Search X for a topic",
+        "Search for a topic",
         placeholder='e.g. "student loans"',
         help="Leave empty for default.",
     )
@@ -1038,7 +1038,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns:
             alt.Chart(daily)
             .mark_line(point=True, strokeWidth=2)
             .encode(
-                x=alt.X("date:T", title="Date", axis=alt.Axis(format='%b %d')),
+                x=alt.X("date:T", title="Date", axis=alt.Axis(format='%b %d', values=daily['date'].unique().tolist())),
                 y=alt.Y("mood_score:Q", title="Mood Score (0-100)", scale=alt.Scale(domain=[0, 100])),
                 color=alt.value("#1f77b4"),
                 tooltip=[
