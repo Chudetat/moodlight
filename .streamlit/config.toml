@@ -1,5 +1,5 @@
 [theme]
-primaryColor = "#37474F"        # Darker blue-gray - better contrast
+primaryColor = "#263238"        # Very dark blue-gray - maximum contrast
 secondaryBackgroundColor = "#F5F5F5"  # Light gray for cards/sidebar
 textColor = "#1A1A1A"           # Near-black for readability
 font = "sans serif"             # Clean, modern font
