@@ -1,7 +1,9 @@
-[server]
-runOnSave = true
-fileWatcherType = "auto"
+[theme]
+primaryColor = "#2E7D32"        # Clean green for buttons/accents
+backgroundColor = "#FFFFFF"      # Pure white background
+secondaryBackgroundColor = "#F5F5F5"  # Light gray for cards/sidebar
+textColor = "#1A1A1A"           # Near-black for readability
+font = "sans serif"             # Clean, modern font
 
-[client]
-showErrorDetails = true
-toolbarMode = "minimal"
+[server]
+headless = true
