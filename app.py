@@ -5,7 +5,7 @@ def check_password():
     
     def password_entered():
         """Checks whether password entered is correct."""
-        if st.session_state["password"] == "MoodLight2025!":
+        if st.session_state["password"] == "Moodlight2026!":
             st.session_state["password_correct"] = True
             del st.session_state["password"]  # Don't store password
         else:
