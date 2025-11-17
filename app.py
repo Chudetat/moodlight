@@ -305,12 +305,13 @@ else:
     with c2:
         st.markdown(f"**{world_emoji} {world_label}**  \n*Based on {len(df_48h)} posts*")
 
+st.markdown("### Social & News Sentiment")
 st.caption(f"X query: *{custom_query.strip() or '[default timeline]'}*")
 
 # ========================================
 # MARKET MOOD
 # ========================================
-st.markdown("## Market Mood")
+st.markdown("### Market Sentiment")
 
 df_markets = load_market_data()
 
