@@ -293,19 +293,22 @@ else:
 # Compute world mood
 world_score, world_label, world_emoji = compute_world_mood(df_48h)
 
+# Date header
 current_date = datetime.now().strftime("%B %d, %Y")
 st.markdown(f"## {current_date}")
+
+# Social & News Sentiment Section
+st.markdown("### Social & News Sentiment")
 
 if world_score is None or len(df_48h) == 0:
     st.warning("Not enough data from the last 48 hours yet. Try refreshing.")
 else:
-    c1, c2, c3 = st.columns([1, 2, 1])
+    c1, c2 = st.columns([1, 2])
     with c1:
-        st.metric("Global Mood Score (0-100)", world_score)
+        st.metric("Global Mood Score", world_score)
     with c2:
         st.markdown(f"**{world_emoji} {world_label}**  \n*Based on {len(df_48h)} posts*")
 
-st.markdown("### Social & News Sentiment")
 st.caption(f"X query: *{custom_query.strip() or '[default timeline]'}*")
 
 # ========================================
