@@ -263,6 +263,11 @@ with st.sidebar:
         placeholder='e.g. "student loans"',
         help="Leave empty for default.",
     )
+    brand_focus = st.checkbox(
+    "Brand Focus Mode",
+    value=False,
+    help="When enabled, shows only posts matching your search query"
+    )
 
     if st.button("Refresh"):
         with st.spinner("Fetching & scoring..."):
@@ -277,7 +282,15 @@ with st.sidebar:
 # Load all data once
 df_all = load_data()
 
-if df_all.empty:
+if brand_focus and custom_query.strip():
+    search_term = custom_query.strip().lower()
+    df_all = df_all[df_all["text"].str.lower().str.contains(search_term, na=False)]
+    if len(df_all) == 0:
+        st.warning(f"No posts found matching '{custom_query}'. Try refreshing data or a different search term.")
+        st.stop()
+    st.info(f"🎯 Brand Focus Mode: Showing {len(df_all)} posts about '{custom_query}'")
+    
+    if df_all.empty:
     st.error("No data available. Click 'Refresh' to fetch data.")
     st.stop()
 
