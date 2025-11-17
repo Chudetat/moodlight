@@ -1,5 +1,5 @@
 [theme]
-primaryColor = "#424242"        # Dark gray for subtle accentsbackgroundColor = "#FFFFFF"      # Pure white background
+primaryColor = "#546E7A"        # Blue-gray - professional and modern
 secondaryBackgroundColor = "#F5F5F5"  # Light gray for cards/sidebar
 textColor = "#1A1A1A"           # Near-black for readability
 font = "sans serif"             # Clean, modern font
