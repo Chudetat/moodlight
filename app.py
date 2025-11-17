@@ -21,7 +21,6 @@ st.set_page_config(
 # -------------------------------
 # Streamlit page config
 # -------------------------------
-st.set_page_config(page_title="World Mood Score", layout="wide")
 
 # -------------------------------
 # Global constants
