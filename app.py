@@ -291,8 +291,8 @@ if brand_focus and custom_query.strip():
     st.info(f"🎯 Brand Focus Mode: Showing {len(df_all)} posts about '{custom_query}'")
     
     if df_all.empty:
-    st.error("No data available. Click 'Refresh' to fetch data.")
-    st.stop()
+        st.error("No data available. Click 'Refresh' to fetch data.")
+        st.stop()
 
 # Create 48-hour filtered dataset
 if "created_at" in df_all.columns:
