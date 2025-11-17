@@ -7,6 +7,17 @@ import pandas as pd
 import streamlit as st
 import altair as alt
 
+st.set_page_config(
+    page_title="MoodLight",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
+)
+
 # -------------------------------
 # Streamlit page config
 # -------------------------------

@@ -6,3 +6,10 @@ font = "sans serif"             # Clean, modern font
 
 [server]
 headless = true
+
+[client]
+showErrorDetails = false
+toolbarMode = "minimal"
+
+[runner]
+fastReruns = true
