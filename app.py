@@ -1,3 +1,40 @@
+import streamlit as st
+
+def check_password():
+    """Returns True if user has entered correct password."""
+    
+    def password_entered():
+        """Checks whether password entered is correct."""
+        if st.session_state["password"] == "MoodLight2025!":
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Don't store password
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+
+        st.text_input(
+            "Password", type="password", on_change=password_entered, key="password"
+        )
+        st.write("*Please contact admin for access*")
+        return False
+    elif not st.session_state["password_correct"]:
+
+        st.text_input(
+            "Password", type="password", on_change=password_entered, key="password"
+        )
+        st.error("😕 Password incorrect")
+        return False
+    else:
+
+        return True
+
+if not check_password():
+    st.stop()
+
+import math
+import subprocess
+
 import math
 import subprocess
 import sys
