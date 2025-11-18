@@ -45,14 +45,18 @@ NEWSAPI_URL = "https://newsapi.org/v2/everything"
 X_DEFAULT_QUERY = "(politics OR war OR economy OR technology OR sports) lang:en -is:retweet"
 
 NEWS_DEFAULT_QUERY = (
-    "politics OR election OR president OR government OR policy OR "
-    "war OR conflict OR israel OR gaza OR ukraine OR russia OR "
-    "economy OR inflation OR recession OR markets OR finance OR "
-    "culture OR identity OR race OR racism OR gender OR lgbtq OR "
-    "sports OR game OR athlete OR team OR league OR "
-    "entertainment OR movie OR film OR music OR celebrity OR tv OR "
-    "technology OR tech OR AI OR climate OR environment OR "
-    "housing OR rent OR jobs OR layoffs OR business OR company"
+    "politics OR election OR president OR government OR policy OR congress OR senate OR "
+    "war OR conflict OR israel OR gaza OR ukraine OR russia OR military OR defense OR "
+    "economy OR inflation OR recession OR markets OR finance OR fed OR stocks OR crypto OR bitcoin OR "
+    "culture OR identity OR race OR racism OR gender OR lgbtq OR immigration OR "
+    "sports OR game OR athlete OR team OR league OR nfl OR nba OR soccer OR olympics OR "
+    "entertainment OR movie OR film OR music OR celebrity OR tv OR netflix OR streaming OR "
+    "technology OR tech OR AI OR openai OR google OR apple OR tesla OR meta OR amazon OR "
+    "climate OR environment OR energy OR renewable OR oil OR carbon OR "
+    "housing OR rent OR jobs OR layoffs OR business OR company OR startup OR "
+    "health OR healthcare OR vaccine OR fda OR covid OR mental OR "
+    "education OR school OR university OR student OR debt OR "
+    "crime OR police OR shooting OR arrest OR justice OR court"
 )
 
 # -------------------------------
