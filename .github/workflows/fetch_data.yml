@@ -23,6 +23,7 @@ jobs:
           pip install requests pandas python-dotenv openai transformers torch sentencepiece feedparser
       
       - name: Fetch and score X data
+        continue-on-error: true
         env:
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
