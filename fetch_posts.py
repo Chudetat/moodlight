@@ -422,7 +422,13 @@ def main():
     # Load existing data first
     existing_df = load_existing_data()
 
-    # --- Fetch X ---
+    # --- Fetch RSS (always runs) ---
+    rss_articles = fetch_rss_feeds()
+
+    # --- Fetch News (always runs) ---
+    news_articles = fetch_news(news_query, TOTAL_MAX_NEWS)
+
+    # --- Fetch X (might hit quota) ---
     tweets, hit_cap = search_tweets_paged(x_query, TOTAL_MAX_TWEETS)
     if hit_cap:
         print("\nX quota hit, preserving existing data")
@@ -434,10 +440,6 @@ def main():
             existing_df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_MINIMAL)
             print(f"Saved to {OUTPUT_CSV}")
         sys.exit(2)  # Signal quota hit to app.py
-
-    # --- Fetch News ---
-    news_articles = fetch_news(news_query, TOTAL_MAX_NEWS)
-    rss_articles = fetch_rss_feeds()
 
     # --- Process X ---
     print("\nProcessing X posts...")
@@ -471,7 +473,6 @@ def main():
         })
 
     print(f"   Kept {len(x_rows)} X posts (filtered {x_spam_filtered} spam)")
-    rss_articles = fetch_rss_feeds()
 
     # --- Process News ---
     print("\nProcessing NewsAPI articles...")
