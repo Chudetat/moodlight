@@ -290,6 +290,7 @@ def fetch_news(query: str, max_articles: int) -> List[Dict]:
             "pageSize": page_size,
             "page": page,
             "sortBy": "publishedAt",
+            "from": (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d"),
         }
         headers = {"X-Api-Key": NEWSAPI_KEY}
 
