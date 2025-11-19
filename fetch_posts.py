@@ -186,6 +186,10 @@ TOPIC_KEYWORDS = {
     "social unrest & protests": ["protest", "riot", "unrest", "demonstration", "rally", "march", "civil disobedience", "uprising", "revolt", "strike", "labor strike", "walkout", "picket", "activism", "mass protest"],
     "food security & agriculture": ["food shortage", "famine", "hunger", "starvation", "crop failure", "harvest", "drought", "agriculture", "farming", "food crisis", "grain", "wheat", "corn", "livestock", "food supply", "water scarcity"],
     "financial system stress": ["bank failure", "banking crisis", "liquidity", "debt default", "bankruptcy", "foreclosure", "currency collapse", "hyperinflation", "financial crisis", "stock market crash", "recession", "depression", "bailout", "contagion"],
+    "nuclear & wmd threats": ["nuclear", "nuclear weapon", "nuke", "atomic", "warhead", "missile test", "icbm", "ballistic missile", "enrichment", "uranium", "plutonium", "wmd", "chemical weapon", "biological weapon", "bioweapon", "nerve agent", "dirty bomb", "proliferation", "non-proliferation"],
+    "terrorism & extremism": ["terrorism", "terrorist", "terror attack", "bombing", "suicide bomber", "isis", "isil", "al qaeda", "al-qaeda", "hezbollah", "taliban", "extremist", "extremism", "jihad", "jihadist", "radicalization", "militant", "insurgent", "hostage", "kidnapping"],    
+    "humanitarian crises & migration": ["humanitarian crisis", "refugee", "displaced", "displacement", "migration", "migrant crisis", "asylum seeker", "genocide", "ethnic cleansing", "war crime", "atrocity", "mass grave", "humanitarian aid", "refugee camp", "internally displaced", "humanitarian disaster"],
+    "disinformation & propaganda": ["disinformation", "misinformation", "fake news", "propaganda", "troll farm", "bot network", "election interference", "foreign interference", "information warfare", "psyop", "psychological operation", "influence campaign", "state media", "deepfake", "manipulated media"],
 }
 
 def classify_topic(text: str) -> str:
@@ -195,6 +199,8 @@ def classify_topic(text: str) -> str:
     # Priority topics (check more specific ones first)
     priority_topics = [
         "war & foreign policy",
+        "nuclear & wmd threats",
+        "terrorism & extremism",
         "climate & environment",
         "technology & ai",
         "healthcare & wellbeing",
@@ -206,6 +212,8 @@ def classify_topic(text: str) -> str:
         "food security & agriculture",
         "social unrest & protests",
         "infrastructure & supply chain",
+        "humanitarian crises & migration",
+        "disinformation & propaganda",
     ]
 
     for topic in priority_topics:
