@@ -353,6 +353,286 @@ else:
 # Compute world mood
 world_score, world_label, world_emoji = compute_world_mood(df_48h)
 
+# ==========================================
+# INTELLIGENCE VISUALIZATIONS
+# ==========================================
+
+def create_intensity_gauge(df: pd.DataFrame, avg_intensity: float):
+    """Create vertical thermometer showing global threat intensity"""
+    import altair as alt
+    import streamlit as st
+    
+    try:
+        # Ensure it's a valid float
+        avg_intensity = float(avg_intensity) if not pd.isna(avg_intensity) else 0.0
+        
+        # Create zones dataframe
+        zones = pd.DataFrame({
+            'zone': ['Low', 'Moderate', 'Elevated', 'Critical'],
+            'min': [0.0, 1.5, 2.5, 3.5],
+            'max': [1.5, 2.5, 3.5, 5.0],
+            'color': ['#90EE90', '#FFFF00', '#FFA500', '#FF0000']
+        })
+        
+        # Determine current zone
+        if avg_intensity < 1.5:
+            current_zone = 'Low'
+        elif avg_intensity < 2.5:
+            current_zone = 'Moderate'
+        elif avg_intensity < 3.5:
+            current_zone = 'Elevated'
+        else:
+            current_zone = 'Critical'
+        
+        # Create vertical bar with zones
+        base = alt.Chart(zones).mark_bar(size=80).encode(
+            y=alt.Y('min:Q', title='Threat Level (0-5)', scale=alt.Scale(domain=[0, 5])),
+            y2='max:Q',
+            color=alt.Color('color:N', scale=None, legend=None),
+            tooltip=['zone:N']
+        )
+        
+        # Add current level marker
+        current_data = pd.DataFrame({'value': [float(avg_intensity)]})
+        marker = alt.Chart(current_data).mark_rule(
+                color='black',
+                strokeWidth=2  # Change from 4 to 2
+            ).encode(
+                y='value:Q',
+                tooltip=[alt.Tooltip('value:Q', title='Current Level', format='.2f')]
+            )
+        
+        # Add text label
+        text = alt.Chart(current_data).mark_text(
+            align='left',
+            dx=45,
+            dy=-10,  # ADD THIS - moves text UP 10 pixels
+            fontSize=16,
+            fontWeight='bold',
+            color='black'
+        ).encode(
+            y='value:Q',
+            text=alt.Text('value:Q', format='.2f')
+        )
+        
+        chart = (base + marker + text).properties(
+            title=f'Global Threat Level: {avg_intensity:.2f} ({current_zone})',
+            width=150,
+            height=400
+        )
+        
+        return chart
+        
+    except Exception as e:
+        st.error(f"Chart error: {str(e)}")
+        # Return simple text display as fallback
+        st.markdown(f"### {avg_intensity:.2f} / 5.0")
+        return None
+
+def create_ic_topic_breakdown(df: pd.DataFrame):
+    """Create breakdown of IC-level intelligence topics"""
+    import altair as alt
+    
+    cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=7)
+    recent = df[df['created_at'] >= cutoff].copy()
+    
+    topic_counts = recent['topic'].value_counts().head(20).reset_index()
+    topic_counts.columns = ['topic', 'count']
+    
+def create_geographic_hotspot_map(df: pd.DataFrame):
+    """Create map showing countries by threat intensity"""
+    import altair as alt
+    
+    cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(hours=48)
+    recent = df[df['created_at'] >= cutoff].copy()
+    
+    country_stats = recent.groupby('country').agg({
+        'intensity': 'mean',
+        'id': 'count'
+    }).reset_index()
+    country_stats.columns = ['country', 'avg_intensity', 'article_count']
+    
+    country_stats = country_stats[
+        (country_stats['country'] != 'Unknown') & 
+        (country_stats['article_count'] >= 3)
+    ].sort_values('avg_intensity', ascending=False).head(15)
+    
+    chart = (
+        alt.Chart(country_stats)
+        .mark_bar()
+        .encode(
+            y=alt.Y('country:N', sort='-x', title='Country'),
+            x=alt.X('avg_intensity:Q', title='Average Threat Intensity (1-5)', scale=alt.Scale(domain=[0, 5])),
+            color=alt.Color('avg_intensity:Q', scale=alt.Scale(scheme='reds'), legend=None),
+            tooltip=[
+                alt.Tooltip('country:N', title='Country'),
+                alt.Tooltip('avg_intensity:Q', title='Avg Intensity', format='.2f'),
+                alt.Tooltip('article_count:Q', title='Articles')
+            ]
+        )
+        .properties(title='Geographic Hotspots (Last 48h)', height=500)
+    )
+    
+    return chart
+
+def create_ic_topic_breakdown(df: pd.DataFrame):
+    """Create breakdown of IC-level intelligence topics"""
+    import altair as alt
+    
+    cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=7)
+    recent = df[df['created_at'] >= cutoff].copy()
+    
+    topic_counts = recent['topic'].value_counts().head(20).reset_index()
+    topic_counts.columns = ['topic', 'count']
+    
+    chart = (
+        alt.Chart(topic_counts)
+        .mark_bar()
+        .encode(
+            y=alt.Y('topic:N', sort='-x', title='Intelligence Category'),
+            x=alt.X('count:Q', title='Article Count'),
+            color=alt.value('#1f77b4'),
+            tooltip=[
+                alt.Tooltip('topic:N', title='Topic'),
+                alt.Tooltip('count:Q', title='Articles')
+            ]
+        )
+        .properties(title='Intelligence Topic Distribution (Last 7 Days)', height=600)
+    )
+    
+    return chart
+
+def create_trend_indicators(df: pd.DataFrame):
+    """Show which topics are trending up/down"""
+    import altair as alt
+    from collections import Counter
+    
+    now = pd.Timestamp.now(tz='UTC')
+    recent_start = now - pd.Timedelta(hours=24)
+    prev_start = now - pd.Timedelta(hours=48)
+    
+    recent_df = df[df['created_at'] >= recent_start]
+    prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
+    
+    if len(recent_df) == 0:
+        recent_start = now - pd.Timedelta(days=3)
+        prev_start = now - pd.Timedelta(days=7)
+        recent_df = df[df['created_at'] >= recent_start]
+        prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
+    
+    recent_topics = Counter(recent_df['topic'])
+    prev_topics = Counter(prev_df['topic'])
+    
+    trends = []
+    for topic in recent_topics:
+        recent_count = recent_topics[topic]
+        prev_count = prev_topics.get(topic, 1)
+        change_pct = ((recent_count - prev_count) / prev_count) * 100
+        
+        trends.append({
+            'topic': topic,
+            'change_pct': round(change_pct, 1),
+            'recent': recent_count
+        })
+    
+    trends_df = pd.DataFrame(sorted(trends, key=lambda x: abs(x['change_pct']), reverse=True)[:15])
+    
+    chart = (
+        alt.Chart(trends_df)
+        .mark_bar()
+        .encode(
+            y=alt.Y('topic:N', sort='-x', title='Topic'),
+            x=alt.X('change_pct:Q', title='% Change'),
+            color=alt.condition(
+                alt.datum.change_pct > 0,
+                alt.value('green'),
+                alt.value('red')
+            ),
+            tooltip=[
+                alt.Tooltip('topic:N', title='Topic'),
+                alt.Tooltip('change_pct:Q', title='Change %', format='+.1f'),
+                alt.Tooltip('recent:Q', title='Recent Count')
+            ]
+        )
+        .properties(title='Topic Trends (24h % change)', height=500)
+    )
+    
+    return chart
+
+    chart = (
+        alt.Chart(topic_counts)
+        .mark_bar()
+        .encode(
+            y=alt.Y('topic:N', sort='-x', title='Intelligence Category'),
+            x=alt.X('count:Q', title='Article Count'),
+            color=alt.value('#1f77b4'),
+            tooltip=[
+                alt.Tooltip('topic:N', title='Topic'),
+                alt.Tooltip('count:Q', title='Articles')
+            ]
+        )
+        .properties(title='Intelligence Topic Distribution (Last 7 Days)', height=600)
+    )
+    
+    return chart
+
+def create_trend_indicators(df: pd.DataFrame):
+    """Show which topics are trending up/down"""
+    import altair as alt
+    from collections import Counter
+    
+    now = pd.Timestamp.now(tz='UTC')
+    recent_start = now - pd.Timedelta(hours=24)
+    prev_start = now - pd.Timedelta(hours=48)
+    
+    recent_df = df[df['created_at'] >= recent_start]
+    prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
+    
+    if len(recent_df) == 0:
+        recent_start = now - pd.Timedelta(days=3)
+        prev_start = now - pd.Timedelta(days=7)
+        recent_df = df[df['created_at'] >= recent_start]
+        prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
+    
+    recent_topics = Counter(recent_df['topic'])
+    prev_topics = Counter(prev_df['topic'])
+    
+    trends = []
+    for topic in recent_topics:
+        recent_count = recent_topics[topic]
+        prev_count = prev_topics.get(topic, 1)
+        change_pct = ((recent_count - prev_count) / prev_count) * 100
+        
+        trends.append({
+            'topic': topic,
+            'change_pct': round(change_pct, 1),
+            'recent': recent_count
+        })
+    
+    trends_df = pd.DataFrame(sorted(trends, key=lambda x: abs(x['change_pct']), reverse=True)[:15])
+    
+    chart = (
+        alt.Chart(trends_df)
+        .mark_bar()
+        .encode(
+            y=alt.Y('topic:N', sort='-x', title='Topic'),
+            x=alt.X('change_pct:Q', title='% Change'),
+            color=alt.condition(
+                alt.datum.change_pct > 0,
+                alt.value('green'),
+                alt.value('red')
+            ),
+            tooltip=[
+                alt.Tooltip('topic:N', title='Topic'),
+                alt.Tooltip('change_pct:Q', title='Change %', format='+.1f'),
+                alt.Tooltip('recent:Q', title='Recent Count')
+            ]
+        )
+        .properties(title='Topic Trends (24h % change)', height=500)
+    )
+    
+    return chart
+
 # Date header
 current_date = datetime.now().strftime("%B %d, %Y")
 st.markdown(f"## {current_date}")
@@ -1142,3 +1422,73 @@ if len(df_filtered):
     )
 else:
     st.info("No posts match your filters.")
+
+st.markdown("---")
+
+# ========================================
+# INTELLIGENCE DASHBOARD
+# ========================================
+st.markdown("### 🎯 Intelligence Dashboard")
+st.caption("IC-level threat analysis with geographic hotspots and trend detection")
+
+# Check if intensity and country columns exist
+if 'intensity' in df_all.columns and 'country' in df_all.columns:
+    
+    # Row 1: Threat gauge + IC topics
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        avg_int = df_all['intensity'].mean()
+        
+        chart = create_intensity_gauge(df_all, avg_int)
+        if chart is not None:
+            st.altair_chart(chart, use_container_width=True)
+    
+    with col2:
+        st.altair_chart(create_ic_topic_breakdown(df_all), use_container_width=True)
+    
+    # Row 2: Geographic hotspots + Trends
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.altair_chart(create_geographic_hotspot_map(df_all), use_container_width=True)
+    
+    with col2:
+        st.altair_chart(create_trend_indicators(df_all), use_container_width=True)
+
+        # Quick Trends Section
+        st.markdown("#### 📈 Quick Trends (24h)")
+
+        from collections import Counter
+
+        now = pd.Timestamp.now(tz='UTC')
+        recent_start = now - pd.Timedelta(hours=24)
+        prev_start = now - pd.Timedelta(hours=48)
+
+        recent_df = df_all[df_all['created_at'] >= recent_start]
+        prev_df = df_all[(df_all['created_at'] >= prev_start) & (df_all['created_at'] < recent_start)]
+
+        if len(recent_df) == 0:
+            recent_start = now - pd.Timedelta(days=3)
+            prev_start = now - pd.Timedelta(days=7)
+            recent_df = df_all[df_all['created_at'] >= recent_start]
+            prev_df = df_all[(df_all['created_at'] >= prev_start) & (df_all['created_at'] < recent_start)]
+
+        recent_topics = Counter(recent_df['topic'])
+        prev_topics = Counter(prev_df['topic'])
+
+        trends = []
+        for topic in recent_topics:
+            recent_count = recent_topics[topic]
+            prev_count = prev_topics.get(topic, 1)
+            change_pct = ((recent_count - prev_count) / prev_count) * 100
+            trends.append({'topic': topic, 'change': change_pct})
+
+        trends = sorted(trends, key=lambda x: abs(x['change']), reverse=True)[:20]
+
+        for t in trends:
+            arrow = "🟢" if t['change'] > 0 else "🔴"
+            st.markdown(f"{arrow} **{t['topic']}**: {t['change']:+.0f}%")
+
+else:
+    st.info("Intelligence features require updated data. Run fetch_posts.py to enable geographic and intensity analysis.")

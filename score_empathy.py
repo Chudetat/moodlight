@@ -303,17 +303,44 @@ def main():
     print(f"   Newly scored: {len(df_newly_scored)}")
     print(f"   Total entries: {len(df_combined)}")
 
-    # Ensure all expected columns exist
+    # Merge ALL columns from input into combined
+    # Get columns from input that aren't in combined yet
+    input_extra_cols = [col for col in df_input.columns if col not in df_combined.columns]
+    
+    if input_extra_cols:
+        # Merge these columns from df_input
+        df_combined = df_combined.merge(
+            df_input[['id'] + input_extra_cols],
+            on='id',
+            how='left',
+            suffixes=('', '_input')
+        )
+    
+    # Define final column order
     expected = [
         "id", "text", "created_at", "author_id", "like_count", "reply_count",
         "repost_count", "quote_count", "engagement", "topic", "source",
         "empathy_score", "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3"
     ]
+    
+    # Add any extra columns
+    for col in df_combined.columns:
+        if col not in expected:
+            expected.append(col)
+    
+    # Ensure all columns exist
     for col in expected:
         if col not in df_combined.columns:
-            df_combined[col] = None  # or 0 for numeric
+            df_combined[col] = None
 
     # Reorder columns
+    df_combined = df_combined[expected]
+    
+    for col in expected:
+        if col not in df_combined.columns:
+            df_combined[col] = None
+
+    # Reorder columns (keep extras at end)
     df_combined = df_combined[expected]
 
     # Sort by engagement (most engaging first)
