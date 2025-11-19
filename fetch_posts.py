@@ -228,6 +228,17 @@ SPAM_KEYWORDS = [
     "you won't believe", "trading bot",
     # Emojis commonly used in spam (multiple money/financial emojis)
     "💰💰", "🚀🚀", "📈📈", "💸💸", "🤑🤑",
+    # Sports (block all)
+    "game", "match", "tournament", "playoff", "championship", "league", "season",
+    "score", "win", "loss", "defeat", "victory", "team", "player", "athlete", "coach",
+    "nfl", "nba", "mlb", "nhl", "fifa", "uefa", "premier league", "super bowl",
+    "usmnt", "world cup", "goals scored",
+    # Entertainment/Celebrity
+    "movie", "film", "cinema", "box office", "premiere", "trailer", "actor", "actress",
+    "celebrity", "star", "hollywood", "tv show", "series", "episode", "streaming",
+    "album", "concert", "tour", "grammy", "oscar", "emmy",
+    # Gaming
+    "video game", "gaming", "gamer", "playstation", "xbox", "nintendo", "esports",
 ]
 
 def is_spam(text: str) -> bool:
@@ -433,6 +444,13 @@ def main():
     # --- Combine new data ---
     new_rows = x_rows + news_rows
     new_rows = deduplicate_rows(new_rows)
+
+    # Remove "other" category - no actionable signal
+    before_filter = len(new_rows)
+    new_rows = [row for row in new_rows if row.get("topic") != "other"]
+    filtered_count = before_filter - len(new_rows)
+    if filtered_count > 0:
+        print(f"   Filtered out {filtered_count} 'other' category articles")
 
     if not new_rows:
         print("\nNo new data after filtering")
