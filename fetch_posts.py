@@ -23,7 +23,6 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 import pandas as pd
-import feedparser
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -316,81 +315,6 @@ def fetch_news(query: str, max_articles: int) -> List[Dict]:
     return articles[:max_articles]
 
 # -------------------------------
-# RSS FEEDS
-# -------------------------------
-RSS_FEEDS = [
-    # Reddit
-    ("Reddit World News", "https://www.reddit.com/r/worldnews/.rss"),
-    ("Reddit News", "https://www.reddit.com/r/news/.rss"),
-    ("Reddit Politics", "https://www.reddit.com/r/politics/.rss"),
-    ("Reddit Technology", "https://www.reddit.com/r/technology/.rss"),
-    ("Reddit Uplifting News", "https://www.reddit.com/r/UpliftingNews/.rss"),
-    
-    # Major News
-    ("Reuters World", "https://www.reuters.com/world/rss"),
-    ("Reuters Business", "https://www.reuters.com/business/rss"),
-    ("Reuters Technology", "https://www.reuters.com/technology/rss"),
-    ("AP Top News", "https://apnews.com/rss/apf-topnews"),
-    ("AP World News", "https://apnews.com/rss/apf-WorldNews"),
-    ("BBC World", "http://feeds.bbci.co.uk/news/world/rss.xml"),
-    ("BBC Business", "http://feeds.bbci.co.uk/news/business/rss.xml"),
-    ("BBC Tech", "http://feeds.bbci.co.uk/news/technology/rss.xml"),
-    ("Guardian World", "https://www.theguardian.com/world/rss"),
-    ("Guardian US", "https://www.theguardian.com/us-news/rss"),
-    ("NPR News", "https://feeds.npr.org/1001/rss.xml"),
-    ("Al Jazeera", "https://www.aljazeera.com/xml/rss/all.xml"),
-]
-
-def fetch_rss_feeds() -> List[Dict]:
-    """Fetch articles from RSS feeds"""
-    print(f"\nFetching from {len(RSS_FEEDS)} RSS feeds...")
-    all_entries = []
-    
-    for source_name, url in RSS_FEEDS:
-        try:
-            feedparser.USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            feed = feedparser.parse(url)
-            entries = feed.entries[:50]  # Take up to 50 per feed
-            
-            for entry in entries:
-                # Extract publication date
-                pub_date = None
-                if hasattr(entry, 'published_parsed') and entry.published_parsed:
-                    pub_date = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
-                elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
-                    pub_date = datetime(*entry.updated_parsed[:6], tzinfo=timezone.utc)
-                else:
-                    pub_date = datetime.now(timezone.utc)
-                
-                # Get title and description
-                title = entry.get('title', '')
-                description = entry.get('description', '') or entry.get('summary', '')
-                text = f"{title}. {description}".strip()
-                
-                if not text or len(text) < 20:
-                    continue
-                
-                all_entries.append({
-                    'id': entry.get('link', '') + '#' + str(hash(text)),
-                    'text': text[:500],  # Limit length
-                    'created_at': pub_date.isoformat(),
-                    'source': source_name.lower().replace(' ', '_'),
-                    'url': entry.get('link', ''),
-                })
-            
-            if len(entries) > 0:
-                print(f"   ✓ {source_name}: {len(entries)} articles")
-            
-        except Exception as e:
-            print(f"   ✗ {source_name}: {e}")
-            import traceback
-            traceback.print_exc()
-            continue
-    
-    print(f"   Total RSS articles: {len(all_entries)}")
-    return all_entries
-
-# -------------------------------
 # Deduplication
 # -------------------------------
 def deduplicate_rows(rows: List[Dict]) -> List[Dict]:
@@ -425,9 +349,6 @@ def main():
 
     # Load existing data first
     existing_df = load_existing_data()
-
-    # --- Fetch RSS (always runs) ---
-    rss_articles = fetch_rss_feeds()
 
     # --- Fetch News (always runs) ---
     news_articles = fetch_news(news_query, TOTAL_MAX_NEWS)
@@ -509,37 +430,8 @@ def main():
 
     print(f"   Kept {len(news_rows)} news articles (filtered {news_spam_filtered} spam, {news_too_short} too short)")
 
-# --- Process RSS ---
-    print("\nProcessing RSS articles...")
-    rss_rows: List[Dict] = []
-
-    for art in rss_articles:
-        text = art.get("text", "")
-    
-        if not text or len(text) < 30:
-            continue
-        
-        if is_spam(text):
-            continue
-
-        rss_rows.append({
-            "id": art.get("id"),
-            "text": text,
-            "created_at": art.get("created_at"),
-            "author_id": None,
-            "like_count": 0,
-            "reply_count": 0,
-            "repost_count": 0,
-            "quote_count": 0,
-            "engagement": 0,
-            "topic": classify_topic(text),
-            "source": art.get("source", "rss"),
-        })
-
-    print(f"   Kept {len(rss_rows)} RSS articles")
-
     # --- Combine new data ---
-    new_rows = x_rows + news_rows + rss_rows
+    new_rows = x_rows + news_rows
     new_rows = deduplicate_rows(new_rows)
 
     if not new_rows:
@@ -567,7 +459,6 @@ def main():
     print(f"\nNew data summary:")
     print(f"   X posts: {len(x_rows)}")
     print(f"   News articles: {len(news_rows)}")
-    print(f"   RSS articles: {len(rss_rows)}")
     print(f"   Total new: {len(new_df)}")
 
     if not existing_df.empty:
