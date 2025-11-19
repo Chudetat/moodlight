@@ -180,6 +180,12 @@ TOPIC_KEYWORDS = {
     "religion & values": ["religion", "religious", "church", "mosque", "synagogue", "faith", "spiritual", "morality", "ethics", "bible"],
     "sports": ["sports", "game", "match", "tournament", "league", "team", "player", "athlete", "coach", "championship"],
     "entertainment": ["movie", "film", "cinema", "tv", "series", "episode", "music", "album", "song", "concert", "festival", "celebrity", "actor", "hollywood"],
+    "energy & resources": ["energy", "oil", "gas", "natural gas", "opec", "petroleum", "fuel", "power grid", "blackout", "electricity", "energy crisis", "renewable energy", "solar", "wind power", "nuclear power", "coal", "fracking"],
+    "infrastructure & supply chain": ["supply chain", "logistics", "shipping", "port", "cargo", "container", "semiconductor", "chip shortage", "rare earth", "infrastructure", "bridge collapse", "road", "railway", "transport", "freight", "bottleneck"],    
+    "cybersecurity & tech threats": ["cyberattack", "cyber attack", "ransomware", "hack", "hacker", "data breach", "cybersecurity", "malware", "phishing", "ddos", "zero day", "vulnerability", "exploit", "disinformation", "misinformation", "deepfake"],
+    "social unrest & protests": ["protest", "riot", "unrest", "demonstration", "rally", "march", "civil disobedience", "uprising", "revolt", "strike", "labor strike", "walkout", "picket", "activism", "mass protest"],
+    "food security & agriculture": ["food shortage", "famine", "hunger", "starvation", "crop failure", "harvest", "drought", "agriculture", "farming", "food crisis", "grain", "wheat", "corn", "livestock", "food supply", "water scarcity"],
+    "financial system stress": ["bank failure", "banking crisis", "liquidity", "debt default", "bankruptcy", "foreclosure", "currency collapse", "hyperinflation", "financial crisis", "stock market crash", "recession", "depression", "bailout", "contagion"],
 }
 
 def classify_topic(text: str) -> str:
@@ -194,6 +200,12 @@ def classify_topic(text: str) -> str:
         "healthcare & wellbeing",
         "crime & safety",
         "immigration",
+        "cybersecurity & tech threats",
+        "energy & resources",
+        "financial system stress",
+        "food security & agriculture",
+        "social unrest & protests",
+        "infrastructure & supply chain",
     ]
 
     for topic in priority_topics:
