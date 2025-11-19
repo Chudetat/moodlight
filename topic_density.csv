@@ -7,22 +7,22 @@ nuclear & wmd threats,0.661904761904762,Other,0.07142857142857142,News Media,Med
 energy & resources,0.661904761904762,Other,0.07142857142857142,News Media,Medium (some discussion),0.5,2
 race & ethnicity,0.65,Other,0.5,News Media,Deep (active debate),1.0,64
 immigration,0.65,UK/Europe,0.5,News Media,Deep (active debate),1.0,44
-government,0.65,UK/Europe,0.5,News Media,Deep (active debate),1.0,104
+government,0.65,UK/Europe,0.5,News Media,Deep (active debate),1.0,105
 infrastructure & supply chain,0.6404761904761905,Other,0.14285714285714285,News Media,Medium (some discussion),0.5,10
 culture & identity,0.5976190476190476,Other,0.2857142857142857,News Media,Medium (some discussion),0.5,25
-creative & design,0.5095238095238095,Other,0.35714285714285715,News Media,Medium (some discussion),0.5,20
+creative & design,0.5095238095238095,Other,0.35714285714285715,News Media,Medium (some discussion),0.5,21
 economics,0.5074500768049155,Other,0.42857142857142855,News Media,Deep (active debate),0.6720430107526881,66
-other,0.48797729618163055,Other,0.5,News Media,Deep (active debate),0.6759545923632612,767
+other,0.48797729618163055,Other,0.5,News Media,Deep (active debate),0.6759545923632612,769
 branding & advertising,0.44285714285714284,Other,0.35714285714285715,News Media,Medium (some discussion),0.5,29
 gender & sexuality,0.44285714285714284,Other,0.35714285714285715,News Media,Medium (some discussion),0.5,34
-war & foreign policy,0.423224043715847,Other,0.5,News Media,Medium (some discussion),0.5464480874316939,649
+war & foreign policy,0.423224043715847,Other,0.5,News Media,Medium (some discussion),0.5464480874316939,652
 healthcare & wellbeing,0.4214285714285714,Other,0.42857142857142855,News Media,Medium (some discussion),0.5,24
-entertainment,0.4214285714285714,Other,0.42857142857142855,News Media,Medium (some discussion),0.5,66
+entertainment,0.4214285714285714,Other,0.42857142857142855,News Media,Medium (some discussion),0.5,67
 education,0.4,Other,0.5,News Media,Medium (some discussion),0.5,96
-climate & environment,0.4,Other,0.5,News Media,Medium (some discussion),0.5,100
+climate & environment,0.4,Other,0.5,News Media,Medium (some discussion),0.5,101
 politics,0.3982269503546099,Other,0.5,News Media,Medium (some discussion),0.49645390070921985,225
 crime & safety,0.39590163934426226,Global,0.5,News Media,Medium (some discussion),0.4918032786885246,99
-technology & ai,0.34704433497536946,Other,0.5,News Media,Medium (some discussion),0.39408866995073893,1729
+technology & ai,0.34704433497536946,Other,0.5,News Media,Medium (some discussion),0.39408866995073893,1739
 media & journalism,0.1714285714285714,Other,0.42857142857142855,News Media,Surface (shares only),0.0,55
 labor & work,0.1714285714285714,Other,0.42857142857142855,News Media,Surface (shares only),0.0,28
-sports,0.15,Other,0.5,News Media,Surface (shares only),0.0,248
+sports,0.15,Other,0.5,News Media,Surface (shares only),0.0,251
