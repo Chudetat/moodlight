@@ -53,6 +53,15 @@ jobs:
           python calculate_density.py || true
           python calculate_scarcity.py || true
       
+      - name: Generate and email intelligence brief
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+        run: |
+          python generate_brief.py
+
       - name: Commit and push updated data
         run: |
           git config user.name "GitHub Actions Bot"
