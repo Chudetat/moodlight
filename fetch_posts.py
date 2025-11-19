@@ -228,6 +228,65 @@ def classify_topic(text: str) -> str:
     return "other"
 
 # -------------------------------
+# Country extraction
+# -------------------------------
+COUNTRIES = [
+    "afghanistan", "albania", "algeria", "argentina", "armenia", "australia", "austria", 
+    "azerbaijan", "bahrain", "bangladesh", "belarus", "belgium", "bolivia", "bosnia", 
+    "brazil", "bulgaria", "cambodia", "cameroon", "canada", "chile", "china", "colombia", 
+    "congo", "costa rica", "croatia", "cuba", "cyprus", "czech", "denmark", "ecuador", 
+    "egypt", "estonia", "ethiopia", "finland", "france", "georgia", "germany", "ghana", 
+    "greece", "guatemala", "haiti", "honduras", "hong kong", "hungary", "iceland", "india", 
+    "indonesia", "iran", "iraq", "ireland", "israel", "italy", "jamaica", "japan", "jordan", 
+    "kazakhstan", "kenya", "korea", "kuwait", "latvia", "lebanon", "libya", "lithuania", 
+    "malaysia", "mexico", "moldova", "morocco", "myanmar", "nepal", "netherlands", "new zealand", 
+    "nicaragua", "niger", "nigeria", "norway", "oman", "pakistan", "palestine", "panama", 
+    "paraguay", "peru", "philippines", "poland", "portugal", "qatar", "romania", "russia", 
+    "rwanda", "saudi", "senegal", "serbia", "singapore", "slovakia", "slovenia", "somalia", 
+    "south africa", "spain", "sri lanka", "sudan", "sweden", "switzerland", "syria", "taiwan", 
+    "tanzania", "thailand", "tunisia", "turkey", "uganda", "ukraine", "united arab emirates", 
+    "united kingdom", "uruguay", "uzbekistan", "venezuela", "vietnam", "yemen", "zimbabwe",
+    "u.s.", "usa", "america", "britain", "uk"
+]
+
+def extract_country(text: str) -> str:
+    """Extract country name from text"""
+    t = text.lower()
+    for country in COUNTRIES:
+        if country in t:
+            return country.title()
+    return "Unknown"
+
+# -------------------------------
+# Intensity/Threat scoring
+# -------------------------------
+THREAT_KEYWORDS = {
+    "severe": ["war", "attack", "killed", "dead", "death", "massacre", "genocide", "nuclear", "bomb", "terror", "crisis", "collapse", "disaster"],
+    "high": ["violence", "conflict", "strike", "protest", "riot", "threat", "danger", "emergency", "critical", "severe"],
+    "moderate": ["concern", "risk", "issue", "problem", "tension", "dispute", "unrest", "warning"],
+}
+
+def calculate_intensity(text: str) -> int:
+    """Calculate threat intensity 1-5 based on keywords"""
+    t = text.lower()
+    
+    severe_count = sum(1 for kw in THREAT_KEYWORDS["severe"] if kw in t)
+    high_count = sum(1 for kw in THREAT_KEYWORDS["high"] if kw in t)
+    moderate_count = sum(1 for kw in THREAT_KEYWORDS["moderate"] if kw in t)
+    
+    # Scoring logic
+    if severe_count >= 2:
+        return 5  # Critical
+    elif severe_count >= 1 or high_count >= 2:
+        return 4  # High
+    elif high_count >= 1 or moderate_count >= 2:
+        return 3  # Moderate
+    elif moderate_count >= 1:
+        return 2  # Low
+    else:
+        return 1  # Minimal
+
+# -------------------------------
 # Spam filter
 # -------------------------------
 SPAM_KEYWORDS = [
@@ -415,7 +474,9 @@ def main():
             "quote_count": metrics.get("quote_count", 0),
             "engagement": engagement,
             "topic": classify_topic(text),
-            "source": "x",
+                "country": extract_country(text),
+                "intensity": calculate_intensity(text),
+                "source": "x",
         })
 
     if hit_cap:
@@ -456,7 +517,9 @@ def main():
             "quote_count": 0,
             "engagement": 0,
             "topic": classify_topic(text),
-            "source": art.get("source", {}).get("name", "newsapi").lower().replace(" ", "_"),
+                "country": extract_country(text),
+                "intensity": calculate_intensity(text),
+                "source": art.get("source", {}).get("name", "newsapi").lower().replace(" ", "_"),
         })
 
     print(f"   Kept {len(news_rows)} news articles (filtered {news_spam_filtered} spam, {news_too_short} too short)")
@@ -489,7 +552,7 @@ def main():
     columns = [
         "id", "text", "created_at", "author_id",
         "like_count", "reply_count", "repost_count", "quote_count",
-        "engagement", "topic", "source"
+        "engagement", "topic", "country", "intensity", "source"
     ]
 
     new_df = pd.DataFrame(new_rows, columns=columns)
