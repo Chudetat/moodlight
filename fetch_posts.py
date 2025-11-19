@@ -45,17 +45,15 @@ NEWSAPI_URL = "https://newsapi.org/v2/everything"
 X_DEFAULT_QUERY = "(politics OR war OR economy OR technology OR sports) lang:en -is:retweet"
 
 NEWS_DEFAULT_QUERY = (
-    "politics OR democracy OR election OR "
-    "war OR nuclear OR military OR "
-    "economy OR markets OR venture capital OR "
-    "AI OR quantum OR robotics OR biotech OR technology OR "
-    "climate OR renewable OR extinction OR "
-    "space OR mars OR astronomy OR "
-    "health OR medicine OR mental OR genetic OR "
-    "poverty OR housing OR human rights OR "
-    "creativity OR invention OR breakthrough OR "
-    "humanity OR ethics OR philosophy OR "
-    "startup OR disruption OR innovation"
+    "war OR military OR nuclear OR terrorism OR China OR Russia OR Iran OR Israel OR Ukraine OR NATO OR "
+    "politics OR election OR congress OR sanctions OR "
+    "economy OR inflation OR Federal Reserve OR GDP OR "
+    "merger OR IPO OR hedge fund OR billionaire OR "
+    "AI OR quantum OR semiconductor OR Tesla OR EV OR "
+    "supply chain OR infrastructure OR 5G OR "
+    "energy OR oil OR lithium OR solar OR "
+    "real estate OR mortgage OR housing OR "
+    "pandemic OR FDA OR climate OR Davos"
 )
 
 # -------------------------------
@@ -92,7 +90,7 @@ def load_existing_data() -> pd.DataFrame:
         # Keep entries from last 7 days only
         if "created_at" in df.columns:
             df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce", utc=True)
-            cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=3)
             df = df[df["created_at"] >= cutoff]
             print(f"Kept {len(df)} entries from last 7 days")
         
@@ -372,14 +370,14 @@ def fetch_news(query: str, max_articles: int) -> List[Dict]:
     page = 1
     page_size = 100
 
-    while len(articles) < max_articles and page <= 5:
+    while len(articles) < max_articles and page <= 20:
         params = {
             "q": query,
             "language": "en",
             "pageSize": page_size,
             "page": page,
             "sortBy": "publishedAt",
-            "from": (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d"),
+            "from": (datetime.now(timezone.utc) - timedelta(days=3)).strftime("%Y-%m-%d"),
         }
         headers = {"X-Api-Key": NEWSAPI_KEY}
 
@@ -394,8 +392,7 @@ def fetch_news(query: str, max_articles: int) -> List[Dict]:
                 break
             articles.extend(batch)
             print(f"   Page {page}: {len(batch)} articles")
-            if len(batch) < page_size:
-                break
+
             page += 1
         except Exception as e:
             print(f"   News fetch exception: {e}")
