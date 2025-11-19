@@ -46,18 +46,17 @@ NEWSAPI_URL = "https://newsapi.org/v2/everything"
 X_DEFAULT_QUERY = "(politics OR war OR economy OR technology OR sports) lang:en -is:retweet"
 
 NEWS_DEFAULT_QUERY = (
-    "politics OR election OR president OR government OR policy OR congress OR senate OR "
-    "war OR conflict OR israel OR gaza OR ukraine OR russia OR military OR defense OR "
-    "economy OR inflation OR recession OR markets OR finance OR fed OR stocks OR crypto OR bitcoin OR "
-    "culture OR identity OR race OR racism OR gender OR lgbtq OR immigration OR "
-    "sports OR game OR athlete OR team OR league OR nfl OR nba OR soccer OR olympics OR "
-    "entertainment OR movie OR film OR music OR celebrity OR tv OR netflix OR streaming OR "
-    "technology OR tech OR AI OR openai OR google OR apple OR tesla OR meta OR amazon OR "
-    "climate OR environment OR energy OR renewable OR oil OR carbon OR "
-    "housing OR rent OR jobs OR layoffs OR business OR company OR startup OR "
-    "health OR healthcare OR vaccine OR fda OR covid OR mental OR "
-    "education OR school OR university OR student OR debt OR "
-    "crime OR police OR shooting OR arrest OR justice OR court"
+    "politics OR democracy OR election OR "
+    "war OR nuclear OR military OR "
+    "economy OR markets OR venture capital OR "
+    "AI OR quantum OR robotics OR biotech OR technology OR "
+    "climate OR renewable OR extinction OR "
+    "space OR mars OR astronomy OR "
+    "health OR medicine OR mental OR genetic OR "
+    "poverty OR housing OR human rights OR "
+    "creativity OR invention OR breakthrough OR "
+    "humanity OR ethics OR philosophy OR "
+    "startup OR disruption OR innovation"
 )
 
 # -------------------------------
@@ -297,7 +296,7 @@ def fetch_news(query: str, max_articles: int) -> List[Dict]:
         try:
             resp = requests.get(NEWSAPI_URL, params=params, headers=headers, timeout=15)
             if resp.status_code != 200:
-                print(f"   NewsAPI error {resp.status_code}")
+                print(f"   NewsAPI error {resp.status_code}: {resp.text}")
                 break
             data = resp.json()
             batch = data.get("articles", [])
@@ -348,6 +347,7 @@ def fetch_rss_feeds() -> List[Dict]:
     
     for source_name, url in RSS_FEEDS:
         try:
+            feedparser.USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             feed = feedparser.parse(url)
             entries = feed.entries[:50]  # Take up to 50 per feed
             
@@ -377,10 +377,13 @@ def fetch_rss_feeds() -> List[Dict]:
                     'url': entry.get('link', ''),
                 })
             
-            print(f"   ✓ {source_name}: {len(entries)} articles")
+            if len(entries) > 0:
+                print(f"   ✓ {source_name}: {len(entries)} articles")
             
         except Exception as e:
             print(f"   ✗ {source_name}: {e}")
+            import traceback
+            traceback.print_exc()
             continue
     
     print(f"   Total RSS articles: {len(all_entries)}")
@@ -430,16 +433,6 @@ def main():
 
     # --- Fetch X (might hit quota) ---
     tweets, hit_cap = search_tweets_paged(x_query, TOTAL_MAX_TWEETS)
-    if hit_cap:
-        print("\nX quota hit, preserving existing data")
-        if not existing_df.empty:
-            print(f"Keeping {len(existing_df)} existing entries")
-            # Convert timestamps back to strings before saving
-            if "created_at" in existing_df.columns:
-                existing_df["created_at"] = existing_df["created_at"].dt.strftime("%Y-%m-%dT%H:%M:%S%z")
-            existing_df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_MINIMAL)
-            print(f"Saved to {OUTPUT_CSV}")
-        sys.exit(2)  # Signal quota hit to app.py
 
     # --- Process X ---
     print("\nProcessing X posts...")
@@ -472,7 +465,10 @@ def main():
             "source": "x",
         })
 
-    print(f"   Kept {len(x_rows)} X posts (filtered {x_spam_filtered} spam)")
+    if hit_cap:
+        print(f"   X quota hit - kept {len(x_rows)} X posts from partial fetch")
+    else:
+        print(f"   Kept {len(x_rows)} X posts (filtered {x_spam_filtered} spam)")
 
     # --- Process News ---
     print("\nProcessing NewsAPI articles...")
@@ -611,6 +607,11 @@ def main():
     # Save
     combined_df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_MINIMAL)
     print(f"\nSaved {len(combined_df)} rows to {OUTPUT_CSV}")
+
+# Exit with code 2 if X quota was hit (signals to workflow)
+    if hit_cap:
+        print("\nNote: X API quota was exceeded, but RSS + News data was still fetched")
+        sys.exit(2)
 
 if __name__ == "__main__":
     try:
