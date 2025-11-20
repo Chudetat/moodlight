@@ -345,7 +345,7 @@ if brand_focus and custom_query.strip():
 if "created_at" in df_all.columns:
     df_all["created_at"] = pd.to_datetime(df_all["created_at"], errors="coerce", utc=True)
     df_all = df_all.dropna(subset=["created_at"])
-    cutoff_48h = datetime.now(timezone.utc) - timedelta(days=7)
+    cutoff_48h = datetime.now(timezone.utc) - timedelta(days=3)
     df_48h = df_all[df_all["created_at"] >= cutoff_48h].copy()
 else:
     df_48h = df_all.copy()
@@ -1400,7 +1400,7 @@ else:
 # SECTION 8: WORLD VIEW
 # ========================================
 st.markdown("### World View")
-st.caption("All posts from the last 48 hours - scroll to explore")
+st.caption("All posts from the last 3 days - scroll to explore")
 
 cols = [c for c in ["text", "source", "topic", "empathy_label", "emotion_top_1", "engagement", "created_at"] if c in df_filtered.columns]
 if len(df_filtered):
