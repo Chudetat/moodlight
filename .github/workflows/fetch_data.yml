@@ -66,5 +66,5 @@ jobs:
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          git add *.csv
+          git add -A
           git diff --quiet && git diff --staged --quiet || (git pull --rebase && git commit -m "Auto: Update data $(date -u)" && git push)
