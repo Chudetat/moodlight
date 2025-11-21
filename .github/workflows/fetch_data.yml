@@ -31,6 +31,7 @@ jobs:
         run: |
           python fetch_posts.py
           python score_empathy.py social.csv social_scored.csv
+          cp social_scored.csv social.csv
       
       - name: Fetch market data
         env:
