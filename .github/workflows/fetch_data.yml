@@ -47,7 +47,9 @@ jobs:
         run: |
           python fetch_news_rss.py
           python score_empathy.py news.csv news_scored.csv
-      
+          cat news_scored.csv social_scored.csv > combined.csv
+          cp combined.csv social.csv
+          
       - name: Run analysis scripts
         run: |
           python calculate_longevity.py || true
