@@ -47,8 +47,7 @@ jobs:
         run: |
           python fetch_news_rss.py
           python score_empathy.py news.csv news_scored.csv
-          cat news_scored.csv social_scored.csv > combined.csv
-          cp combined.csv social.csv
+          python -c "import pandas as pd; pd.concat([pd.read_csv('social_scored.csv'), pd.read_csv('news_scored.csv')]).drop_duplicates().to_csv('social.csv', index=False)"
           
       - name: Run analysis scripts
         run: |
