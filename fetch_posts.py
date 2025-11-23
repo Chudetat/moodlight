@@ -244,12 +244,17 @@ COUNTRIES = [
     "south africa", "spain", "sri lanka", "sudan", "sweden", "switzerland", "syria", "taiwan", 
     "tanzania", "thailand", "tunisia", "turkey", "uganda", "ukraine", "united arab emirates", 
     "united kingdom", "uruguay", "uzbekistan", "venezuela", "vietnam", "yemen", "zimbabwe",
-    "u.s.", "usa", "america", "britain", "uk"
+    "britain", "uk"
 ]
 
 def extract_country(text: str) -> str:
-    """Extract country name from text"""
+    """Extract country name from text with USA standardization"""
     t = text.lower()
+    
+    # Standardize USA variants first
+    if any(variant in t for variant in ["u.s.", "usa", "america", "united states"]):
+        return "United States"
+    
     for country in COUNTRIES:
         if country in t:
             return country.title()

@@ -725,20 +725,19 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
         # Get market sentiment (currently just today's value, will build history over time)
         market_value = int(round(df_markets["market_sentiment"].iloc[0] * 100))
         
-        # Create market data point for today
-        today = datetime.now(timezone.utc).date()
-        market_data = pd.DataFrame({
-            "date": [today],
-            "social_mood": [market_value],  # Using social_mood column for consistency
-            "type": ["Market Mood"]
+    # Create market reference line (horizontal)
+        market_line = pd.DataFrame({
+            "date": daily_social["date"].tolist(),
+            "score": [market_value] * len(daily_social),
+            "metric": ["Market Mood"] * len(daily_social)
         })
-        
+
         # Combine data
         combined = pd.concat([
             daily_social.rename(columns={'social_mood': 'score'}).assign(metric='Social Mood'),
-            market_data.rename(columns={'social_mood': 'score'}).assign(metric='Market Mood')
+            market_line
         ])
-        
+
         # Create comparison chart
         comparison_chart = (
             alt.Chart(combined)
@@ -1010,6 +1009,7 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
     now = datetime.now(timezone.utc)
     three_days_ago = now - timedelta(days=3)
     df_trending = df_all[df_all["created_at"] >= three_days_ago].nlargest(30, "engagement").copy()
+    df_trending["hours_ago"] = (now - df_trending["created_at"]).dt.total_seconds() / 3600
 
     trending_chart = (
         alt.Chart(df_trending)
@@ -1075,9 +1075,10 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
     vdf["virality"] = vdf["engagement"] / vdf["age_hours"]
     
     if len(vdf) > 10:
-        virality_threshold = vdf["virality"].quantile(0.7)
-        engagement_threshold = vdf["engagement"].quantile(0.8)
+        virality_threshold = vdf["virality"].quantile(0.3)  # Top 70%
+        engagement_threshold = vdf["engagement"].quantile(0.3)  # Top 70%
         vdf_high = vdf[(vdf["virality"] > virality_threshold) | (vdf["engagement"] > engagement_threshold)]
+
     else:
         vdf_high = vdf
 
@@ -1141,7 +1142,7 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
         source_counts = vdf_high["source"].value_counts()
         st.caption(f"Source breakdown: {dict(source_counts)}")
     else:
-        st.info("No high-virality posts in last 7 days yet.")
+        st.info("No high-virality posts in last 3 days yet.")
 else:
     st.info("No engagement data available.")
 
