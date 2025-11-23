@@ -249,10 +249,11 @@ COUNTRIES = [
 
 def extract_country(text: str) -> str:
     """Extract country name from text with USA standardization"""
+    import re
     t = text.lower()
     
-    # Standardize USA variants first
-    if any(variant in t for variant in ["u.s.", "usa", "america", "united states"]):
+    # Standardize USA variants with word boundaries
+    if re.search(r'\b(u\.s\.|usa|america|united states)\b', t):
         return "United States"
     
     for country in COUNTRIES:
