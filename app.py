@@ -43,6 +43,8 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 import streamlit as st
 import altair as alt
+from startup import fetch_data_if_needed
+fetch_data_if_needed()
 
 st.set_page_config(
     page_title="MoodLight",
