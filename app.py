@@ -47,7 +47,7 @@ from startup import fetch_data_if_needed
 fetch_data_if_needed()
 
 st.set_page_config(
-    page_title="MoodLight",
+    page_title="Moodlight",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
@@ -302,7 +302,7 @@ def compute_world_mood(df: pd.DataFrame) -> tuple[int | None, str | None, str]:
 # -------------------------------
 # UI
 # -------------------------------
-st.title("MoodLight")
+st.title("Moodlight")
 st.caption("Real-time global news and culture analysis, prediction, and actionable intelligence")
 
 with st.sidebar:
