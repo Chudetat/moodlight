@@ -4,25 +4,25 @@ terrorism & extremism,0.661904761904762,Other,0.07142857142857142,News Media,Med
 energy & resources,0.6404761904761905,Other,0.14285714285714285,News Media,Medium (some discussion),0.5,8
 gender & sexuality,0.6404761904761905,Asia,0.14285714285714285,News Media,Medium (some discussion),0.5,3
 branding & advertising,0.6404761904761905,Other,0.14285714285714285,News Media,Medium (some discussion),0.5,3
+entertainment,0.6404761904761905,UK/Europe,0.14285714285714285,News Media,Medium (some discussion),0.5,16
 creative & design,0.6404761904761905,North America,0.14285714285714285,News Media,Medium (some discussion),0.5,2
-religion & values,0.6404761904761905,Other,0.14285714285714285,News Media,Medium (some discussion),0.5,2
-entertainment,0.6404761904761905,UK/Europe,0.14285714285714285,News Media,Medium (some discussion),0.5,9
-labor & work,0.6190476190476191,Middle East,0.21428571428571427,News Media,Medium (some discussion),0.5,3
 infrastructure & supply chain,0.6190476190476191,Other,0.21428571428571427,News Media,Medium (some discussion),0.5,5
-media & journalism,0.6190476190476191,UK/Europe,0.21428571428571427,News Media,Medium (some discussion),0.5,8
-economics,0.5976190476190476,Other,0.2857142857142857,News Media,Medium (some discussion),0.5,7
-housing,0.5761904761904761,Other,0.35714285714285715,News Media,Medium (some discussion),0.5,7
-sports,0.530952380952381,Other,0.2857142857142857,News Media,Medium (some discussion),0.5,27
-business & corporate,0.530952380952381,Global (English-speaking),0.2857142857142857,News Media,Medium (some discussion),0.5,5
+media & journalism,0.6190476190476191,Other,0.21428571428571427,News Media,Medium (some discussion),0.5,9
+labor & work,0.6190476190476191,Middle East,0.21428571428571427,News Media,Medium (some discussion),0.5,3
+economics,0.5761904761904761,Other,0.35714285714285715,News Media,Medium (some discussion),0.5,8
+religion & values,0.5523809523809524,Other,0.21428571428571427,News Media,Medium (some discussion),0.5,4
+government,0.530952380952381,UK/Europe,0.2857142857142857,News Media,Medium (some discussion),0.5,25
+sports,0.530952380952381,Other,0.2857142857142857,News Media,Medium (some discussion),0.5,31
 immigration,0.530952380952381,North America,0.2857142857142857,News Media,Medium (some discussion),0.5,6
+business & corporate,0.530952380952381,UK/Europe,0.2857142857142857,News Media,Medium (some discussion),0.5,6
 healthcare & wellbeing,0.530952380952381,UK/Europe,0.2857142857142857,News Media,Medium (some discussion),0.5,11
-government,0.530952380952381,UK/Europe,0.2857142857142857,News Media,Medium (some discussion),0.5,17
-race & ethnicity,0.5095238095238095,Other,0.35714285714285715,News Media,Medium (some discussion),0.5,10
+race & ethnicity,0.5095238095238095,UK/Europe,0.35714285714285715,News Media,Medium (some discussion),0.5,12
 culture & identity,0.5095238095238095,UK/Europe,0.35714285714285715,News Media,Medium (some discussion),0.5,6
-war & foreign policy,0.4880952380952381,UK/Europe,0.42857142857142855,News Media,Medium (some discussion),0.5,261
-climate & environment,0.4880952380952381,UK/Europe,0.42857142857142855,News Media,Medium (some discussion),0.5,45
-politics,0.4880952380952381,UK/Europe,0.42857142857142855,News Media,Medium (some discussion),0.5,24
-crime & safety,0.4880952380952381,Global (English-speaking),0.42857142857142855,News Media,Medium (some discussion),0.5,16
-education,0.4880952380952381,Other,0.42857142857142855,News Media,Medium (some discussion),0.5,14
-other,0.4880952380952381,Global (English-speaking),0.42857142857142855,News Media,Medium (some discussion),0.5,119
-technology & ai,0.4666666666666667,Other,0.5,News Media,Medium (some discussion),0.5,345
+war & foreign policy,0.4880952380952381,UK/Europe,0.42857142857142855,News Media,Medium (some discussion),0.5,304
+education,0.4880952380952381,Other,0.42857142857142855,News Media,Medium (some discussion),0.5,17
+climate & environment,0.4880952380952381,UK/Europe,0.42857142857142855,News Media,Medium (some discussion),0.5,49
+politics,0.4880952380952381,UK/Europe,0.42857142857142855,News Media,Medium (some discussion),0.5,26
+housing,0.4880952380952381,Other,0.42857142857142855,News Media,Medium (some discussion),0.5,8
+crime & safety,0.4880952380952381,Global (English-speaking),0.42857142857142855,News Media,Medium (some discussion),0.5,17
+other,0.4880952380952381,Global (English-speaking),0.42857142857142855,News Media,Medium (some discussion),0.5,150
+technology & ai,0.4666666666666667,Other,0.5,News Media,Medium (some discussion),0.5,389
