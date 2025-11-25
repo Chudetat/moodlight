@@ -1,28 +1,28 @@
 topic,longevity_score,velocity_score,post_count,source_count,avg_engagement
-technology & ai,0.85,0.0,447,68,0.0
-war & foreign policy,0.8450000000000001,0.0,352,45,0.0
-other,0.755,0.0,176,17,0.0
+technology & ai,0.85,0.0,514,68,0.0
+war & foreign policy,0.8450000000000001,0.0,397,45,0.0
+other,0.755,0.0,209,17,0.0
 climate & environment,0.735,0.0,54,18,0.0
-healthcare & wellbeing,0.64,0.0,13,10,0.0
-politics,0.63,0.0,28,14,0.0
-education,0.55,0.0,18,10,0.0
-government,0.5499999999999999,0.0,27,8,0.0
-crime & safety,0.525,0.0,21,12,0.0
-media & journalism,0.515,0.0,9,8,0.0
-economics,0.5,0.0,8,7,0.0
-entertainment,0.46,0.0,18,7,0.0
+politics,0.645,0.0,29,15,0.0
+healthcare & wellbeing,0.64,0.0,14,10,0.0
+education,0.55,0.0,20,10,0.0
+government,0.5499999999999999,0.0,32,8,0.0
+media & journalism,0.53,0.0,11,9,0.0
+crime & safety,0.525,0.0,24,12,0.0
+economics,0.5,0.0,9,7,0.0
+entertainment,0.475,0.0,21,8,0.0
+race & ethnicity,0.45999999999999996,0.0,16,9,0.0
 housing,0.44499999999999995,0.0,8,8,0.0
-race & ethnicity,0.44499999999999995,0.0,14,8,0.0
-business & corporate,0.43000000000000005,0.0,7,7,0.0
-culture & identity,0.41500000000000004,0.0,6,6,0.0
+gender & sexuality,0.43000000000000005,0.0,9,7,0.0
+culture & identity,0.43000000000000005,0.0,8,7,0.0
+business & corporate,0.43000000000000005,0.0,9,7,0.0
 immigration,0.41500000000000004,0.0,6,6,0.0
-gender & sexuality,0.385,0.0,5,4,0.0
+labor & work,0.385,0.0,4,4,0.0
 energy & resources,0.38,0.0,8,6,0.0
-labor & work,0.37,0.0,3,3,0.0
 infrastructure & supply chain,0.365,0.0,5,5,0.0
-sports,0.34500000000000003,0.0,35,5,0.0
+sports,0.36000000000000004,0.0,40,6,0.0
+branding & advertising,0.35,0.0,5,4,0.0
 social unrest & protests,0.335,0.0,3,3,0.0
 creative & design,0.335,0.0,3,3,0.0
-branding & advertising,0.335,0.0,4,3,0.0
 terrorism & extremism,0.32,0.0,2,2,0.0
 religion & values,0.30000000000000004,,4,3,0.0
