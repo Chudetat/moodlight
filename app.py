@@ -431,6 +431,16 @@ def create_intensity_gauge(df: pd.DataFrame, avg_intensity: float):
         st.markdown(f"### {avg_intensity:.2f} / 5.0")
         return None
 
+def create_ic_topic_breakdown(df: pd.DataFrame):
+    """Create breakdown of IC-level intelligence topics"""
+    import altair as alt
+    
+    cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=7)
+    recent = df[df['created_at'] >= cutoff].copy()
+    
+    topic_counts = recent['topic'].value_counts().head(20).reset_index()
+    topic_counts.columns = ['topic', 'count']
+    
 def create_geographic_hotspot_map(df: pd.DataFrame):
     """Create map showing countries by threat intensity"""
     import altair as alt
@@ -568,6 +578,61 @@ def create_trend_indicators(df: pd.DataFrame):
     
     return chart
 
+def create_trend_indicators(df: pd.DataFrame):
+    """Show which topics are trending up/down"""
+    import altair as alt
+    from collections import Counter
+    
+    now = pd.Timestamp.now(tz='UTC')
+    recent_start = now - pd.Timedelta(hours=24)
+    prev_start = now - pd.Timedelta(hours=48)
+    
+    recent_df = df[df['created_at'] >= recent_start]
+    prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
+    
+    if len(recent_df) == 0:
+        recent_start = now - pd.Timedelta(days=3)
+        prev_start = now - pd.Timedelta(days=7)
+        recent_df = df[df['created_at'] >= recent_start]
+        prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
+    
+    recent_topics = Counter(recent_df['topic'])
+    prev_topics = Counter(prev_df['topic'])
+    
+    trends = []
+    for topic in recent_topics:
+        recent_count = recent_topics[topic]
+        prev_count = prev_topics.get(topic, 1)
+        change_pct = ((recent_count - prev_count) / prev_count) * 100
+        
+        trends.append({
+            'topic': topic,
+            'change_pct': round(change_pct, 1),
+            'recent': recent_count
+        })
+    
+    trends_df = pd.DataFrame(sorted(trends, key=lambda x: abs(x['change_pct']), reverse=True)[:15])
+    
+    chart = (
+        alt.Chart(trends_df)
+        .mark_bar()
+        .encode(
+            y=alt.Y('topic:N', sort='-x', title='Topic'),
+            x=alt.X('change_pct:Q', title='% Change'),
+            color=alt.condition(
+                alt.datum.change_pct > 0,
+                alt.value('green'),
+                alt.value('red')
+            ),
+            tooltip=[
+                alt.Tooltip('topic:N', title='Topic'),
+                alt.Tooltip('change_pct:Q', title='Change %', format='+.1f'),
+                alt.Tooltip('recent:Q', title='Recent Count')
+            ]
+        )
+        .properties(title='Topic Trends (24h % change)', height=500)
+    )
+    
     return chart
 
 # Date header
