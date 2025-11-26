@@ -1,16 +1,16 @@
 topic,scarcity_score,mention_count,coverage_level,opportunity
-AI regulation & ethics,1.0,0,Zero coverage,HIGH
 Social media regulation,1.0,0,Zero coverage,HIGH
-Cybersecurity,0.9,4,Minimal coverage,HIGH
 Remote work,0.9,1,Minimal coverage,HIGH
-Mental health,0.7,15,Low coverage,MEDIUM
-Healthcare access,0.7,17,Low coverage,MEDIUM
-Climate action,0.7,7,Low coverage,MEDIUM
-Food security,0.7,10,Low coverage,MEDIUM
-Education reform,0.7,18,Low coverage,MEDIUM
-Crypto regulation,0.7,17,Low coverage,MEDIUM
-Space exploration,0.7,12,Low coverage,MEDIUM
-Inflation & cost of living,0.5,34,Moderate coverage,MEDIUM
-Aging population,0.5,26,Moderate coverage,MEDIUM
-Housing affordability,0.3,91,Good coverage,LOW
-EV adoption,0.1,643,High coverage,LOW
+AI regulation & ethics,0.9,1,Minimal coverage,HIGH
+Mental health,0.7,18,Low coverage,MEDIUM
+Cybersecurity,0.7,6,Low coverage,MEDIUM
+Crypto regulation,0.7,18,Low coverage,MEDIUM
+Climate action,0.7,11,Low coverage,MEDIUM
+Food security,0.7,14,Low coverage,MEDIUM
+Space exploration,0.7,14,Low coverage,MEDIUM
+Aging population,0.5,36,Moderate coverage,MEDIUM
+Healthcare access,0.5,23,Moderate coverage,MEDIUM
+Education reform,0.5,21,Moderate coverage,MEDIUM
+Inflation & cost of living,0.3,50,Good coverage,LOW
+Housing affordability,0.1,118,High coverage,LOW
+EV adoption,0.1,837,High coverage,LOW
