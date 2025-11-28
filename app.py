@@ -1034,7 +1034,7 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
     )
     st.altair_chart(trending_chart, use_container_width=True)
     
-    # Show headline insights
+   # Show headline insights
     st.markdown("#### Headline Insights")
     col1, col2, col3 = st.columns(3)
     
