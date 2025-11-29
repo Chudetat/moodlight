@@ -1036,28 +1036,29 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
     
    # Show headline insights
     st.markdown("#### Headline Insights")
-    col1, col2, col3 = st.columns(3)
     
-    with col1:
-        st.markdown("**📈 Highest Engagement**")
-        top_post = df_trending.nlargest(1, 'engagement').iloc[0]
-        st.caption(f"**{top_post['source_display']}** ({top_post['engagement']:,.0f} engagements)")
-        st.caption(f"_{top_post['text'][:100]}..._")
-    
-    with col2:
-        st.markdown("**❤️ Most Empathetic Viral Post**")
-        top_empathy = df_trending.nlargest(1, 'empathy_score').iloc[0]
-        st.caption(f"**{top_empathy['source_display']}** (Score: {top_empathy['empathy_score']:.2f})")
-        st.caption(f"_{top_empathy['text'][:100]}..._")
-    
-    with col3:
-        st.markdown("**🥶 Least Empathetic Viral Post**")
-        bottom_empathy = df_trending.nsmallest(1, 'empathy_score').iloc[0]
-        st.caption(f"**{bottom_empathy['source_display']}** (Score: {bottom_empathy['empathy_score']:.2f})")
-        st.caption(f"_{bottom_empathy['text'][:100]}..._")
-
-else:
-    st.info("No engagement data available yet.")
+    if not df_trending.empty:
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("**📈 Highest Engagement**")
+            top_post = df_trending.nlargest(1, 'engagement').iloc[0]
+            st.caption(f"**{top_post['source_display']}** ({top_post['engagement']:,.0f} engagements)")
+            st.caption(f"_{top_post['text'][:100]}..._")
+        
+        with col2:
+            st.markdown("**❤️ Most Empathetic Viral Post**")
+            top_empathy = df_trending.nlargest(1, 'empathy_score').iloc[0]
+            st.caption(f"**{top_empathy['source_display']}** (Score: {top_empathy['empathy_score']:.2f})")
+            st.caption(f"_{top_empathy['text'][:100]}..._")
+        
+        with col3:
+            st.markdown("**🥶 Least Empathetic Viral Post**")
+            bottom_empathy = df_trending.nsmallest(1, 'empathy_score').iloc[0]
+            st.caption(f"**{bottom_empathy['source_display']}** (Score: {bottom_empathy['empathy_score']:.2f})")
+            st.caption(f"_{bottom_empathy['text'][:100]}..._")
+    else:
+        st.info("No headline insights available yet.")
 
 st.markdown("---")
 
