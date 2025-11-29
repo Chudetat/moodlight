@@ -43,6 +43,7 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 import streamlit as st
 import altair as alt
+FILTER_DAYS = 30
 from startup import fetch_data_if_needed
 fetch_data_if_needed()
 
@@ -347,7 +348,7 @@ if brand_focus and custom_query.strip():
 if "created_at" in df_all.columns:
     df_all["created_at"] = pd.to_datetime(df_all["created_at"], errors="coerce", utc=True)
     df_all = df_all.dropna(subset=["created_at"])
-    cutoff_48h = datetime.now(timezone.utc) - timedelta(days=30)
+    cutoff_48h = datetime.now(timezone.utc) - timedelta(days=FILTER_DAYS)
     df_48h = df_all[df_all["created_at"] >= cutoff_48h].copy()
 else:
     df_48h = df_all.copy()
@@ -445,7 +446,7 @@ def create_geographic_hotspot_map(df: pd.DataFrame):
     """Create map showing countries by threat intensity"""
     import altair as alt
     
-    cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=30)
+    cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=FILTER_DAYS)
     recent = df[df['created_at'] >= cutoff].copy()
     
     country_stats = recent.groupby('country').agg({
@@ -517,7 +518,7 @@ def create_trend_indicators(df: pd.DataFrame):
     prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
     
     if len(recent_df) == 0:
-        recent_start = now - pd.Timedelta(days=30)
+        recent_start = now - pd.Timedelta(days=FILTER_DAYS)
         prev_start = now - pd.Timedelta(days=7)
         recent_df = df[df['created_at'] >= recent_start]
         prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
@@ -591,7 +592,7 @@ def create_trend_indicators(df: pd.DataFrame):
     prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
     
     if len(recent_df) == 0:
-        recent_start = now - pd.Timedelta(days=30)
+        recent_start = now - pd.Timedelta(days=FILTER_DAYS)
         prev_start = now - pd.Timedelta(days=7)
         recent_df = df[df['created_at'] >= recent_start]
         prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
@@ -1009,7 +1010,7 @@ st.caption("Posts with highest engagement plotted by empathy vs. time")
 if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_all) > 0:
     df_trending = df_all.nlargest(30, "engagement").copy()
     now = datetime.now(timezone.utc)
-    three_days_ago = now - timedelta(days=30)
+    three_days_ago = now - timedelta(days=FILTER_DAYS)
     df_trending = df_all[df_all["created_at"] >= three_days_ago].nlargest(30, "engagement").copy()
     df_trending["hours_ago"] = (now - df_trending["created_at"]).dt.total_seconds() / 3600
 
@@ -1069,7 +1070,7 @@ st.markdown("### Virality × Empathy: Posts with Viral Potential")
 st.caption("High-engagement posts from last 3 days - bigger bubbles = higher engagement")
 
 if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_all) > 0:
-    three_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    three_days_ago = datetime.now(timezone.utc) - timedelta(days=FILTER_DAYS)
     vdf = df_all[df_all["created_at"] >= three_days_ago].copy()
     
     now = datetime.now(timezone.utc)
@@ -1409,7 +1410,7 @@ else:
 # SECTION 8: WORLD VIEW
 # ========================================
 st.markdown("### World View")
-st.caption("All posts from the last 3 days - scroll to explore")
+st.caption(f"All posts from the last {FILTER_DAYS} days - scroll to explore")
 
 cols = [c for c in ["text", "source", "topic", "empathy_label", "emotion_top_1", "engagement", "created_at"] if c in df_filtered.columns]
 if len(df_filtered):
@@ -1478,7 +1479,7 @@ if 'intensity' in df_all.columns and 'country' in df_all.columns:
         prev_df = df_all[(df_all['created_at'] >= prev_start) & (df_all['created_at'] < recent_start)]
 
         if len(recent_df) == 0:
-            recent_start = now - pd.Timedelta(days=30)
+            recent_start = now - pd.Timedelta(days=FILTER_DAYS)
             prev_start = now - pd.Timedelta(days=7)
             recent_df = df_all[df_all['created_at'] >= recent_start]
             prev_df = df_all[(df_all['created_at'] >= prev_start) & (df_all['created_at'] < recent_start)]
