@@ -338,6 +338,25 @@ def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> str:
     
     geo_dist = df['country'].value_counts().head(5).to_string() if 'country' in df.columns else "No geographic data"
     
+    # Load VLDS data
+    try:
+        velocity_df = pd.read_csv('topic_longevity.csv')
+        velocity_data = velocity_df[['topic', 'velocity_score', 'longevity_score']].head(5).to_string()
+    except:
+        velocity_data = "No velocity/longevity data available"
+    
+    try:
+        density_df = pd.read_csv('topic_density.csv')
+        density_data = density_df.head(5).to_string()
+    except:
+        density_data = "No density data available"
+    
+    try:
+        scarcity_df = pd.read_csv('topic_scarcity.csv')
+        scarcity_data = scarcity_df.head(5).to_string()
+    except:
+        scarcity_data = "No scarcity data available"
+    
     context = f"""
 MOODLIGHT INTELLIGENCE SNAPSHOT
 ================================
@@ -353,30 +372,45 @@ EMPATHY DISTRIBUTION:
 GEOGRAPHIC HOTSPOTS:
 {geo_dist}
 
+VELOCITY & LONGEVITY (Which topics are rising fast vs. enduring):
+{velocity_data}
+
+DENSITY (Topic saturation - high means crowded, low means opportunity):
+{density_data}
+
+SCARCITY (Underserved topics - high scarcity = white space opportunity):
+{scarcity_data}
+
 Total Posts Analyzed: {len(df)}
 """
     
-    prompt = f"""You are a world-class strategist at a top advertising agency, known for campaigns that drive culture.
+        prompt = f"""You are a world-class strategist at a top advertising agency, known for campaigns that drive culture.
 
 A client has come to you with this request:
 "{user_need}"
 
-Based on the following real-time intelligence data from Moodlight (which tracks empathy, emotions, and trends across news and social media), create a strategic brief.
+Based on the following real-time intelligence data from Moodlight (which tracks empathy, emotions, trends, and strategic metrics across news and social media), create a strategic brief.
 
 {context}
+
+KEY METRICS TO CONSIDER:
+- VELOCITY: How fast a topic is accelerating (high = trending now)
+- LONGEVITY: How long a topic sustains interest (high = lasting movement)
+- DENSITY: How saturated/crowded a topic is (high = hard to break through)
+- SCARCITY: How underserved a topic is (high = white space opportunity)
 
 Create a brief with exactly these three sections:
 
 STRATEGY RECOMMENDATION:
-[Tell a story about the current cultural moment. What's the mood? What are people feeling? How does this connect to the client's goal? Write this as a narrative, not bullet points. 150 words max.]
+[Tell a story about the current cultural moment. What's the mood? What are people feeling? How does this connect to the client's goal? Reference specific data points (emotions, empathy levels, velocity/scarcity signals). Write this as a narrative, not bullet points. 150 words max.]
 
 MEDIA RECOMMENDATION:
-[Based on the data, where should they focus? Which platforms, channels, or moments? Be specific. 100 words max.]
+[Based on the data, where should they focus? Which platforms, channels, or moments? Consider velocity (what's rising) and density (what's crowded). Be specific. 100 words max.]
 
 CREATIVE RECOMMENDATION:
-[What angles, tones, or hooks would resonate right now based on the emotional climate? What should they avoid? 100 words max.]
+[What angles, tones, or hooks would resonate right now based on the emotional climate? Use scarcity signals to find white space. What should they avoid based on density? 100 words max.]
 
-Be bold, specific, and actionable. No generic advice.
+Be bold, specific, and actionable. Reference the actual data when making recommendations.
 """
     
     response = client.chat.completions.create(
