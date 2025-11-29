@@ -445,7 +445,7 @@ def create_geographic_hotspot_map(df: pd.DataFrame):
     """Create map showing countries by threat intensity"""
     import altair as alt
     
-    cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(hours=48)
+    cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=30)
     recent = df[df['created_at'] >= cutoff].copy()
     
     country_stats = recent.groupby('country').agg({
