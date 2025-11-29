@@ -347,7 +347,7 @@ if brand_focus and custom_query.strip():
 if "created_at" in df_all.columns:
     df_all["created_at"] = pd.to_datetime(df_all["created_at"], errors="coerce", utc=True)
     df_all = df_all.dropna(subset=["created_at"])
-    cutoff_48h = datetime.now(timezone.utc) - timedelta(days=3)
+    cutoff_48h = datetime.now(timezone.utc) - timedelta(days=30)
     df_48h = df_all[df_all["created_at"] >= cutoff_48h].copy()
 else:
     df_48h = df_all.copy()
