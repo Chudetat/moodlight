@@ -43,7 +43,18 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 import streamlit as st
 import altair as alt
-FILTER_DAYS = 30
+# View mode toggle
+view_mode = st.sidebar.radio(
+    "📊 View Mode",
+    ["Breaking (48h)", "Strategic (30d)"],
+    index=1,
+    help="Breaking: Real-time focus. Strategic: Broader context for pattern recognition."
+)
+
+if view_mode == "Breaking (48h)":
+    FILTER_DAYS = 2
+else:
+    FILTER_DAYS = 30
 from startup import fetch_data_if_needed
 fetch_data_if_needed()
 
