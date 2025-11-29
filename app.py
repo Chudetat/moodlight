@@ -517,7 +517,7 @@ def create_trend_indicators(df: pd.DataFrame):
     prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
     
     if len(recent_df) == 0:
-        recent_start = now - pd.Timedelta(days=3)
+        recent_start = now - pd.Timedelta(days=30)
         prev_start = now - pd.Timedelta(days=7)
         recent_df = df[df['created_at'] >= recent_start]
         prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
@@ -591,7 +591,7 @@ def create_trend_indicators(df: pd.DataFrame):
     prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
     
     if len(recent_df) == 0:
-        recent_start = now - pd.Timedelta(days=3)
+        recent_start = now - pd.Timedelta(days=30)
         prev_start = now - pd.Timedelta(days=7)
         recent_df = df[df['created_at'] >= recent_start]
         prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
@@ -1009,7 +1009,7 @@ st.caption("Posts with highest engagement plotted by empathy vs. time")
 if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_all) > 0:
     df_trending = df_all.nlargest(30, "engagement").copy()
     now = datetime.now(timezone.utc)
-    three_days_ago = now - timedelta(days=3)
+    three_days_ago = now - timedelta(days=30)
     df_trending = df_all[df_all["created_at"] >= three_days_ago].nlargest(30, "engagement").copy()
     df_trending["hours_ago"] = (now - df_trending["created_at"]).dt.total_seconds() / 3600
 
@@ -1069,7 +1069,7 @@ st.markdown("### Virality × Empathy: Posts with Viral Potential")
 st.caption("High-engagement posts from last 3 days - bigger bubbles = higher engagement")
 
 if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_all) > 0:
-    three_days_ago = datetime.now(timezone.utc) - timedelta(days=3)
+    three_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     vdf = df_all[df_all["created_at"] >= three_days_ago].copy()
     
     now = datetime.now(timezone.utc)
@@ -1474,7 +1474,7 @@ if 'intensity' in df_all.columns and 'country' in df_all.columns:
         prev_df = df_all[(df_all['created_at'] >= prev_start) & (df_all['created_at'] < recent_start)]
 
         if len(recent_df) == 0:
-            recent_start = now - pd.Timedelta(days=3)
+            recent_start = now - pd.Timedelta(days=30)
             prev_start = now - pd.Timedelta(days=7)
             recent_df = df_all[df_all['created_at'] >= recent_start]
             prev_df = df_all[(df_all['created_at'] >= prev_start) & (df_all['created_at'] < recent_start)]
