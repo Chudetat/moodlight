@@ -1162,7 +1162,11 @@ try:
     longevity_df = pd.read_csv('topic_longevity.csv')
     
     # Normalize velocity for better visualization (log scale)
-    longevity_df['velocity_norm'] = longevity_df['velocity_score'] / longevity_df['velocity_score'].max()
+    max_velocity = longevity_df['velocity_score'].max()
+    if max_velocity > 0:
+        longevity_df['velocity_norm'] = longevity_df['velocity_score'] / max_longevity
+    else:
+        longevity_df['velocity_norm'] = 0
     
     # Create quadrants
     velocity_median = longevity_df['velocity_norm'].median()
