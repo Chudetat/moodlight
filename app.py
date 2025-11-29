@@ -317,6 +317,91 @@ def compute_world_mood(df: pd.DataFrame) -> tuple[int | None, str | None, str]:
 st.title("Moodlight")
 st.caption("Real-time global news and culture analysis, prediction, and actionable intelligence")
 
+from openai import OpenAI
+from dotenv import load_dotenv
+import os
+import csv
+
+load_dotenv()
+
+def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> str:
+    """Generate strategic campaign brief using AI and Moodlight data"""
+    
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
+    # Prepare Moodlight context
+    top_topics = df['topic'].value_counts().head(5).to_string() if 'topic' in df.columns else "No topic data"
+    
+    empathy_dist = df['empathy_label'].value_counts().to_string() if 'empathy_label' in df.columns else "No empathy data"
+    
+    top_emotions = df['emotion_top_1'].value_counts().head(5).to_string() if 'emotion_top_1' in df.columns else "No emotion data"
+    
+    geo_dist = df['country'].value_counts().head(5).to_string() if 'country' in df.columns else "No geographic data"
+    
+    context = f"""
+MOODLIGHT INTELLIGENCE SNAPSHOT
+================================
+TOP TOPICS:
+{top_topics}
+
+EMOTIONAL CLIMATE:
+{top_emotions}
+
+EMPATHY DISTRIBUTION:
+{empathy_dist}
+
+GEOGRAPHIC HOTSPOTS:
+{geo_dist}
+
+Total Posts Analyzed: {len(df)}
+"""
+    
+    prompt = f"""You are a world-class strategist at a top advertising agency, known for campaigns that drive culture.
+
+A client has come to you with this request:
+"{user_need}"
+
+Based on the following real-time intelligence data from Moodlight (which tracks empathy, emotions, and trends across news and social media), create a strategic brief.
+
+{context}
+
+Create a brief with exactly these three sections:
+
+STRATEGY RECOMMENDATION:
+[Tell a story about the current cultural moment. What's the mood? What are people feeling? How does this connect to the client's goal? Write this as a narrative, not bullet points. 150 words max.]
+
+MEDIA RECOMMENDATION:
+[Based on the data, where should they focus? Which platforms, channels, or moments? Be specific. 100 words max.]
+
+CREATIVE RECOMMENDATION:
+[What angles, tones, or hooks would resonate right now based on the emotional climate? What should they avoid? 100 words max.]
+
+Be bold, specific, and actionable. No generic advice.
+"""
+    
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are a senior strategist who combines data intelligence with creative intuition. You speak plainly and give bold recommendations."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.7,
+        max_tokens=800
+    )
+    
+    return response.choices[0].message.content
+
+
+def save_lead(email: str, need: str):
+    """Save lead to CSV"""
+    file_exists = os.path.isfile('leads.csv')
+    
+    with open('leads.csv', 'a', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(['timestamp', 'email', 'need'])
+        writer.writerow([datetime.now(timezone.utc).isoformat(), email, need])
+
 with st.sidebar:
     st.header("Controls")
     custom_query = st.text_input(
@@ -325,9 +410,9 @@ with st.sidebar:
         help="Leave empty for default.",
     )
     brand_focus = st.checkbox(
-    "Brand Focus Mode",
-    value=False,
-    help="When enabled, shows only posts matching your search query"
+        "Brand Focus Mode",
+        value=False,
+        help="When enabled, shows only posts matching your search query"
     )
 
     if st.button("Refresh"):
@@ -339,6 +424,30 @@ with st.sidebar:
             else:
                 st.error(msg)
         st.rerun()
+    
+    st.markdown("---")
+    
+    # Strategic Brief Generator
+    st.header("🎯 Strategic Brief")
+    user_need = st.text_area(
+        "I need...",
+        placeholder='e.g. "to launch a new Nike sneaker in Latin America, the UK, and Canada"',
+        help="Describe your campaign goal and Moodlight will generate a strategic brief."
+    )
+    
+    if user_need.strip():
+        user_email = st.text_input(
+            "Your email (to unlock brief)",
+            placeholder="you@company.com"
+        )
+        
+        if user_email.strip() and st.button("Generate Brief"):
+            st.session_state['generate_brief'] = True
+            st.session_state['user_need'] = user_need.strip()
+            st.session_state['user_email'] = user_email.strip()
+
+# Load all data once
+df_all = load_data()
 
 # Load all data once
 df_all = load_data()
@@ -1513,3 +1622,30 @@ if 'intensity' in df_all.columns and 'country' in df_all.columns:
 
 else:
     st.info("Intelligence features require updated data. Run fetch_posts.py to enable geographic and intensity analysis.")
+
+    # ========================================
+# STRATEGIC BRIEF DISPLAY
+# ========================================
+if st.session_state.get('generate_brief'):
+    user_need = st.session_state.get('user_need', '')
+    user_email = st.session_state.get('user_email', '')
+    
+    # Save the lead
+    save_lead(user_email, user_need)
+    
+    # Generate the brief
+    with st.spinner("🎯 Generating your strategic brief..."):
+        brief = generate_strategic_brief(user_need, df_all)
+    
+    st.markdown("---")
+    st.markdown("## 🎯 Your Strategic Brief")
+    st.markdown(f"**Request:** {user_need}")
+    st.markdown("---")
+    st.markdown(brief)
+    
+    # Copy button
+    st.code(brief, language=None)
+    st.caption("👆 Select and copy the brief above")
+    
+    # Reset state
+    st.session_state['generate_brief'] = False
