@@ -384,7 +384,7 @@ SCARCITY (Underserved topics - high scarcity = white space opportunity):
 Total Posts Analyzed: {len(df)}
 """
     
-        prompt = f"""You are a world-class strategist at a top advertising agency, known for campaigns that drive culture.
+    prompt = f"""You are a world-class strategist at a top advertising agency, known for campaigns that drive culture.
 
 A client has come to you with this request:
 "{user_need}"
