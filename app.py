@@ -907,7 +907,7 @@ st.caption("Track how social sentiment compares to market performance over time"
 if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not df_markets.empty:
     # Calculate daily social mood for last 7 days
     now = datetime.now(timezone.utc)
-    seven_days_ago = now - timedelta(days=7)
+    seven_days_ago = now - timedelta(days=FILTER_DAYS)
     
     df_hist = df_all[["created_at", "empathy_score"]].copy()
     df_hist = df_hist.dropna()
