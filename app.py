@@ -1563,7 +1563,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns:
     df_hist = df_hist.dropna()
     
     now = datetime.now(timezone.utc)
-    seven_days_ago = now - timedelta(days=7)
+    seven_days_ago = now - timedelta(days=FILTER_DAYS)
     df_week = df_hist[df_hist["created_at"] >= seven_days_ago].copy()
     
     if len(df_week) > 0:
