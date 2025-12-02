@@ -1730,3 +1730,4 @@ if st.session_state.get('generate_brief'):
 
     # Reset state
     st.session_state['generate_brief'] = False
+# force redeploy
