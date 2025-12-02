@@ -156,7 +156,7 @@ def load_data(input_csv: str) -> pd.DataFrame:
 
     # Normalize created_at
     if "created_at" in df.columns:
-        df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce", utc=True)
+        pass  # Keep as string to preserve all date formats
 
     # Ensure engagement column
     if "engagement" not in df.columns:
@@ -262,15 +262,11 @@ def main():
         print("\nNo data to score. Writing empty output with full schema.")
 
         # Full schema expected by app.py
-        cols = [
+        expected = [
             "id", "text", "created_at", "author_id", "like_count", "reply_count",
             "repost_count", "quote_count", "engagement", "topic", "source",
-            "empathy_score", "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3"
-        ]
-        empty_df = pd.DataFrame(columns=cols)
-        empty_df.to_csv(output_csv, index=False, quoting=csv.QUOTE_MINIMAL)
-        print(f"Empty {output_csv} written")
-        return
+            "empathy_score", "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3", "link"
+    ]
 
     # Load existing scored data (for incremental scoring)
     df_existing, scored_ids = load_existing_scores(output_csv)
@@ -316,36 +312,42 @@ def main():
             suffixes=('', '_input')
         )
     
-    # Define final column order
-    expected = [
-        "id", "text", "created_at", "author_id", "like_count", "reply_count",
-        "repost_count", "quote_count", "engagement", "topic", "source",
-        "empathy_score", "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3"
-    ]
+        # Keep all columns from input + add score columns
+    # Don't force a specific schema
+    score_cols = ["empathy_score", "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3"]
     
-    # Add any extra columns
-    for col in df_combined.columns:
-        if col not in expected:
-            expected.append(col)
+    # Get all unique columns
+    all_cols = list(df_combined.columns)
     
-    # Ensure all columns exist
-    for col in expected:
+    # Make sure score columns are included
+    for col in score_cols:
+        if col not in all_cols:
+            all_cols.append(col)
+    
+    # Reorder: put key columns first, then scores, then rest
+    priority = ["id", "text", "created_at"]
+    final_cols = []
+    
+    # Add priority columns first
+    for col in priority:
+        if col in all_cols:
+            final_cols.append(col)
+            all_cols.remove(col)
+    
+    # Add remaining columns
+    final_cols.extend(all_cols)
+    
+    # Ensure all columns exist in dataframe
+    for col in final_cols:
         if col not in df_combined.columns:
             df_combined[col] = None
-
-    # Reorder columns
-    df_combined = df_combined[expected]
     
-    for col in expected:
-        if col not in df_combined.columns:
-            df_combined[col] = None
-
-    # Reorder columns (keep extras at end)
-    df_combined = df_combined[expected]
+    df_combined = df_combined[final_cols]
 
     # Sort by engagement (most engaging first)
     if "engagement" in df_combined.columns:
         df_combined = df_combined.sort_values("engagement", ascending=False)
+
 
     # Save
     df_combined.to_csv(output_csv, index=False, quoting=csv.QUOTE_MINIMAL)
