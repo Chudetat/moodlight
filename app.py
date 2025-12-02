@@ -312,6 +312,71 @@ def compute_world_mood(df: pd.DataFrame) -> tuple[int | None, str | None, str]:
     return score, label, emoji
 
 # -------------------------------
+# Brand-Specific VLDS Calculation
+# -------------------------------
+def calculate_brand_vlds(df: pd.DataFrame) -> dict:
+    """Calculate VLDS metrics for a filtered brand dataset"""
+    
+    if df.empty or len(df) < 5:
+        return None
+    
+    results = {}
+    
+    # VELOCITY: How fast is conversation accelerating?
+    if 'created_at' in df.columns:
+        df_copy = df.copy()
+        df_copy['created_at'] = pd.to_datetime(df_copy['created_at'], errors='coerce')
+        df_copy['date'] = df_copy['created_at'].dt.date
+        daily_counts = df_copy.groupby('date').size()
+        
+        if len(daily_counts) >= 2:
+            recent = daily_counts.tail(2).mean()
+            older = daily_counts.head(max(1, len(daily_counts) - 2)).mean()
+            velocity = (recent / older) if older > 0 else 1.0
+            velocity_score = min(velocity / 2.0, 1.0)  # Normalize
+        else:
+            velocity_score = 0.5
+        results['velocity'] = round(velocity_score, 2)
+        results['velocity_label'] = 'Rising Fast' if velocity_score > 0.7 else 'Stable' if velocity_score > 0.4 else 'Declining'
+    
+    # LONGEVITY: How sustained is the conversation?
+    if 'created_at' in df.columns:
+        unique_days = df_copy['date'].nunique()
+        longevity_score = min(unique_days / 7.0, 1.0)  # 7+ days = max longevity
+        results['longevity'] = round(longevity_score, 2)
+        results['longevity_label'] = 'Sustained' if longevity_score > 0.7 else 'Moderate' if longevity_score > 0.4 else 'Flash'
+    
+    # DENSITY: How saturated is coverage?
+    if 'source' in df.columns:
+        source_count = df['source'].nunique()
+        post_count = len(df)
+        density_score = min(post_count / 100.0, 1.0)  # 100+ posts = saturated
+        results['density'] = round(density_score, 2)
+        results['density_label'] = 'Saturated' if density_score > 0.7 else 'Moderate' if density_score > 0.3 else 'White Space'
+    
+    # SCARCITY: What narratives are underrepresented?
+    if 'topic' in df.columns:
+        topic_counts = df['topic'].value_counts()
+        total = len(df)
+        # Find topics with < 10% share
+        scarce_topics = topic_counts[topic_counts / total < 0.10].head(3).index.tolist()
+        results['scarce_topics'] = scarce_topics if scarce_topics else ['No clear gaps']
+        
+        # Overall scarcity score (inverse of density)
+        results['scarcity'] = round(1.0 - results.get('density', 0.5), 2)
+        results['scarcity_label'] = 'High Opportunity' if results['scarcity'] > 0.7 else 'Some Opportunity' if results['scarcity'] > 0.4 else 'Crowded'
+    
+    # Top narratives within this brand
+    if 'topic' in df.columns:
+        results['top_topics'] = df['topic'].value_counts().head(3).to_dict()
+    
+    # Dominant emotions
+    if 'emotion_top_1' in df.columns:
+        results['top_emotions'] = df['emotion_top_1'].value_counts().head(3).to_dict()
+    
+    return results
+
+# -------------------------------
 # UI
 # -------------------------------
 st.title("Moodlight")
@@ -540,10 +605,6 @@ if brand_focus and custom_query.strip():
         st.warning(f"No posts found matching '{custom_query}'. Try refreshing data or a different search term.")
         st.stop()
     st.info(f"🎯 Brand Focus Mode: Showing {len(df_all)} posts about '{custom_query}'")
-    
-    if df_all.empty:
-        st.error("No data available. Click 'Refresh' to fetch data.")
-        st.stop()
 
 # Create 48-hour filtered dataset
 if "created_at" in df_all.columns:
@@ -1552,6 +1613,56 @@ except FileNotFoundError:
     st.info("Run calculate_scarcity.py to generate scarcity analysis")
 
 st.markdown("---")
+
+# ========================================
+# BRAND-SPECIFIC VLDS (when brand focus is active)
+# ========================================
+if brand_focus and custom_query.strip():
+    st.markdown(f"### 📊 Brand VLDS: {custom_query}")
+    st.caption("Velocity, Longevity, Density, Scarcity metrics for this specific brand")
+    
+    brand_vlds = calculate_brand_vlds(df_all)
+    if brand_vlds:
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            v_score = brand_vlds.get('velocity', 0)
+            v_label = brand_vlds.get('velocity_label', 'N/A')
+            st.metric("Velocity", f"{v_score:.0%}", v_label)
+        
+        with col2:
+            l_score = brand_vlds.get('longevity', 0)
+            l_label = brand_vlds.get('longevity_label', 'N/A')
+            st.metric("Longevity", f"{l_score:.0%}", l_label)
+        
+        with col3:
+            d_score = brand_vlds.get('density', 0)
+            d_label = brand_vlds.get('density_label', 'N/A')
+            st.metric("Density", f"{d_score:.0%}", d_label)
+        
+        with col4:
+            s_score = brand_vlds.get('scarcity', 0)
+            s_label = brand_vlds.get('scarcity_label', 'N/A')
+            st.metric("Scarcity", f"{s_score:.0%}", s_label)
+        
+        with st.expander("📈 Brand Intelligence Details"):
+            col_a, col_b = st.columns(2)
+            
+            with col_a:
+                st.markdown("**Top Narratives**")
+                for topic, count in brand_vlds.get('top_topics', {}).items():
+                    st.write(f"• {topic}: {count} posts")
+            
+            with col_b:
+                st.markdown("**Dominant Emotions**")
+                for emotion, count in brand_vlds.get('top_emotions', {}).items():
+                    st.write(f"• {emotion}: {count} posts")
+            
+            st.markdown("**White Space Opportunities**")
+            for topic in brand_vlds.get('scarce_topics', []):
+                st.write(f"• {topic}")
+    
+    st.markdown("---")
 
 # ========================================
 # SECTION 7: 7-DAY MOOD HISTORY
