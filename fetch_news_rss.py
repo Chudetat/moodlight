@@ -67,6 +67,47 @@ OUTPUT_CSV = "news.csv"
 MAX_ITEMS_PER_FEED = 30
 
 # -------------------------------
+# Google News Dynamic Feeds (for brand coverage)
+# -------------------------------
+GOOGLE_NEWS_QUERIES = [
+    # Automotive
+    "Porsche",
+    "Hyundai", 
+    "Toyota",
+    "Ford",
+    "Tesla",
+    "BMW",
+    "Mercedes-Benz",
+    
+    # Tech
+    "Apple",
+    "Samsung",
+    "Google",
+    "Microsoft",
+    
+    # Apparel/Retail
+    "Nike",
+    "Adidas",
+    "Amazon",
+    "Walmart",
+    "Target",
+    "Starbucks",
+    
+    # Entertainment
+    "Disney",
+    "Netflix",
+    "Spotify",
+]
+
+def get_google_news_feeds() -> List[tuple[str, str]]:
+    """Generate Google News RSS feeds for brand queries"""
+    feeds = []
+    for query in GOOGLE_NEWS_QUERIES:
+        url = f"https://news.google.com/rss/search?q={query.replace(' ', '+')}&hl=en-US&gl=US&ceid=US:en"
+        feeds.append((f"Google News: {query}", url))
+    return feeds
+
+# -------------------------------
 # Topic classification
 # -------------------------------
 TOPIC_KEYWORDS = {
@@ -343,7 +384,11 @@ def main():
     successful_feeds = 0
     failed_feeds = 0
 
-    for source, url in FEEDS:
+    # Combine static feeds with dynamic Google News feeds
+    all_feeds = FEEDS + get_google_news_feeds()
+
+    for source, url in all_feeds:
+
         rows = fetch_feed(source, url)
         if rows:
             all_rows.extend(rows)
@@ -367,7 +412,7 @@ def main():
             sys.exit(0)
 
     print(f"\nSummary:")
-    print(f"   Feeds attempted: {len(FEEDS)}")
+    print(f"   Feeds attempted: {len(all_feeds)}")
     print(f"   Successful: {successful_feeds}")
     print(f"   Failed: {failed_feeds}")
     print(f"   New items fetched: {len(all_rows)}")
