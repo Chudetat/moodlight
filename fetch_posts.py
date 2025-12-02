@@ -90,7 +90,8 @@ def load_existing_data() -> pd.DataFrame:
         # Keep entries from last 7 days only
         if "created_at" in df.columns:
             df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce", utc=True)
-            cutoff = datetime.now(timezone.utc) - timedelta(days=3)
+                        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+
             df = df[df["created_at"] >= cutoff]
             print(f"Kept {len(df)} entries from last 7 days")
         

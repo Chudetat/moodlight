@@ -47,10 +47,6 @@ FEEDS: List[tuple[str, str]] = [
     ("Al Jazeera", "https://www.aljazeera.com/xml/rss/all.xml"),
 
     ("Japan Times", "https://www.japantimes.co.jp/feed/"),
-    ("Korea Herald", "http://www.koreaherald.com/rss/020000000000.xml"),
-
-    ("FT World", "https://www.ft.com/world/rss"),
-    ("FT Markets", "https://www.ft.com/markets/rss"),
 
     ("ESPN", "https://www.espn.com/espn/rss/news"),
 
@@ -61,7 +57,8 @@ FEEDS: List[tuple[str, str]] = [
     ("Reddit World News", "https://www.reddit.com/r/worldnews/.rss"),
     ("Reddit Uplifting News", "https://www.reddit.com/r/UpliftingNews/.rss"),
     ("Reddit News", "https://www.reddit.com/r/news/.rss"),
-        # Fashion/Luxury Reddit
+    
+    # Fashion/Luxury Reddit
     ("Reddit Fashion", "https://www.reddit.com/r/fashion/.rss"),
     ("Reddit Luxury", "https://www.reddit.com/r/luxury/.rss"),
     ("Reddit Male Fashion", "https://www.reddit.com/r/malefashionadvice/.rss"),
@@ -84,6 +81,131 @@ FEEDS: List[tuple[str, str]] = [
     ("Reddit Technology", "https://www.reddit.com/r/technology/.rss"),
     ("Reddit Apple", "https://www.reddit.com/r/apple/.rss"),
     ("Reddit Android", "https://www.reddit.com/r/Android/.rss"),
+    
+    # Business/Finance Trade
+    ("Business Insider", "https://www.businessinsider.com/rss"),
+    ("Fast Company", "https://www.fastcompany.com/latest/rss"),
+    ("Inc", "https://www.inc.com/rss"),
+    ("Entrepreneur", "https://www.entrepreneur.com/latest.rss"),
+    ("Forbes", "https://www.forbes.com/innovation/feed/"),
+    
+    # Retail/Consumer
+    ("Retail Dive", "https://www.retaildive.com/feeds/news/"),
+    ("Modern Retail", "https://www.modernretail.co/feed/"),
+    ("Glossy", "https://www.glossy.co/feed/"),
+    
+    # Tech Trade
+    ("VentureBeat", "https://venturebeat.com/feed/"),
+    ("ZDNet", "https://www.zdnet.com/news/rss.xml"),
+    
+    # PR/Comms
+    ("PR Week", "https://www.prweek.com/rss"),
+    ("Ragan", "https://www.ragan.com/feed/"),
+
+    # E-commerce/DTC
+    ("Retail Dive", "https://www.retaildive.com/feeds/news/"),
+    ("Modern Retail", "https://www.modernretail.co/feed/"),
+    ("Practical Ecommerce", "https://www.practicalecommerce.com/feed"),
+    ("Digital Commerce 360", "https://www.digitalcommerce360.com/feed/"),
+    ("2PM", "https://2pml.com/feed/"),
+
+    # Health/Wellness/Fitness
+    ("STAT News", "https://www.statnews.com/feed/"),
+    ("Fierce Healthcare", "https://www.fiercehealthcare.com/rss/xml"),
+    ("Healthcare Dive", "https://www.healthcaredive.com/feeds/news/"),
+    ("MobiHealthNews", "https://www.mobihealthnews.com/feed"),
+    ("Digital Health", "https://www.digitalhealth.net/feed/"),
+    ("Well+Good", "https://www.wellandgood.com/feed/"),
+    
+    # Fitness/Wearables
+    ("Wareable", "https://www.wareable.com/feed"),
+    ("DC Rainmaker", "https://www.dcrainmaker.com/feed"),
+    ("Fitness Industry", "https://www.fitnessindustry.com/feed/"),
+    
+    # Nutrition/Food Industry
+    ("Food Dive", "https://www.fooddive.com/feeds/news/"),
+    
+    # Sustainability/Climate
+    ("GreenBiz", "https://www.greenbiz.com/rss"),
+    ("CleanTechnica", "https://cleantechnica.com/feed/"),
+    ("Carbon Brief", "https://www.carbonbrief.org/feed"),
+
+    # Culture/Lifestyle/Trends
+    ("Hypebeast", "https://hypebeast.com/feed"),
+    ("Highsnobiety", "https://www.highsnobiety.com/feed/"),
+    ("Refinery29", "https://www.refinery29.com/rss.xml"),
+    ("Vox", "https://www.vox.com/rss/index.xml"),
+    ("The Atlantic", "https://www.theatlantic.com/feed/all/"),
+    
+    # Gen Z/Youth Culture
+    ("Dazed", "https://www.dazeddigital.com/rss"),
+    
+    # Design/Creativity
+    ("Dezeen", "https://www.dezeen.com/feed/"),
+    ("Creative Review", "https://www.creativereview.co.uk/feed/"),
+    ("Communication Arts", "https://www.commarts.com/feed"),
+    
+    # Music/Entertainment
+    ("Pitchfork", "https://pitchfork.com/feed/feed-news/rss"),
+    ("Rolling Stone", "https://www.rollingstone.com/feed/"),
+    ("Variety", "https://variety.com/feed/"),
+    ("The Hollywood Reporter", "https://www.hollywoodreporter.com/feed/"),
+    ("Deadline", "https://deadline.com/feed/"),
+    
+    # Sports Business
+    ("Front Office Sports", "https://frontofficesports.com/feed/"),
+    
+    # Parenting/Family
+    ("Fatherly", "https://www.fatherly.com/feed"),
+    
+    # Travel/Hospitality
+    ("Skift", "https://skift.com/feed/"),
+    
+    # Real Estate/Home
+    ("Curbed", "https://www.curbed.com/rss/index.xml"),
+    ("Dwell", "https://www.dwell.com/feed"),
+    
+    # Gaming
+    ("Kotaku", "https://kotaku.com/rss"),
+    ("IGN", "https://feeds.feedburner.com/ign/all"),
+    
+    # Crypto/Web3/Fintech
+    ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
+    ("The Block", "https://www.theblock.co/rss.xml"),
+    
+    # Diversity/Inclusion
+    ("Blavity", "https://blavity.com/feed"),
+    
+    # Future/Emerging Trends
+    ("Singularity Hub", "https://singularityhub.com/feed/"),
+    ("MIT Technology Review", "https://www.technologyreview.com/feed/"),
+    ("Quartz", "https://qz.com/feed"),
+
+    # Replacement feeds
+    ("Financial Times via Google", "https://news.google.com/rss/search?q=site:ft.com&hl=en-US"),
+    ("Korea Times", "https://www.koreatimes.co.kr/www/rss/rss.xml"),
+    ("MindBodyGreen Alt", "https://news.google.com/rss/search?q=mindbodygreen&hl=en-US"),
+    ("Triple Pundit", "https://www.triplepundit.com/feed"),
+    ("GreenBiz", "https://www.greenbiz.com/feed"),
+    ("Bustle", "https://www.bustle.com/rss"),
+    ("Eye on Design Alt", "https://news.google.com/rss/search?q=graphic+design+trends&hl=en-US"),
+    ("Sportico", "https://www.sportico.com/feed/"),
+    ("Condé Nast Traveler", "https://www.cntraveler.com/feed/rss"),
+    ("The Points Guy", "https://thepointsguy.com/feed/"),
+    ("Domino", "https://www.domino.com/feed"),
+    ("Game Informer", "https://www.gameinformer.com/rss.xml"),
+    ("Finextra", "https://www.finextra.com/rss/headlines.aspx"),
+    ("The Grio", "https://thegrio.com/feed/"),
+
+    # Industry/Trade Publications
+    ("AdWeek", "https://www.adweek.com/feed/"),
+    ("Digiday", "https://digiday.com/feed/"),
+    ("Campaign US", "https://www.campaignus.com/rss"),
+    ("Marketing Dive", "https://www.marketingdive.com/feeds/news/"),
+    ("Jalopnik", "https://jalopnik.com/rss"),
+    ("Engadget", "https://www.engadget.com/rss.xml"),
+    ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index"),
+    ("Wired", "https://www.wired.com/feed/rss"),
 
 ]
 
