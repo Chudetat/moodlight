@@ -220,6 +220,36 @@ FEEDS: List[tuple[str, str]] = [
     ("Reddit Futurology", "https://www.reddit.com/r/Futurology/.rss"),
     ("Reddit Brands", "https://www.reddit.com/r/brands/.rss"),
 
+    # Wire Services & Financial News
+    ("PR Newswire", "https://www.prnewswire.com/rss/news-releases-list.rss"),
+    ("GlobeNewswire", "https://www.globenewswire.com/RssFeed/subjectcode/01-Business%20Corporate/feedTitle/GlobeNewswire%20-%20Business%20Corporate"),
+    ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex"),
+    ("Yahoo Finance Tech", "https://finance.yahoo.com/rss/topfinstories"),
+    ("Business Wire", "https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEF9RWA=="),
+    ("Seeking Alpha", "https://seekingalpha.com/market_currents.xml"),
+    ("MarketWatch", "https://feeds.marketwatch.com/marketwatch/topstories/"),
+
+    # Government & Policy
+    ("SEC Press Releases", "https://www.sec.gov/news/pressreleases.rss"),
+    ("Federal Reserve", "https://www.federalreserve.gov/feeds/press_all.xml"),
+    ("FTC News", "https://www.ftc.gov/feeds/press-release-consumer-protection.xml"),
+    
+    # Business & Finance
+    ("Bloomberg Markets", "https://feeds.bloomberg.com/markets/news.rss"),
+    ("Financial Times", "https://www.ft.com/rss/home"),
+    ("Fortune", "https://fortune.com/feed/"),
+    ("Inc Magazine", "https://www.inc.com/rss/"),
+    ("Fast Company", "https://www.fastcompany.com/latest/rss"),
+    
+    # PR & Marketing Industry
+    ("PRWeek", "https://www.prweek.com/rss"),
+    ("Ad Age", "https://adage.com/arc/outboundfeeds/rss/"),
+    
+    # Investment & Markets
+    ("Motley Fool", "https://www.fool.com/feeds/index.aspx"),
+    ("Zacks", "https://www.zacks.com/feeds/"),
+    ("Benzinga", "https://www.benzinga.com/feed"),
+
 ]
 
 OUTPUT_CSV = "news.csv"
@@ -827,4 +857,4 @@ if __name__ == "__main__":
         print(f"\n\nFatal error: {e}")
         import traceback
         traceback.print_exc()
-        sys.exit(1)
+        sys.exit(1)# Note: Adding these feeds
