@@ -247,8 +247,152 @@ FEEDS: List[tuple[str, str]] = [
     
     # Investment & Markets
     ("Motley Fool", "https://www.fool.com/feeds/index.aspx"),
-    ("Zacks", "https://www.zacks.com/feeds/"),
     ("Benzinga", "https://www.benzinga.com/feed"),
+
+    # Intelligence / Think Tanks
+    ("Brookings", "https://www.brookings.edu/feed/"),
+    ("Pew Research", "https://www.pewresearch.org/feed/"),
+    ("Carnegie Endowment", "https://carnegieendowment.org/rss/solr/?fa=recentPubs"),
+
+    # Healthcare / Pharma
+    ("STAT News", "https://www.statnews.com/feed/"),
+    ("Fierce Pharma", "https://www.fiercepharma.com/rss/xml"),
+    ("Fierce Healthcare", "https://www.fiercehealthcare.com/rss/xml"),
+    ("Healthcare Dive", "https://www.healthcaredive.com/feeds/news/"),
+    ("Pharma Times", "https://www.pharmatimes.com/rss"),
+
+    # Tech / AI Deep Dive
+    ("TechCrunch", "https://techcrunch.com/feed/"),
+    ("VentureBeat", "https://venturebeat.com/feed/"),
+    ("MIT Tech Review", "https://www.technologyreview.com/feed/"),
+    ("The Verge", "https://www.theverge.com/rss/index.xml"),
+    ("AI News", "https://www.artificialintelligence-news.com/feed/"),
+
+    # Retail / Consumer
+    ("Retail Dive", "https://www.retaildive.com/feeds/news/"),
+    ("Retail Wire", "https://retailwire.com/feed/"),
+    ("Consumer Goods Technology", "https://consumergoods.com/rss.xml"),
+
+    # Sustainability / ESG
+    ("GreenBiz", "https://www.greenbiz.com/rss.xml"),
+    ("ESG Today", "https://www.esgtoday.com/feed/"),
+
+    # Media / Entertainment
+    ("Variety", "https://variety.com/feed/"),
+    ("Hollywood Reporter", "https://www.hollywoodreporter.com/feed/"),
+    ("Deadline", "https://deadline.com/feed/"),
+
+    # Legal
+    ("Above the Law", "https://abovethelaw.com/feed/"),
+
+    # Energy
+    ("Oil & Gas Journal", "https://www.ogj.com/rss"),
+    ("Utility Dive", "https://www.utilitydive.com/feeds/news/"),
+    ("CleanTechnica", "https://cleantechnica.com/feed/"),
+
+    # Automotive
+    ("Motor Trend", "https://www.motortrend.com/feed/"),
+    ("Car and Driver", "https://www.caranddriver.com/rss/all.xml"),
+    ("Electrek", "https://electrek.co/feed/"),
+    ("InsideEVs", "https://insideevs.com/rss/"),
+
+    # Sports Business
+    ("Front Office Sports", "https://frontofficesports.com/feed/"),
+    ("ESPN Business", "https://www.espn.com/espn/rss/news"),
+    ("The Athletic", "https://theathletic.com/feed/"),
+
+    # Real Estate / Property
+    ("Commercial Observer", "https://commercialobserver.com/feed/"),
+    ("The Real Deal", "https://therealdeal.com/feed/"),
+
+    # Supply Chain / Logistics
+    ("Supply Chain Dive", "https://www.supplychaindive.com/feeds/news/"),
+    ("FreightWaves", "https://www.freightwaves.com/feed"),
+
+    # Food & Beverage
+    ("Food Dive", "https://www.fooddive.com/feeds/news/"),
+    ("Nation's Restaurant News", "https://www.nrn.com/rss.xml"),
+    ("Beverage Industry", "https://www.bevindustry.com/rss"),
+
+    # Travel & Hospitality
+    ("Skift", "https://skift.com/feed/"),
+
+    # Cybersecurity
+    ("Dark Reading", "https://www.darkreading.com/rss.xml"),
+    ("Krebs on Security", "https://krebsonsecurity.com/feed/"),
+    ("The Hacker News", "https://feeds.feedburner.com/TheHackersNews"),
+    ("Threatpost", "https://threatpost.com/feed/"),
+
+    # Fintech
+    ("Finextra", "https://www.finextra.com/rss/headlines.aspx"),
+    ("PaymentsSource", "https://www.paymentssource.com/feed"),
+    ("Finovate", "https://finovate.com/feed/"),
+
+    # Aerospace / Defense
+    ("Defense News", "https://www.defensenews.com/arc/outboundfeeds/rss/"),
+    ("Aviation Week", "https://aviationweek.com/rss.xml"),
+    ("SpaceNews", "https://spacenews.com/feed/"),
+    ("Air Force Magazine", "https://www.airandspaceforces.com/feed/"),
+
+    # Education
+    ("Education Week", "https://www.edweek.org/feed"),
+    ("Higher Ed Dive", "https://www.highereddive.com/feeds/news/"),
+    ("Inside Higher Ed", "https://www.insidehighered.com/rss.xml"),
+    ("EdSurge", "https://www.edsurge.com/rss"),
+
+    # Telecom
+    ("Fierce Telecom", "https://www.fiercetelecom.com/rss/xml"),
+    ("Light Reading", "https://www.lightreading.com/rss.xml"),
+    ("RCR Wireless", "https://www.rcrwireless.com/feed"),
+    ("Capacity Media", "https://www.capacitymedia.com/rss"),
+
+    # Insurance
+    ("Insurance Journal", "https://www.insurancejournal.com/rss/"),
+    ("Carrier Management", "https://www.carriermanagement.com/rss/"),
+    ("Risk & Insurance", "https://riskandinsurance.com/feed/"),
+
+    # HR / Workforce
+    ("HR Dive", "https://www.hrdive.com/feeds/news/"),
+    ("Workforce", "https://www.workforce.com/feed"),
+
+    # Banking / Financial Services
+    ("American Banker", "https://www.americanbanker.com/feed"),
+    ("Banking Dive", "https://www.bankingdive.com/feeds/news/"),
+    ("Bank Director", "https://www.bankdirector.com/feed/"),
+
+    # Biotech / Life Sciences
+    ("Fierce Biotech", "https://www.fiercebiotech.com/rss/xml"),
+    ("Endpoints News", "https://endpts.com/feed/"),
+    ("GEN News", "https://www.genengnews.com/feed/"),
+
+    # Construction / Infrastructure
+    ("Construction Dive", "https://www.constructiondive.com/feeds/news/"),
+    ("ENR", "https://www.enr.com/rss"),
+
+    # Agriculture / Food Production
+    ("Ag Funder News", "https://agfundernews.com/feed"),
+    ("Farm Journal", "https://www.agweb.com/rss.xml"),
+    ("AgriPulse", "https://www.agri-pulse.com/rss"),
+    ("World Grain", "https://www.world-grain.com/rss"),
+
+    # Mining / Commodities
+    ("Mining.com", "https://www.mining.com/feed/"),
+
+    # Luxury / Fashion
+    ("WWD", "https://wwd.com/feed/"),
+    ("Luxury Daily", "https://www.luxurydaily.com/feed/"),
+
+    # Gaming / Esports
+    ("IGN", "https://feeds.ign.com/ign/all"),
+    ("Polygon", "https://www.polygon.com/rss/index.xml"),
+    ("GameSpot", "https://www.gamespot.com/feeds/news/"),
+
+    # Nonprofit / Philanthropy
+    ("Chronicle of Philanthropy", "https://www.philanthropy.com/feed"),
+    ("Inside Philanthropy", "https://www.insidephilanthropy.com/feed"),
+
+    # Packaging / CPG
+    ("Packaging Dive", "https://www.packagingdive.com/feeds/news/"),
 
 ]
 
