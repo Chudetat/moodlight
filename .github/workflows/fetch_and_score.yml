@@ -44,4 +44,5 @@ jobs:
           git config --local user.name "GitHub Action"
           git add news.csv news_scored.csv social.csv social_scored.csv markets.csv 2>/dev/null || true
           git diff --staged --quiet || git commit -m "Auto-update data $(date -u +%Y-%m-%d_%H:%M)"
-          git push
+          git pull --rebase || git rebase --abort
+          git push || echo "Push failed, will retry next run"
