@@ -576,6 +576,18 @@ with st.sidebar:
         value=False,
         help="When enabled, shows only posts matching your search query"
     )
+    
+    compare_mode = st.checkbox(
+        "Compare Brands",
+        value=False,
+        help="Compare VLDS metrics across 2-3 brands side by side"
+    )
+    
+    if compare_mode:
+        st.caption("Enter 2-3 brands to compare:")
+        compare_brand_1 = st.text_input("Brand 1", placeholder="e.g. Nike")
+        compare_brand_2 = st.text_input("Brand 2", placeholder="e.g. Adidas")
+        compare_brand_3 = st.text_input("Brand 3 (optional)", placeholder="e.g. Puma")
 
     if st.button("Refresh"):
         with st.spinner("Fetching & scoring..."):
@@ -1534,6 +1546,82 @@ except FileNotFoundError:
     st.info("Run calculate_scarcity.py to generate scarcity analysis")
 
 st.markdown("---")
+
+# ========================================
+# COMPARE BRANDS MODE
+# ========================================
+if compare_mode:
+    brands_to_compare = []
+    if compare_brand_1.strip():
+        brands_to_compare.append(compare_brand_1.strip())
+    if compare_brand_2.strip():
+        brands_to_compare.append(compare_brand_2.strip())
+    if compare_brand_3.strip():
+        brands_to_compare.append(compare_brand_3.strip())
+    
+    if len(brands_to_compare) >= 2:
+        st.markdown("## 🆚 Brand Comparison")
+        st.caption(f"Comparing VLDS metrics: {' vs '.join(brands_to_compare)}")
+        
+        df_compare = load_data()
+        
+        brand_results = {}
+        for brand in brands_to_compare:
+            brand_df = df_compare[df_compare["text"].str.lower().str.contains(brand.lower(), na=False)]
+            if len(brand_df) >= 5:
+                brand_results[brand] = calculate_brand_vlds(brand_df)
+                brand_results[brand]['post_count'] = len(brand_df)
+            else:
+                brand_results[brand] = None
+        
+        if any(brand_results.values()):
+            st.markdown("### VLDS Metrics")
+            compare_cols = st.columns(len(brands_to_compare))
+            
+            for i, brand in enumerate(brands_to_compare):
+                with compare_cols[i]:
+                    st.markdown(f"**{brand}**")
+                    vlds = brand_results.get(brand)
+                    if vlds:
+                        st.metric("Posts", vlds.get('post_count', 0))
+                        st.metric("Velocity", f"{vlds.get('velocity', 0):.0%}", vlds.get('velocity_label', ''))
+                        st.metric("Longevity", f"{vlds.get('longevity', 0):.0%}", vlds.get('longevity_label', ''))
+                        st.metric("Density", f"{vlds.get('density', 0):.0%}", vlds.get('density_label', ''))
+                        st.metric("Scarcity", f"{vlds.get('scarcity', 0):.0%}", vlds.get('scarcity_label', ''))
+                    else:
+                        st.warning(f"Not enough data for {brand}")
+            
+            st.markdown("### Dominant Emotions")
+            emo_cols = st.columns(len(brands_to_compare))
+            
+            for i, brand in enumerate(brands_to_compare):
+                with emo_cols[i]:
+                    st.markdown(f"**{brand}**")
+                    vlds = brand_results.get(brand)
+                    if vlds and vlds.get('top_emotions_detailed'):
+                        for item in vlds.get('top_emotions_detailed', [])[:3]:
+                            emo = item['emotion']
+                            emo_map = {'joy': '😊', 'sadness': '😢', 'anger': '😠', 'fear': '😨', 'surprise': '😮', 'disgust': '🤢', 'neutral': '😐'}
+                            emoji = emo_map.get(emo, '•')
+                            st.caption(f"{emoji} {emo.title()}: {item['percentage']}%")
+            
+            st.markdown("### Top Narratives")
+            narr_cols = st.columns(len(brands_to_compare))
+            
+            for i, brand in enumerate(brands_to_compare):
+                with narr_cols[i]:
+                    st.markdown(f"**{brand}**")
+                    vlds = brand_results.get(brand)
+                    if vlds and vlds.get('top_topics_detailed'):
+                        for item in vlds.get('top_topics_detailed', [])[:3]:
+                            st.caption(f"• {item['topic']}: {item['percentage']}%")
+            
+            st.markdown("---")
+        else:
+            st.warning("Not enough data for comparison. Try different brands.")
+    
+    elif len(brands_to_compare) == 1:
+        st.info("Enter at least 2 brands to compare.")
 
 # ========================================
 # BRAND-SPECIFIC VLDS (when brand focus is active)

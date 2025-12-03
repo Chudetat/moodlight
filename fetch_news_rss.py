@@ -206,6 +206,19 @@ FEEDS: List[tuple[str, str]] = [
     ("Engadget", "https://www.engadget.com/rss.xml"),
     ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index"),
     ("Wired", "https://www.wired.com/feed/rss"),
+    ("Wired", "https://www.wired.com/feed/rss"),
+
+    # Reddit - Popular Subreddits
+    ("Reddit News", "https://www.reddit.com/r/news/.rss"),
+    ("Reddit World News", "https://www.reddit.com/r/worldnews/.rss"),
+    ("Reddit Technology", "https://www.reddit.com/r/technology/.rss"),
+    ("Reddit Business", "https://www.reddit.com/r/business/.rss"),
+    ("Reddit Marketing", "https://www.reddit.com/r/marketing/.rss"),
+    ("Reddit Advertising", "https://www.reddit.com/r/advertising/.rss"),
+    ("Reddit Stocks", "https://www.reddit.com/r/stocks/.rss"),
+    ("Reddit Economics", "https://www.reddit.com/r/economics/.rss"),
+    ("Reddit Futurology", "https://www.reddit.com/r/Futurology/.rss"),
+    ("Reddit Brands", "https://www.reddit.com/r/brands/.rss"),
 
 ]
 
