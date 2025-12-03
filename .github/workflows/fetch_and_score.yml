@@ -1,0 +1,42 @@
+name: Fetch and Score Data
+
+on:
+  schedule:
+    - cron: '0 14 * * *'  # 6am PST
+    - cron: '0 2 * * *'   # 6pm PST
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  fetch-and-score:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install pandas requests feedparser transformers torch openai python-dotenv
+      
+      - name: Fetch news and Reddit
+        env:
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+        run: python fetch_news_rss.py
+      
+      - name: Score empathy
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python score_empathy.py news.csv news_scored.csv
+      
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add news.csv news_scored.csv social.csv social_scored.csv 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "Auto-update data $(date -u +%Y-%m-%d_%H:%M)"
+          git push
