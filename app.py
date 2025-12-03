@@ -594,27 +594,27 @@ with st.sidebar:
     
     brief_product = st.text_input(
         "Product / Service",
-        placeholder='e.g. "premium running shoe for women"'
+        help='e.g. "premium running shoe for women"'
     )
     
     brief_audience = st.text_input(
         "Target Audience",
-        placeholder='e.g. "women 25-40, urban, health-conscious"'
+        help='e.g. "women 25-40, urban, health-conscious"'
     )
     
     brief_markets = st.text_input(
         "Markets / Geography",
-        placeholder='e.g. "US, UK, Canada"'
+        help='e.g. "US, UK, Canada"'
     )
     
     brief_challenge = st.text_input(
         "Key Challenge",
-        placeholder='e.g. "competing against On and Hoka"'
+        help='e.g. "competing against On and Hoka"'
     )
     
     brief_timeline = st.text_input(
         "Timeline / Budget",
-        placeholder='e.g. "Q1 2025, $2M digital"'
+        help='e.g. "Q1 2025, $2M digital"'
     )
     
     # Combine into user_need
