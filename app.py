@@ -76,9 +76,8 @@ TOPIC_CATEGORIES = [
     "branding & advertising", "creative & design", "technology & ai",
     "climate & environment", "healthcare & wellbeing", "immigration",
     "crime & safety", "war & foreign policy", "media & journalism",
-    "race & ethnicity", "gender & sexuality", "business & corporate",
-    "labor & work", "housing", "religion & values", "sports",
-    "entertainment", "other",
+    "business & corporate", "labor & work", "housing", "religion & values",
+    "sports", "entertainment", "other",
 ]
 
 # -------------------------------
@@ -302,6 +301,7 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict:
         return None
     
     results = {}
+    total_posts = len(df)
     
     if 'created_at' in df.columns:
         df_copy = df.copy()
@@ -318,12 +318,14 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict:
             velocity_score = 0.5
         results['velocity'] = round(velocity_score, 2)
         results['velocity_label'] = 'Rising Fast' if velocity_score > 0.7 else 'Stable' if velocity_score > 0.4 else 'Declining'
+        results['velocity_insight'] = f"Conversation is {'accelerating' if velocity_score > 0.7 else 'steady' if velocity_score > 0.4 else 'slowing down'} compared to earlier periods"
     
     if 'created_at' in df.columns:
         unique_days = df_copy['date'].nunique()
         longevity_score = min(unique_days / 7.0, 1.0)
         results['longevity'] = round(longevity_score, 2)
         results['longevity_label'] = 'Sustained' if longevity_score > 0.7 else 'Moderate' if longevity_score > 0.4 else 'Flash'
+        results['longevity_insight'] = f"Coverage spans {unique_days} day{'s' if unique_days != 1 else ''} — {'a lasting narrative' if longevity_score > 0.7 else 'moderate staying power' if longevity_score > 0.4 else 'likely a short-term spike'}"
     
     if 'source' in df.columns:
         source_count = df['source'].nunique()
@@ -331,20 +333,57 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict:
         density_score = min(post_count / 100.0, 1.0)
         results['density'] = round(density_score, 2)
         results['density_label'] = 'Saturated' if density_score > 0.7 else 'Moderate' if density_score > 0.3 else 'White Space'
+        results['density_insight'] = f"{post_count} posts across {source_count} sources — {'crowded, hard to break through' if density_score > 0.7 else 'room to grow presence' if density_score > 0.3 else 'wide open for thought leadership'}"
     
     if 'topic' in df.columns:
         topic_counts = df['topic'].value_counts()
-        total = len(df)
-        scarce_topics = topic_counts[topic_counts / total < 0.10].head(3).index.tolist()
-        results['scarce_topics'] = scarce_topics if scarce_topics else ['No clear gaps']
+        
+        # Top narratives with percentages
+        top_topics_detailed = []
+        for topic, count in topic_counts.head(5).items():
+            pct = (count / total_posts) * 100
+            top_topics_detailed.append({
+                'topic': topic,
+                'count': count,
+                'percentage': round(pct, 1)
+            })
+        results['top_topics_detailed'] = top_topics_detailed
+        
+        # White space: topics with <10% share, filtered for relevance
+        irrelevant_topics = ['other', 'sports', 'entertainment', 'religion & values', 'race & ethnicity', 'gender & sexuality']
+        scarce_topics_detailed = []
+        for topic, count in topic_counts.items():
+            pct = (count / total_posts) * 100
+            if pct < 10 and topic.lower() not in irrelevant_topics:
+                scarce_topics_detailed.append({
+                    'topic': topic,
+                    'count': count,
+                    'percentage': round(pct, 1)
+                })
+        results['scarce_topics_detailed'] = scarce_topics_detailed[:5]
+        
         results['scarcity'] = round(1.0 - results.get('density', 0.5), 2)
         results['scarcity_label'] = 'High Opportunity' if results['scarcity'] > 0.7 else 'Some Opportunity' if results['scarcity'] > 0.4 else 'Crowded'
     
-    if 'topic' in df.columns:
-        results['top_topics'] = df['topic'].value_counts().head(3).to_dict()
-    
+    # Dominant emotions with percentages
     if 'emotion_top_1' in df.columns:
-        results['top_emotions'] = df['emotion_top_1'].value_counts().head(3).to_dict()
+        emotion_counts = df['emotion_top_1'].value_counts()
+        top_emotions_detailed = []
+        for emotion, count in emotion_counts.head(5).items():
+            pct = (count / total_posts) * 100
+            top_emotions_detailed.append({
+                'emotion': emotion,
+                'count': count,
+                'percentage': round(pct, 1)
+            })
+        results['top_emotions_detailed'] = top_emotions_detailed
+        
+        # Emotion insight
+        if top_emotions_detailed:
+            dominant = top_emotions_detailed[0]
+            results['emotion_insight'] = f"The dominant emotional tone is {dominant['emotion']} ({dominant['percentage']}% of coverage)"
+    
+    results['total_posts'] = total_posts
     
     return results
 
@@ -1480,21 +1519,56 @@ if brand_focus and custom_query.strip():
             st.metric("Scarcity", f"{s_score:.0%}", s_label)
         
         with st.expander("📈 Brand Intelligence Details"):
+            st.caption(f"Based on {brand_vlds.get('total_posts', 0)} posts mentioning '{custom_query}'")
+            
+            # Insights row
+            st.markdown("#### 💡 Key Insights")
+            if 'velocity_insight' in brand_vlds:
+                st.markdown(f"**Velocity:** {brand_vlds['velocity_insight']}")
+            if 'longevity_insight' in brand_vlds:
+                st.markdown(f"**Longevity:** {brand_vlds['longevity_insight']}")
+            if 'density_insight' in brand_vlds:
+                st.markdown(f"**Density:** {brand_vlds['density_insight']}")
+            if 'emotion_insight' in brand_vlds:
+                st.markdown(f"**Emotion:** {brand_vlds['emotion_insight']}")
+            
+            st.markdown("---")
+            
             col_a, col_b = st.columns(2)
             
             with col_a:
-                st.markdown("**Top Narratives**")
-                for topic, count in brand_vlds.get('top_topics', {}).items():
-                    st.write(f"• {topic}: {count} posts")
+                st.markdown("#### 📰 Top Narratives")
+                st.caption("What topics dominate coverage")
+                for item in brand_vlds.get('top_topics_detailed', []):
+                    st.markdown(f"• **{item['topic']}** — {item['percentage']}% ({item['count']} posts)")
             
             with col_b:
-                st.markdown("**Dominant Emotions**")
-                for emotion, count in brand_vlds.get('top_emotions', {}).items():
-                    st.write(f"• {emotion}: {count} posts")
+                st.markdown("#### 😊 Dominant Emotions")
+                st.caption("How people feel when discussing this brand")
+                for item in brand_vlds.get('top_emotions_detailed', []):
+                    emoji = {'joy': '😊', 'sadness': '😢', 'anger': '😠', 'fear': '😨', 'surprise': '😮', 'disgust': '🤢', 'neutral': '😐'}.get(item['emotion'], '•')
+                    st.markdown(f"{emoji} **{item['emotion'].title()}** — {item['percentage']}% ({item['count']} posts)")
             
-            st.markdown("**White Space Opportunities**")
-            for topic in brand_vlds.get('scarce_topics', []):
-                st.write(f"• {topic}")
+            st.markdown("---")
+            
+            st.markdown("#### 🎯 White Space Opportunities")
+            st.caption("Topics with <10% share — potential areas to own the narrative")
+            
+            scarce = brand_vlds.get('scarce_topics_detailed', [])
+            if scarce:
+                cols = st.columns(min(len(scarce), 3))
+                for i, item in enumerate(scarce[:3]):
+                    with cols[i]:
+                        st.metric(
+                            item['topic'].title(),
+                            f"{item['percentage']}%",
+                            f"{item['count']} posts",
+                            delta_color="off"
+                        )
+                if len(scarce) > 3:
+                    st.caption(f"Also underrepresented: {', '.join([s['topic'] for s in scarce[3:]])}")
+            else:
+                st.info("No clear white space opportunities — coverage is evenly distributed or saturated")
     
     st.markdown("---")
 
