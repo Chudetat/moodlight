@@ -482,6 +482,16 @@ CREATIVE RECOMMENDATION:
 [What angles, tones, or hooks would resonate right now based on the emotional climate? Use scarcity signals to find white space. What should they avoid based on density? 100 words max.]
 
 Be bold, specific, and actionable. Reference the actual data when making recommendations.
+
+INDUSTRY-SPECIFIC CONSIDERATIONS:
+If the request involves healthcare, pharma, medical devices, or health systems:
+- Flag any emotional tones (fear, anxiety, urgency) that may face Medical Legal Review (MLR) scrutiny
+- Prioritize "safe white space" — scarcity topics that are culturally appropriate AND unlikely to trigger regulatory concerns
+- Recommend messaging that builds trust and credibility over provocative hooks
+- Note any velocity spikes that could indicate emerging issues requiring compliance awareness
+- Frame recommendations as "MLR-friendly" where appropriate
+
+For all industries: Consider regulatory and reputational risk when recommending bold creative angles.
 """
     
     response = client.chat.completions.create(
@@ -580,15 +590,52 @@ with st.sidebar:
     st.markdown("---")
     
     st.header("🎯 Strategic Brief")
-    user_need = st.text_area(
-        "I need...",
-        placeholder='e.g. "to launch a new Nike sneaker in Latin America, the UK, and Canada"',
-        help="Describe your campaign goal and Moodlight will generate a strategic brief."
+    st.caption("The more detail you provide, the better your brief")
+    
+    brief_product = st.text_input(
+        "Product / Service",
+        placeholder='e.g. "premium running shoe for women"'
     )
     
-    if user_need.strip():
+    brief_audience = st.text_input(
+        "Target Audience",
+        placeholder='e.g. "women 25-40, urban, health-conscious"'
+    )
+    
+    brief_markets = st.text_input(
+        "Markets / Geography",
+        placeholder='e.g. "US, UK, Canada"'
+    )
+    
+    brief_challenge = st.text_input(
+        "Key Challenge",
+        placeholder='e.g. "competing against On and Hoka"'
+    )
+    
+    brief_timeline = st.text_input(
+        "Timeline / Budget",
+        placeholder='e.g. "Q1 2025, $2M digital"'
+    )
+    
+    # Combine into user_need
+    user_need_parts = []
+    if brief_product.strip():
+        user_need_parts.append(f"launch/promote {brief_product.strip()}")
+    if brief_audience.strip():
+        user_need_parts.append(f"targeting {brief_audience.strip()}")
+    if brief_markets.strip():
+        user_need_parts.append(f"in {brief_markets.strip()}")
+    if brief_challenge.strip():
+        user_need_parts.append(f"with the challenge of {brief_challenge.strip()}")
+    if brief_timeline.strip():
+        user_need_parts.append(f"timeline/budget: {brief_timeline.strip()}")
+    
+    user_need = ", ".join(user_need_parts) if user_need_parts else ""
+
+    
+    if brief_product.strip():
         user_email = st.text_input(
-            "Your email (to unlock brief)",
+            "Your email (to receive brief)",
             placeholder="you@company.com"
         )
         
@@ -990,6 +1037,7 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
         .rename(columns={'mean': 'avg_empathy'})
     )
     topic_avg = topic_avg[topic_avg['count'] >= 2]
+    topic_avg = topic_avg[~topic_avg['topic'].isin(['race & ethnicity', 'gender & sexuality'])]
     topic_avg["label"] = topic_avg["avg_empathy"].apply(empathy_label_from_score)
     topic_avg["idx"] = topic_avg["label"].apply(empathy_index_from_label)
     topic_avg = topic_avg.dropna(subset=["idx"])
