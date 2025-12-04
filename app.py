@@ -36,6 +36,69 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import altair as alt
+import requests
+
+# ========================================
+# TICKER LOOKUP & STOCK DATA
+# ========================================
+@st.cache_data(ttl=86400)  # Cache for 24 hours
+def search_ticker(brand_name: str) -> str | None:
+    """Search for stock ticker by company name using Yahoo Finance."""
+    try:
+        url = f"https://query1.finance.yahoo.com/v1/finance/search"
+        params = {"q": brand_name, "quotesCount": 5, "newsCount": 0}
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, params=params, headers=headers, timeout=5)
+        data = response.json()
+        
+        if data.get("quotes"):
+            # Return first stock result (not ETF/fund)
+            for quote in data["quotes"]:
+                if quote.get("quoteType") in ["EQUITY", "INDEX"]:
+                    return quote.get("symbol")
+            # Fallback to first result
+            return data["quotes"][0].get("symbol")
+        return None
+    except Exception as e:
+        print(f"Ticker search error: {e}")
+        return None
+
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def fetch_stock_data(ticker: str) -> dict | None:
+    """Fetch stock data from Alpha Vantage."""
+    import os
+    api_key = os.getenv("ALPHAVANTAGE_API_KEY", "")
+    if not api_key:
+        # Try Streamlit secrets
+        try:
+            api_key = st.secrets.get("ALPHAVANTAGE_API_KEY", "")
+        except:
+            pass
+    if not api_key:
+        return None
+    
+    try:
+        url = "https://www.alphavantage.co/query"
+        params = {
+            "function": "GLOBAL_QUOTE",
+            "symbol": ticker,
+            "apikey": api_key
+        }
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json()
+        
+        if "Global Quote" in data and data["Global Quote"]:
+            quote = data["Global Quote"]
+            return {
+                "symbol": quote.get("01. symbol", ticker),
+                "price": float(quote.get("05. price", 0)),
+                "change_percent": float(quote.get("10. change percent", "0").replace("%", "")),
+                "latest_day": quote.get("07. latest trading day", "")
+            }
+        return None
+    except Exception as e:
+        print(f"Stock fetch error: {e}")
+        return None
 
 st.set_page_config(
     page_title="Moodlight",
@@ -924,7 +987,25 @@ st.markdown("---")
 # MOOD VS MARKET COMPARISON
 # ========================================
 st.markdown("## Mood vs Market: Leading Indicators")
-st.caption("Track how social sentiment compares to market performance over time")
+
+# Check if brand focus is active and search for ticker
+brand_ticker = None
+brand_stock_data = None
+market_label_name = "Market Index"
+
+if brand_focus and custom_query.strip():
+    brand_ticker = search_ticker(custom_query.strip())
+    if brand_ticker:
+        brand_stock_data = fetch_stock_data(brand_ticker)
+        if brand_stock_data:
+            market_label_name = f"{brand_ticker} Stock"
+            st.caption(f"Comparing social sentiment for '{custom_query}' vs {brand_ticker} stock performance")
+        else:
+            st.caption(f"No stock data for '{custom_query}' — showing general market index")
+    else:
+        st.caption(f"'{custom_query}' not publicly traded — showing general market index")
+else:
+    st.caption("Track how social sentiment compares to market performance over time")
 
 if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not df_markets.empty:
     now = datetime.now(timezone.utc)
@@ -946,12 +1027,19 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
         daily_social["social_mood"] = (daily_social["social_mood"] * 100).round().astype(int)
         daily_social["type"] = "Social Mood"
         
-        market_value = int(round(df_markets["market_sentiment"].iloc[0] * 100))
+        # Use brand stock or fallback to market index
+        if brand_stock_data:
+            # Convert stock change to 0-100 scale (50 = neutral, +/-50 for change)
+            stock_change = brand_stock_data.get("change_percent", 0)
+            market_value = int(50 + (stock_change * 5))  # Scale: 1% change = 5 points
+            market_value = max(0, min(100, market_value))  # Clamp to 0-100
+        else:
+            market_value = int(round(df_markets["market_sentiment"].iloc[0] * 100))
         
         market_line = pd.DataFrame({
             "date": daily_social["date"].tolist(),
             "score": [market_value] * len(daily_social),
-            "metric": ["Market Mood"] * len(daily_social)
+            "metric": [market_label_name] * len(daily_social)
         })
 
         combined = pd.concat([
@@ -967,7 +1055,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
                 y=alt.Y("score:Q", title="Sentiment Score (0-100)", scale=alt.Scale(domain=[0, 100])),
                 color=alt.Color("metric:N", 
                               title="Sentiment Type",
-                              scale=alt.Scale(domain=['Social Mood', 'Market Mood'],
+                              scale=alt.Scale(domain=['Social Mood', market_label_name],
                                             range=['#1f77b4', '#2E7D32'])),
                 tooltip=[
                     alt.Tooltip("date:T", format="%B %d, %Y"),
@@ -988,8 +1076,8 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             st.metric("Latest Social Mood", latest_social)
         
         with col2:
-            st.metric("Latest Market Mood", market_value)
-        
+            st.metric(f"Latest {market_label_name}", market_value)
+
         with col3:
             divergence = abs(latest_social - market_value)
             if divergence > 20:
