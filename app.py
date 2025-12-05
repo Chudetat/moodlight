@@ -998,7 +998,7 @@ if brand_focus and custom_query.strip():
     if brand_ticker:
         brand_stock_data = fetch_stock_data(brand_ticker)
         if brand_stock_data:
-            market_label_name = f"{brand_ticker} Stock"
+            market_label_name = f"{brand_ticker} Stock Sentiment"
             st.caption(f"Comparing social sentiment for '{custom_query}' vs {brand_ticker} stock performance")
         else:
             st.caption(f"No stock data for '{custom_query}' — showing general market index")
@@ -1077,6 +1077,8 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
         
         with col2:
             st.metric(f"Latest {market_label_name}", market_value)
+            if brand_stock_data:
+                st.caption("📈 Scale: 50=neutral, +5pts per 1% stock change")
 
         with col3:
             divergence = abs(latest_social - market_value)
