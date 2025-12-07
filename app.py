@@ -1863,7 +1863,7 @@ cols = [c for c in ["text", "source", "topic", "empathy_label", "emotion_top_1",
 if len(df_filtered):
     display_df = df_filtered[cols].copy()
     if "created_at" in display_df.columns:
-        display_df = display_df.sort_values("created_at", ascending=False)
+        display_df = display_df.sort_values("created_at", ascending=False).reset_index(drop=True)
         display_df["created_at"] = display_df["created_at"].dt.strftime("%b %d, %H:%M")
 
     st.dataframe(
