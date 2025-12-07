@@ -721,6 +721,7 @@ with st.sidebar:
 
 # Load all data once
 df_all = load_data()
+st.sidebar.caption(f"Data: {len(df_all)} rows, latest: {df_all['created_at'].max() if 'created_at' in df_all.columns else 'N/A'}")
 
 if brand_focus and custom_query.strip():
     search_term = custom_query.strip().lower()
