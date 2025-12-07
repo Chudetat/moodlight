@@ -864,7 +864,7 @@ def parse_pubdate(date_str: str) -> str | None:
         if parsed:
             dt = datetime(*parsed[:6], tzinfo=timezone.utc)
             return dt.isoformat()
-    except:
+    except Exception:
         pass
 
     # Try common date formats
@@ -881,7 +881,7 @@ def parse_pubdate(date_str: str) -> str | None:
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             return dt.isoformat()
-        except:
+        except Exception:
             continue
 
     return None
@@ -981,7 +981,7 @@ def fetch_feed(source: str, url: str) -> List[Dict[str, Any]]:
             # Fallback: use current time if parsing failed
             if not created_at:
                 # Skip Google News entries without valid publish date
-                if "google_news" in source_key.lower():
+                if "google_news" in source.lower():
                     continue
                 created_at = now.isoformat()
             else:
@@ -991,7 +991,7 @@ def fetch_feed(source: str, url: str) -> List[Dict[str, Any]]:
                     created_at = now.isoformat()
                 elif dt < now - timedelta(days=30):
                     # Skip old articles from Google News
-                    if "google_news" in source_key.lower():
+                    if "google_news" in source.lower():
                         continue
                     created_at = now.isoformat()
 
@@ -1123,8 +1123,8 @@ def main():
         combined_df = combined_df.sort_values("created_at", ascending=False)
         # Convert back to ISO format strings
         # Only convert if it's actually datetime type
-    if pd.api.types.is_datetime64_any_dtype(combined_df["created_at"]):
-        combined_df["created_at"] = combined_df["created_at"].dt.strftime("%Y-%m-%dT%H:%M:%S%z")
+        if pd.api.types.is_datetime64_any_dtype(combined_df["created_at"]):
+            combined_df["created_at"] = combined_df["created_at"].dt.strftime("%Y-%m-%dT%H:%M:%S%z")
 
     # Save to CSV
     combined_df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_MINIMAL)
