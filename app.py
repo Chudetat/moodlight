@@ -637,7 +637,7 @@ IMPORTANT: Start with the #1 highest intensity country, then #2, then #3. Explai
                 {"role": "user", "content": prompt}
             ],
             temperature=0.5,
-            max_tokens=200
+            max_tokens=500
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -2011,9 +2011,10 @@ if 'intensity' in df_all.columns and 'country' in df_all.columns:
         # Click-to-reveal AI explanation
         if st.button("🔍 Why these hotspots?", key="explain_geo_hotspots"):
             with st.spinner("Analyzing patterns..."):
-                # Get country data for summary
-                cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(hours=48)
+                # Get country data for summary - match chart's FILTER_DAYS
+                cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=FILTER_DAYS)
                 recent = df_all[df_all['created_at'] >= cutoff].copy()
+
                 if 'country' in recent.columns and 'intensity' in recent.columns:
                     country_stats = recent.groupby('country').agg({'intensity': 'mean', 'id': 'count'}).reset_index()
                     country_stats.columns = ['country', 'avg_intensity', 'article_count']
