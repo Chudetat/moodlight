@@ -23,7 +23,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install pandas requests feedparser transformers torch openai python-dotenv
+          pip install pandas requests feedparser transformers torch openai python-dotenv tweepy
       
       - name: Fetch markets
         env:
@@ -35,10 +35,22 @@ jobs:
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
         run: python fetch_news_rss.py
       
-      - name: Score empathy
+      - name: Fetch X posts
+        continue-on-error: true
+        env:
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+        run: python fetch_posts.py
+      
+      - name: Score news
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python score_empathy.py news.csv news_scored.csv
+      
+      - name: Score social
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python score_empathy.py social.csv social_scored.csv
       
       - name: Commit and push changes
         run: |
@@ -47,4 +59,3 @@ jobs:
           git add -A
           git diff --staged --quiet || git commit -m "Auto-update data $(date -u +%Y-%m-%d_%H:%M)"
           git push --force origin main
-          
