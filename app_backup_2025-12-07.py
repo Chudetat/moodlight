@@ -7,26 +7,23 @@ def check_password():
         """Checks whether password entered is correct."""
         if st.session_state["password"] == "Moodlight2026!":
             st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Don't store password
+            del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-
         st.text_input(
             "Password", type="password", on_change=password_entered, key="password"
         )
         st.write("*Please contact admin for access*")
         return False
     elif not st.session_state["password_correct"]:
-
         st.text_input(
             "Password", type="password", on_change=password_entered, key="password"
         )
         st.error("😕 Password incorrect")
         return False
     else:
-
         return True
 
 if not check_password():
@@ -34,17 +31,74 @@ if not check_password():
 
 import math
 import subprocess
-
-import math
-import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
-import streamlit as st
 import altair as alt
-from startup import fetch_data_if_needed
-fetch_data_if_needed()
+import requests
+
+# ========================================
+# TICKER LOOKUP & STOCK DATA
+# ========================================
+@st.cache_data(ttl=86400)  # Cache for 24 hours
+def search_ticker(brand_name: str) -> str | None:
+    """Search for stock ticker by company name using Yahoo Finance."""
+    try:
+        url = f"https://query1.finance.yahoo.com/v1/finance/search"
+        params = {"q": brand_name, "quotesCount": 5, "newsCount": 0}
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, params=params, headers=headers, timeout=5)
+        data = response.json()
+        
+        if data.get("quotes"):
+            # Return first stock result (not ETF/fund)
+            for quote in data["quotes"]:
+                if quote.get("quoteType") in ["EQUITY", "INDEX"]:
+                    return quote.get("symbol")
+            # Fallback to first result
+            return data["quotes"][0].get("symbol")
+        return None
+    except Exception as e:
+        print(f"Ticker search error: {e}")
+        return None
+
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def fetch_stock_data(ticker: str) -> dict | None:
+    """Fetch stock data from Alpha Vantage."""
+    import os
+    api_key = os.getenv("ALPHAVANTAGE_API_KEY", "")
+    if not api_key:
+        # Try Streamlit secrets
+        try:
+            api_key = st.secrets.get("ALPHAVANTAGE_API_KEY", "")
+        except:
+            pass
+    if not api_key:
+        return None
+    
+    try:
+        url = "https://www.alphavantage.co/query"
+        params = {
+            "function": "GLOBAL_QUOTE",
+            "symbol": ticker,
+            "apikey": api_key
+        }
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json()
+        
+        if "Global Quote" in data and data["Global Quote"]:
+            quote = data["Global Quote"]
+            return {
+                "symbol": quote.get("01. symbol", ticker),
+                "price": float(quote.get("05. price", 0)),
+                "change_percent": float(quote.get("10. change percent", "0").replace("%", "")),
+                "latest_day": quote.get("07. latest trading day", "")
+            }
+        return None
+    except Exception as e:
+        print(f"Stock fetch error: {e}")
+        return None
 
 st.set_page_config(
     page_title="Moodlight",
@@ -57,9 +111,18 @@ st.set_page_config(
     }
 )
 
-# -------------------------------
-# Streamlit page config
-# -------------------------------
+# View mode toggle
+view_mode = st.sidebar.radio(
+    "📊 View Mode",
+    ["Breaking (48h)", "Strategic (30d)"],
+    index=1,
+    help="Breaking: Real-time focus. Strategic: Broader context for pattern recognition."
+)
+
+if view_mode == "Breaking (48h)":
+    FILTER_DAYS = 2
+else:
+    FILTER_DAYS = 30
 
 # -------------------------------
 # Global constants
@@ -76,9 +139,8 @@ TOPIC_CATEGORIES = [
     "branding & advertising", "creative & design", "technology & ai",
     "climate & environment", "healthcare & wellbeing", "immigration",
     "crime & safety", "war & foreign policy", "media & journalism",
-    "race & ethnicity", "gender & sexuality", "business & corporate",
-    "labor & work", "housing", "religion & values", "sports",
-    "entertainment", "other",
+    "business & corporate", "labor & work", "housing", "religion & values",
+    "sports", "entertainment", "other",
 ]
 
 # -------------------------------
@@ -109,17 +171,16 @@ def clean_source_name(source: str) -> str:
         parts = source.replace("reddit_", "").replace("_", " ")
         return f"Reddit: {parts.title()}"
     else:
-        # Convert bbc_world to BBC World, etc.
         return source.replace("_", " ").title()
 
 # -------------------------------
 # Data loading
 # -------------------------------
-@st.cache_data(ttl=10)
-def load_data() -> pd.DataFrame:
+@st.cache_data(ttl=10, show_spinner=False)
+def load_data(v=2) -> pd.DataFrame:
     sources = [
         ("social_scored.csv", None),
-        ("news_scored.csv", "None"),
+        ("news_scored.csv", None),
     ]
     frames = []
 
@@ -135,11 +196,13 @@ def load_data() -> pd.DataFrame:
             if missing:
                 st.warning(f"Warning: {path} missing columns: {missing}")
                 continue
+            
+            # Convert created_at to datetime HERE before concat
+            df["created_at"] = pd.to_datetime(df["created_at"], format="mixed", utc=True)
                 
-            if src:  # Only overwrite if src is provided
+            if src:
                 df["source"] = src
             elif path == "social_scored.csv":
-                # For social_scored.csv, mark posts without a source as 'x'
                 df.loc[df["source"].isna() | (df["source"] == ""), "source"] = "x"
             frames.append(df)
         except FileNotFoundError:
@@ -162,12 +225,9 @@ def load_data() -> pd.DataFrame:
         df["empathy_score"] = pd.to_numeric(df["empathy_score"], errors="coerce")
         df["empathy_label"] = df["empathy_score"].apply(empathy_label_from_score)
 
-    # Process timestamps
+    # Drop rows with invalid dates
     if "created_at" in df.columns:
-        df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce", utc=True)
-        before_drop = len(df)
         df = df.dropna(subset=["created_at"])
-        # Silently drop invalid dates - no need to warn users
 
     if "engagement" in df.columns:
         df["engagement"] = pd.to_numeric(df["engagement"], errors="coerce").fillna(0)
@@ -196,7 +256,6 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
     msg_parts = []
     has_error = False
 
-    # Prepare environment with API keys
     import os
     env = os.environ.copy()
     try:
@@ -205,7 +264,6 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
     except:
         pass
     
-    # Fetch X posts
     cmd_x = [sys.executable, "fetch_posts.py"]
     
     if custom_query:
@@ -223,7 +281,6 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
         else:
             msg_parts.append("X fetched")
             
-            # Score X data
             score_x = subprocess.run(
                 [sys.executable, "score_empathy.py", "social.csv", "social_scored.csv"],
                 capture_output=True, text=True, timeout=300, check=False, env=env
@@ -242,7 +299,6 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
         has_error = True
         msg_parts.append(f"X exception: {str(e)[:100]}")
 
-    # Fetch news
     try:
         news_proc = subprocess.run(
             [sys.executable, "fetch_news_rss.py"], 
@@ -256,7 +312,6 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
         else:
             msg_parts.append("News fetched")
             
-            # Score news data
             score_n = subprocess.run(
                 [sys.executable, "score_empathy.py", "news.csv", "news_scored.csv"],
                 capture_output=True, text=True, timeout=300, check=False, env=env
@@ -300,10 +355,350 @@ def compute_world_mood(df: pd.DataFrame) -> tuple[int | None, str | None, str]:
     return score, label, emoji
 
 # -------------------------------
+# Brand-Specific VLDS Calculation
+# -------------------------------
+def calculate_brand_vlds(df: pd.DataFrame) -> dict:
+    """Calculate VLDS metrics for a filtered brand dataset"""
+    
+    if df.empty or len(df) < 5:
+        return None
+    
+    results = {}
+    total_posts = len(df)
+    
+    if 'created_at' in df.columns:
+        df_copy = df.copy()
+        df_copy['created_at'] = pd.to_datetime(df_copy['created_at'], errors='coerce')
+        df_copy['date'] = df_copy['created_at'].dt.date
+        daily_counts = df_copy.groupby('date').size()
+        
+        if len(daily_counts) >= 2:
+            recent = daily_counts.tail(2).mean()
+            older = daily_counts.head(max(1, len(daily_counts) - 2)).mean()
+            velocity = (recent / older) if older > 0 else 1.0
+            velocity_score = min(velocity / 2.0, 1.0)
+        else:
+            velocity_score = 0.5
+        results['velocity'] = round(velocity_score, 2)
+        results['velocity_label'] = 'Rising Fast' if velocity_score > 0.7 else 'Stable' if velocity_score > 0.4 else 'Declining'
+        results['velocity_insight'] = f"Conversation is {'accelerating' if velocity_score > 0.7 else 'steady' if velocity_score > 0.4 else 'slowing down'} compared to earlier periods"
+    
+    if 'created_at' in df.columns:
+        unique_days = df_copy['date'].nunique()
+        longevity_score = min(unique_days / 7.0, 1.0)
+        results['longevity'] = round(longevity_score, 2)
+        results['longevity_label'] = 'Sustained' if longevity_score > 0.7 else 'Moderate' if longevity_score > 0.4 else 'Flash'
+        results['longevity_insight'] = f"Coverage spans {unique_days} day{'s' if unique_days != 1 else ''} — {'a lasting narrative' if longevity_score > 0.7 else 'moderate staying power' if longevity_score > 0.4 else 'likely a short-term spike'}"
+    
+    if 'source' in df.columns:
+        source_count = df['source'].nunique()
+        post_count = len(df)
+        density_score = min(post_count / 100.0, 1.0)
+        results['density'] = round(density_score, 2)
+        results['density_label'] = 'Saturated' if density_score > 0.7 else 'Moderate' if density_score > 0.3 else 'White Space'
+        results['density_insight'] = f"{post_count} posts across {source_count} sources — {'crowded, hard to break through' if density_score > 0.7 else 'room to grow presence' if density_score > 0.3 else 'wide open for thought leadership'}"
+    
+    if 'topic' in df.columns:
+        topic_counts = df['topic'].value_counts()
+        
+        # Top narratives with percentages
+        top_topics_detailed = []
+        for topic, count in topic_counts.head(5).items():
+            pct = (count / total_posts) * 100
+            top_topics_detailed.append({
+                'topic': topic,
+                'count': count,
+                'percentage': round(pct, 1)
+            })
+        results['top_topics_detailed'] = top_topics_detailed
+        
+        # White space: topics with <10% share, filtered for relevance
+        irrelevant_topics = ['other', 'sports', 'entertainment', 'religion & values', 'race & ethnicity', 'gender & sexuality']
+        scarce_topics_detailed = []
+        for topic, count in topic_counts.items():
+            pct = (count / total_posts) * 100
+            if pct < 10 and topic.lower() not in irrelevant_topics:
+                scarce_topics_detailed.append({
+                    'topic': topic,
+                    'count': count,
+                    'percentage': round(pct, 1)
+                })
+        results['scarce_topics_detailed'] = scarce_topics_detailed[:5]
+        
+        results['scarcity'] = round(1.0 - results.get('density', 0.5), 2)
+        results['scarcity_label'] = 'High Opportunity' if results['scarcity'] > 0.7 else 'Some Opportunity' if results['scarcity'] > 0.4 else 'Crowded'
+    
+    # Dominant emotions with percentages
+    if 'emotion_top_1' in df.columns:
+        emotion_counts = df['emotion_top_1'].value_counts()
+        top_emotions_detailed = []
+        for emotion, count in emotion_counts.head(5).items():
+            pct = (count / total_posts) * 100
+            top_emotions_detailed.append({
+                'emotion': emotion,
+                'count': count,
+                'percentage': round(pct, 1)
+            })
+        results['top_emotions_detailed'] = top_emotions_detailed
+        
+        # Emotion insight
+        if top_emotions_detailed:
+            dominant = top_emotions_detailed[0]
+            results['emotion_insight'] = f"The dominant emotional tone is {dominant['emotion']} ({dominant['percentage']}% of coverage)"
+    
+    results['total_posts'] = total_posts
+    
+    return results
+
+# -------------------------------
 # UI
 # -------------------------------
 st.title("Moodlight")
 st.caption("Real-time global news and culture analysis, prediction, and actionable intelligence")
+
+from openai import OpenAI
+from dotenv import load_dotenv
+import os
+import csv
+
+load_dotenv()
+
+def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> str:
+    """Generate strategic campaign brief using AI and Moodlight data"""
+    
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
+    top_topics = df['topic'].value_counts().head(5).to_string() if 'topic' in df.columns else "No topic data"
+    empathy_dist = df['empathy_label'].value_counts().to_string() if 'empathy_label' in df.columns else "No empathy data"
+    top_emotions = df['emotion_top_1'].value_counts().head(5).to_string() if 'emotion_top_1' in df.columns else "No emotion data"
+    geo_dist = df['country'].value_counts().head(5).to_string() if 'country' in df.columns else "No geographic data"
+    
+    try:
+        velocity_df = pd.read_csv('topic_longevity.csv')
+        velocity_data = velocity_df[['topic', 'velocity_score', 'longevity_score']].head(5).to_string()
+    except:
+        velocity_data = "No velocity/longevity data available"
+    
+    try:
+        density_df = pd.read_csv('topic_density.csv')
+        density_data = density_df.head(5).to_string()
+    except:
+        density_data = "No density data available"
+    
+    try:
+        scarcity_df = pd.read_csv('topic_scarcity.csv')
+        scarcity_data = scarcity_df.head(5).to_string()
+    except:
+        scarcity_data = "No scarcity data available"
+    
+    context = f"""
+MOODLIGHT INTELLIGENCE SNAPSHOT
+================================
+TOP TOPICS:
+{top_topics}
+
+EMOTIONAL CLIMATE:
+{top_emotions}
+
+EMPATHY DISTRIBUTION:
+{empathy_dist}
+
+GEOGRAPHIC HOTSPOTS:
+{geo_dist}
+
+VELOCITY & LONGEVITY (Which topics are rising fast vs. enduring):
+{velocity_data}
+
+DENSITY (Topic saturation - high means crowded, low means opportunity):
+{density_data}
+
+SCARCITY (Underserved topics - high scarcity = white space opportunity):
+{scarcity_data}
+
+Total Posts Analyzed: {len(df)}
+"""
+    
+    prompt = f"""You are a world-class strategist at a top advertising agency, known for campaigns that drive culture.
+
+A client has come to you with this request:
+"{user_need}"
+
+Based on the following real-time intelligence data from Moodlight (which tracks empathy, emotions, trends, and strategic metrics across news and social media), create a strategic brief.
+
+{context}
+
+KEY METRICS TO CONSIDER:
+- VELOCITY: How fast a topic is accelerating (high = trending now)
+- LONGEVITY: How long a topic sustains interest (high = lasting movement)
+- DENSITY: How saturated/crowded a topic is (high = hard to break through)
+- SCARCITY: How underserved a topic is (high = white space opportunity)
+
+Create a brief with exactly these three sections:
+
+STRATEGY RECOMMENDATION:
+[Tell a story about the current cultural moment. What's the mood? What are people feeling? How does this connect to the client's goal? Reference specific data points (emotions, empathy levels, velocity/scarcity signals). Write this as a narrative, not bullet points. 150 words max.]
+
+MEDIA RECOMMENDATION:
+[Based on the data, where should they focus? Which platforms, channels, or moments? Consider velocity (what's rising) and density (what's crowded). Be specific. 100 words max.]
+
+CREATIVE RECOMMENDATION:
+[What angles, tones, or hooks would resonate right now based on the emotional climate? Use scarcity signals to find white space. What should they avoid based on density? 100 words max.]
+
+Be bold, specific, and actionable. Reference the actual data when making recommendations.
+
+INDUSTRY-SPECIFIC CONSIDERATIONS:
+If the request involves healthcare, pharma, medical devices, or health systems:
+- Flag any emotional tones (fear, anxiety, urgency) that may face Medical Legal Review (MLR) scrutiny
+- Prioritize "safe white space" — scarcity topics that are culturally appropriate AND unlikely to trigger regulatory concerns
+- Recommend messaging that builds trust and credibility over provocative hooks
+- Note any velocity spikes that could indicate emerging issues requiring compliance awareness
+- Frame recommendations as "MLR-friendly" where appropriate
+
+For all industries: Consider regulatory and reputational risk when recommending bold creative angles.
+"""
+    
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are a senior strategist who combines data intelligence with creative intuition. You speak plainly and give bold recommendations."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.7,
+        max_tokens=800
+    )
+    
+    return response.choices[0].message.content
+
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFrame) -> str:
+    """Generate dynamic explanation for chart insights using AI"""
+    
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
+    # Get sample headlines for context
+    sample_headlines = ""
+    if 'text' in df.columns:
+        sample_headlines = "\n".join(df['text'].head(20).tolist())
+    
+    prompts = {
+        "empathy_by_topic": f"""Based on this empathy-by-topic data and recent headlines, explain in 2-3 sentences why certain topics score higher/lower on empathy.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+Be specific about what's driving the scores. Mention actual events or themes from the headlines. Keep it insightful and actionable.""",
+
+        "emotional_breakdown": f"""Based on this emotional distribution data and recent headlines, explain in 2-3 sentences why certain emotions dominate.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+Reference specific events driving fear, joy, anger, etc. Keep it insightful.""",
+
+        "empathy_distribution": f"""Based on this empathy distribution and recent headlines, explain in 2-3 sentences why the sentiment skews this way.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+What's driving warm vs cold coverage? Be specific.""",
+
+        "topic_distribution": f"""Based on this topic distribution and recent headlines, explain in 2-3 sentences why certain topics dominate the news cycle.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+What events or trends are driving topic volume? Be specific.""",
+
+        "geographic_hotspots": f"""Based on this geographic intensity data and recent headlines, explain why the TOP-RANKED countries (highest intensity first) show elevated threat levels.
+
+Data (sorted by intensity, highest first): {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+IMPORTANT: Start with the #1 highest intensity country, then #2, then #3. Explain what specific events or crises are driving their scores. Be specific about actual events."""
+    }
+    
+    prompt = prompts.get(chart_type, "Explain this data pattern in 2-3 sentences.")
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a senior intelligence analyst. Give concise, specific insights based on actual data and headlines. No fluff."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.5,
+            max_tokens=800
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Unable to generate insight: {str(e)}"
+
+def save_lead(email: str, need: str):
+    """Save lead to CSV"""
+    file_exists = os.path.isfile('leads.csv')
+    
+    with open('leads.csv', 'a', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(['timestamp', 'email', 'need'])
+        writer.writerow([datetime.now(timezone.utc).isoformat(), email, need])
+
+def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str) -> bool:
+    """Send strategic brief via email"""
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    sender = os.getenv("EMAIL_ADDRESS")
+    password = os.getenv("EMAIL_PASSWORD")
+    
+    if not all([sender, password]):
+        return False
+    
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = f'Your Moodlight Strategic Brief'
+    msg['From'] = sender
+    msg['To'] = recipient_email
+    
+    html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #6B46C1;">🎯 Your Strategic Brief</h1>
+        <p style="color: #666; font-size: 14px;"><strong>Your request:</strong> "{user_need}"</p>
+        <hr style="border: 1px solid #eee;">
+        <pre style="white-space: pre-wrap; font-family: Georgia, serif; font-size: 15px; line-height: 1.6;">
+{brief}
+        </pre>
+        <hr style="border: 1px solid #eee;">
+        <p style="color: #666; font-size: 12px;">
+          Generated by <strong>Moodlight Intelligence</strong><br>
+          Empathy Analytics for the Age of Connection<br>
+          {datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC")}
+        </p>
+      </body>
+    </html>
+    """
+    
+    msg.attach(MIMEText(html, 'html'))
+    
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(sender, password)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        print(f"Email failed: {e}")
+        return False
 
 with st.sidebar:
     st.header("Controls")
@@ -313,10 +708,22 @@ with st.sidebar:
         help="Leave empty for default.",
     )
     brand_focus = st.checkbox(
-    "Brand Focus Mode",
-    value=False,
-    help="When enabled, shows only posts matching your search query"
+        "Brand Focus Mode",
+        value=False,
+        help="When enabled, shows only posts matching your search query"
     )
+    
+    compare_mode = st.checkbox(
+        "Compare Brands",
+        value=False,
+        help="Compare VLDS metrics across 2-3 brands side by side"
+    )
+    
+    if compare_mode:
+        st.caption("Enter 2-3 brands to compare:")
+        compare_brand_1 = st.text_input("Brand 1", placeholder="e.g. Nike")
+        compare_brand_2 = st.text_input("Brand 2", placeholder="e.g. Adidas")
+        compare_brand_3 = st.text_input("Brand 3 (optional)", placeholder="e.g. Puma")
 
     if st.button("Refresh"):
         with st.spinner("Fetching & scoring..."):
@@ -327,9 +734,67 @@ with st.sidebar:
             else:
                 st.error(msg)
         st.rerun()
+    
+    st.markdown("---")
+    
+    st.header("🎯 Strategic Brief")
+    st.caption("The more detail you provide, the better your brief")
+    
+    brief_product = st.text_input(
+        "Product / Service",
+        help='e.g. "premium running shoe for women"'
+    )
+    
+    brief_audience = st.text_input(
+        "Target Audience",
+        help='e.g. "women 25-40, urban, health-conscious"'
+    )
+    
+    brief_markets = st.text_input(
+        "Markets / Geography",
+        help='e.g. "US, UK, Canada"'
+    )
+    
+    brief_challenge = st.text_input(
+        "Key Challenge",
+        help='e.g. "competing against On and Hoka"'
+    )
+    
+    brief_timeline = st.text_input(
+        "Timeline / Budget",
+        help='e.g. "Q1 2025, $2M digital"'
+    )
+    
+    # Combine into user_need
+    user_need_parts = []
+    if brief_product.strip():
+        user_need_parts.append(f"launch/promote {brief_product.strip()}")
+    if brief_audience.strip():
+        user_need_parts.append(f"targeting {brief_audience.strip()}")
+    if brief_markets.strip():
+        user_need_parts.append(f"in {brief_markets.strip()}")
+    if brief_challenge.strip():
+        user_need_parts.append(f"with the challenge of {brief_challenge.strip()}")
+    if brief_timeline.strip():
+        user_need_parts.append(f"timeline/budget: {brief_timeline.strip()}")
+    
+    user_need = ", ".join(user_need_parts) if user_need_parts else ""
+
+    
+    if brief_product.strip():
+        user_email = st.text_input(
+            "Your email (to receive brief)",
+            placeholder="you@company.com"
+        )
+        
+        if user_email.strip() and st.button("Generate Brief"):
+            st.session_state['generate_brief'] = True
+            st.session_state['user_need'] = user_need.strip()
+            st.session_state['user_email'] = user_email.strip()
 
 # Load all data once
 df_all = load_data()
+st.sidebar.caption(f"Data: {len(df_all)} rows, latest: {df_all['created_at'].max() if 'created_at' in df_all.columns else 'N/A'}")
 
 if brand_focus and custom_query.strip():
     search_term = custom_query.strip().lower()
@@ -338,17 +803,11 @@ if brand_focus and custom_query.strip():
         st.warning(f"No posts found matching '{custom_query}'. Try refreshing data or a different search term.")
         st.stop()
     st.info(f"🎯 Brand Focus Mode: Showing {len(df_all)} posts about '{custom_query}'")
-    
-    if df_all.empty:
-        st.error("No data available. Click 'Refresh' to fetch data.")
-        st.stop()
 
-# Create 48-hour filtered dataset
+# Create filtered dataset
 if "created_at" in df_all.columns:
-    df_all["created_at"] = pd.to_datetime(df_all["created_at"], errors="coerce", utc=True)
-    df_all = df_all.dropna(subset=["created_at"])
-    cutoff_48h = datetime.now(timezone.utc) - timedelta(days=3)
-    df_48h = df_all[df_all["created_at"] >= cutoff_48h].copy()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=FILTER_DAYS)
+    df_48h = df_all[df_all["created_at"] >= cutoff].copy()
 else:
     df_48h = df_all.copy()
 
@@ -361,14 +820,10 @@ world_score, world_label, world_emoji = compute_world_mood(df_48h)
 
 def create_intensity_gauge(df: pd.DataFrame, avg_intensity: float):
     """Create vertical thermometer showing global threat intensity"""
-    import altair as alt
-    import streamlit as st
     
     try:
-        # Ensure it's a valid float
         avg_intensity = float(avg_intensity) if not pd.isna(avg_intensity) else 0.0
         
-        # Create zones dataframe
         zones = pd.DataFrame({
             'zone': ['Low', 'Moderate', 'Elevated', 'Critical'],
             'min': [0.0, 1.5, 2.5, 3.5],
@@ -376,7 +831,6 @@ def create_intensity_gauge(df: pd.DataFrame, avg_intensity: float):
             'color': ['#90EE90', '#FFFF00', '#FFA500', '#FF0000']
         })
         
-        # Determine current zone
         if avg_intensity < 1.5:
             current_zone = 'Low'
         elif avg_intensity < 2.5:
@@ -386,7 +840,6 @@ def create_intensity_gauge(df: pd.DataFrame, avg_intensity: float):
         else:
             current_zone = 'Critical'
         
-        # Create vertical bar with zones
         base = alt.Chart(zones).mark_bar(size=80).encode(
             y=alt.Y('min:Q', title='Threat Level (0-5)', scale=alt.Scale(domain=[0, 5])),
             y2='max:Q',
@@ -394,21 +847,19 @@ def create_intensity_gauge(df: pd.DataFrame, avg_intensity: float):
             tooltip=['zone:N']
         )
         
-        # Add current level marker
         current_data = pd.DataFrame({'value': [float(avg_intensity)]})
         marker = alt.Chart(current_data).mark_rule(
                 color='black',
-                strokeWidth=2  # Change from 4 to 2
+                strokeWidth=2
             ).encode(
                 y='value:Q',
                 tooltip=[alt.Tooltip('value:Q', title='Current Level', format='.2f')]
             )
         
-        # Add text label
         text = alt.Chart(current_data).mark_text(
             align='left',
             dx=45,
-            dy=-10,  # ADD THIS - moves text UP 10 pixels
+            dy=-10,
             fontSize=16,
             fontWeight='bold',
             color='black'
@@ -427,15 +878,13 @@ def create_intensity_gauge(df: pd.DataFrame, avg_intensity: float):
         
     except Exception as e:
         st.error(f"Chart error: {str(e)}")
-        # Return simple text display as fallback
         st.markdown(f"### {avg_intensity:.2f} / 5.0")
         return None
 
 def create_geographic_hotspot_map(df: pd.DataFrame):
     """Create map showing countries by threat intensity"""
-    import altair as alt
     
-    cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(hours=48)
+    cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=FILTER_DAYS)
     recent = df[df['created_at'] >= cutoff].copy()
     
     country_stats = recent.groupby('country').agg({
@@ -469,7 +918,6 @@ def create_geographic_hotspot_map(df: pd.DataFrame):
 
 def create_ic_topic_breakdown(df: pd.DataFrame):
     """Create breakdown of IC-level intelligence topics"""
-    import altair as alt
     
     cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=7)
     recent = df[df['created_at'] >= cutoff].copy()
@@ -496,7 +944,6 @@ def create_ic_topic_breakdown(df: pd.DataFrame):
 
 def create_trend_indicators(df: pd.DataFrame):
     """Show which topics are trending up/down"""
-    import altair as alt
     from collections import Counter
     
     now = pd.Timestamp.now(tz='UTC')
@@ -507,81 +954,7 @@ def create_trend_indicators(df: pd.DataFrame):
     prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
     
     if len(recent_df) == 0:
-        recent_start = now - pd.Timedelta(days=3)
-        prev_start = now - pd.Timedelta(days=7)
-        recent_df = df[df['created_at'] >= recent_start]
-        prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
-    
-    recent_topics = Counter(recent_df['topic'])
-    prev_topics = Counter(prev_df['topic'])
-    
-    trends = []
-    for topic in recent_topics:
-        recent_count = recent_topics[topic]
-        prev_count = prev_topics.get(topic, 1)
-        change_pct = ((recent_count - prev_count) / prev_count) * 100
-        
-        trends.append({
-            'topic': topic,
-            'change_pct': round(change_pct, 1),
-            'recent': recent_count
-        })
-    
-    trends_df = pd.DataFrame(sorted(trends, key=lambda x: abs(x['change_pct']), reverse=True)[:15])
-    
-    chart = (
-        alt.Chart(trends_df)
-        .mark_bar()
-        .encode(
-            y=alt.Y('topic:N', sort='-x', title='Topic'),
-            x=alt.X('change_pct:Q', title='% Change'),
-            color=alt.condition(
-                alt.datum.change_pct > 0,
-                alt.value('green'),
-                alt.value('red')
-            ),
-            tooltip=[
-                alt.Tooltip('topic:N', title='Topic'),
-                alt.Tooltip('change_pct:Q', title='Change %', format='+.1f'),
-                alt.Tooltip('recent:Q', title='Recent Count')
-            ]
-        )
-        .properties(title='Topic Trends (24h % change)', height=500)
-    )
-    
-    return chart
-
-    chart = (
-        alt.Chart(topic_counts)
-        .mark_bar()
-        .encode(
-            y=alt.Y('topic:N', sort='-x', title='Intelligence Category'),
-            x=alt.X('count:Q', title='Article Count'),
-            color=alt.value('#1f77b4'),
-            tooltip=[
-                alt.Tooltip('topic:N', title='Topic'),
-                alt.Tooltip('count:Q', title='Articles')
-            ]
-        )
-        .properties(title='Intelligence Topic Distribution (Last 7 Days)', height=600)
-    )
-    
-    return chart
-
-def create_trend_indicators(df: pd.DataFrame):
-    """Show which topics are trending up/down"""
-    import altair as alt
-    from collections import Counter
-    
-    now = pd.Timestamp.now(tz='UTC')
-    recent_start = now - pd.Timedelta(hours=24)
-    prev_start = now - pd.Timedelta(hours=48)
-    
-    recent_df = df[df['created_at'] >= recent_start]
-    prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
-    
-    if len(recent_df) == 0:
-        recent_start = now - pd.Timedelta(days=3)
+        recent_start = now - pd.Timedelta(days=FILTER_DAYS)
         prev_start = now - pd.Timedelta(days=7)
         recent_df = df[df['created_at'] >= recent_start]
         prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
@@ -671,7 +1044,6 @@ if not df_markets.empty and "market_sentiment" in df_markets.columns:
         st.markdown(f"**{market_label}**")
         st.caption(f"Based on {len(df_markets)} global indices")
     
-    # Show individual indices
     st.markdown("#### Global Markets")
     cols = st.columns(4)
     for idx, (_, row) in enumerate(df_markets.iterrows()):
@@ -689,11 +1061,27 @@ st.markdown("---")
 # MOOD VS MARKET COMPARISON
 # ========================================
 st.markdown("## Mood vs Market: Leading Indicators")
-st.caption("Track how social sentiment compares to market performance over time")
 
-# Check if we have enough historical data
+# Check if brand focus is active and search for ticker
+brand_ticker = None
+brand_stock_data = None
+market_label_name = "Market Index"
+
+if brand_focus and custom_query.strip():
+    brand_ticker = search_ticker(custom_query.strip())
+    if brand_ticker:
+        brand_stock_data = fetch_stock_data(brand_ticker)
+        if brand_stock_data:
+            market_label_name = f"{brand_ticker} Stock Sentiment"
+            st.caption(f"Comparing social sentiment for '{custom_query}' vs {brand_ticker} stock performance")
+        else:
+            st.caption(f"No stock data for '{custom_query}' — showing general market index")
+    else:
+        st.caption(f"'{custom_query}' not publicly traded — showing general market index")
+else:
+    st.caption("Track how social sentiment compares to market performance over time")
+
 if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not df_markets.empty:
-    # Calculate daily social mood for last 7 days
     now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
     
@@ -704,7 +1092,6 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
     if len(df_hist) > 0:
         df_hist["date"] = df_hist["created_at"].dt.date
         
-        # Daily average social mood
         daily_social = (
             df_hist.groupby("date")["empathy_score"]
             .mean()
@@ -714,23 +1101,26 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
         daily_social["social_mood"] = (daily_social["social_mood"] * 100).round().astype(int)
         daily_social["type"] = "Social Mood"
         
-        # Get market sentiment (currently just today's value, will build history over time)
-        market_value = int(round(df_markets["market_sentiment"].iloc[0] * 100))
+        # Use brand stock or fallback to market index
+        if brand_stock_data:
+            # Convert stock change to 0-100 scale (50 = neutral, +/-50 for change)
+            stock_change = brand_stock_data.get("change_percent", 0)
+            market_value = int(50 + (stock_change * 5))  # Scale: 1% change = 5 points
+            market_value = max(0, min(100, market_value))  # Clamp to 0-100
+        else:
+            market_value = int(round(df_markets["market_sentiment"].iloc[0] * 100))
         
-    # Create market reference line (horizontal)
         market_line = pd.DataFrame({
             "date": daily_social["date"].tolist(),
             "score": [market_value] * len(daily_social),
-            "metric": ["Market Mood"] * len(daily_social)
+            "metric": [market_label_name] * len(daily_social)
         })
 
-        # Combine data
         combined = pd.concat([
             daily_social.rename(columns={'social_mood': 'score'}).assign(metric='Social Mood'),
             market_line
         ])
 
-        # Create comparison chart
         comparison_chart = (
             alt.Chart(combined)
             .mark_line(point=True, strokeWidth=3)
@@ -739,7 +1129,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
                 y=alt.Y("score:Q", title="Sentiment Score (0-100)", scale=alt.Scale(domain=[0, 100])),
                 color=alt.Color("metric:N", 
                               title="Sentiment Type",
-                              scale=alt.Scale(domain=['Social Mood', 'Market Mood'],
+                              scale=alt.Scale(domain=['Social Mood', market_label_name],
                                             range=['#1f77b4', '#2E7D32'])),
                 tooltip=[
                     alt.Tooltip("date:T", format="%B %d, %Y"),
@@ -753,7 +1143,6 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
         
         st.altair_chart(comparison_chart, use_container_width=True)
         
-        # Show divergence analysis
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -761,8 +1150,10 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             st.metric("Latest Social Mood", latest_social)
         
         with col2:
-            st.metric("Latest Market Mood", market_value)
-        
+            st.metric(f"Latest {market_label_name}", market_value)
+            if brand_stock_data:
+                st.caption("📈 Scale: 50=neutral, +5pts per 1% stock change")
+
         with col3:
             divergence = abs(latest_social - market_value)
             if divergence > 20:
@@ -791,7 +1182,6 @@ st.markdown("## Detailed Analysis (Last 48 Hours)")
 
 df_filtered = df_48h.copy()
 
-# Filters
 if "topic" in df_filtered.columns:
     topics = sorted(df_filtered["topic"].dropna().unique())
     sel_topics = st.sidebar.multiselect("Filter by topic", topics, default=topics)
@@ -808,14 +1198,12 @@ search = st.sidebar.text_input("Search in text")
 if search:
     df_filtered = df_filtered[df_filtered["text"].str.contains(search, case=False, na=False)]
 
-# Show source breakdown
 st.markdown(f"**Filtered posts:** {len(df_filtered)}")
 
 if "empathy_score" in df_filtered.columns and len(df_filtered):
     avg = df_filtered["empathy_score"].mean()
     st.metric("Average empathy (filtered)", empathy_label_from_score(avg) or "N/A", f"{avg:.3f}")
 
-# Average Empathy by Topic
 if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and len(df_filtered):
     st.markdown("### Average Empathy by Topic")
     topic_avg = (
@@ -825,35 +1213,36 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
         .rename(columns={'mean': 'avg_empathy'})
     )
     topic_avg = topic_avg[topic_avg['count'] >= 2]
+    topic_avg = topic_avg[~topic_avg['topic'].isin(['race & ethnicity', 'gender & sexuality'])]
     topic_avg["label"] = topic_avg["avg_empathy"].apply(empathy_label_from_score)
     topic_avg["idx"] = topic_avg["label"].apply(empathy_index_from_label)
     topic_avg = topic_avg.dropna(subset=["idx"])
 
     if len(topic_avg):
         chart = (
-    alt.Chart(topic_avg)
-    .mark_bar()
-    .encode(
-        y=alt.Y("topic:N", sort="-x", title="Topic"),
-        x=alt.X("idx:Q", title="Empathy Level", scale=alt.Scale(domain=[0, 3]),
-                axis=alt.Axis(values=[0,1,2,3],
-                              labelExpr='["🥶 Cold","😐 Neutral","🙂 Warm","❤️ Empathetic"][datum.value]')),
-        color=alt.Color("label:N", 
-                      scale=alt.Scale(domain=EMPATHY_LEVELS),
-                      legend=alt.Legend(
-                          symbolType="square",
-                          labelExpr='{"Cold / Hostile": "🥶 Cold / Hostile", "Detached / Neutral": "😐 Detached / Neutral", "Warm / Supportive": "🙂 Warm / Supportive", "Highly Empathetic": "❤️ Highly Empathetic"}[datum.label]'
-                      )),
-        tooltip=[
-            "topic", 
-            "label", 
-            alt.Tooltip("avg_empathy", format=".3f", title="Score"),
-            alt.Tooltip("count", title="Posts")
-        ]
-    )
-)
+            alt.Chart(topic_avg)
+            .mark_bar()
+            .encode(
+                y=alt.Y("topic:N", sort="-x", title="Topic"),
+                x=alt.X("idx:Q", title="Empathy Level", scale=alt.Scale(domain=[0, 3]),
+                        axis=alt.Axis(values=[0,1,2,3],
+                                      labelExpr='["🥶 Cold","😐 Neutral","🙂 Warm","❤️ Empathetic"][datum.value]')),
+                color=alt.Color("label:N", 
+                              scale=alt.Scale(domain=EMPATHY_LEVELS),
+                              legend=alt.Legend(
+                                  symbolType="square",
+                                  labelExpr='{"Cold / Hostile": "🥶 Cold / Hostile", "Detached / Neutral": "😐 Detached / Neutral", "Warm / Supportive": "🙂 Warm / Supportive", "Highly Empathetic": "❤️ Highly Empathetic"}[datum.label]'
+                              )),
+                tooltip=[
+                    "topic", 
+                    "label", 
+                    alt.Tooltip("avg_empathy", format=".3f", title="Score"),
+                    alt.Tooltip("count", title="Posts")
+                ]
+            )
+        )
         st.altair_chart(chart, use_container_width=True)
-    # Show topic insights
+        
     st.markdown("#### Topic Insights")
     col1, col2 = st.columns(2)
 
@@ -868,6 +1257,13 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
         bottom_empathetic = topic_avg.nsmallest(3, 'avg_empathy')
         for _, row in bottom_empathetic.iterrows():
             st.caption(f"• **{row['topic']}** - {row['label']} ({row['avg_empathy']:.2f})")
+
+    # Click-to-reveal AI explanation
+    if st.button("🔍 Why these scores?", key="explain_empathy_topic"):
+        with st.spinner("Analyzing patterns..."):
+            data_summary = topic_avg[['topic', 'avg_empathy', 'label', 'count']].to_string()
+            explanation = generate_chart_explanation("empathy_by_topic", data_summary, df_filtered)
+            st.info(f"📊 **Insight:** {explanation}")
 
     st.markdown("---")
 
@@ -884,7 +1280,6 @@ if "emotion_top_1" in df_filtered.columns and len(df_filtered):
         chart_df = emotion_counts.reset_index()
         chart_df.columns = ["emotion", "posts"]
         
-        # Define emotion colors
         emotion_colors = {
             "joy": "#FFD700",
             "sadness": "#4682B4", 
@@ -910,7 +1305,6 @@ if "emotion_top_1" in df_filtered.columns and len(df_filtered):
         )
         st.altair_chart(chart, use_container_width=True)
         
-        # Show percentages
         col1, col2, col3 = st.columns(3)
         total = emotion_counts.sum()
         top3 = emotion_counts.head(3)
@@ -919,7 +1313,14 @@ if "emotion_top_1" in df_filtered.columns and len(df_filtered):
             with col:
                 pct = (count / total * 100)
                 st.metric(f"{emotion.title()}", f"{pct:.1f}%", f"{count} posts")
-                        
+                                   
+        # Click-to-reveal AI explanation
+        if st.button("🔍 Why these emotions?", key="explain_emotions"):
+            with st.spinner("Analyzing patterns..."):
+                data_summary = chart_df.to_string()
+                explanation = generate_chart_explanation("emotional_breakdown", data_summary, df_filtered)
+                st.info(f"📊 **Insight:** {explanation}")
+
         st.markdown("---")
 
 # ========================================
@@ -943,7 +1344,6 @@ if "empathy_label" in df_filtered.columns and len(df_filtered):
     )
     st.altair_chart(chart, use_container_width=True)
 
-    # Show percentages for top 3 empathy levels
     col1, col2, col3 = st.columns(3)
     total = counts.sum()
     top3 = counts.nlargest(3)
@@ -953,6 +1353,13 @@ if "empathy_label" in df_filtered.columns and len(df_filtered):
             with col:
                 pct = (count / total * 100)
                 st.metric(label, f"{pct:.1f}%", f"{count} posts")
+
+    # Click-to-reveal AI explanation
+    if st.button("🔍 Why this distribution?", key="explain_empathy_dist"):
+        with st.spinner("Analyzing patterns..."):
+            data_summary = chart_df.to_string()
+            explanation = generate_chart_explanation("empathy_distribution", data_summary, df_filtered)
+            st.info(f"📊 **Insight:** {explanation}")
 
     st.markdown("---")
 
@@ -976,7 +1383,6 @@ if "topic" in df_filtered.columns and len(df_filtered):
     )
     st.altair_chart(chart, use_container_width=True)
     
-    # Show top topics
     if len(counts) > 0:
         st.markdown("#### Top Discussed Topics")
         col1, col2, col3 = st.columns(3)
@@ -988,6 +1394,13 @@ if "topic" in df_filtered.columns and len(df_filtered):
                 pct = (count / counts.sum() * 100)
                 st.metric(f"{rank} {topic}", f"{pct:.1f}%", f"{count} posts")
 
+    # Click-to-reveal AI explanation
+    if st.button("🔍 Why these topics?", key="explain_topic_dist"):
+        with st.spinner("Analyzing patterns..."):
+            data_summary = chart_df.to_string()
+            explanation = generate_chart_explanation("topic_distribution", data_summary, df_filtered)
+            st.info(f"📊 **Insight:** {explanation}")
+
     st.markdown("---")
 
 # ========================================
@@ -997,9 +1410,8 @@ st.markdown("### Trending Headlines")
 st.caption("Posts with highest engagement plotted by empathy vs. time")
 
 if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_all) > 0:
-    df_trending = df_all.nlargest(30, "engagement").copy()
     now = datetime.now(timezone.utc)
-    three_days_ago = now - timedelta(days=3)
+    three_days_ago = now - timedelta(days=FILTER_DAYS)
     df_trending = df_all[df_all["created_at"] >= three_days_ago].nlargest(30, "engagement").copy()
     df_trending["hours_ago"] = (now - df_trending["created_at"]).dt.total_seconds() / 3600
 
@@ -1024,30 +1436,30 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
     )
     st.altair_chart(trending_chart, use_container_width=True)
     
-    # Show headline insights
     st.markdown("#### Headline Insights")
-    col1, col2, col3 = st.columns(3)
     
-    with col1:
-        st.markdown("**📈 Highest Engagement**")
-        top_post = df_trending.nlargest(1, 'engagement').iloc[0]
-        st.caption(f"**{top_post['source_display']}** ({top_post['engagement']:,.0f} engagements)")
-        st.caption(f"_{top_post['text'][:100]}..._")
-    
-    with col2:
-        st.markdown("**❤️ Most Empathetic Viral Post**")
-        top_empathy = df_trending.nlargest(1, 'empathy_score').iloc[0]
-        st.caption(f"**{top_empathy['source_display']}** (Score: {top_empathy['empathy_score']:.2f})")
-        st.caption(f"_{top_empathy['text'][:100]}..._")
-    
-    with col3:
-        st.markdown("**🥶 Least Empathetic Viral Post**")
-        bottom_empathy = df_trending.nsmallest(1, 'empathy_score').iloc[0]
-        st.caption(f"**{bottom_empathy['source_display']}** (Score: {bottom_empathy['empathy_score']:.2f})")
-        st.caption(f"_{bottom_empathy['text'][:100]}..._")
-
-else:
-    st.info("No engagement data available yet.")
+    if not df_trending.empty:
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("**📈 Highest Engagement**")
+            top_post = df_trending.nlargest(1, 'engagement').iloc[0]
+            st.caption(f"**{top_post['source_display']}** ({top_post['engagement']:,.0f} engagements)")
+            st.caption(f"_{top_post['text'][:100]}..._")
+        
+        with col2:
+            st.markdown("**❤️ Most Empathetic Viral Post**")
+            top_empathy = df_trending.nlargest(1, 'empathy_score').iloc[0]
+            st.caption(f"**{top_empathy['source_display']}** (Score: {top_empathy['empathy_score']:.2f})")
+            st.caption(f"_{top_empathy['text'][:100]}..._")
+        
+        with col3:
+            st.markdown("**🥶 Least Empathetic Viral Post**")
+            bottom_empathy = df_trending.nsmallest(1, 'empathy_score').iloc[0]
+            st.caption(f"**{bottom_empathy['source_display']}** (Score: {bottom_empathy['empathy_score']:.2f})")
+            st.caption(f"_{bottom_empathy['text'][:100]}..._")
+    else:
+        st.info("No headline insights available yet.")
 
 st.markdown("---")
 
@@ -1058,7 +1470,7 @@ st.markdown("### Virality × Empathy: Posts with Viral Potential")
 st.caption("High-engagement posts from last 3 days - bigger bubbles = higher engagement")
 
 if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_all) > 0:
-    three_days_ago = datetime.now(timezone.utc) - timedelta(days=3)
+    three_days_ago = datetime.now(timezone.utc) - timedelta(days=FILTER_DAYS)
     vdf = df_all[df_all["created_at"] >= three_days_ago].copy()
     
     now = datetime.now(timezone.utc)
@@ -1067,10 +1479,9 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
     vdf["virality"] = vdf["engagement"] / vdf["age_hours"]
     
     if len(vdf) > 10:
-        virality_threshold = vdf["virality"].quantile(0.3)  # Top 70%
-        engagement_threshold = vdf["engagement"].quantile(0.3)  # Top 70%
+        virality_threshold = vdf["virality"].quantile(0.3)
+        engagement_threshold = vdf["engagement"].quantile(0.3)
         vdf_high = vdf[(vdf["virality"] > virality_threshold) | (vdf["engagement"] > engagement_threshold)]
-
     else:
         vdf_high = vdf
 
@@ -1099,7 +1510,6 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
         )
         st.altair_chart(virality_chart, use_container_width=True)
         
-        # Show virality insights
         st.markdown("#### Virality Insights")
         col1, col2, col3 = st.columns(3)
         
@@ -1111,7 +1521,6 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
         
         with col2:
             st.markdown("**❤️ Most Engaging Empathetic**")
-            # Filter for empathetic posts (score > 0.6)
             empathetic = vdf_high[vdf_high['empathy_score'] > 0.6]
             if len(empathetic) > 0:
                 top_emp = empathetic.nlargest(1, 'engagement').iloc[0]
@@ -1122,7 +1531,6 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
         
         with col3:
             st.markdown("**🥶 Most Engaging Hostile**")
-            # Filter for hostile posts (score < 0.4)
             hostile = vdf_high[vdf_high['empathy_score'] < 0.4]
             if len(hostile) > 0:
                 top_host = hostile.nlargest(1, 'engagement').iloc[0]
@@ -1146,14 +1554,16 @@ st.markdown("---")
 st.markdown("### Velocity × Longevity: Topic Strategic Value")
 st.caption("Understand which topics are lasting movements vs. fleeting trends")
 
-# Load longevity data
 try:
     longevity_df = pd.read_csv('topic_longevity.csv')
     
-    # Normalize velocity for better visualization (log scale)
-    longevity_df['velocity_norm'] = longevity_df['velocity_score'] / longevity_df['velocity_score'].max()
+    max_velocity = longevity_df['velocity_score'].max()
+    max_longevity = longevity_df['longevity_score'].max()
+    if max_velocity > 0:
+        longevity_df['velocity_norm'] = longevity_df['velocity_score'] / max_velocity
+    else:
+        longevity_df['velocity_norm'] = 0
     
-    # Create quadrants
     velocity_median = longevity_df['velocity_norm'].median()
     longevity_median = longevity_df['longevity_score'].median()
     
@@ -1169,7 +1579,6 @@ try:
     
     longevity_df['quadrant'] = longevity_df.apply(get_quadrant, axis=1)
     
-    # Create chart
     quad_chart = (
         alt.Chart(longevity_df)
         .mark_circle(size=200, opacity=0.7)
@@ -1196,7 +1605,6 @@ try:
     
     st.altair_chart(quad_chart, use_container_width=True)
     
-    # Show quadrant breakdown
     st.markdown("#### Strategic Breakdown:")
     cols = st.columns(4)
     for i, (quad, emoji) in enumerate([
@@ -1224,7 +1632,6 @@ st.caption("Understand geographic, platform, and conversation depth")
 try:
     density_df = pd.read_csv('topic_density.csv')
     
-    # Create density visualization
     density_chart = (
         alt.Chart(density_df)
         .mark_bar()
@@ -1248,7 +1655,6 @@ try:
     
     st.altair_chart(density_chart, use_container_width=True)
     
-    # Show density insights
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -1283,7 +1689,6 @@ st.caption("Discover underserved topics where brands can establish thought leade
 try:
     scarcity_df = pd.read_csv('topic_scarcity.csv')
     
-    # Create scarcity chart
     scarcity_chart = (
         alt.Chart(scarcity_df)
         .mark_bar()
@@ -1308,7 +1713,6 @@ try:
     
     st.altair_chart(scarcity_chart, use_container_width=True)
     
-    # Strategic insights
     st.markdown("#### Strategic Opportunities")
     
     col1, col2 = st.columns(2)
@@ -1328,13 +1732,173 @@ try:
         else:
             st.caption("No saturated topics found")
     
-    # Key insight
     st.info(f"Insight: {len(scarcity_df[scarcity_df['opportunity'] == 'HIGH'])} topics have HIGH scarcity - white space opportunities for thought leadership.")
 
 except FileNotFoundError:
     st.info("Run calculate_scarcity.py to generate scarcity analysis")
 
 st.markdown("---")
+
+# ========================================
+# COMPARE BRANDS MODE
+# ========================================
+if compare_mode:
+    brands_to_compare = []
+    if compare_brand_1.strip():
+        brands_to_compare.append(compare_brand_1.strip())
+    if compare_brand_2.strip():
+        brands_to_compare.append(compare_brand_2.strip())
+    if compare_brand_3.strip():
+        brands_to_compare.append(compare_brand_3.strip())
+    
+    if len(brands_to_compare) >= 2:
+        st.markdown("## 🆚 Brand Comparison")
+        st.caption(f"Comparing VLDS metrics: {' vs '.join(brands_to_compare)}")
+        
+        df_compare = load_data()
+        
+        brand_results = {}
+        for brand in brands_to_compare:
+            brand_df = df_compare[df_compare["text"].str.lower().str.contains(brand.lower(), na=False)]
+            if len(brand_df) >= 5:
+                brand_results[brand] = calculate_brand_vlds(brand_df)
+                brand_results[brand]['post_count'] = len(brand_df)
+            else:
+                brand_results[brand] = None
+        
+        if any(brand_results.values()):
+            st.markdown("### VLDS Metrics")
+            compare_cols = st.columns(len(brands_to_compare))
+            
+            for i, brand in enumerate(brands_to_compare):
+                with compare_cols[i]:
+                    st.markdown(f"**{brand}**")
+                    vlds = brand_results.get(brand)
+                    if vlds:
+                        st.metric("Posts", vlds.get('post_count', 0))
+                        st.metric("Velocity", f"{vlds.get('velocity', 0):.0%}", vlds.get('velocity_label', ''))
+                        st.metric("Longevity", f"{vlds.get('longevity', 0):.0%}", vlds.get('longevity_label', ''))
+                        st.metric("Density", f"{vlds.get('density', 0):.0%}", vlds.get('density_label', ''))
+                        st.metric("Scarcity", f"{vlds.get('scarcity', 0):.0%}", vlds.get('scarcity_label', ''))
+                    else:
+                        st.warning(f"Not enough data for {brand}")
+            
+            st.markdown("### Dominant Emotions")
+            emo_cols = st.columns(len(brands_to_compare))
+            
+            for i, brand in enumerate(brands_to_compare):
+                with emo_cols[i]:
+                    st.markdown(f"**{brand}**")
+                    vlds = brand_results.get(brand)
+                    if vlds and vlds.get('top_emotions_detailed'):
+                        for item in vlds.get('top_emotions_detailed', [])[:3]:
+                            emo = item['emotion']
+                            emo_map = {'joy': '😊', 'sadness': '😢', 'anger': '😠', 'fear': '😨', 'surprise': '😮', 'disgust': '🤢', 'neutral': '😐'}
+                            emoji = emo_map.get(emo, '•')
+                            st.caption(f"{emoji} {emo.title()}: {item['percentage']}%")
+            
+            st.markdown("### Top Narratives")
+            narr_cols = st.columns(len(brands_to_compare))
+            
+            for i, brand in enumerate(brands_to_compare):
+                with narr_cols[i]:
+                    st.markdown(f"**{brand}**")
+                    vlds = brand_results.get(brand)
+                    if vlds and vlds.get('top_topics_detailed'):
+                        for item in vlds.get('top_topics_detailed', [])[:3]:
+                            st.caption(f"• {item['topic']}: {item['percentage']}%")
+            
+            st.markdown("---")
+        else:
+            st.warning("Not enough data for comparison. Try different brands.")
+    
+    elif len(brands_to_compare) == 1:
+        st.info("Enter at least 2 brands to compare.")
+
+# ========================================
+# BRAND-SPECIFIC VLDS (when brand focus is active)
+# ========================================
+if brand_focus and custom_query.strip():
+    st.markdown(f"### 📊 Brand VLDS: {custom_query}")
+    st.caption("Velocity, Longevity, Density, Scarcity metrics for this specific brand")
+    
+    brand_vlds = calculate_brand_vlds(df_all)
+    if brand_vlds:
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            v_score = brand_vlds.get('velocity', 0)
+            v_label = brand_vlds.get('velocity_label', 'N/A')
+            st.metric("Velocity", f"{v_score:.0%}", v_label)
+        
+        with col2:
+            l_score = brand_vlds.get('longevity', 0)
+            l_label = brand_vlds.get('longevity_label', 'N/A')
+            st.metric("Longevity", f"{l_score:.0%}", l_label)
+        
+        with col3:
+            d_score = brand_vlds.get('density', 0)
+            d_label = brand_vlds.get('density_label', 'N/A')
+            st.metric("Density", f"{d_score:.0%}", d_label)
+        
+        with col4:
+            s_score = brand_vlds.get('scarcity', 0)
+            s_label = brand_vlds.get('scarcity_label', 'N/A')
+            st.metric("Scarcity", f"{s_score:.0%}", s_label)
+        
+        with st.expander("📈 Brand Intelligence Details"):
+            st.caption(f"Based on {brand_vlds.get('total_posts', 0)} posts mentioning '{custom_query}'")
+            
+            # Insights row
+            st.markdown("#### 💡 Key Insights")
+            if 'velocity_insight' in brand_vlds:
+                st.markdown(f"**Velocity:** {brand_vlds['velocity_insight']}")
+            if 'longevity_insight' in brand_vlds:
+                st.markdown(f"**Longevity:** {brand_vlds['longevity_insight']}")
+            if 'density_insight' in brand_vlds:
+                st.markdown(f"**Density:** {brand_vlds['density_insight']}")
+            if 'emotion_insight' in brand_vlds:
+                st.markdown(f"**Emotion:** {brand_vlds['emotion_insight']}")
+            
+            st.markdown("---")
+            
+            col_a, col_b = st.columns(2)
+            
+            with col_a:
+                st.markdown("#### 📰 Top Narratives")
+                st.caption("What topics dominate coverage")
+                for item in brand_vlds.get('top_topics_detailed', []):
+                    st.markdown(f"• **{item['topic']}** — {item['percentage']}% ({item['count']} posts)")
+            
+            with col_b:
+                st.markdown("#### 😊 Dominant Emotions")
+                st.caption("How people feel when discussing this brand")
+                for item in brand_vlds.get('top_emotions_detailed', []):
+                    emoji = {'joy': '😊', 'sadness': '😢', 'anger': '😠', 'fear': '😨', 'surprise': '😮', 'disgust': '🤢', 'neutral': '😐'}.get(item['emotion'], '•')
+                    st.markdown(f"{emoji} **{item['emotion'].title()}** — {item['percentage']}% ({item['count']} posts)")
+            
+            st.markdown("---")
+            
+            st.markdown("#### 🎯 White Space Opportunities")
+            st.caption("Topics with <10% share — potential areas to own the narrative")
+            
+            scarce = brand_vlds.get('scarce_topics_detailed', [])
+            if scarce:
+                cols = st.columns(min(len(scarce), 3))
+                for i, item in enumerate(scarce[:3]):
+                    with cols[i]:
+                        st.metric(
+                            item['topic'].title(),
+                            f"{item['percentage']}%",
+                            f"{item['count']} posts",
+                            delta_color="off"
+                        )
+                if len(scarce) > 3:
+                    st.caption(f"Also underrepresented: {', '.join([s['topic'] for s in scarce[3:]])}")
+            else:
+                st.info("No clear white space opportunities — coverage is evenly distributed or saturated")
+    
+    st.markdown("---")
 
 # ========================================
 # SECTION 7: 7-DAY MOOD HISTORY
@@ -1394,16 +1958,17 @@ else:
 # SECTION 8: WORLD VIEW
 # ========================================
 st.markdown("### World View")
-st.caption("All posts from the last 3 days - scroll to explore")
+st.caption(f"All posts from the last {FILTER_DAYS} days - scroll to explore")
 
 cols = [c for c in ["text", "source", "topic", "empathy_label", "emotion_top_1", "engagement", "created_at"] if c in df_filtered.columns]
 if len(df_filtered):
     display_df = df_filtered[cols].copy()
     if "created_at" in display_df.columns:
+        display_df = display_df.sort_values("created_at", ascending=False).reset_index(drop=True)
         display_df["created_at"] = display_df["created_at"].dt.strftime("%b %d, %H:%M")
 
     st.dataframe(
-        display_df.head(100),
+        display_df.head(3000),
         use_container_width=True,
         column_config={
             "text": st.column_config.TextColumn("Post", width="large"),
@@ -1425,15 +1990,12 @@ st.markdown("---")
 st.markdown("### 🎯 Intelligence Dashboard")
 st.caption("IC-level threat analysis with geographic hotspots and trend detection")
 
-# Check if intensity and country columns exist
 if 'intensity' in df_all.columns and 'country' in df_all.columns:
     
-    # Row 1: Threat gauge + IC topics
     col1, col2 = st.columns([1, 2])
     
     with col1:
         avg_int = df_all['intensity'].mean()
-        
         chart = create_intensity_gauge(df_all, avg_int)
         if chart is not None:
             st.altair_chart(chart, use_container_width=True)
@@ -1441,16 +2003,35 @@ if 'intensity' in df_all.columns and 'country' in df_all.columns:
     with col2:
         st.altair_chart(create_ic_topic_breakdown(df_all), use_container_width=True)
     
-    # Row 2: Geographic hotspots + Trends
     col1, col2 = st.columns(2)
     
     with col1:
         st.altair_chart(create_geographic_hotspot_map(df_all), use_container_width=True)
+        
+        # Click-to-reveal AI explanation
+        if st.button("🔍 Why these hotspots?", key="explain_geo_hotspots"):
+            with st.spinner("Analyzing patterns..."):
+                # Get country data for summary - match chart's FILTER_DAYS
+                cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=FILTER_DAYS)
+                recent = df_all[df_all['created_at'] >= cutoff].copy()
+
+                if 'country' in recent.columns and 'intensity' in recent.columns:
+                    country_stats = recent.groupby('country').agg({'intensity': 'mean', 'id': 'count'}).reset_index()
+                    country_stats.columns = ['country', 'avg_intensity', 'article_count']
+                    # Match chart filters: exclude Unknown, require 3+ articles
+                    country_stats = country_stats[
+                        (country_stats['country'] != 'Unknown') & 
+                        (country_stats['article_count'] >= 3)
+                    ].sort_values('avg_intensity', ascending=False).head(5)
+                    data_summary = country_stats.to_string()
+                else:
+                    data_summary = "No geographic data available"
+                explanation = generate_chart_explanation("geographic_hotspots", data_summary, recent)
+                st.info(f"📊 **Insight:** {explanation}")
     
     with col2:
         st.altair_chart(create_trend_indicators(df_all), use_container_width=True)
 
-        # Quick Trends Section
         st.markdown("#### 📈 Quick Trends (24h)")
 
         from collections import Counter
@@ -1463,7 +2044,7 @@ if 'intensity' in df_all.columns and 'country' in df_all.columns:
         prev_df = df_all[(df_all['created_at'] >= prev_start) & (df_all['created_at'] < recent_start)]
 
         if len(recent_df) == 0:
-            recent_start = now - pd.Timedelta(days=3)
+            recent_start = now - pd.Timedelta(days=FILTER_DAYS)
             prev_start = now - pd.Timedelta(days=7)
             recent_df = df_all[df_all['created_at'] >= recent_start]
             prev_df = df_all[(df_all['created_at'] >= prev_start) & (df_all['created_at'] < recent_start)]
@@ -1486,3 +2067,26 @@ if 'intensity' in df_all.columns and 'country' in df_all.columns:
 
 else:
     st.info("Intelligence features require updated data. Run fetch_posts.py to enable geographic and intensity analysis.")
+
+# ========================================
+# STRATEGIC BRIEF DISPLAY
+# ========================================
+if st.session_state.get('generate_brief'):
+    user_need = st.session_state.get('user_need', '')
+    user_email = st.session_state.get('user_email', '')
+    
+    save_lead(user_email, user_need)
+    
+    with st.spinner("🎯 Generating your strategic brief..."):
+        brief = generate_strategic_brief(user_need, df_all)
+    
+    email_sent = send_strategic_brief_email(user_email, user_need, brief)
+    
+    st.markdown("---")
+    if email_sent:
+        st.success(f"✅ Your strategic brief has been sent to **{user_email}**. Check your inbox!")
+    else:
+        st.warning("⚠️ Couldn't send email. Here's your brief:")
+        st.markdown(brief)
+
+    st.session_state['generate_brief'] = False
