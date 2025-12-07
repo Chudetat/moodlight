@@ -353,7 +353,7 @@ def main():
 
 
     # Save
-    df_combined.to_csv(output_csv, index=False, quoting=csv.QUOTE_MINIMAL)
+    df_combined.to_csv(output_csv, index=False, quoting=csv.QUOTE_NONNUMERIC)
     print(f"\nSaved {len(df_combined)} scored rows to {output_csv}")
 
     # Show empathy distribution

@@ -1079,12 +1079,12 @@ def main():
             print("No existing data either - writing empty CSV")
             columns = ["id", "text", "created_at", "link", "source", "topic", "engagement", "country", "intensity"]
             df = pd.DataFrame(columns=columns)
-            df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_MINIMAL)
+            df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_NONNUMERIC)
             print(f"Saved empty file to {OUTPUT_CSV}")
             sys.exit(1)
         else:
             print(f"Keeping {len(existing_df)} existing entries")
-            existing_df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_MINIMAL)
+            existing_df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_NONNUMERIC)
             print(f"Saved to {OUTPUT_CSV}")
             sys.exit(0)
 
@@ -1127,7 +1127,7 @@ def main():
             combined_df["created_at"] = combined_df["created_at"].dt.strftime("%Y-%m-%dT%H:%M:%S%z")
 
     # Save to CSV
-    combined_df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_MINIMAL)
+    combined_df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_NONNUMERIC)
     print(f"\nSaved {len(combined_df)} entries to {OUTPUT_CSV}")
 
     # Show topic breakdown

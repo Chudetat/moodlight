@@ -546,7 +546,7 @@ def main():
             # Convert timestamps back to strings
             if "created_at" in existing_df.columns:
                 existing_df["created_at"] = existing_df["created_at"].dt.strftime("%Y-%m-%dT%H:%M:%S%z")
-            existing_df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_MINIMAL)
+            existing_df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_NONNUMERIC)
             print(f"Saved to {OUTPUT_CSV}")
         else:
             print("No existing data either - creating empty file")
@@ -602,7 +602,7 @@ def main():
         print(f"   {source}: {count}")
 
     # Save
-    combined_df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_MINIMAL)
+    combined_df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_NONNUMERIC)
     print(f"\nSaved {len(combined_df)} rows to {OUTPUT_CSV}")
 
 # Exit with code 2 if X quota was hit (signals to workflow)
