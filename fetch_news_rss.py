@@ -689,8 +689,143 @@ def classify_topic(text: str) -> str:
         if topic not in priority_topics:
             if any(kw in t for kw in kws):
                 return topic
+# -------------------------------
+# Country detection
+# -------------------------------
+COUNTRY_KEYWORDS = {
+    "United States": ["united states", "u.s.", "usa", "america", "washington dc", "white house", "congress", "pentagon", "california", "texas", "new york", "florida"],
+    "China": ["china", "chinese", "beijing", "shanghai", "xi jinping", "ccp"],
+    "Russia": ["russia", "russian", "moscow", "putin", "kremlin"],
+    "Ukraine": ["ukraine", "ukrainian", "kyiv", "kiev", "zelensky"],
+    "Israel": ["israel", "israeli", "tel aviv", "jerusalem", "netanyahu", "idf"],
+    "Palestine": ["palestine", "palestinian", "gaza", "west bank", "hamas"],
+    "Iran": ["iran", "iranian", "tehran", "khamenei"],
+    "North Korea": ["north korea", "pyongyang", "kim jong"],
+    "South Korea": ["south korea", "korean", "seoul"],
+    "Japan": ["japan", "japanese", "tokyo"],
+    "India": ["india", "indian", "delhi", "mumbai", "modi"],
+    "Pakistan": ["pakistan", "pakistani", "islamabad", "karachi"],
+    "Afghanistan": ["afghanistan", "afghan", "kabul", "taliban"],
+    "Iraq": ["iraq", "iraqi", "baghdad"],
+    "Syria": ["syria", "syrian", "damascus", "assad"],
+    "Yemen": ["yemen", "yemeni", "houthi", "sanaa"],
+    "Saudi Arabia": ["saudi", "riyadh", "mbs"],
+    "Turkey": ["turkey", "turkish", "ankara", "erdogan"],
+    "Egypt": ["egypt", "egyptian", "cairo"],
+    "Indonesia": ["indonesia", "indonesian", "jakarta", "aceh", "sumatra"],
+    "Philippines": ["philippines", "filipino", "manila"],
+    "Malaysia": ["malaysia", "malaysian", "kuala lumpur"],
+    "Thailand": ["thailand", "thai", "bangkok"],
+    "Vietnam": ["vietnam", "vietnamese", "hanoi"],
+    "Myanmar": ["myanmar", "burma", "burmese", "yangon"],
+    "Sri Lanka": ["sri lanka", "sri lankan", "colombo"],
+    "Bangladesh": ["bangladesh", "bangladeshi", "dhaka"],
+    "Germany": ["germany", "german", "berlin", "scholz"],
+    "France": ["france", "french", "paris", "macron"],
+    "Britain": ["britain", "british", "uk", "england", "london", "sunak"],
+    "Italy": ["italy", "italian", "rome", "meloni"],
+    "Spain": ["spain", "spanish", "madrid"],
+    "Poland": ["poland", "polish", "warsaw"],
+    "Netherlands": ["netherlands", "dutch", "amsterdam"],
+    "Belgium": ["belgium", "belgian", "brussels"],
+    "Sweden": ["sweden", "swedish", "stockholm"],
+    "Norway": ["norway", "norwegian", "oslo"],
+    "Finland": ["finland", "finnish", "helsinki"],
+    "Denmark": ["denmark", "danish", "copenhagen"],
+    "Estonia": ["estonia", "estonian", "tallinn"],
+    "Latvia": ["latvia", "latvian", "riga"],
+    "Lithuania": ["lithuania", "lithuanian", "vilnius"],
+    "Hungary": ["hungary", "hungarian", "budapest", "orban"],
+    "Romania": ["romania", "romanian", "bucharest"],
+    "Bulgaria": ["bulgaria", "bulgarian", "sofia"],
+    "Greece": ["greece", "greek", "athens"],
+    "Serbia": ["serbia", "serbian", "belgrade"],
+    "Bosnia": ["bosnia", "bosnian", "sarajevo"],
+    "Kosovo": ["kosovo", "pristina"],
+    "Croatia": ["croatia", "croatian", "zagreb"],
+    "Australia": ["australia", "australian", "sydney", "melbourne", "canberra"],
+    "New Zealand": ["new zealand", "wellington", "auckland"],
+    "Canada": ["canada", "canadian", "ottawa", "toronto", "trudeau"],
+    "Mexico": ["mexico", "mexican", "mexico city"],
+    "Brazil": ["brazil", "brazilian", "brasilia", "lula"],
+    "Argentina": ["argentina", "argentine", "buenos aires", "milei"],
+    "Venezuela": ["venezuela", "venezuelan", "caracas", "maduro"],
+    "Colombia": ["colombia", "colombian", "bogota"],
+    "Chile": ["chile", "chilean", "santiago"],
+    "Peru": ["peru", "peruvian", "lima"],
+    "Cuba": ["cuba", "cuban", "havana"],
+    "Haiti": ["haiti", "haitian", "port-au-prince"],
+    "South Africa": ["south africa", "johannesburg", "cape town"],
+    "Nigeria": ["nigeria", "nigerian", "lagos", "abuja"],
+    "Kenya": ["kenya", "kenyan", "nairobi"],
+    "Ethiopia": ["ethiopia", "ethiopian", "addis ababa"],
+    "Sudan": ["sudan", "sudanese", "khartoum"],
+    "Libya": ["libya", "libyan", "tripoli"],
+    "Morocco": ["morocco", "moroccan", "rabat"],
+    "Algeria": ["algeria", "algerian", "algiers"],
+    "Tunisia": ["tunisia", "tunisian", "tunis"],
+    "Niger": ["niger", "niamey"],
+    "Mali": ["mali", "malian", "bamako"],
+    "Somalia": ["somalia", "somali", "mogadishu"],
+    "Congo": ["congo", "congolese", "kinshasa"],
+    "Zimbabwe": ["zimbabwe", "harare"],
+    "Oman": ["oman", "omani", "muscat"],
+    "Qatar": ["qatar", "qatari", "doha"],
+    "UAE": ["uae", "emirates", "dubai", "abu dhabi"],
+    "Kuwait": ["kuwait", "kuwaiti"],
+    "Bahrain": ["bahrain", "bahraini", "manama"],
+    "Jordan": ["jordan", "jordanian", "amman"],
+    "Lebanon": ["lebanon", "lebanese", "beirut", "hezbollah"],
+    "Hong Kong": ["hong kong"],
+    "Taiwan": ["taiwan", "taiwanese", "taipei"],
+    "Singapore": ["singapore", "singaporean"],
+    "Nepal": ["nepal", "nepali", "kathmandu"],
+}
 
-    return "other"
+def detect_country(text: str) -> str:
+    """Detect primary country mentioned in text"""
+    t = text.lower()
+    
+    # Priority countries (conflict zones and major news makers)
+    priority_countries = [
+        "Ukraine", "Russia", "Israel", "Palestine", "Iran", "China", 
+        "North Korea", "Syria", "Yemen", "Taiwan", "Indonesia", "Sri Lanka"
+    ]
+    
+    for country in priority_countries:
+        if any(kw in t for kw in COUNTRY_KEYWORDS[country]):
+            return country
+    
+    # Check remaining countries
+    for country, keywords in COUNTRY_KEYWORDS.items():
+        if country not in priority_countries:
+            if any(kw in t for kw in keywords):
+                return country
+    
+    return "Unknown"
+
+# -------------------------------
+# Threat intensity scoring
+# -------------------------------
+INTENSITY_KEYWORDS = {
+    5: ["war", "invasion", "massacre", "genocide", "nuclear strike", "mass casualty", "terrorist attack", "death toll", "killed", "deaths", "dead", "bombing", "airstrike", "missile strike", "chemical weapon", "biological weapon"],
+    4: ["conflict", "military", "troops", "soldiers", "attack", "explosion", "crisis", "emergency", "disaster", "catastrophe", "flood", "earthquake", "hurricane", "cyclone", "tsunami", "famine", "epidemic", "pandemic", "coup", "assassination", "hostage", "kidnap"],
+    3: ["tension", "threat", "warning", "sanction", "protest", "riot", "unrest", "violence", "clash", "dispute", "confrontation", "arrest", "detained", "refugee", "displaced", "evacuation", "shortage", "inflation", "recession"],
+    2: ["concern", "fear", "worry", "uncertainty", "risk", "challenge", "issue", "problem", "investigation", "allegation", "accusation", "controversy", "debate", "opposition", "criticism"],
+    1: ["stable", "peace", "agreement", "deal", "cooperation", "partnership", "growth", "recovery", "improvement", "success", "celebration", "achievement"],
+}
+
+def calculate_intensity(text: str) -> int:
+    """Calculate threat intensity score 1-5 based on content"""
+    t = text.lower()
+    
+    # Check from highest to lowest intensity
+    for score in [5, 4, 3, 2, 1]:
+        if any(kw in t for kw in INTENSITY_KEYWORDS[score]):
+            return score
+    
+    # Default to moderate intensity for news
+    return 2
 
 # -------------------------------
 # Text cleaning
@@ -863,6 +998,10 @@ def fetch_feed(source: str, url: str) -> List[Dict[str, Any]]:
             # Classify topic
             topic = classify_topic(text)
 
+            # Detect country and calculate intensity
+            country = detect_country(text)
+            intensity = calculate_intensity(text)
+
             rows.append({
                 "id": eid,
                 "text": text,
@@ -871,6 +1010,8 @@ def fetch_feed(source: str, url: str) -> List[Dict[str, Any]]:
                 "source": source.lower().replace(" ", "_"),
                 "topic": topic,
                 "engagement": 0,
+                "country": country,
+                "intensity": intensity,
             })
         
         except Exception as e:
@@ -936,7 +1077,7 @@ def main():
         print("\nNo new items fetched")
         if existing_df.empty:
             print("No existing data either - writing empty CSV")
-            columns = ["id", "text", "created_at", "link", "source", "topic", "engagement"]
+            columns = ["id", "text", "created_at", "link", "source", "topic", "engagement", "country", "intensity"]
             df = pd.DataFrame(columns=columns)
             df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_MINIMAL)
             print(f"Saved empty file to {OUTPUT_CSV}")
@@ -957,7 +1098,7 @@ def main():
     all_rows = deduplicate_entries(all_rows)
 
     # Create DataFrame from new entries
-    columns = ["id", "text", "created_at", "link", "source", "topic", "engagement"]
+    columns = ["id", "text", "created_at", "link", "source", "topic", "engagement", "country", "intensity"]
     new_df = pd.DataFrame(all_rows, columns=columns)
 
     # Combine with existing data
