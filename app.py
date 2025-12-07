@@ -1867,7 +1867,7 @@ if len(df_filtered):
         display_df["created_at"] = display_df["created_at"].dt.strftime("%b %d, %H:%M")
 
     st.dataframe(
-        display_df.head(1000),
+        display_df.head(3000),
         use_container_width=True,
         column_config={
             "text": st.column_config.TextColumn("Post", width="large"),
