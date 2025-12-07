@@ -617,14 +617,14 @@ Sample headlines:
 
 What events or trends are driving topic volume? Be specific.""",
 
-        "geographic_hotspots": f"""Based on this geographic intensity data and recent headlines, explain in 2-3 sentences why certain countries show elevated threat levels.
+        "geographic_hotspots": f"""Based on this geographic intensity data and recent headlines, explain why the TOP-RANKED countries (highest intensity first) show elevated threat levels.
 
-Data: {data_summary}
+Data (sorted by intensity, highest first): {data_summary}
 
 Sample headlines:
 {sample_headlines}
 
-What's happening in the top countries? Be specific about events."""
+IMPORTANT: Start with the #1 highest intensity country, then #2, then #3. Explain what specific events or crises are driving their scores. Be specific about actual events."""
     }
     
     prompt = prompts.get(chart_type, "Explain this data pattern in 2-3 sentences.")
