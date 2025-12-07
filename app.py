@@ -637,7 +637,7 @@ IMPORTANT: Start with the #1 highest intensity country, then #2, then #3. Explai
                 {"role": "user", "content": prompt}
             ],
             temperature=0.5,
-            max_tokens=500
+            max_tokens=800
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -2018,7 +2018,12 @@ if 'intensity' in df_all.columns and 'country' in df_all.columns:
                 if 'country' in recent.columns and 'intensity' in recent.columns:
                     country_stats = recent.groupby('country').agg({'intensity': 'mean', 'id': 'count'}).reset_index()
                     country_stats.columns = ['country', 'avg_intensity', 'article_count']
-                    data_summary = country_stats.sort_values('avg_intensity', ascending=False).head(10).to_string()
+                    # Match chart filters: exclude Unknown, require 3+ articles
+                    country_stats = country_stats[
+                        (country_stats['country'] != 'Unknown') & 
+                        (country_stats['article_count'] >= 3)
+                    ].sort_values('avg_intensity', ascending=False).head(5)
+                    data_summary = country_stats.to_string()
                 else:
                     data_summary = "No geographic data available"
                 explanation = generate_chart_explanation("geographic_hotspots", data_summary, recent)
