@@ -266,7 +266,10 @@ def main():
             "id", "text", "created_at", "author_id", "like_count", "reply_count",
             "repost_count", "quote_count", "engagement", "topic", "source",
             "empathy_score", "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3", "link"
-    ]
+        ]
+        df_empty = pd.DataFrame(columns=expected)
+        df_empty.to_csv(output_csv, index=False)
+        return
 
     # Load existing scored data (for incremental scoring)
     df_existing, scored_ids = load_existing_scores(output_csv)
