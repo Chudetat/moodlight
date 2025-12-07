@@ -569,6 +569,79 @@ For all industries: Consider regulatory and reputational risk when recommending 
     
     return response.choices[0].message.content
 
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFrame) -> str:
+    """Generate dynamic explanation for chart insights using AI"""
+    
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
+    # Get sample headlines for context
+    sample_headlines = ""
+    if 'text' in df.columns:
+        sample_headlines = "\n".join(df['text'].head(20).tolist())
+    
+    prompts = {
+        "empathy_by_topic": f"""Based on this empathy-by-topic data and recent headlines, explain in 2-3 sentences why certain topics score higher/lower on empathy.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+Be specific about what's driving the scores. Mention actual events or themes from the headlines. Keep it insightful and actionable.""",
+
+        "emotional_breakdown": f"""Based on this emotional distribution data and recent headlines, explain in 2-3 sentences why certain emotions dominate.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+Reference specific events driving fear, joy, anger, etc. Keep it insightful.""",
+
+        "empathy_distribution": f"""Based on this empathy distribution and recent headlines, explain in 2-3 sentences why the sentiment skews this way.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+What's driving warm vs cold coverage? Be specific.""",
+
+        "topic_distribution": f"""Based on this topic distribution and recent headlines, explain in 2-3 sentences why certain topics dominate the news cycle.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+What events or trends are driving topic volume? Be specific.""",
+
+        "geographic_hotspots": f"""Based on this geographic intensity data and recent headlines, explain in 2-3 sentences why certain countries show elevated threat levels.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+What's happening in the top countries? Be specific about events."""
+    }
+    
+    prompt = prompts.get(chart_type, "Explain this data pattern in 2-3 sentences.")
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a senior intelligence analyst. Give concise, specific insights based on actual data and headlines. No fluff."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.5,
+            max_tokens=200
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Unable to generate insight: {str(e)}"
 
 def save_lead(email: str, need: str):
     """Save lead to CSV"""
@@ -1185,6 +1258,13 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
         for _, row in bottom_empathetic.iterrows():
             st.caption(f"• **{row['topic']}** - {row['label']} ({row['avg_empathy']:.2f})")
 
+    # Click-to-reveal AI explanation
+    if st.button("🔍 Why these scores?", key="explain_empathy_topic"):
+        with st.spinner("Analyzing patterns..."):
+            data_summary = topic_avg[['topic', 'avg_empathy', 'label', 'count']].to_string()
+            explanation = generate_chart_explanation("empathy_by_topic", data_summary, df_filtered)
+            st.info(f"📊 **Insight:** {explanation}")
+
     st.markdown("---")
 
 # ========================================
@@ -1233,7 +1313,14 @@ if "emotion_top_1" in df_filtered.columns and len(df_filtered):
             with col:
                 pct = (count / total * 100)
                 st.metric(f"{emotion.title()}", f"{pct:.1f}%", f"{count} posts")
-                        
+                                   
+        # Click-to-reveal AI explanation
+        if st.button("🔍 Why these emotions?", key="explain_emotions"):
+            with st.spinner("Analyzing patterns..."):
+                data_summary = chart_df.to_string()
+                explanation = generate_chart_explanation("emotional_breakdown", data_summary, df_filtered)
+                st.info(f"📊 **Insight:** {explanation}")
+
         st.markdown("---")
 
 # ========================================
@@ -1267,6 +1354,13 @@ if "empathy_label" in df_filtered.columns and len(df_filtered):
                 pct = (count / total * 100)
                 st.metric(label, f"{pct:.1f}%", f"{count} posts")
 
+    # Click-to-reveal AI explanation
+    if st.button("🔍 Why this distribution?", key="explain_empathy_dist"):
+        with st.spinner("Analyzing patterns..."):
+            data_summary = chart_df.to_string()
+            explanation = generate_chart_explanation("empathy_distribution", data_summary, df_filtered)
+            st.info(f"📊 **Insight:** {explanation}")
+
     st.markdown("---")
 
 # ========================================
@@ -1299,6 +1393,13 @@ if "topic" in df_filtered.columns and len(df_filtered):
                 rank = ["🥇", "🥈", "🥉"][idx]
                 pct = (count / counts.sum() * 100)
                 st.metric(f"{rank} {topic}", f"{pct:.1f}%", f"{count} posts")
+
+    # Click-to-reveal AI explanation
+    if st.button("🔍 Why these topics?", key="explain_topic_dist"):
+        with st.spinner("Analyzing patterns..."):
+            data_summary = chart_df.to_string()
+            explanation = generate_chart_explanation("topic_distribution", data_summary, df_filtered)
+            st.info(f"📊 **Insight:** {explanation}")
 
     st.markdown("---")
 
@@ -1906,6 +2007,21 @@ if 'intensity' in df_all.columns and 'country' in df_all.columns:
     
     with col1:
         st.altair_chart(create_geographic_hotspot_map(df_all), use_container_width=True)
+        
+        # Click-to-reveal AI explanation
+        if st.button("🔍 Why these hotspots?", key="explain_geo_hotspots"):
+            with st.spinner("Analyzing patterns..."):
+                # Get country data for summary
+                cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(hours=48)
+                recent = df_all[df_all['created_at'] >= cutoff].copy()
+                if 'country' in recent.columns and 'intensity' in recent.columns:
+                    country_stats = recent.groupby('country').agg({'intensity': 'mean', 'id': 'count'}).reset_index()
+                    country_stats.columns = ['country', 'avg_intensity', 'article_count']
+                    data_summary = country_stats.sort_values('avg_intensity', ascending=False).head(10).to_string()
+                else:
+                    data_summary = "No geographic data available"
+                explanation = generate_chart_explanation("geographic_hotspots", data_summary, recent)
+                st.info(f"📊 **Insight:** {explanation}")
     
     with col2:
         st.altair_chart(create_trend_indicators(df_all), use_container_width=True)
