@@ -845,6 +845,9 @@ def fetch_feed(source: str, url: str) -> List[Dict[str, Any]]:
             
             # Fallback: use current time if parsing failed
             if not created_at:
+                # Skip Google News entries without valid publish date
+                if "google_news" in source_key.lower():
+                    continue
                 created_at = now.isoformat()
             else:
                 # Validate date isn't in the future or too old
@@ -852,7 +855,9 @@ def fetch_feed(source: str, url: str) -> List[Dict[str, Any]]:
                 if dt > now:
                     created_at = now.isoformat()
                 elif dt < now - timedelta(days=30):
-                    # If older than 30 days, use current time
+                    # Skip old articles from Google News
+                    if "google_news" in source_key.lower():
+                        continue
                     created_at = now.isoformat()
 
             # Classify topic
