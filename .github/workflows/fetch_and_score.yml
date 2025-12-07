@@ -56,6 +56,8 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
           git add -A
           git diff --staged --quiet || git commit -m "Auto-update data $(date -u +%Y-%m-%d_%H:%M)"
-          git push --force origin main
+          git push --force origin HEAD:main
+
