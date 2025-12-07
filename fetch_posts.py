@@ -478,9 +478,9 @@ def main():
             "quote_count": metrics.get("quote_count", 0),
             "engagement": engagement,
             "topic": classify_topic(text),
-                "country": extract_country(text),
-                "intensity": calculate_intensity(text),
-                "source": "x",
+            "country": extract_country(text),
+            "intensity": calculate_intensity(text),
+            "source": "x",
         })
 
     if hit_cap:
@@ -521,9 +521,9 @@ def main():
             "quote_count": 0,
             "engagement": 0,
             "topic": classify_topic(text),
-                "country": extract_country(text),
-                "intensity": calculate_intensity(text),
-                "source": art.get("source", {}).get("name", "newsapi").lower().replace(" ", "_"),
+            "country": extract_country(text),
+            "intensity": calculate_intensity(text),
+            "source": art.get("source", {}).get("name", "newsapi").lower().replace(" ", "_"),
         })
 
     print(f"   Kept {len(news_rows)} news articles (filtered {news_spam_filtered} spam, {news_too_short} too short)")
