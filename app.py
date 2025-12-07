@@ -5,7 +5,7 @@ def check_password():
     
     def password_entered():
         """Checks whether password entered is correct."""
-        if st.session_state["password"] == "Moodlight2026!":
+        if st.session_state["password"] == st.secrets.get("APP_PASSWORD", ""):
             st.session_state["password_correct"] = True
             del st.session_state["password"]
         else:
@@ -72,7 +72,7 @@ def fetch_stock_data(ticker: str) -> dict | None:
         # Try Streamlit secrets
         try:
             api_key = st.secrets.get("ALPHAVANTAGE_API_KEY", "")
-        except:
+        except Exception:
             pass
     if not api_key:
         return None
@@ -143,9 +143,46 @@ TOPIC_CATEGORIES = [
     "sports", "entertainment", "other",
 ]
 
+FETCH_TIMEOUT = 300  # 5 minutes
+
+EMOTION_COLORS = {
+    "joy": "#FFD700",
+    "sadness": "#4682B4",
+    "anger": "#DC143C",
+    "fear": "#8B008B",
+    "surprise": "#FF8C00",
+    "disgust": "#556B2F",
+    "neutral": "#808080"
+}
+
+EMOTION_EMOJIS = {
+    "joy": "😊",
+    "sadness": "😢",
+    "anger": "😠",
+    "fear": "😨",
+    "surprise": "😮",
+    "disgust": "🤢",
+    "neutral": "😐"
+}
+
 # -------------------------------
 # Helper functions
 # -------------------------------
+def load_csv_safely(filepath: str, default_cols: list = None) -> pd.DataFrame:
+    """Safely load a CSV file with proper error handling."""
+    try:
+        df = pd.read_csv(filepath)
+        if df.empty:
+            return pd.DataFrame(columns=default_cols) if default_cols else pd.DataFrame()
+        return df
+    except FileNotFoundError:
+        return pd.DataFrame(columns=default_cols) if default_cols else pd.DataFrame()
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame(columns=default_cols) if default_cols else pd.DataFrame()
+    except Exception as e:
+        return pd.DataFrame(columns=default_cols) if default_cols else pd.DataFrame()
+
+
 def empathy_label_from_score(score: float) -> str | None:
     if score is None or math.isnan(score):
         return None
@@ -177,7 +214,7 @@ def clean_source_name(source: str) -> str:
 # Data loading
 # -------------------------------
 @st.cache_data(ttl=10, show_spinner=False)
-def load_data(v=2) -> pd.DataFrame:
+def load_data() -> pd.DataFrame:
     sources = [
         ("social_scored.csv", None),
         ("news_scored.csv", None),
@@ -261,8 +298,9 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
     try:
         env["X_BEARER_TOKEN"] = st.secrets.get("X_BEARER_TOKEN", "")
         env["NEWSAPI_KEY"] = st.secrets.get("NEWSAPI_KEY", "")
-    except:
+    except Exception:
         pass
+
     
     cmd_x = [sys.executable, "fetch_posts.py"]
     
@@ -270,7 +308,7 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
         cmd_x += ["--query", custom_query.strip()]
 
     try:
-        x_proc = subprocess.run(cmd_x, capture_output=True, text=True, timeout=300, check=False, env=env)
+        x_proc = subprocess.run(cmd_x, capture_output=True, text=True, timeout=FETCH_TIMEOUT, check=False, env=env)
         
         if x_proc.returncode == 2:
             msg_parts.append("X quota hit - kept previous data")
@@ -283,7 +321,7 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
             
             score_x = subprocess.run(
                 [sys.executable, "score_empathy.py", "social.csv", "social_scored.csv"],
-                capture_output=True, text=True, timeout=300, check=False, env=env
+                capture_output=True, text=True, timeout=FETCH_TIMEOUT, check=False, env=env
             )
             if score_x.returncode == 0:
                 msg_parts.append("X scored")
@@ -302,7 +340,7 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
     try:
         news_proc = subprocess.run(
             [sys.executable, "fetch_news_rss.py"], 
-            capture_output=True, text=True, timeout=300, check=False, env=env
+            capture_output=True, text=True, timeout=FETCH_TIMEOUT, check=False, env=env
         )
         
         if news_proc.returncode != 0:
@@ -314,7 +352,7 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
             
             score_n = subprocess.run(
                 [sys.executable, "score_empathy.py", "news.csv", "news_scored.csv"],
-                capture_output=True, text=True, timeout=300, check=False, env=env
+                capture_output=True, text=True, timeout=FETCH_TIMEOUT, check=False, env=env
             )
             if score_n.returncode == 0:
                 msg_parts.append("News scored")
@@ -368,7 +406,6 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict:
     
     if 'created_at' in df.columns:
         df_copy = df.copy()
-        df_copy['created_at'] = pd.to_datetime(df_copy['created_at'], errors='coerce')
         df_copy['date'] = df_copy['created_at'].dt.date
         daily_counts = df_copy.groupby('date').size()
         
@@ -476,19 +513,19 @@ def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> str:
     try:
         velocity_df = pd.read_csv('topic_longevity.csv')
         velocity_data = velocity_df[['topic', 'velocity_score', 'longevity_score']].head(5).to_string()
-    except:
+    except Exception:
         velocity_data = "No velocity/longevity data available"
     
     try:
         density_df = pd.read_csv('topic_density.csv')
         density_data = density_df.head(5).to_string()
-    except:
+    except Exception:
         density_data = "No density data available"
     
     try:
         scarcity_df = pd.read_csv('topic_scarcity.csv')
         scarcity_data = scarcity_df.head(5).to_string()
-    except:
+    except Exception:
         scarcity_data = "No scarcity data available"
     
     context = f"""
@@ -1280,15 +1317,6 @@ if "emotion_top_1" in df_filtered.columns and len(df_filtered):
         chart_df = emotion_counts.reset_index()
         chart_df.columns = ["emotion", "posts"]
         
-        emotion_colors = {
-            "joy": "#FFD700",
-            "sadness": "#4682B4", 
-            "anger": "#DC143C",
-            "fear": "#8B008B",
-            "surprise": "#FF8C00",
-            "disgust": "#556B2F",
-            "neutral": "#808080"
-        }
         
         chart = (
             alt.Chart(chart_df)
@@ -1297,8 +1325,8 @@ if "emotion_top_1" in df_filtered.columns and len(df_filtered):
                 x=alt.X("posts:Q", title="Number of Posts"),
                 y=alt.Y("emotion:N", sort="-x", title="Emotion"),
                 color=alt.Color("emotion:N", 
-                              scale=alt.Scale(domain=list(emotion_colors.keys()),
-                                            range=list(emotion_colors.values())),
+                              scale=alt.Scale(domain=list(EMOTION_COLORS.keys()),
+                                            range=list(EMOTION_COLORS.values())),
                               legend=None),
                 tooltip=["emotion", "posts"]
             )
@@ -1793,8 +1821,8 @@ if compare_mode:
                     if vlds and vlds.get('top_emotions_detailed'):
                         for item in vlds.get('top_emotions_detailed', [])[:3]:
                             emo = item['emotion']
-                            emo_map = {'joy': '😊', 'sadness': '😢', 'anger': '😠', 'fear': '😨', 'surprise': '😮', 'disgust': '🤢', 'neutral': '😐'}
-                            emoji = emo_map.get(emo, '•')
+                            # Using EMOTION_EMOJIS constant
+                            emoji = EMOTION_EMOJIS.get(emo, '•')
                             st.caption(f"{emoji} {emo.title()}: {item['percentage']}%")
             
             st.markdown("### Top Narratives")
@@ -1874,7 +1902,7 @@ if brand_focus and custom_query.strip():
                 st.markdown("#### 😊 Dominant Emotions")
                 st.caption("How people feel when discussing this brand")
                 for item in brand_vlds.get('top_emotions_detailed', []):
-                    emoji = {'joy': '😊', 'sadness': '😢', 'anger': '😠', 'fear': '😨', 'surprise': '😮', 'disgust': '🤢', 'neutral': '😐'}.get(item['emotion'], '•')
+                    emoji = EMOTION_EMOJIS.get(item['emotion'], '•')
                     st.markdown(f"{emoji} **{item['emotion'].title()}** — {item['percentage']}% ({item['count']} posts)")
             
             st.markdown("---")
