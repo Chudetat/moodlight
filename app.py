@@ -1250,13 +1250,14 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             
             st.metric("Alignment", status)
             st.caption(f"{color} {divergence} point difference")
-    else:
 
         if st.button("🔍 Why this divergence?", key="explain_mood_market"):
             with st.spinner("Analyzing patterns..."):
                 data_summary = f"Social Mood: {latest_social}, Market: {market_value}, Divergence: {divergence} points, Status: {status}"
                 explanation = generate_chart_explanation("mood_vs_market", data_summary, df_filtered)
                 st.info(f"📊 **Insight:** {explanation}")
+    else:
+
         st.info("Building historical data... Check back after a few days for trend comparison")
 else:
     st.info("Insufficient data for comparison. Run data fetch to populate.")
@@ -1537,14 +1538,15 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
             bottom_empathy = df_trending.nsmallest(1, 'empathy_score').iloc[0]
             st.caption(f"**{bottom_empathy['source_display']}** (Score: {bottom_empathy['empathy_score']:.2f})")
             st.caption(f"_{bottom_empathy['text'][:100]}..._")
-    else:
-        st.info("No headline insights available yet.")
 
         if st.button("🔍 Why are these trending?", key="explain_trending"):
             with st.spinner("Analyzing patterns..."):
                 data_summary = df_trending[["text", "engagement", "empathy_score", "source_display"]].head(10).to_string()
                 explanation = generate_chart_explanation("trending_headlines", data_summary, df_trending)
                 st.info(f"📊 **Insight:** {explanation}")
+    else:
+        st.info("No headline insights available yet.")
+
 
 st.markdown("---")
 
@@ -1709,7 +1711,7 @@ try:
             st.metric(quad.split()[0], count)
             st.caption(emoji.split(' + ')[1])
 
-    if st.button("🔍 What047s driving these movements?", key="explain_velocity"):
+    if st.button("🔍 What's driving these movements?", key="explain_velocity"):
         with st.spinner("Analyzing patterns..."):
             data_summary = longevity_df[["topic", "velocity_score", "longevity_score", "quadrant"]].head(10).to_string()
             explanation = generate_chart_explanation("velocity_longevity", data_summary, df_filtered)
