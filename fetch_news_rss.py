@@ -990,10 +990,7 @@ def fetch_feed(source: str, url: str) -> List[Dict[str, Any]]:
                 if dt > now:
                     created_at = now.isoformat()
                 elif dt < now - timedelta(days=30):
-                    # Skip old articles from Google News
-                    if "google_news" in source.lower():
-                        continue
-                    created_at = now.isoformat()
+                    continue  # Skip all old articles
 
             # Classify topic
             topic = classify_topic(text)

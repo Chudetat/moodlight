@@ -145,6 +145,11 @@ TOPIC_CATEGORIES = [
 
 FETCH_TIMEOUT = 300  # 5 minutes
 
+# Spam keywords to filter from trending headlines
+SPAM_KEYWORDS = ["crypto", "bitcoin", "btc", "eth", "ethereum", "nft", "airdrop", "presale", 
+    "whitelist", "pump", "moon", "hodl", "doge", "shib", "memecoin", "web3", "defi", 
+    "trading signals", "forex", "binary options", "giveaway", "dm for", "link in bio"]
+
 EMOTION_COLORS = {
     "joy": "#FFD700",
     "sadness": "#4682B4",
@@ -1493,6 +1498,8 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
     now = datetime.now(timezone.utc)
     three_days_ago = now - timedelta(days=FILTER_DAYS)
     df_trending = df_all[df_all["created_at"] >= three_days_ago].nlargest(30, "engagement").copy()
+    # Filter out crypto/spam from trending
+    df_trending = df_trending[~df_trending["text"].str.lower().str.contains("|".join(SPAM_KEYWORDS), na=False)]
     df_trending["hours_ago"] = (now - df_trending["created_at"]).dt.total_seconds() / 3600
 
     trending_chart = (
