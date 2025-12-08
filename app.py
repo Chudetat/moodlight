@@ -661,7 +661,52 @@ Data (sorted by intensity, highest first): {data_summary}
 Sample headlines:
 {sample_headlines}
 
-IMPORTANT: Start with the #1 highest intensity country, then #2, then #3. Explain what specific events or crises are driving their scores. Be specific about actual events."""
+IMPORTANT: Start with the #1 highest intensity country, then #2, then #3. Explain what specific events or crises are driving their scores. Be specific about actual events.""",
+
+        "mood_vs_market": f"""Based on this social mood vs market data, explain in 2-3 sentences why there is divergence or alignment between public sentiment and market performance.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+Is social sentiment leading or lagging the market? What events might explain the gap or alignment? Be specific and actionable for investors.""",
+
+        "trending_headlines": f"""Based on these trending headlines and their engagement metrics, explain in 2-3 sentences what common themes or events are driving virality.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+What patterns do you see? Why are these resonating with audiences right now?""",
+
+        "velocity_longevity": f"""Based on this velocity and longevity data for topics, explain in 2-3 sentences which topics are emerging movements vs flash trends.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+Which topics should brands invest in long-term vs. capitalize on quickly? Be strategic.""",
+
+        "virality_empathy": f"""Based on this virality vs empathy data, explain in 2-3 sentences what makes certain posts go viral and whether empathetic or hostile content spreads faster.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+What patterns emerge about viral mechanics? Any insights for content strategy?""",
+
+        "mood_history": f"""Based on this 7-day mood history, explain in 2-3 sentences what events or trends caused any significant shifts in public sentiment.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+Identify specific days with mood spikes or dips and explain what drove them."""
     }
     
     prompt = prompts.get(chart_type, "Explain this data pattern in 2-3 sentences.")
@@ -1206,6 +1251,12 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             st.metric("Alignment", status)
             st.caption(f"{color} {divergence} point difference")
     else:
+
+        if st.button("🔍 Why this divergence?", key="explain_mood_market"):
+            with st.spinner("Analyzing patterns..."):
+                data_summary = f"Social Mood: {latest_social}, Market: {market_value}, Divergence: {divergence} points, Status: {status}"
+                explanation = generate_chart_explanation("mood_vs_market", data_summary, df_filtered)
+                st.info(f"📊 **Insight:** {explanation}")
         st.info("Building historical data... Check back after a few days for trend comparison")
 else:
     st.info("Insufficient data for comparison. Run data fetch to populate.")
@@ -1489,6 +1540,12 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
     else:
         st.info("No headline insights available yet.")
 
+        if st.button("🔍 Why are these trending?", key="explain_trending"):
+            with st.spinner("Analyzing patterns..."):
+                data_summary = df_trending[["text", "engagement", "empathy_score", "source_display"]].head(10).to_string()
+                explanation = generate_chart_explanation("trending_headlines", data_summary, df_trending)
+                st.info(f"📊 **Insight:** {explanation}")
+
 st.markdown("---")
 
 # ========================================
@@ -1569,6 +1626,12 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
 
         source_counts = vdf_high["source"].value_counts()
         st.caption(f"Source breakdown: {dict(source_counts)}")
+
+        if st.button("🔍 What makes these go viral?", key="explain_virality"):
+            with st.spinner("Analyzing patterns..."):
+                data_summary = vdf_high[["text", "virality", "engagement", "empathy_score"]].head(10).to_string()
+                explanation = generate_chart_explanation("virality_empathy", data_summary, vdf_high)
+                st.info(f"📊 **Insight:** {explanation}")
     else:
         st.info("No high-virality posts in last 3 days yet.")
 else:
@@ -1645,6 +1708,12 @@ try:
             count = len(longevity_df[longevity_df['quadrant'] == quad])
             st.metric(quad.split()[0], count)
             st.caption(emoji.split(' + ')[1])
+
+    if st.button("🔍 What047s driving these movements?", key="explain_velocity"):
+        with st.spinner("Analyzing patterns..."):
+            data_summary = longevity_df[["topic", "velocity_score", "longevity_score", "quadrant"]].head(10).to_string()
+            explanation = generate_chart_explanation("velocity_longevity", data_summary, df_filtered)
+            st.info(f"📊 **Insight:** {explanation}")
             
 except FileNotFoundError:
     st.info("Run calculate_longevity.py first to generate topic analysis")
@@ -1977,6 +2046,12 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns:
             .properties(height=250)
         )
         st.altair_chart(mood_chart, use_container_width=True)
+
+        if st.button("🔍 What caused mood shifts?", key="explain_mood_history"):
+            with st.spinner("Analyzing patterns..."):
+                data_summary = daily.to_string()
+                explanation = generate_chart_explanation("mood_history", data_summary, df_week)
+                st.info(f"📊 **Insight:** {explanation}")
     else:
         st.info(f"No data in the last 7 days.")
 else:
