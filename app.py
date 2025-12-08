@@ -1254,7 +1254,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
         if st.button("🔍 Why this divergence?", key="explain_mood_market"):
             with st.spinner("Analyzing patterns..."):
                 data_summary = f"Social Mood: {latest_social}, Market: {market_value}, Divergence: {divergence} points, Status: {status}"
-                explanation = generate_chart_explanation("mood_vs_market", data_summary, df_filtered)
+                explanation = generate_chart_explanation("mood_vs_market", data_summary, df_hist)
                 st.info(f"📊 **Insight:** {explanation}")
     else:
 
