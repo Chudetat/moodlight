@@ -1255,7 +1255,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             with st.spinner("Analyzing patterns..."):
                 data_summary = f"Social Mood: {latest_social}, Market: {market_value}, Divergence: {divergence} points, Status: {status}"
                 explanation = generate_chart_explanation("mood_vs_market", data_summary, df_hist)
-                st.info(f"📊 **Insight:** {explanation}")
+                st.info(f"📊 **Insight:**\n\n{explanation}")
     else:
 
         st.info("Building historical data... Check back after a few days for trend comparison")
@@ -1352,7 +1352,7 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
         with st.spinner("Analyzing patterns..."):
             data_summary = topic_avg[['topic', 'avg_empathy', 'label', 'count']].to_string()
             explanation = generate_chart_explanation("empathy_by_topic", data_summary, df_filtered)
-            st.info(f"📊 **Insight:** {explanation}")
+            st.info(f"📊 **Insight:**\n\n{explanation}")
 
     st.markdown("---")
 
@@ -1399,7 +1399,7 @@ if "emotion_top_1" in df_filtered.columns and len(df_filtered):
             with st.spinner("Analyzing patterns..."):
                 data_summary = chart_df.to_string()
                 explanation = generate_chart_explanation("emotional_breakdown", data_summary, df_filtered)
-                st.info(f"📊 **Insight:** {explanation}")
+                st.info(f"📊 **Insight:**\n\n{explanation}")
 
         st.markdown("---")
 
@@ -1439,7 +1439,7 @@ if "empathy_label" in df_filtered.columns and len(df_filtered):
         with st.spinner("Analyzing patterns..."):
             data_summary = chart_df.to_string()
             explanation = generate_chart_explanation("empathy_distribution", data_summary, df_filtered)
-            st.info(f"📊 **Insight:** {explanation}")
+            st.info(f"📊 **Insight:**\n\n{explanation}")
 
     st.markdown("---")
 
@@ -1479,7 +1479,7 @@ if "topic" in df_filtered.columns and len(df_filtered):
         with st.spinner("Analyzing patterns..."):
             data_summary = chart_df.to_string()
             explanation = generate_chart_explanation("topic_distribution", data_summary, df_filtered)
-            st.info(f"📊 **Insight:** {explanation}")
+            st.info(f"📊 **Insight:**\n\n{explanation}")
 
     st.markdown("---")
 
@@ -1543,7 +1543,7 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
             with st.spinner("Analyzing patterns..."):
                 data_summary = df_trending[["text", "engagement", "empathy_score", "source_display"]].head(10).to_string()
                 explanation = generate_chart_explanation("trending_headlines", data_summary, df_trending)
-                st.info(f"📊 **Insight:** {explanation}")
+                st.info(f"📊 **Insight:**\n\n{explanation}")
     else:
         st.info("No headline insights available yet.")
 
@@ -1633,7 +1633,7 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
             with st.spinner("Analyzing patterns..."):
                 data_summary = vdf_high[["text", "virality", "engagement", "empathy_score"]].head(10).to_string()
                 explanation = generate_chart_explanation("virality_empathy", data_summary, vdf_high)
-                st.info(f"📊 **Insight:** {explanation}")
+                st.info(f"📊 **Insight:**\n\n{explanation}")
     else:
         st.info("No high-virality posts in last 3 days yet.")
 else:
@@ -1715,7 +1715,7 @@ try:
         with st.spinner("Analyzing patterns..."):
             data_summary = longevity_df[["topic", "velocity_score", "longevity_score", "quadrant"]].head(10).to_string()
             explanation = generate_chart_explanation("velocity_longevity", data_summary, df_filtered)
-            st.info(f"📊 **Insight:** {explanation}")
+            st.info(f"📊 **Insight:**\n\n{explanation}")
             
 except FileNotFoundError:
     st.info("Run calculate_longevity.py first to generate topic analysis")
@@ -2053,7 +2053,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns:
             with st.spinner("Analyzing patterns..."):
                 data_summary = daily.to_string()
                 explanation = generate_chart_explanation("mood_history", data_summary, df_week)
-                st.info(f"📊 **Insight:** {explanation}")
+                st.info(f"📊 **Insight:**\n\n{explanation}")
     else:
         st.info(f"No data in the last 7 days.")
 else:
@@ -2132,7 +2132,7 @@ if 'intensity' in df_all.columns and 'country' in df_all.columns:
                 else:
                     data_summary = "No geographic data available"
                 explanation = generate_chart_explanation("geographic_hotspots", data_summary, recent)
-                st.info(f"📊 **Insight:** {explanation}")
+                st.info(f"📊 **Insight:**\n\n{explanation}")
     
     with col2:
         st.altair_chart(create_trend_indicators(df_all), use_container_width=True)
