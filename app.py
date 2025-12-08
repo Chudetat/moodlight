@@ -2069,12 +2069,16 @@ else:
 # ========================================
 # SECTION 8: WORLD VIEW
 # ========================================
+# Filter World View to last 72 hours only
+world_view_cutoff = datetime.now(timezone.utc) - timedelta(hours=72)
+df_world_view = df_filtered[df_filtered["created_at"] >= world_view_cutoff].copy() if "created_at" in df_filtered.columns else df_filtered.copy()
+
 st.markdown("### World View")
-st.caption(f"All posts from the last {FILTER_DAYS} days - scroll to explore")
+st.caption("All posts from the last 72 hours - scroll to explore")
 
 cols = [c for c in ["text", "source", "topic", "empathy_label", "emotion_top_1", "engagement", "created_at"] if c in df_filtered.columns]
-if len(df_filtered):
-    display_df = df_filtered[cols].copy()
+if len(df_world_view):
+    display_df = df_world_view[cols].copy()
     if "created_at" in display_df.columns:
         display_df = display_df.sort_values("created_at", ascending=False).reset_index(drop=True)
         display_df["created_at"] = display_df["created_at"].dt.strftime("%b %d, %H:%M")
