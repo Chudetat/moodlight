@@ -661,7 +661,7 @@ Data (sorted by intensity, highest first): {data_summary}
 Sample headlines:
 {sample_headlines}
 
-IMPORTANT: Start with the #1 highest intensity country, then #2, then #3. Explain what specific events or crises are driving their scores. Be specific about actual events.""",
+IMPORTANT: Format each country consistently as "1. Country Name (Intensity: X.XX)" followed by a brief explanation. Do NOT use markdown headers (no ### or **). Keep formatting plain and uniform for all countries. Start with #1, then #2, then #3. Be specific about actual events driving the scores.""",
 
         "mood_vs_market": f"""Based on this social mood vs market data, explain in 2-3 sentences why there is divergence or alignment between public sentiment and market performance.
 
