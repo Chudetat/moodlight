@@ -318,4 +318,3 @@ def get_framework_prompt(framework_keys: list) -> str:
     lines.append("Apply these frameworks explicitly in your recommendations. Show your strategic reasoning.")
     
     return "\n".join(lines)
-EOF
