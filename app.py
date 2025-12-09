@@ -595,15 +595,58 @@ CREATIVE RECOMMENDATION:
 
 Be bold, specific, and actionable. Reference the actual data when making recommendations.
 
-INDUSTRY-SPECIFIC CONSIDERATIONS:
-If the request involves healthcare, pharma, medical devices, or health systems:
-- Flag any emotional tones (fear, anxiety, urgency) that may face Medical Legal Review (MLR) scrutiny
-- Prioritize "safe white space" — scarcity topics that are culturally appropriate AND unlikely to trigger regulatory concerns
-- Recommend messaging that builds trust and credibility over provocative hooks
-- Note any velocity spikes that could indicate emerging issues requiring compliance awareness
-- Frame recommendations as "MLR-friendly" where appropriate
 
-For all industries: Consider regulatory and reputational risk when recommending bold creative angles.
+INDUSTRY-SPECIFIC REGULATORY CONSIDERATIONS:
+
+HEALTHCARE / PHARMA / MEDICAL DEVICES:
+- Flag emotional tones (fear, anxiety, urgency) that may face Medical Legal Review (MLR) scrutiny
+- Prioritize "safe white space" — culturally appropriate AND unlikely to trigger regulatory concerns
+- Recommend messaging that builds trust and credibility over provocative hooks
+- Note velocity spikes that could indicate emerging issues requiring compliance awareness
+- Frame recommendations as "MLR-friendly" where appropriate
+- Ensure fair balance when discussing benefits vs. risks
+
+FINANCIAL SERVICES / BANKING / INVESTMENTS:
+- Never promise or imply guaranteed returns
+- Flag any claims that could be seen as misleading by SEC, FINRA, or CFPB
+- Include appropriate risk disclosure language in recommendations
+- Avoid superlatives ("best," "guaranteed," "risk-free") without substantiation
+- Be cautious with testimonials — results not typical disclaimers required
+- Fair lending language required — no discriminatory implications
+
+ALCOHOL / SPIRITS / BEER / WINE:
+- Never target or appeal to audiences under 21
+- No health benefit claims whatsoever
+- Include responsible drinking messaging considerations
+- Avoid associating alcohol with success, social acceptance, or sexual prowess
+- Cannot show excessive consumption or intoxication positively
+- Platform restrictions: Meta/Google have strict alcohol ad policies
+
+CANNABIS / CBD:
+- Highly fragmented state-by-state regulations — recommend geo-specific strategies
+- No medical or health claims unless FDA-approved
+- Strict age-gating requirements in all messaging
+- Major platform restrictions: Meta, Google, TikTok prohibit cannabis ads
+- Recommend owned media and experiential strategies over paid social
+- Cannot target or appeal to minors in any way
+
+INSURANCE:
+- No guaranteed savings claims without substantiation
+- State DOI regulations vary — flag need for state-specific compliance review
+- Required disclosures on coverage limitations
+- Fair treatment language required — no discriminatory implications
+- Testimonials require "results may vary" disclaimers
+- Avoid fear-based messaging that could be seen as coercive
+
+LEGAL SERVICES:
+- No guarantees of case outcomes whatsoever
+- State bar regulations vary — recommend jurisdiction-specific review
+- Required disclaimers on attorney advertising
+- Restrictions on client testimonials in many states
+- Cannot create unjustified expectations
+- Avoid comparative claims against other firms without substantiation
+
+For all industries: Consider regulatory and reputational risk when recommending bold creative angles. When in doubt, recommend client consult with their legal/compliance team before execution.
 """
     
     response = client.chat.completions.create(
