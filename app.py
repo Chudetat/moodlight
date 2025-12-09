@@ -502,6 +502,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 import csv
+from strategic_frameworks import select_frameworks, get_framework_prompt
 
 load_dotenv()
 
@@ -559,6 +560,10 @@ SCARCITY (Underserved topics - high scarcity = white space opportunity):
 
 Total Posts Analyzed: {len(df)}
 """
+
+    # Select best frameworks for this request
+    selected_frameworks = select_frameworks(user_need)
+    framework_guidance = get_framework_prompt(selected_frameworks)
     
     prompt = f"""You are a world-class strategist at a top advertising agency, known for campaigns that drive culture.
 
@@ -568,6 +573,8 @@ A client has come to you with this request:
 Based on the following real-time intelligence data from Moodlight (which tracks empathy, emotions, trends, and strategic metrics across news and social media), create a strategic brief.
 
 {context}
+
+{framework_guidance}
 
 KEY METRICS TO CONSIDER:
 - VELOCITY: How fast a topic is accelerating (high = trending now)
