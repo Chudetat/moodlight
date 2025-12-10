@@ -780,15 +780,6 @@ Identify specific days with mood spikes or dips and explain what drove them."""
     except Exception as e:
         return f"Unable to generate insight: {str(e)}"
 
-def save_lead(email: str, need: str):
-    """Save lead to CSV"""
-    file_exists = os.path.isfile('leads.csv')
-    
-    with open('leads.csv', 'a', newline='') as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(['timestamp', 'email', 'need'])
-        writer.writerow([datetime.now(timezone.utc).isoformat(), email, need])
 
 def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str) -> bool:
     """Send strategic brief via email"""
@@ -2241,7 +2232,6 @@ if st.session_state.get('generate_brief'):
     user_need = st.session_state.get('user_need', '')
     user_email = st.session_state.get('user_email', '')
     
-    save_lead(user_email, user_need)
     
     with st.spinner("🎯 Generating your strategic brief..."):
         brief = generate_strategic_brief(user_need, df_all)
