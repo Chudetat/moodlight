@@ -27,3 +27,4 @@ Thumbs.db
 *.log
 .env
 leads.csv
+active_sessions.json

@@ -1,33 +1,57 @@
 import streamlit as st
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
+from session_manager import create_session, validate_session, clear_session
 
-def check_password():
-    """Returns True if user has entered correct password."""
-    
-    def password_entered():
-        """Checks whether password entered is correct."""
-        if st.session_state["password"] == st.secrets.get("APP_PASSWORD", ""):
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]
-        else:
-            st.session_state["password_correct"] = False
+# ========================================
+# AUTHENTICATION
+# ========================================
 
-    if "password_correct" not in st.session_state:
-        st.text_input(
-            "Password", type="password", on_change=password_entered, key="password"
-        )
-        st.write("*Please contact admin for access*")
-        return False
-    elif not st.session_state["password_correct"]:
-        st.text_input(
-            "Password", type="password", on_change=password_entered, key="password"
-        )
-        st.error("😕 Password incorrect")
-        return False
-    else:
-        return True
+# Load config
+with open('config.yaml') as file:
+    config = yaml.load(file, Loader=SafeLoader)
 
-if not check_password():
+# Initialize authenticator
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days']
+)
+
+# Login widget
+authenticator.login()
+
+if st.session_state.get("authentication_status") == False:
+    st.error('Username/password is incorrect')
     st.stop()
+    
+if st.session_state.get("authentication_status") == None:
+    st.warning('Please enter your username and password')
+    st.stop()
+
+# If we get here, user is authenticated
+username = st.session_state.get("username")
+name = st.session_state.get("name")
+
+# Single session enforcement
+if "session_id" not in st.session_state:
+    # New login - create session and invalidate any previous
+    st.session_state["session_id"] = create_session(username)
+
+# Validate session is still active (not kicked by another login)
+if not validate_session(username, st.session_state["session_id"]):
+    st.error("⚠️ You've been logged out because your account was accessed from another location.")
+    st.session_state["authentication_status"] = None
+    st.session_state.pop("session_id", None)
+    st.rerun()
+
+# Sidebar welcome and logout
+st.sidebar.write(f'Welcome *{name}*')
+if authenticator.logout('Logout', 'sidebar'):
+    clear_session(username)
+
 
 import math
 import subprocess
