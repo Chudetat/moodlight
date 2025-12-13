@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import time
 """
 fetch_markets.py
 Fetches major global market indices and calculates market sentiment.
@@ -127,6 +128,7 @@ def main():
     for symbol, name in INDICES.items():
         print(f"   Fetching {name} ({symbol})...")
         data = fetch_index_data(symbol)
+        time.sleep(15)
         
         if data:
             data["name"] = name
