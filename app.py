@@ -2117,6 +2117,43 @@ if brand_focus and custom_query.strip():
                     st.caption(f"Also underrepresented: {', '.join([s['topic'] for s in scarce[3:]])}")
             else:
                 st.info("No clear white space opportunities — coverage is evenly distributed or saturated")
+        # Explain Brand button
+        if st.button("🔍 Explain This Brand", key="explain_brand_focus"):
+            with st.spinner("Analyzing brand position..."):
+                brand_summary = f"{custom_query}: Velocity={brand_vlds.get('velocity', 0):.0%} ({brand_vlds.get('velocity_label', 'N/A')}), Longevity={brand_vlds.get('longevity', 0):.0%} ({brand_vlds.get('longevity_label', 'N/A')}), Density={brand_vlds.get('density', 0):.0%} ({brand_vlds.get('density_label', 'N/A')}), Scarcity={brand_vlds.get('scarcity', 0):.0%} ({brand_vlds.get('scarcity_label', 'N/A')}), Empathy={brand_vlds.get('empathy_label', 'N/A')}"
+                
+                top_emotions = ", ".join([e['emotion'] for e in brand_vlds.get('top_emotions_detailed', [])[:3]])
+                top_topics = ", ".join([t['topic'] for t in brand_vlds.get('top_topics_detailed', [])[:3]])
+                white_space = ", ".join([s['topic'] for s in brand_vlds.get('scarce_topics_detailed', [])[:3]])
+                
+                prompt = f"""Analyze this brand's VLDS metrics and provide strategic recommendations:
+
+Brand: {custom_query}
+
+VLDS Metrics:
+{brand_summary}
+
+Top Emotions: {top_emotions}
+Top Narratives: {top_topics}
+White Space Opportunities: {white_space or "None identified"}
+
+Provide:
+1. Overall brand position assessment (2-3 sentences)
+2. Key strength to leverage
+3. Key vulnerability to address
+4. Three specific, tactical recommendations based on the VLDS scores
+
+Be specific and prescriptive. Reference the actual scores. No generic advice. (250-300 words)"""
+                
+                client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                response = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7,
+                    max_tokens=500
+                )
+                st.markdown("### 💡 Brand Strategic Insight")
+                st.write(response.choices[0].message.content)
     
     st.markdown("---")
 
