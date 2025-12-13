@@ -1153,120 +1153,121 @@ st.caption(f"X query: *{custom_query.strip() or '[default timeline]'}*")
 # ========================================
 # BRAND COMPARISON (Priority placement when active)
 # ========================================
-brands_to_compare = []
-if compare_brand_1.strip():
-    brands_to_compare.append(compare_brand_1.strip())
-if compare_brand_2.strip():
-    brands_to_compare.append(compare_brand_2.strip())
-if compare_brand_3.strip():
-    brands_to_compare.append(compare_brand_3.strip())
-
-if len(brands_to_compare) >= 2:
-    st.markdown("## 🆚 Brand Comparison")
-    st.caption(f"Comparing VLDS metrics: {' vs '.join(brands_to_compare)}")
+if compare_mode:
+    brands_to_compare = []
+    if compare_brand_1.strip():
+        brands_to_compare.append(compare_brand_1.strip())
+    if compare_brand_2.strip():
+        brands_to_compare.append(compare_brand_2.strip())
+    if compare_brand_3.strip():
+        brands_to_compare.append(compare_brand_3.strip())
     
-    df_compare = load_data()
-    
-    brand_results = {}
-    for brand in brands_to_compare:
-        brand_df = df_compare[df_compare["text"].str.lower().str.contains(brand.lower(), na=False)]
-        if len(brand_df) >= 5:
-            brand_results[brand] = calculate_brand_vlds(brand_df)
-            brand_results[brand]['post_count'] = len(brand_df)
-        else:
-            brand_results[brand] = None
-    
-    if any(brand_results.values()):
-        st.markdown("### VLDS Metrics")
-        compare_cols = st.columns(len(brands_to_compare))
+    if len(brands_to_compare) >= 2:
+        st.markdown("## 🆚 Brand Comparison")
+        st.caption(f"Comparing VLDS metrics: {' vs '.join(brands_to_compare)}")
         
-        for i, brand in enumerate(brands_to_compare):
-            with compare_cols[i]:
-                st.markdown(f"**{brand}**")
-                vlds = brand_results.get(brand)
-                if vlds:
-                    st.metric("Posts", vlds.get('post_count', 0))
-                    st.metric("Velocity", f"{vlds.get('velocity', 0):.0%}", vlds.get('velocity_label', ''))
-                    st.metric("Longevity", f"{vlds.get('longevity', 0):.0%}", vlds.get('longevity_label', ''))
-                    st.metric("Density", f"{vlds.get('density', 0):.0%}", vlds.get('density_label', ''))
-                    st.metric("Scarcity", f"{vlds.get('scarcity', 0):.0%}", vlds.get('scarcity_label', ''))
-                else:
-                    st.warning(f"Not enough data for {brand}")
+        df_compare = load_data()
         
-        st.markdown("### Empathy Score")
-        emp_cols = st.columns(len(brands_to_compare))
+        brand_results = {}
+        for brand in brands_to_compare:
+            brand_df = df_compare[df_compare["text"].str.lower().str.contains(brand.lower(), na=False)]
+            if len(brand_df) >= 5:
+                brand_results[brand] = calculate_brand_vlds(brand_df)
+                brand_results[brand]['post_count'] = len(brand_df)
+            else:
+                brand_results[brand] = None
         
-        for i, brand in enumerate(brands_to_compare):
-            with emp_cols[i]:
-                st.markdown(f"**{brand}**")
-                vlds = brand_results.get(brand)
-                if vlds and vlds.get("empathy_score"):
-                    emp_score = vlds.get("empathy_score", 0)
-                    emp_label = vlds.get("empathy_label", "N/A")
-                    st.metric("Empathy", emp_label, f"{emp_score:.3f}")
-                else:
-                    st.caption("No empathy data")
-        
-        st.markdown("### Dominant Emotions")
-        emo_cols = st.columns(len(brands_to_compare))
-        
-        for i, brand in enumerate(brands_to_compare):
-            with emo_cols[i]:
-                st.markdown(f"**{brand}**")
-                vlds = brand_results.get(brand)
-                if vlds and vlds.get('top_emotions_detailed'):
-                    for item in vlds.get('top_emotions_detailed', [])[:3]:
-                        emo = item['emotion']
-                        emoji = EMOTION_EMOJIS.get(emo, '•')
-                        st.caption(f"{emoji} {emo.title()}: {item['percentage']}%")
-        
-        st.markdown("### Top Narratives")
-        narr_cols = st.columns(len(brands_to_compare))
-        
-        for i, brand in enumerate(brands_to_compare):
-            with narr_cols[i]:
-                st.markdown(f"**{brand}**")
-                vlds = brand_results.get(brand)
-                if vlds and vlds.get('top_topics_detailed'):
-                    for item in vlds.get('top_topics_detailed', [])[:3]:
-                        st.caption(f"• {item['topic']}: {item['percentage']}%")
-        
-        if st.button("🔍 Explain This Comparison", key="explain_comparison_top"):
-            with st.spinner("Analyzing comparison..."):
-                comparison_summary = []
-                for brand, vlds in brand_results.items():
+        if any(brand_results.values()):
+            st.markdown("### VLDS Metrics")
+            compare_cols = st.columns(len(brands_to_compare))
+            
+            for i, brand in enumerate(brands_to_compare):
+                with compare_cols[i]:
+                    st.markdown(f"**{brand}**")
+                    vlds = brand_results.get(brand)
                     if vlds:
-                        comparison_summary.append(f"{brand}: Velocity={vlds.get('velocity', 0):.0%}, Longevity={vlds.get('longevity', 0):.0%}, Density={vlds.get('density', 0):.0%}, Scarcity={vlds.get('scarcity', 0):.0%}, Empathy={vlds.get('empathy_label', 'N/A')}")
-                
-                prompt = f"""Analyze this brand comparison and provide strategic insights:
-
-Brands compared: {", ".join(brands_to_compare)}
-
-VLDS Metrics:
-{chr(10).join(comparison_summary)}
-
-Explain:
-1. Which brand has the strongest position and why
-2. Key opportunities for each brand based on their VLDS scores
-3. One strategic recommendation for EACH brand
-
-Be specific and prescriptive. Reference the actual VLDS scores. Give tactical recommendations, not generic advice. No extra line breaks between sections. (250-300 words)"""
-                
-                client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-                response = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7,
-                    max_tokens=500
-                )
-                st.markdown("### 💡 Comparison Insight")
-                st.write(response.choices[0].message.content)
-        st.markdown("---")
-    else:
-        st.warning("Not enough data for comparison. Try different brands.")
-
-elif len(brands_to_compare) == 1:
-    st.info("Enter at least 2 brands to compare.")
+                        st.metric("Posts", vlds.get('post_count', 0))
+                        st.metric("Velocity", f"{vlds.get('velocity', 0):.0%}", vlds.get('velocity_label', ''))
+                        st.metric("Longevity", f"{vlds.get('longevity', 0):.0%}", vlds.get('longevity_label', ''))
+                        st.metric("Density", f"{vlds.get('density', 0):.0%}", vlds.get('density_label', ''))
+                        st.metric("Scarcity", f"{vlds.get('scarcity', 0):.0%}", vlds.get('scarcity_label', ''))
+                    else:
+                        st.warning(f"Not enough data for {brand}")
+            
+            st.markdown("### Empathy Score")
+            emp_cols = st.columns(len(brands_to_compare))
+            
+            for i, brand in enumerate(brands_to_compare):
+                with emp_cols[i]:
+                    st.markdown(f"**{brand}**")
+                    vlds = brand_results.get(brand)
+                    if vlds and vlds.get("empathy_score"):
+                        emp_score = vlds.get("empathy_score", 0)
+                        emp_label = vlds.get("empathy_label", "N/A")
+                        st.metric("Empathy", emp_label, f"{emp_score:.3f}")
+                    else:
+                        st.caption("No empathy data")
+            
+            st.markdown("### Dominant Emotions")
+            emo_cols = st.columns(len(brands_to_compare))
+            
+            for i, brand in enumerate(brands_to_compare):
+                with emo_cols[i]:
+                    st.markdown(f"**{brand}**")
+                    vlds = brand_results.get(brand)
+                    if vlds and vlds.get('top_emotions_detailed'):
+                        for item in vlds.get('top_emotions_detailed', [])[:3]:
+                            emo = item['emotion']
+                            emoji = EMOTION_EMOJIS.get(emo, '•')
+                            st.caption(f"{emoji} {emo.title()}: {item['percentage']}%")
+            
+            st.markdown("### Top Narratives")
+            narr_cols = st.columns(len(brands_to_compare))
+            
+            for i, brand in enumerate(brands_to_compare):
+                with narr_cols[i]:
+                    st.markdown(f"**{brand}**")
+                    vlds = brand_results.get(brand)
+                    if vlds and vlds.get('top_topics_detailed'):
+                        for item in vlds.get('top_topics_detailed', [])[:3]:
+                            st.caption(f"• {item['topic']}: {item['percentage']}%")
+            
+            if st.button("🔍 Explain This Comparison", key="explain_comparison_top"):
+                with st.spinner("Analyzing comparison..."):
+                    comparison_summary = []
+                    for brand, vlds in brand_results.items():
+                        if vlds:
+                            comparison_summary.append(f"{brand}: Velocity={vlds.get('velocity', 0):.0%}, Longevity={vlds.get('longevity', 0):.0%}, Density={vlds.get('density', 0):.0%}, Scarcity={vlds.get('scarcity', 0):.0%}, Empathy={vlds.get('empathy_label', 'N/A')}")
+                    
+                    prompt = f"""Analyze this brand comparison and provide strategic insights:
+    
+    Brands compared: {", ".join(brands_to_compare)}
+    
+    VLDS Metrics:
+    {chr(10).join(comparison_summary)}
+    
+    Explain:
+    1. Which brand has the strongest position and why
+    2. Key opportunities for each brand based on their VLDS scores
+    3. One strategic recommendation for EACH brand
+    
+    Be specific and prescriptive. Reference the actual VLDS scores. Give tactical recommendations, not generic advice. No extra line breaks between sections. (250-300 words)"""
+                    
+                    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                    response = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.7,
+                        max_tokens=500
+                    )
+                    st.markdown("### 💡 Comparison Insight")
+                    st.write(response.choices[0].message.content)
+            st.markdown("---")
+        else:
+            st.warning("Not enough data for comparison. Try different brands.")
+    
+    elif len(brands_to_compare) == 1:
+        st.info("Enter at least 2 brands to compare.")
 
 
 # ========================================
