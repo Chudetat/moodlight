@@ -1996,14 +1996,14 @@ Explain:
 2. Key opportunities for each brand based on their VLDS scores
 3. One strategic recommendation for EACH brand
 
-Keep it concise and actionable (under 150 words)."""
+Be specific and prescriptive. Reference the actual VLDS scores. Give tactical recommendations, not generic advice. No extra line breaks between sections. (250-300 words)"""
                     
                     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
                     response = client.chat.completions.create(
                         model="gpt-4o",
                         messages=[{"role": "user", "content": prompt}],
                         temperature=0.7,
-                        max_tokens=300
+                        max_tokens=500
                     )
                     st.markdown("### 💡 Comparison Insight")
                     st.write(response.choices[0].message.content)
