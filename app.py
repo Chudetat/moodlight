@@ -488,6 +488,12 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict:
             dominant = top_emotions_detailed[0]
             results['emotion_insight'] = f"The dominant emotional tone is {dominant['emotion']} ({dominant['percentage']}% of coverage)"
     
+    # Calculate empathy score for brand
+    if "empathy_score" in df.columns:
+        avg_empathy = df["empathy_score"].mean()
+        results["empathy_score"] = round(avg_empathy, 3)
+        results["empathy_label"] = empathy_label_from_score(avg_empathy)
+    
     results['total_posts'] = total_posts
     
     return results
@@ -1930,6 +1936,20 @@ if compare_mode:
                     else:
                         st.warning(f"Not enough data for {brand}")
             
+            
+            st.markdown("### Empathy Score")
+            emp_cols = st.columns(len(brands_to_compare))
+            
+            for i, brand in enumerate(brands_to_compare):
+                with emp_cols[i]:
+                    st.markdown(f"**{brand}**")
+                    vlds = brand_results.get(brand)
+                    if vlds and vlds.get("empathy_score"):
+                        emp_score = vlds.get("empathy_score", 0)
+                        emp_label = vlds.get("empathy_label", "N/A")
+                        st.metric("Empathy", emp_label, f"{emp_score:.3f}")
+                    else:
+                        st.caption("No empathy data")
             st.markdown("### Dominant Emotions")
             emo_cols = st.columns(len(brands_to_compare))
             
@@ -1955,6 +1975,38 @@ if compare_mode:
                         for item in vlds.get('top_topics_detailed', [])[:3]:
                             st.caption(f"• {item['topic']}: {item['percentage']}%")
             
+            
+            # Explain comparison button
+            if st.button("🔍 Explain This Comparison", key="explain_comparison"):
+                with st.spinner("Analyzing comparison..."):
+                    comparison_summary = []
+                    for brand, vlds in brand_results.items():
+                        if vlds:
+                            comparison_summary.append(f"{brand}: Velocity={vlds.get('velocity', 0):.0%}, Longevity={vlds.get('longevity', 0):.0%}, Density={vlds.get('density', 0):.0%}, Scarcity={vlds.get('scarcity', 0):.0%}, Empathy={vlds.get('empathy_label', 'N/A')}")
+                    
+                    prompt = f"""Analyze this brand comparison and provide strategic insights:
+
+Brands compared: {", ".join(brands_to_compare)}
+
+VLDS Metrics:
+{chr(10).join(comparison_summary)}
+
+Explain:
+1. Which brand has the strongest position and why
+2. Key opportunities for each brand based on their VLDS scores
+3. One strategic recommendation for the weaker brand(s)
+
+Keep it concise and actionable (under 150 words)."""
+                    
+                    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                    response = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.7,
+                        max_tokens=300
+                    )
+                    st.markdown("### 💡 Comparison Insight")
+                    st.write(response.choices[0].message.content)
             st.markdown("---")
         else:
             st.warning("Not enough data for comparison. Try different brands.")
