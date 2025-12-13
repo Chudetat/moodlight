@@ -1007,7 +1007,7 @@ def create_intensity_gauge(df: pd.DataFrame, avg_intensity: float):
         
         current_data = pd.DataFrame({'value': [float(avg_intensity)]})
         marker = alt.Chart(current_data).mark_rule(
-                color='black',
+                color='white',
                 strokeWidth=2
             ).encode(
                 y='value:Q',
