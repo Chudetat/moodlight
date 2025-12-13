@@ -1,15 +1,5 @@
-[theme]
-primaryColor = "#424242"        # Dark gray - consistent across all devices
-secondaryBackgroundColor = "#F5F5F5"  # Light gray for cards/sidebar
-textColor = "#1A1A1A"           # Near-black for readability
-font = "sans serif"             # Clean, modern font
-
-[server]
-headless = true
-
 [client]
-showErrorDetails = false
 toolbarMode = "minimal"
 
-[runner]
-fastReruns = true
+[ui]
+hideTopBar = true
