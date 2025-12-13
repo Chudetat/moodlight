@@ -1758,6 +1758,11 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
     three_days_ago = datetime.now(timezone.utc) - timedelta(days=FILTER_DAYS)
     vdf = df_all[df_all["created_at"] >= three_days_ago].copy()
     
+    
+    # Filter to brand if Brand Focus Mode is active
+    if brand_focus and custom_query.strip():
+        vdf = vdf[vdf["text"].str.lower().str.contains(custom_query.lower(), na=False)]
+        st.caption(f"Filtered to posts mentioning: {custom_query}")
     now = datetime.now(timezone.utc)
     vdf["age_hours"] = (now - vdf["created_at"]).dt.total_seconds() / 3600
     vdf["age_hours"] = vdf["age_hours"].replace(0, 0.1)
