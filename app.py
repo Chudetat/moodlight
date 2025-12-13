@@ -1994,7 +1994,7 @@ VLDS Metrics:
 Explain:
 1. Which brand has the strongest position and why
 2. Key opportunities for each brand based on their VLDS scores
-3. One strategic recommendation for the weaker brand(s)
+3. One strategic recommendation for EACH brand
 
 Keep it concise and actionable (under 150 words)."""
                     
