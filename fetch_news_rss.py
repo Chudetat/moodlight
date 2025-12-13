@@ -920,7 +920,7 @@ def fetch_feed(source: str, url: str) -> List[Dict[str, Any]]:
             url, 
             timeout=20,
             headers={
-                "User-Agent": "Mozilla/5.0 (compatible; WorldMoodBot/1.0)",
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
                 "Accept": "application/rss+xml, application/xml, text/xml"
             }
         )
