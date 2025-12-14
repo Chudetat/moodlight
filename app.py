@@ -1779,7 +1779,7 @@ st.markdown("### Virality × Empathy: Posts with Viral Potential")
 st.caption("High-engagement posts from last 3 days - bigger bubbles = higher engagement")
 
 if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_all) > 0:
-    three_days_ago = datetime.now(timezone.utc) - timedelta(days=FILTER_DAYS)
+    three_days_ago = datetime.now(timezone.utc) - timedelta(days=3)
     vdf = df_all[df_all["created_at"] >= three_days_ago].copy()
     
     
