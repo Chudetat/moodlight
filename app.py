@@ -536,7 +536,7 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict:
 # -------------------------------
 # UI
 # -------------------------------
-st.title("Moodlight")
+st.image("logo.png", width=300)
 st.caption("Real-time global news and culture analysis, prediction, and actionable intelligence")
 
 from openai import OpenAI
