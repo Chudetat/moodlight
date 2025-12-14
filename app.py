@@ -125,6 +125,7 @@ def fetch_stock_data(ticker: str) -> dict | None:
         return None
 
 st.set_page_config(
+    page_icon="favicon.png",
     page_title="Moodlight",
     layout="wide",
     initial_sidebar_state="expanded",
