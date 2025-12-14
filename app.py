@@ -138,6 +138,14 @@ st.set_page_config(
     }
 )
 
+
+# Hide the "Missing Submit Button" warning from streamlit-authenticator
+st.markdown("""
+<style>
+    .stException { display: none !important; }
+    div[data-testid="stException"] { display: none !important; }
+</style>
+""", unsafe_allow_html=True)
 # View mode toggle
 view_mode = st.sidebar.radio(
     "📊 View Mode",
