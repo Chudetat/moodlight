@@ -21,6 +21,13 @@ authenticator = stauth.Authenticate(
 )
 
 
+# Hide the "Missing Submit Button" warning
+st.markdown("""
+<style>
+    .stException { display: none !important; }
+    div[data-testid="stException"] { display: none !important; }
+</style>
+""", unsafe_allow_html=True)
 # Logo on login page (only show when not logged in)
 if not st.session_state.get("authentication_status"):
     st.image("logo.png", width=300)
@@ -149,14 +156,6 @@ st.set_page_config(
 )
 
 
-# Hide the "Missing Submit Button" warning from streamlit-authenticator
-st.markdown("""
-<style>
-    .stException { display: none !important; }
-    div[data-testid="stException"] { display: none !important; }
-</style>
-""", unsafe_allow_html=True)
-# View mode toggle
 view_mode = st.sidebar.radio(
     "📊 View Mode",
     ["Breaking (48h)", "Strategic (30d)"],
