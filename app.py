@@ -35,18 +35,20 @@ if st.session_state.get("authentication_status") == None:
 username = st.session_state.get("username")
 name = st.session_state.get("name")
 
+
 # Single session enforcement
+session_just_created = False
 if "session_id" not in st.session_state:
     # New login - create session and invalidate any previous
     st.session_state["session_id"] = create_session(username)
+    session_just_created = True
 
-# Validate session is still active (not kicked by another login)
-if not validate_session(username, st.session_state["session_id"]):
+# Only validate if session already existed (not just created)
+if not session_just_created and not validate_session(username, st.session_state["session_id"]):
     st.error("⚠️ You've been logged out because your account was accessed from another location.")
     st.session_state["authentication_status"] = None
     st.session_state.pop("session_id", None)
     st.rerun()
-
 # Sidebar welcome and logout
 st.sidebar.write(f'Welcome *{name}*')
 if authenticator.logout('Logout', 'sidebar'):
