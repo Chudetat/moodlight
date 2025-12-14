@@ -1764,13 +1764,18 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
     vdf["age_hours"] = vdf["age_hours"].replace(0, 0.1)
     vdf["virality"] = vdf["engagement"] / vdf["age_hours"]
     
-    if len(vdf) > 10:
+
+    # Filter to posts with any engagement
+    vdf = vdf[vdf["engagement"] > 0]
+    
+    if len(vdf) > 20:
+        # If plenty of data, show top 70%
         virality_threshold = vdf["virality"].quantile(0.3)
         engagement_threshold = vdf["engagement"].quantile(0.3)
         vdf_high = vdf[(vdf["virality"] > virality_threshold) | (vdf["engagement"] > engagement_threshold)]
     else:
+        # If limited data, show all posts with engagement
         vdf_high = vdf
-
     if len(vdf_high) > 0:
         st.caption(f"Showing {len(vdf_high)} high-potential posts (X: {len(vdf_high[vdf_high['source']=='x'])}, News: {len(vdf_high[vdf_high['source']=='news'])})")
         
