@@ -3,6 +3,17 @@ import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 from session_manager import create_session, validate_session, clear_session
+# One-time spam cleanup (runs once on startup)
+import os
+if not os.path.exists(".cleanup_done"):
+    try:
+        import subprocess
+        subprocess.run(["python", "cleanup_spam.py"], capture_output=True)
+        open(".cleanup_done", "w").close()
+        print("Spam cleanup completed")
+    except Exception as e:
+        print(f"Cleanup skipped: {e}")
+
 
 # ========================================
 # AUTHENTICATION
