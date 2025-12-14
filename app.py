@@ -1117,6 +1117,10 @@ def create_trend_indicators(df: pd.DataFrame):
         recent_df = df[df['created_at'] >= recent_start]
         prev_df = df[(df['created_at'] >= prev_start) & (df['created_at'] < recent_start)]
     
+    
+    # Filter out null/nan topics
+    recent_df = recent_df[recent_df["topic"].notna() & (recent_df["topic"] != "null") & (recent_df["topic"] != "")]
+    prev_df = prev_df[prev_df["topic"].notna() & (prev_df["topic"] != "null") & (prev_df["topic"] != "")]
     recent_topics = Counter(recent_df['topic'])
     prev_topics = Counter(prev_df['topic'])
     
