@@ -21,7 +21,7 @@ authenticator = stauth.Authenticate(
 )
 
 # Login widget
-authenticator.login(location="main")
+authenticator.login()
 
 if st.session_state.get("authentication_status") == False:
     st.error('Username/password is incorrect')
