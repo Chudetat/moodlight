@@ -42,7 +42,7 @@ NEWSAPI_URL = "https://newsapi.org/v2/everything"
 # -------------------------------
 # Default queries (with viral filter)
 # -------------------------------
-X_DEFAULT_QUERY = "(politics OR war OR economy OR technology OR sports) lang:en -is:retweet "
+X_DEFAULT_QUERY = "(from:elonmusk OR from:polymarket OR from:polymarketintel OR (politics OR war OR economy OR technology) lang:en -is:retweet)"
 
 NEWS_DEFAULT_QUERY = (
     "war OR military OR nuclear OR terrorism OR China OR Russia OR Iran OR Israel OR Ukraine OR NATO OR "
@@ -109,8 +109,9 @@ def load_existing_data() -> pd.DataFrame:
 # -------------------------------
 # X Fetch (with quota detection)
 # -------------------------------
-def search_tweets_paged(query: str, total_max: int) -> Tuple[List[Dict], bool]:
+def search_tweets_paged(query: str, total_max: int) -> Tuple[List[Dict], Dict[str, Dict], bool]:
     all_tweets: List[Dict] = []
+    all_users: Dict[str, Dict] = {}  # author_id -> user data
     next_token: str | None = None
     hit_cap = False
 
@@ -121,6 +122,8 @@ def search_tweets_paged(query: str, total_max: int) -> Tuple[List[Dict], bool]:
             "query": query,
             "max_results": min(100, total_max - len(all_tweets)),
             "tweet.fields": "created_at,public_metrics,author_id,conversation_id,in_reply_to_user_id",
+            "expansions": "author_id",
+            "user.fields": "public_metrics",
         }
         if next_token:
             params["next_token"] = next_token
@@ -142,6 +145,11 @@ def search_tweets_paged(query: str, total_max: int) -> Tuple[List[Dict], bool]:
         data = resp.json()
         tweets = data.get("data", [])
         meta = data.get("meta", {})
+        
+        # Capture user data for follower filtering
+        includes = data.get("includes", {})
+        for user in includes.get("users", []):
+            all_users[user["id"]] = user
 
         print(f"   Page: {len(tweets)} tweets")
         all_tweets.extend(tweets)
@@ -151,7 +159,7 @@ def search_tweets_paged(query: str, total_max: int) -> Tuple[List[Dict], bool]:
             break
 
     print(f"   Total fetched: {len(all_tweets)} tweets")
-    return all_tweets, hit_cap
+    return all_tweets, all_users, hit_cap
 
 # -------------------------------
 # Topic classification
@@ -448,7 +456,7 @@ def main():
     news_articles = fetch_news(news_query, TOTAL_MAX_NEWS)
 
     # --- Fetch X (might hit quota) ---
-    tweets, hit_cap = search_tweets_paged(x_query, TOTAL_MAX_TWEETS)
+    tweets, users, hit_cap = search_tweets_paged(x_query, TOTAL_MAX_TWEETS)
 
     # --- Process X ---
     print("\nProcessing X posts...")
@@ -471,6 +479,14 @@ def main():
         # Skip low-engagement tweets (quality filter)
         if engagement < 1:
             continue
+        
+        # Skip accounts with fewer than 10,000 followers
+        author_id = tw.get("author_id")
+        user_data = users.get(author_id, {})
+        follower_count = user_data.get("public_metrics", {}).get("followers_count", 0)
+        if follower_count < 10000:
+            continue
+        
         x_rows.append({
             "id": tw["id"],
             "text": text,
