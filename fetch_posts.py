@@ -42,21 +42,18 @@ NEWSAPI_URL = "https://newsapi.org/v2/everything"
 # -------------------------------
 # Default queries (with viral filter)
 # -------------------------------
-X_DEFAULT_QUERY = "(from:elonmusk OR from:polymarket OR from:polymarketintel OR from:Reuters OR from:AP OR from:WSJ OR from:Bloomberg OR from:business OR from:CNBC OR from:FT OR from:TheEconomist OR from:politico OR from:axios OR from:BBCWorld OR from:nikitenews OR from:zaborowsky OR (shooting OR attack OR terrorism OR politics OR war OR economy OR technology) lang:en -is:retweet)"
+X_DEFAULT_QUERY = "(from:Reuters OR from:AP OR from:WSJ OR from:Bloomberg OR from:CNBC OR from:BBCWorld) OR (war OR terrorism OR China OR Russia OR Ukraine OR election OR economy OR inflation OR AI OR technology OR climate OR healthcare OR marketing) lang:en -is:retweet"
 
 # High-engagement trending query - viral content only
 X_TRENDING_QUERY = "(breaking OR developing OR just announced) lang:en -is:retweet"
 
 NEWS_DEFAULT_QUERY = (
-    "shooting OR attack OR antisemitism OR war OR military OR nuclear OR terrorism OR China OR Russia OR Iran OR Israel OR Ukraine OR NATO OR "
-    "politics OR election OR congress OR sanctions OR "
-    "economy OR inflation OR Federal Reserve OR GDP OR "
-    "merger OR IPO OR hedge fund OR billionaire OR "
-    "AI OR quantum OR semiconductor OR Tesla OR EV OR "
-    "supply chain OR infrastructure OR 5G OR "
-    "energy OR oil OR lithium OR solar OR "
-    "real estate OR mortgage OR housing OR "
-    "pandemic OR FDA OR climate OR Davos"
+    "war OR terrorism OR NATO OR China OR Russia OR Ukraine OR Israel OR Iran OR "
+    "election OR congress OR White House OR Supreme Court OR legislation OR "
+    "economy OR inflation OR Federal Reserve OR recession OR Wall Street OR IPO OR merger OR "
+    "AI OR technology OR semiconductor OR cybersecurity OR space OR "
+    "climate OR pandemic OR FDA OR healthcare OR pharmaceutical OR "
+    "advertising OR marketing OR branding OR retail"
 )
 
 # -------------------------------
