@@ -20,9 +20,11 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
-# Logo on login page
-st.image("logo.png", width=300)
-st.markdown("")
+
+# Logo on login page (only show when not logged in)
+if not st.session_state.get("authentication_status"):
+    st.image("logo.png", width=300)
+    st.markdown("")
 
 # Login widget
 authenticator.login()
