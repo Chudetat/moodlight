@@ -42,7 +42,7 @@ NEWSAPI_URL = "https://newsapi.org/v2/everything"
 # -------------------------------
 # Default queries (with viral filter)
 # -------------------------------
-X_DEFAULT_QUERY = "(politics OR war OR economy OR technology OR sports) lang:en -is:retweet"
+X_DEFAULT_QUERY = "(politics OR war OR economy OR technology OR sports) lang:en -is:retweet min_faves:3"
 
 NEWS_DEFAULT_QUERY = (
     "war OR military OR nuclear OR terrorism OR China OR Russia OR Iran OR Israel OR Ukraine OR NATO OR "
@@ -69,7 +69,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 custom_query = args.query.strip()
-x_query = f"({custom_query}) lang:en -is:retweet" if custom_query else X_DEFAULT_QUERY 
+x_query = f"({custom_query}) lang:en -is:retweet min_faves:3" if custom_query else X_DEFAULT_QUERY 
 news_query = custom_query or NEWS_DEFAULT_QUERY
 
 # -------------------------------
@@ -120,7 +120,7 @@ def search_tweets_paged(query: str, total_max: int) -> Tuple[List[Dict], bool]:
         params = {
             "query": query,
             "max_results": min(100, total_max - len(all_tweets)),
-            "tweet.fields": "created_at,public_metrics,author_id",
+            "tweet.fields": "created_at,public_metrics,author_id,conversation_id,in_reply_to_user_id",
         }
         if next_token:
             params["next_token"] = next_token
