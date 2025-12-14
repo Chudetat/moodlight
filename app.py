@@ -2325,6 +2325,10 @@ if 'intensity' in df_all.columns and 'country' in df_all.columns:
             prev_start = now - pd.Timedelta(days=7)
             recent_df = df_all[df_all['created_at'] >= recent_start]
             prev_df = df_all[(df_all['created_at'] >= prev_start) & (df_all['created_at'] < recent_start)]
+        
+        # Filter out null/nan topics
+        recent_df = recent_df[recent_df["topic"].notna() & (recent_df["topic"] != "null") & (recent_df["topic"] != "") & (recent_df["topic"].astype(str) != "nan")]
+        prev_df = prev_df[prev_df["topic"].notna() & (prev_df["topic"] != "null") & (prev_df["topic"] != "") & (prev_df["topic"].astype(str) != "nan")]
 
         recent_topics = Counter(recent_df['topic'])
         prev_topics = Counter(prev_df['topic'])
