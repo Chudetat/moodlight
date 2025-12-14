@@ -29,6 +29,10 @@ if not st.session_state.get("authentication_status"):
 # Login widget
 authenticator.login()
 
+# Stop here if not authenticated yet
+if not st.session_state.get("authentication_status"):
+    st.stop()
+
 if st.session_state.get("authentication_status") == False:
     st.error('Username/password is incorrect')
     st.stop()
