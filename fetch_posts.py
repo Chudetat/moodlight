@@ -467,6 +467,10 @@ def main():
         metrics = tw.get("public_metrics", {})
         engagement = sum(metrics.get(k, 0) for k in ["like_count", "reply_count", "retweet_count", "quote_count"])
 
+
+        # Skip low-engagement tweets (quality filter)
+        if engagement < 1:
+            continue
         x_rows.append({
             "id": tw["id"],
             "text": text,
