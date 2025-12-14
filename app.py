@@ -1020,7 +1020,7 @@ def create_intensity_gauge(df: pd.DataFrame, avg_intensity: float):
             dy=-10,
             fontSize=16,
             fontWeight='bold',
-            color='black'
+            color='white'
         ).encode(
             y='value:Q',
             text=alt.Text('value:Q', format='.2f')
