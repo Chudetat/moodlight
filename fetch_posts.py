@@ -347,8 +347,10 @@ def is_spam(text: str) -> bool:
         "thank you for sharing", "funds to steadily",
         "check my profile", "link in bio", "dm for",
         "available at these retailers", "shop now", "buy now",
+        "air jordan", "releasing at", "drops at", "nike dunk", "yeezy",
         "use code", "discount code", "promo code",
         "@idos_network", "stablecoin", "tokenomics", "airdrop",
+        "zero stress", "clean entries", "#STOCK", "#Finance", "overthink everything",
         "giveaway", "whitelist", "presale"
     ]
     
