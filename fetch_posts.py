@@ -42,7 +42,10 @@ NEWSAPI_URL = "https://newsapi.org/v2/everything"
 # -------------------------------
 # Default queries (with viral filter)
 # -------------------------------
-X_DEFAULT_QUERY = "(from:elonmusk OR from:polymarket OR from:polymarketintel OR (politics OR war OR economy OR technology) lang:en -is:retweet)"
+X_DEFAULT_QUERY = "(from:elonmusk OR from:polymarket OR from:polymarketintel OR from:Reuters OR from:AP OR from:WSJ OR from:Bloomberg OR from:business OR from:CNBC OR from:FT OR from:TheEconomist OR from:politico OR from:axios OR from:BBCWorld OR from:nikitenews OR from:zaborowsky OR (politics OR war OR economy OR technology) lang:en -is:retweet)"
+
+# High-engagement trending query - viral content only
+X_TRENDING_QUERY = "(breaking OR developing OR just announced) lang:en -is:retweet"
 
 NEWS_DEFAULT_QUERY = (
     "war OR military OR nuclear OR terrorism OR China OR Russia OR Iran OR Israel OR Ukraine OR NATO OR "
@@ -342,7 +345,11 @@ def is_spam(text: str) -> bool:
         "investment savior", "investment guru", "my investment", 
         "his recommendations", "her recommendations",
         "thank you for sharing", "funds to steadily",
-        "check my profile", "link in bio", "dm for"
+        "check my profile", "link in bio", "dm for",
+        "available at these retailers", "shop now", "buy now",
+        "use code", "discount code", "promo code",
+        "@idos_network", "stablecoin", "tokenomics", "airdrop",
+        "giveaway", "whitelist", "presale"
     ]
     
     if any(phrase in t for phrase in instant_ban):
@@ -457,6 +464,13 @@ def main():
 
     # --- Fetch X (might hit quota) ---
     tweets, users, hit_cap = search_tweets_paged(x_query, TOTAL_MAX_TWEETS)
+    
+    # --- Fetch trending/viral tweets ---
+    if not hit_cap:
+        trending_tweets, trending_users, hit_cap = search_tweets_paged(X_TRENDING_QUERY, 100)
+        tweets.extend(trending_tweets)
+        users.update(trending_users)
+        print(f"   Added {len(trending_tweets)} trending tweets")
 
     # --- Process X ---
     print("\nProcessing X posts...")
@@ -484,7 +498,7 @@ def main():
         author_id = tw.get("author_id")
         user_data = users.get(author_id, {})
         follower_count = user_data.get("public_metrics", {}).get("followers_count", 0)
-        if follower_count < 10000:
+        if follower_count < 5000:
             continue
         
         x_rows.append({
