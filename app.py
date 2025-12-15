@@ -350,6 +350,7 @@ def load_market_data() -> pd.DataFrame:
         return pd.DataFrame()
 
 def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
+    print(">>> REFRESH TRIGGERED <<<", flush=True)
     msg_parts = []
     has_error = False
 
