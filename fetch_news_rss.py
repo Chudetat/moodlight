@@ -1010,7 +1010,7 @@ def fetch_feed(source: str, url: str) -> List[Dict[str, Any]]:
             intensity = calculate_intensity(text)
 
             # Skip blocked sources and spam
-            if is_blocked_source(link):
+            if is_blocked_source(link) or is_blocked_source(source):
                 continue
 
             # Skip spam
@@ -1055,7 +1055,7 @@ def load_existing_data() -> pd.DataFrame:
         # Filter out blocked sources from existing data
         if "link" in df.columns:
             before = len(df)
-            df = df[~df["link"].apply(lambda x: is_blocked_source(str(x)))]
+            df = df[~df.apply(lambda row: is_blocked_source(str(row.get("link", ""))) or is_blocked_source(str(row.get("source", ""))), axis=1)]
             print(f"Filtered {before - len(df)} blocked sources from existing data")
         
         return df

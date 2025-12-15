@@ -294,6 +294,9 @@ def load_data() -> pd.DataFrame:
                 df = load_df_from_db(table)
                 if not df.empty:
                     print(f"Loaded {len(df)} from DB: {table}")
+                    # Filter out pypi entries
+                    if "source" in df.columns:
+                        df = df[~df["source"].str.contains("pypi", case=False, na=False)]
             else:
                 df = pd.DataFrame()
             # Fall back to CSV if DB empty
