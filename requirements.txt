@@ -10,3 +10,4 @@ bcrypt>=4.0.0
 extra-streamlit-components>=0.1.60
 transformers
 feedparser
+torch
