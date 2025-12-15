@@ -1052,6 +1052,12 @@ def load_existing_data() -> pd.DataFrame:
             df = df[df["created_at"] >= cutoff]
             print(f"Kept {len(df)} entries from last 7 days")
         
+        # Filter out blocked sources from existing data
+        if "link" in df.columns:
+            before = len(df)
+            df = df[~df["link"].apply(lambda x: is_blocked_source(str(x)))]
+            print(f"Filtered {before - len(df)} blocked sources from existing data")
+        
         return df
     except (FileNotFoundError, pd.errors.EmptyDataError):
         print("No existing data found (will create new file)")
