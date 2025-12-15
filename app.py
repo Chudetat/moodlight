@@ -370,6 +370,9 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
 
     try:
         x_proc = subprocess.run(cmd_x, capture_output=True, text=True, timeout=FETCH_TIMEOUT, check=False, env=env)
+        print(f"X fetch returncode: {x_proc.returncode}", flush=True)
+        print(f"X fetch stdout: {x_proc.stdout[:500] if x_proc.stdout else None}", flush=True)
+        print(f"X fetch stderr: {x_proc.stderr[:500] if x_proc.stderr else None}", flush=True)
         
         if x_proc.returncode == 2:
             msg_parts.append("X quota hit - kept previous data")
