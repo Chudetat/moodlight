@@ -356,8 +356,8 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
     import os
     env = os.environ.copy()
     try:
-        env["X_BEARER_TOKEN"] = st.secrets.get("X_BEARER_TOKEN", "")
-        env["NEWSAPI_KEY"] = st.secrets.get("NEWSAPI_KEY", "")
+        env["X_BEARER_TOKEN"] = os.environ.get("X_BEARER_TOKEN") or st.secrets.get("X_BEARER_TOKEN", "")
+        env["NEWSAPI_KEY"] = os.environ.get("NEWSAPI_KEY") or st.secrets.get("NEWSAPI_KEY", "")
     except Exception:
         pass
 
