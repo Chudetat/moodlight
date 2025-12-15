@@ -11,3 +11,5 @@ extra-streamlit-components>=0.1.60
 transformers
 feedparser
 torch
+sqlalchemy
+psycopg2-binary
