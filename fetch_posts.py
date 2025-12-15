@@ -348,7 +348,13 @@ def is_spam(text: str) -> bool:
         "use code", "discount code", "promo code",
         "@idos_network", "stablecoin", "tokenomics", "airdrop",
         "zero stress", "clean entries", "#STOCK", "#Finance", "overthink everything",
-        "giveaway", "whitelist", "presale"
+        "giveaway", "whitelist", "presale",
+        "sneaker", "yeezy", "air jordan", "nike air", "adidas",
+        "red carpet", "gown", "runway", "fashion week", "wore a",
+        "fast and furious", "soccer star", "football star",
+        "avatar", "chanel", "prada", "gucci", "louis vuitton",
+        "celebrity", "actress", "actor", "hollywood", "movie premiere",
+        "met gala", "golden globes", "best dressed", "worst dressed"
     ]
     
     if any(phrase in t for phrase in instant_ban):
