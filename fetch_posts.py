@@ -497,7 +497,7 @@ def main():
         author_id = tw.get("author_id")
         user_data = users.get(author_id, {})
         follower_count = user_data.get("public_metrics", {}).get("followers_count", 0)
-        if follower_count < 5000:
+        if follower_count < 1000:
             continue
         
         x_rows.append({
