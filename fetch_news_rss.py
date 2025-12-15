@@ -26,6 +26,26 @@ adapter = HTTPAdapter(max_retries=retry)
 session.mount("http://", adapter)
 session.mount("https://", adapter)
 
+
+# -------------------------------
+# Spam Filter
+# -------------------------------
+SPAM_KEYWORDS = [
+    "sneaker", "yeezy", "air jordan", "nike air", "adidas",
+    "red carpet", "gown", "runway", "fashion week", "wore a",
+    "fast and furious", "soccer star", "football star",
+    "chanel", "prada", "gucci", "louis vuitton",
+    "celebrity", "actress", "actor", "hollywood star",
+    "met gala", "golden globes", "best dressed", "worst dressed",
+    "grammy", "oscar outfit", "emmy outfit",
+    "dating", "boyfriend", "girlfriend", "married", "divorce",
+    "baby bump", "pregnant", "engagement ring"
+]
+
+def is_spam(text: str) -> bool:
+    t = text.lower()
+    return any(kw in t for kw in SPAM_KEYWORDS)
+
 # -------------------------------
 # RSS feeds (including Reddit)
 # -------------------------------
@@ -34,7 +54,6 @@ FEEDS: List[tuple[str, str]] = [
     ("BBC Politics", "http://feeds.bbci.co.uk/news/politics/rss.xml"),
     ("BBC Business", "http://feeds.bbci.co.uk/news/business/rss.xml"),
     ("BBC Technology", "http://feeds.bbci.co.uk/news/technology/rss.xml"),
-    ("BBC Entertainment", "http://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml"),
 
     ("CNN Top", "http://rss.cnn.com/rss/edition.rss"),
     ("CNN World", "http://rss.cnn.com/rss/edition_world.rss"),
@@ -59,13 +78,6 @@ FEEDS: List[tuple[str, str]] = [
     ("Reddit News", "https://www.reddit.com/r/news/.rss"),
     
     # Fashion/Luxury Reddit
-    ("Reddit Fashion", "https://www.reddit.com/r/fashion/.rss"),
-    ("Reddit Luxury", "https://www.reddit.com/r/luxury/.rss"),
-    ("Reddit Male Fashion", "https://www.reddit.com/r/malefashionadvice/.rss"),
-    ("Reddit Female Fashion", "https://www.reddit.com/r/femalefashionadvice/.rss"),
-    ("Reddit Watches", "https://www.reddit.com/r/Watches/.rss"),
-    ("Reddit Sneakers", "https://www.reddit.com/r/Sneakers/.rss"),
-    ("Reddit Streetwear", "https://www.reddit.com/r/streetwear/.rss"),
     
     # Marketing/Advertising Reddit
     ("Reddit Marketing", "https://www.reddit.com/r/marketing/.rss"),
@@ -152,8 +164,6 @@ FEEDS: List[tuple[str, str]] = [
     ("The Hollywood Reporter", "https://www.hollywoodreporter.com/feed/"),
     ("Deadline", "https://deadline.com/feed/"),
     
-    # Sports Business
-    ("Front Office Sports", "https://frontofficesports.com/feed/"),
     
     # Parenting/Family
     ("Fatherly", "https://www.fatherly.com/feed"),
@@ -166,8 +176,6 @@ FEEDS: List[tuple[str, str]] = [
     ("Dwell", "https://www.dwell.com/feed"),
     
     # Gaming
-    ("Kotaku", "https://kotaku.com/rss"),
-    ("IGN", "https://feeds.feedburner.com/ign/all"),
     
     # Crypto/Web3/Fintech
     ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
@@ -189,7 +197,6 @@ FEEDS: List[tuple[str, str]] = [
     ("GreenBiz", "https://www.greenbiz.com/feed"),
     ("Bustle", "https://www.bustle.com/rss"),
     ("Eye on Design Alt", "https://news.google.com/rss/search?q=graphic+design+trends&hl=en-US"),
-    ("Sportico", "https://www.sportico.com/feed/"),
     ("Condé Nast Traveler", "https://www.cntraveler.com/feed/rss"),
     ("The Points Guy", "https://thepointsguy.com/feed/"),
     ("Domino", "https://www.domino.com/feed"),
@@ -296,10 +303,6 @@ FEEDS: List[tuple[str, str]] = [
     ("Electrek", "https://electrek.co/feed/"),
     ("InsideEVs", "https://insideevs.com/rss/"),
 
-    # Sports Business
-    ("Front Office Sports", "https://frontofficesports.com/feed/"),
-    ("ESPN Business", "https://www.espn.com/espn/rss/news"),
-    ("The Athletic", "https://theathletic.com/feed/"),
 
     # Real Estate / Property
     ("Commercial Observer", "https://commercialobserver.com/feed/"),
@@ -380,10 +383,7 @@ FEEDS: List[tuple[str, str]] = [
 
     # Luxury / Fashion
     ("WWD", "https://wwd.com/feed/"),
-    ("Luxury Daily", "https://www.luxurydaily.com/feed/"),
 
-    # Gaming / Esports
-    ("IGN", "https://feeds.ign.com/ign/all"),
     ("Polygon", "https://www.polygon.com/rss/index.xml"),
     ("GameSpot", "https://www.gamespot.com/feeds/news/"),
 
@@ -999,6 +999,10 @@ def fetch_feed(source: str, url: str) -> List[Dict[str, Any]]:
             country = detect_country(text)
             intensity = calculate_intensity(text)
 
+            # Skip spam
+            if is_spam(text):
+                continue
+                
             rows.append({
                 "id": eid,
                 "text": text,
