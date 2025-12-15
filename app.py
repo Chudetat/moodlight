@@ -922,12 +922,11 @@ with st.sidebar:
         with st.spinner("Fetching & scoring..."):
             ok, msg = run_fetch_and_score(custom_query.strip() or None)
             st.cache_data.clear()
-        st.write(f"DEBUG: ok={ok}, msg={msg}")
-        if ok:
-            st.success(msg)
-        else:
-            st.error(msg)
-        st.stop()
+            if ok:
+                st.success(msg)
+            else:
+                st.error(msg)
+        st.rerun()
     
     st.markdown("---")
     
