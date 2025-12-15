@@ -1,5 +1,4 @@
 import streamlit as st
-from db_helper import load_news_from_db, load_social_from_db
 import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
@@ -276,24 +275,6 @@ def clean_source_name(source: str) -> str:
 # -------------------------------
 @st.cache_data(ttl=10, show_spinner=False)
 def load_data() -> pd.DataFrame:
-    # Try database first
-    try:
-        news_df = load_news_from_db()
-        social_df = load_social_from_db()
-        if not news_df.empty or not social_df.empty:
-            frames = [df for df in [news_df, social_df] if not df.empty]
-            if frames:
-                df = pd.concat(frames, ignore_index=True)
-                if "created_at" in df.columns:
-                    df["created_at"] = pd.to_datetime(df["created_at"], format="mixed", utc=True)
-                if "empathy_score" in df.columns:
-                    df["empathy_score"] = pd.to_numeric(df["empathy_score"], errors="coerce")
-                    df["empathy_label"] = df["empathy_score"].apply(empathy_label_from_score)
-                return df
-    except Exception as e:
-        print(f"Database load failed, falling back to CSV: {e}")
-    
-    # Fallback to CSV files
     sources = [
         ("social_scored.csv", None),
         ("news_scored.csv", None),
