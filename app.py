@@ -401,36 +401,36 @@ def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
         has_error = True
         msg_parts.append(f"X exception: {str(e)[:100]}")
 
-    try:
-        news_proc = subprocess.run(
-            [sys.executable, "fetch_news_rss.py"], 
-            capture_output=True, text=True, timeout=FETCH_TIMEOUT, check=False, env=env
-        )
-        
-        if news_proc.returncode != 0:
-            has_error = True
-            error_msg = news_proc.stderr[:100] if news_proc.stderr else "Unknown error"
-            msg_parts.append(f"News fetch failed: {error_msg}")
-        else:
-            msg_parts.append("News fetched")
-            
-            score_n = subprocess.run(
-                [sys.executable, "score_empathy.py", "news.csv", "news_scored.csv"],
-                capture_output=True, text=True, timeout=FETCH_TIMEOUT, check=False, env=env
-            )
-            if score_n.returncode == 0:
-                msg_parts.append("News scored")
-            else:
-                has_error = True
-                error_msg = score_n.stderr[:100] if score_n.stderr else "Unknown error"
-                msg_parts.append(f"News scoring failed: {error_msg}")
-                
-    except subprocess.TimeoutExpired:
-        has_error = True
-        msg_parts.append("News fetch timed out")
-    except Exception as e:
-        has_error = True
-        msg_parts.append(f"News exception: {str(e)[:100]}")
+    #     try:
+    #         news_proc = subprocess.run(
+    #             [sys.executable, "fetch_news_rss.py"], 
+    #             capture_output=True, text=True, timeout=FETCH_TIMEOUT, check=False, env=env
+    #         )
+    #         
+    #         if news_proc.returncode != 0:
+    #             has_error = True
+    #             error_msg = news_proc.stderr[:100] if news_proc.stderr else "Unknown error"
+    #             msg_parts.append(f"News fetch failed: {error_msg}")
+    #         else:
+    #             msg_parts.append("News fetched")
+    #             
+    #             score_n = subprocess.run(
+    #                 [sys.executable, "score_empathy.py", "news.csv", "news_scored.csv"],
+    #                 capture_output=True, text=True, timeout=FETCH_TIMEOUT, check=False, env=env
+    #             )
+    #             if score_n.returncode == 0:
+    #                 msg_parts.append("News scored")
+    #             else:
+    #                 has_error = True
+    #                 error_msg = score_n.stderr[:100] if score_n.stderr else "Unknown error"
+    #                 msg_parts.append(f"News scoring failed: {error_msg}")
+    #                 
+    #     except subprocess.TimeoutExpired:
+    #         has_error = True
+    #         msg_parts.append("News fetch timed out")
+    #     except Exception as e:
+    #         has_error = True
+    #         msg_parts.append(f"News exception: {str(e)[:100]}")
 
     return not has_error, " | ".join(msg_parts)
 
