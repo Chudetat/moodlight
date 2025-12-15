@@ -1,4 +1,9 @@
 import streamlit as st
+try:
+    from db_helper import load_df_from_db
+    HAS_DB = True
+except:
+    HAS_DB = False
 import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
@@ -283,7 +288,17 @@ def load_data() -> pd.DataFrame:
 
     for path, src in sources:
         try:
-            df = pd.read_csv(path)
+            # Try database first
+            if HAS_DB:
+                table = path.replace(".csv", "").replace("_scored", "_scored")
+                df = load_df_from_db(table)
+                if not df.empty:
+                    print(f"Loaded {len(df)} from DB: {table}")
+            else:
+                df = pd.DataFrame()
+            # Fall back to CSV if DB empty
+            if df.empty:
+                df = pd.read_csv(path)
             if df.empty:
                 continue
             
