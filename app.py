@@ -67,6 +67,11 @@ if st.session_state.get("authentication_status") == None:
 username = st.session_state.get("username")
 name = st.session_state.get("name")
 
+# Clear cache on fresh login
+if "cache_cleared" not in st.session_state:
+    st.cache_data.clear()
+    st.session_state["cache_cleared"] = True
+
 
 # Single session enforcement
 session_just_created = False
