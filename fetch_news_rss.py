@@ -30,6 +30,16 @@ session.mount("https://", adapter)
 # -------------------------------
 # Spam Filter
 # -------------------------------
+# -------------------------------
+# Source Blocklist
+# -------------------------------
+BLOCKED_SOURCES = [
+    "pypi.org",
+    "pypi",
+]
+
+def is_blocked_source(link: str) -> bool:
+    return any(blocked in link.lower() for blocked in BLOCKED_SOURCES)
 SPAM_KEYWORDS = [
     "sneaker", "yeezy", "air jordan", "nike air", "adidas",
     "red carpet", "gown", "runway", "fashion week", "wore a",
@@ -998,6 +1008,10 @@ def fetch_feed(source: str, url: str) -> List[Dict[str, Any]]:
             # Detect country and calculate intensity
             country = detect_country(text)
             intensity = calculate_intensity(text)
+
+            # Skip blocked sources and spam
+            if is_blocked_source(link):
+                continue
 
             # Skip spam
             if is_spam(text):
