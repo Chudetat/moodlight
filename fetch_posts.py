@@ -42,18 +42,18 @@ NEWSAPI_URL = "https://newsapi.org/v2/everything"
 # -------------------------------
 # Default queries (with viral filter)
 # -------------------------------
-X_DEFAULT_QUERY = "(from:Reuters OR from:AP OR from:WSJ OR from:Bloomberg OR from:CNBC OR from:BBCWorld) OR (war OR terrorism OR China OR Russia OR Ukraine OR election OR economy OR inflation OR AI OR technology OR climate OR healthcare OR marketing) lang:en -is:retweet"
+X_DEFAULT_QUERY = "(from:Reuters OR from:AP OR from:WSJ OR from:Bloomberg OR from:CNBC OR from:BBCWorld) OR (diplomacy OR war OR military OR terrorism OR democracy OR elections OR White House OR legislation OR economy OR inflation OR recession OR GDP OR merger OR IPO OR AI OR technology OR semiconductor OR innovation OR space OR energy OR solar OR climate OR healthcare OR pharmaceutical OR advertising OR marketing OR branding) lang:en -is:retweet"
 
 # High-engagement trending query - viral content only
 X_TRENDING_QUERY = "(breaking OR developing OR just announced) lang:en -is:retweet"
 
 NEWS_DEFAULT_QUERY = (
-    "war OR terrorism OR NATO OR China OR Russia OR Ukraine OR Israel OR Iran OR "
-    "election OR congress OR White House OR Supreme Court OR legislation OR "
-    "economy OR inflation OR Federal Reserve OR recession OR Wall Street OR IPO OR merger OR "
-    "AI OR technology OR semiconductor OR cybersecurity OR space OR "
-    "climate OR pandemic OR FDA OR healthcare OR pharmaceutical OR "
-    "advertising OR marketing OR branding OR retail"
+    "diplomacy OR conflict OR war OR military OR terrorism OR nuclear OR democracy OR "
+    "election OR congress OR White House OR legislation OR foreign policy OR "
+    "economy OR inflation OR recession OR GDP OR Wall Street OR merger OR IPO OR "
+    "AI OR technology OR semiconductor OR innovation OR space OR cybersecurity OR "
+    "energy OR oil OR solar OR climate OR healthcare OR pharmaceutical OR "
+    "advertising OR marketing OR branding"
 )
 
 # -------------------------------
