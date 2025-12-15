@@ -298,9 +298,6 @@ def load_data() -> pd.DataFrame:
                 df = load_df_from_db(table)
                 if not df.empty:
                     print(f"Loaded {len(df)} from DB: {table}")
-                    # Filter out pypi entries
-                    if "source" in df.columns:
-                        df = df[~df["source"].str.contains("pypi", case=False, na=False)]
             else:
                 df = pd.DataFrame()
             # Fall back to CSV if DB empty
@@ -308,6 +305,10 @@ def load_data() -> pd.DataFrame:
                 df = pd.read_csv(path)
             if df.empty:
                 continue
+            
+            # Filter out pypi entries
+            if "source" in df.columns:
+                df = df[~df["source"].str.contains("pypi", case=False, na=False)]
             
             # Validate required columns
             required_cols = ["empathy_score", "created_at", "text"]
