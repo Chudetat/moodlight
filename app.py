@@ -682,7 +682,7 @@ MEDIA RECOMMENDATION:
 [Based on the data, where should they focus? Which platforms, channels, or moments? Consider velocity (what's rising) and density (what's crowded). Be specific. 100 words max.]
 
 CREATIVE RECOMMENDATION:
-[What angles, tones, or hooks would resonate right now based on the emotional climate? Use scarcity signals to find white space. What should they avoid based on density? 100 words max.]
+[What angles, tones, or hooks would resonate right now based on the emotional climate? Use scarcity signals to find white space. What should they avoid based on density? End with a provocative tagline, headline, or campaign thought-starter in quotes that brings the strategy to life. 100 words max.]
 
 Be bold, specific, and actionable. Reference the actual data when making recommendations.
 
