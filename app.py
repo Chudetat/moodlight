@@ -586,6 +586,9 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict:
 st.image("logo.png", width=300)
 st.caption("Real-time global news and culture analysis, prediction, and actionable intelligence")
 
+# Placeholder for success messages at top of page
+brief_message_placeholder = st.empty()
+
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
@@ -2429,7 +2432,7 @@ if st.session_state.get('generate_brief'):
     
     st.markdown("---")
     if email_sent:
-        st.success(f"✅ Your strategic brief has been sent to **{user_email}**. Check your inbox!")
+        brief_message_placeholder.success(f"✅ Your strategic brief has been sent to **{user_email}**. Check your inbox!")
     else:
         st.warning("⚠️ Couldn't send email. Here's your brief:")
         st.markdown(brief)
