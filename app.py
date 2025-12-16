@@ -1010,6 +1010,7 @@ with st.sidebar:
 
 # Load all data once
 df_all = load_data()
+print(f"DEBUG: Button clicked, generate_brief set to {st.session_state.get('generate_brief')}", flush=True)
 st.sidebar.caption(f"Data: {len(df_all)} rows, latest: {df_all['created_at'].max() if 'created_at' in df_all.columns else 'N/A'}")
 
 if brand_focus and custom_query.strip():
