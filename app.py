@@ -593,7 +593,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 import csv
-from strategic_frameworks import select_frameworks, get_framework_prompt
+from strategic_frameworks import select_frameworks, get_framework_prompt, STRATEGIC_FRAMEWORKS
 
 load_dotenv()
 
@@ -750,7 +750,9 @@ For all industries: Consider regulatory and reputational risk when recommending 
         max_tokens=800
     )
     
-    return response.choices[0].message.content
+    # Get framework names for email
+    framework_names = [STRATEGIC_FRAMEWORKS[f]["name"] for f in selected_frameworks]
+    return response.choices[0].message.content, framework_names
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFrame) -> str:
@@ -872,7 +874,7 @@ Identify specific days with mood spikes or dips and explain what drove them."""
         return f"Unable to generate insight: {str(e)}"
 
 
-def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str) -> bool:
+def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str, frameworks: list = None) -> bool:
     """Send strategic brief via email"""
     import smtplib
     from email.mime.text import MIMEText
@@ -894,6 +896,7 @@ def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str)
       <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
         <h1 style="color: #6B46C1;">🎯 Your Strategic Brief</h1>
         <p style="color: #666; font-size: 14px;"><strong>Your request:</strong> "{user_need}"</p>
+        <p style="color: #666; font-size: 14px;"><strong>Frameworks applied:</strong> {", ".join(frameworks) if frameworks else "Custom analysis"}</p>
         <hr style="border: 1px solid #eee;">
         <pre style="white-space: pre-wrap; font-family: Georgia, serif; font-size: 15px; line-height: 1.6;">
 {brief}
@@ -2423,12 +2426,12 @@ if st.session_state.get('generate_brief'):
     
     with st.spinner("🎯 Generating your strategic brief..."):
         try:
-            brief = generate_strategic_brief(user_need, df_all)
+            brief, frameworks_used = generate_strategic_brief(user_need, df_all)
         except Exception as e:
             st.error(f"Error generating brief: {e}")
             brief = f"Error: {e}"
     
-    email_sent = send_strategic_brief_email(user_email, user_need, brief)
+    email_sent = send_strategic_brief_email(user_email, user_need, brief, frameworks_used)
     
     st.markdown("---")
     if email_sent:
