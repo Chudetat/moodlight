@@ -1009,6 +1009,7 @@ with st.sidebar:
             st.session_state['user_email'] = user_email.strip()
 
 # Load all data once
+print("DEBUG: About to load data", flush=True)
 df_all = load_data()
 print(f"DEBUG: Button clicked, generate_brief set to {st.session_state.get('generate_brief')}", flush=True)
 st.sidebar.caption(f"Data: {len(df_all)} rows, latest: {df_all['created_at'].max() if 'created_at' in df_all.columns else 'N/A'}")
@@ -2418,7 +2419,11 @@ if st.session_state.get('generate_brief'):
     
     
     with st.spinner("🎯 Generating your strategic brief..."):
-        brief = generate_strategic_brief(user_need, df_all)
+        try:
+            brief = generate_strategic_brief(user_need, df_all)
+        except Exception as e:
+            st.error(f"Error generating brief: {e}")
+            brief = f"Error: {e}"
     
     email_sent = send_strategic_brief_email(user_email, user_need, brief)
     
