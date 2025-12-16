@@ -2410,6 +2410,7 @@ else:
 # ========================================
 # STRATEGIC BRIEF DISPLAY
 # ========================================
+print(f"DEBUG: generate_brief = {st.session_state.get('generate_brief')}", flush=True)
 if st.session_state.get('generate_brief'):
     user_need = st.session_state.get('user_need', '')
     user_email = st.session_state.get('user_email', '')
