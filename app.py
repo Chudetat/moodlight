@@ -590,6 +590,7 @@ st.caption("Real-time global news and culture analysis, prediction, and actionab
 brief_message_placeholder = st.empty()
 
 from openai import OpenAI
+from anthropic import Anthropic
 from dotenv import load_dotenv
 import os
 import csv
@@ -600,7 +601,7 @@ load_dotenv()
 def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> str:
     """Generate strategic campaign brief using AI and Moodlight data"""
     
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     
     top_topics = df['topic'].value_counts().head(5).to_string() if 'topic' in df.columns else "No topic data"
     empathy_dist = df['empathy_label'].value_counts().to_string() if 'empathy_label' in df.columns else "No empathy data"
@@ -741,19 +742,16 @@ LEGAL SERVICES:
 For all industries: Consider regulatory and reputational risk when recommending bold creative angles. When in doubt, recommend client consult with their legal/compliance team before execution.
 """
     
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "You are a senior strategist who combines data intelligence with creative intuition. You speak plainly and give bold recommendations."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.7,
-        max_tokens=800
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system="You are a senior strategist who combines data intelligence with creative intuition. You speak plainly and give bold recommendations.",
+        messages=[{"role": "user", "content": prompt}]
     )
     
     # Get framework names for email
     framework_names = [STRATEGIC_FRAMEWORKS[f]["name"] for f in selected_frameworks]
-    return response.choices[0].message.content, framework_names
+    return response.content[0].text, framework_names
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFrame) -> str:
