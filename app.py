@@ -673,21 +673,22 @@ KEY METRICS TO CONSIDER:
 - DENSITY: How saturated/crowded a topic is (high = hard to break through)
 - SCARCITY: How underserved a topic is (high = white space opportunity)
 
+
 Create a brief with exactly these three sections:
 
 STRATEGY RECOMMENDATION:
-[Tell a story about the current cultural moment. What's the mood? What are people feeling? How does this connect to the client's goal? Reference specific data points (emotions, empathy levels, velocity/scarcity signals). Write this as a narrative, not bullet points. End with a bold strategic bet — a single sentence that captures the core opportunity or risk the client must act on now. 150 words max.]
+Tell the story of this cultural moment and connect it to the client's opportunity. Be specific — reference the data. End with a strategic bet.
+Example: "The bet: Own the tension between performance and sustainability before Lululemon figures it out."
 
 MEDIA RECOMMENDATION:
-[Based on the data, where should they focus? Which platforms, channels, or moments? Consider velocity (what's rising) and density (what's crowded). End with one specific tactical move — a platform play, timing window, or media hack that competitors will miss. Be specific. 100 words max.]
+Where should they show up and when? End with one tactical move competitors will miss.
+Example: "Tactical move: Dominate LinkedIn Sunday nights when B2B decision-makers scroll guilt-free."
 
 CREATIVE RECOMMENDATION:
-[What angles, tones, or hooks would resonate right now based on the emotional climate? Use scarcity signals to find white space. What should they avoid based on density? End with a provocative tagline, headline, or campaign thought-starter in quotes that brings the strategy to life. 100 words max.]
+What tone, angle, or hook fits this moment? End with a campaign thought-starter.
+Example: "Consider: 'Comfort is the new performance.'"
 
-Be bold, specific, and actionable. Reference the actual data when making recommendations.
-
-
-INDUSTRY-SPECIFIC REGULATORY CONSIDERATIONS:
+Be bold and specific. Reference the actual data.
 
 HEALTHCARE / PHARMA / MEDICAL DEVICES:
 - Flag emotional tones (fear, anxiety, urgency) that may face Medical Legal Review (MLR) scrutiny
