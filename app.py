@@ -1012,6 +1012,7 @@ with st.sidebar:
             st.session_state['generate_brief'] = True
             st.session_state['user_need'] = user_need.strip()
             st.session_state['user_email'] = user_email.strip()
+            st.session_state['brief_spinner_placeholder'] = st.empty()
 
 # Load all data once
 print("DEBUG: About to load data", flush=True)
@@ -2423,13 +2424,13 @@ if st.session_state.get('generate_brief'):
     user_email = st.session_state.get('user_email', '')
     
     
-    with st.spinner("🎯 Generating your strategic brief..."):
-        try:
-            brief, frameworks_used = generate_strategic_brief(user_need, df_all)
-        except Exception as e:
-            st.error(f"Error generating brief: {e}")
-            brief = f"Error: {e}"
-    
+    st.sidebar.info("🎯 Generating your strategic brief...")
+    try:
+        brief, frameworks_used = generate_strategic_brief(user_need, df_all)
+    except Exception as e:
+        st.error(f"Error generating brief: {e}")
+        brief = f"Error: {e}"
+        frameworks_used = []
     email_sent = send_strategic_brief_email(user_email, user_need, brief, frameworks_used)
     
     st.markdown("---")
