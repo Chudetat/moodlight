@@ -1241,6 +1241,7 @@ else:
         st.metric("Global Mood Score", world_score)
     with c2:
         st.markdown(f"**{world_emoji} {world_label}**  \n*Based on {len(df_48h)} posts*")
+    st.caption("50 = neutral · Above 50 = warm/supportive · Below 50 = hostile/negative")
 
 st.caption(f"X query: *{custom_query.strip() or '[default timeline]'}*")
 
