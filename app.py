@@ -1135,7 +1135,7 @@ def create_geographic_hotspot_map(df: pd.DataFrame):
                 alt.Tooltip('article_count:Q', title='Articles')
             ]
         )
-        .properties(title='Geographic Hotspots (Last 48h)', height=500)
+        .properties(title='Geographic Hotspots', height=500)
     )
     
     return chart
@@ -1822,11 +1822,11 @@ st.markdown("---")
 # SECTION 6: VIRALITY × EMPATHY
 # ========================================
 st.markdown("### Virality × Empathy: Posts with Viral Potential")
-st.caption("High-engagement posts from last 3 days - bigger bubbles = higher engagement")
+st.caption("High-engagement posts - bigger bubbles = higher engagement")
 
 if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_all) > 0:
-    three_days_ago = datetime.now(timezone.utc) - timedelta(days=3)
-    vdf = df_all[df_all["created_at"] >= three_days_ago].copy()
+    cutoff_virality = datetime.now(timezone.utc) - timedelta(days=FILTER_DAYS)
+    vdf = df_all[df_all["created_at"] >= cutoff_virality].copy()
     
     
     now = datetime.now(timezone.utc)
@@ -1909,7 +1909,7 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
                 explanation = generate_chart_explanation("virality_empathy", data_summary, vdf_high)
                 st.info(f"📊 **Insight:**\n\n{explanation}")
     else:
-        st.info("No high-virality posts in last 3 days yet.")
+        st.info("No high-virality posts in this time period.")
 else:
     st.info("No engagement data available.")
 
