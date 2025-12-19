@@ -853,7 +853,7 @@ Data: {data_summary}
 Sample headlines:
 {sample_headlines}
 
-Identify specific days with mood spikes or dips and explain what drove them."""
+Identify specific days with mood spikes or dips and explain what drove them.""",
 
         "density": f"""Based on this density data for topics, explain in 2-3 sentences which topics are crowded vs which have white space opportunity.
 
