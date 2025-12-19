@@ -2049,6 +2049,10 @@ try:
         for _, row in deep.iterrows():
             st.caption(f"{row['topic']}")
             
+    
+    with st.expander("How to read Density"):
+        st.markdown("**High density** = crowded topic, hard to break through. Many brands competing for attention.")
+        st.markdown("**Low density** = white space, easier to own. Less competition, more opportunity to lead.")
 except FileNotFoundError:
     st.info("Run calculate_density.py to generate density analysis")
 
@@ -2108,6 +2112,10 @@ try:
     
     st.info(f"Insight: {len(scarcity_df[scarcity_df['opportunity'] == 'HIGH'])} topics have HIGH scarcity - white space opportunities for thought leadership.")
 
+    
+    with st.expander("How to read Scarcity"):
+        st.markdown("**High scarcity** = underserved topic, opportunity to lead. Few brands talking about it.")
+        st.markdown("**Low scarcity** = already saturated. Many voices, harder to stand out.")
 except FileNotFoundError:
     st.info("Run calculate_scarcity.py to generate scarcity analysis")
 
