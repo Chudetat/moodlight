@@ -854,6 +854,24 @@ Sample headlines:
 {sample_headlines}
 
 Identify specific days with mood spikes or dips and explain what drove them."""
+
+        "density": f"""Based on this density data for topics, explain in 2-3 sentences which topics are crowded vs which have white space opportunity.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+Which topics are oversaturated and which represent open territory for brands? Be strategic.""",
+
+        "scarcity": f"""Based on this scarcity data for topics, explain in 2-3 sentences which topics are underserved and represent first-mover opportunities.
+
+Data: {data_summary}
+
+Sample headlines:
+{sample_headlines}
+
+Which topics should brands jump on before competitors? What gaps exist in the conversation?"""
     }
     
     prompt = prompts.get(chart_type, "Explain this data pattern in 2-3 sentences.")
@@ -2050,9 +2068,12 @@ try:
             st.caption(f"{row['topic']}")
             
     
-    with st.expander("How to read Density"):
-        st.markdown("**High density** = crowded topic, hard to break through. Many brands competing for attention.")
-        st.markdown("**Low density** = white space, easier to own. Less competition, more opportunity to lead.")
+
+    if st.button("🔍 What's driving density patterns?", key="explain_density"):
+        with st.spinner("Analyzing patterns..."):
+            data_summary = density_df[["topic", "density_score", "primary_region", "conversation_depth"]].head(10).to_string()
+            explanation = generate_chart_explanation("density", data_summary, df_filtered)
+            st.info(f"📊 **Insight:**\n\n{explanation}")
 except FileNotFoundError:
     st.info("Run calculate_density.py to generate density analysis")
 
@@ -2113,9 +2134,12 @@ try:
     st.info(f"Insight: {len(scarcity_df[scarcity_df['opportunity'] == 'HIGH'])} topics have HIGH scarcity - white space opportunities for thought leadership.")
 
     
-    with st.expander("How to read Scarcity"):
-        st.markdown("**High scarcity** = underserved topic, opportunity to lead. Few brands talking about it.")
-        st.markdown("**Low scarcity** = already saturated. Many voices, harder to stand out.")
+
+    if st.button("🔍 What's driving scarcity patterns?", key="explain_scarcity"):
+        with st.spinner("Analyzing patterns..."):
+            data_summary = scarcity_df[["topic", "scarcity_score", "mention_count", "opportunity"]].head(10).to_string()
+            explanation = generate_chart_explanation("scarcity", data_summary, df_filtered)
+            st.info(f"📊 **Insight:**\n\n{explanation}")
 except FileNotFoundError:
     st.info("Run calculate_scarcity.py to generate scarcity analysis")
 
