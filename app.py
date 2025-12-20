@@ -589,7 +589,6 @@ st.caption("Real-time global news and culture analysis, prediction, and actionab
 # Placeholder for success messages at top of page
 brief_message_placeholder = st.empty()
 
-from openai import OpenAI
 from anthropic import Anthropic
 from dotenv import load_dotenv
 import os
@@ -757,7 +756,7 @@ For all industries: Consider regulatory and reputational risk when recommending 
 def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFrame) -> str:
     """Generate dynamic explanation for chart insights using AI"""
     
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     
     # Get sample headlines for context
     sample_headlines = ""
@@ -877,19 +876,15 @@ Which topics should brands jump on before competitors? What gaps exist in the co
     prompt = prompts.get(chart_type, "Explain this data pattern in 2-3 sentences.")
     
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a senior intelligence analyst. Give concise, specific insights based on actual data and headlines. No fluff."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.5,
-            max_tokens=800
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=800,
+            system="You are a senior intelligence analyst. Give concise, specific insights based on actual data and headlines. No fluff.",
+            messages=[{"role": "user", "content": prompt}]
         )
-        return response.choices[0].message.content
+        return response.content[0].text
     except Exception as e:
         return f"Unable to generate insight: {str(e)}"
-
 
 def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str, frameworks: list = None) -> bool:
     """Send strategic brief via email"""
@@ -1364,15 +1359,14 @@ if compare_mode:
     
     Be specific and prescriptive. Reference the actual VLDS scores. Give tactical recommendations, not generic advice. No extra line breaks between sections. (250-300 words)"""
                     
-                    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-                    response = client.chat.completions.create(
-                        model="gpt-4o",
+                    client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+                    response = client.messages.create(
+                        model="claude-sonnet-4-20250514",
                         messages=[{"role": "user", "content": prompt}],
-                        temperature=0.7,
                         max_tokens=500
                     )
                     st.markdown("### 💡 Comparison Insight")
-                    st.write(response.choices[0].message.content)
+                    st.write(response.content[0].text)
             st.markdown("---")
         else:
             st.warning("Not enough data for comparison. Try different brands.")
@@ -2252,15 +2246,14 @@ Provide:
 
 Be specific and prescriptive. Reference the actual scores. No generic advice. (250-300 words)"""
                 
-                client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-                response = client.chat.completions.create(
-                    model="gpt-4o",
+                client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+                response = client.messages.create(
+                    model="claude-sonnet-4-20250514",
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7,
                     max_tokens=500
                 )
                 st.markdown("### 💡 Brand Strategic Insight")
-                st.write(response.choices[0].message.content)
+                st.write(response.content[0].text)
     
     st.markdown("---")
 
