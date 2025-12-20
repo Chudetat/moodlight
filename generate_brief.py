@@ -122,7 +122,7 @@ Based on the following intelligence data, create a concise executive summary tha
 5. Keeps it under 300 words
 
 Format as:
-EXECUTIVE INTELLIGENCE BRIEF - [DATE]
+EXECUTIVE INTELLIGENCE BRIEF - {datetime.now(timezone.utc).strftime("%B %d, %Y")}
 
 KEY THREATS:
 1. [Most critical]
