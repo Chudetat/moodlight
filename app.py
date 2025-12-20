@@ -1461,7 +1461,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
     now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
     
-    df_hist = df_all[["created_at", "empathy_score"]].copy()
+    df_hist = df_all[["created_at", "empathy_score", "text"]].copy()
     df_hist = df_hist.dropna()
     df_hist = df_hist[df_hist["created_at"] >= seven_days_ago]
     
@@ -2280,7 +2280,7 @@ Be specific and prescriptive. Reference the actual scores. No generic advice. (2
 st.markdown("### 7-Day Mood History")
 
 if "created_at" in df_all.columns and "empathy_score" in df_all.columns:
-    df_hist = df_all[["created_at", "empathy_score"]].copy()
+    df_hist = df_all[["created_at", "empathy_score", "text"]].copy()
     df_hist = df_hist.dropna()
     
     now = datetime.now(timezone.utc)
