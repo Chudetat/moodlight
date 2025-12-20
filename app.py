@@ -1033,9 +1033,7 @@ with st.sidebar:
             st.session_state['brief_spinner_placeholder'] = st.empty()
 
 # Load all data once
-print("DEBUG: About to load data", flush=True)
 df_all = load_data()
-print(f"DEBUG: Button clicked, generate_brief set to {st.session_state.get('generate_brief')}", flush=True)
 st.sidebar.caption(f"Data: {len(df_all)} rows, latest: {df_all['created_at'].max() if 'created_at' in df_all.columns else 'N/A'}")
 
 if brand_focus and custom_query.strip():
@@ -2451,7 +2449,6 @@ else:
 # ========================================
 # STRATEGIC BRIEF DISPLAY
 # ========================================
-print(f"DEBUG: generate_brief = {st.session_state.get('generate_brief')}", flush=True)
 if st.session_state.get('generate_brief'):
     user_need = st.session_state.get('user_need', '')
     user_email = st.session_state.get('user_email', '')
