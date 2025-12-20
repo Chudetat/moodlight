@@ -23,7 +23,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install pandas requests feedparser transformers torch openai python-dotenv tweepy
+          pip install pandas requests feedparser transformers torch anthropic python-dotenv tweepy
       
       - name: Fetch markets
         env:
