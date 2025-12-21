@@ -13,3 +13,6 @@ torch
 sqlalchemy
 psycopg2-binary
 anthropic
+fastapi
+uvicorn
+stripe
