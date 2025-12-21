@@ -8,6 +8,7 @@ import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 from session_manager import create_session, validate_session, clear_session
+from tier_helper import get_user_tier, can_generate_brief, increment_brief_count, has_feature_access
 # One-time spam cleanup (runs once on startup)
 import os
 if not os.path.exists(".cleanup_done"):
@@ -958,17 +959,37 @@ with st.sidebar:
         placeholder='e.g. "student loans"',
         help="Leave empty for default.",
     )
-    brand_focus = st.checkbox(
-        "Brand Focus Mode",
-        value=False,
-        help="When enabled, shows only posts matching your search query"
-    )
+    # Check tier access for Brand Focus Mode
+    if has_feature_access(username, "brand_focus"):
+        brand_focus = st.checkbox(
+            "Brand Focus Mode",
+            value=False,
+            help="When enabled, shows only posts matching your search query"
+        )
+    else:
+        brand_focus = False
+        st.checkbox(
+            "Brand Focus Mode 🔒",
+            value=False,
+            disabled=True,
+            help="Upgrade to Team or Enterprise to unlock Brand Focus Mode"
+        )
     
-    compare_mode = st.checkbox(
-        "Compare Brands",
-        value=False,
-        help="Compare VLDS metrics across 2-3 brands side by side"
-    )
+    # Check tier access for Competitive Tracking
+    if has_feature_access(username, "competitive_tracking"):
+        compare_mode = st.checkbox(
+            "Compare Brands",
+            value=False,
+            help="Compare VLDS metrics across 2-3 brands side by side"
+        )
+    else:
+        compare_mode = False
+        st.checkbox(
+            "Compare Brands 🔒",
+            value=False,
+            disabled=True,
+            help="Upgrade to Team or Enterprise to unlock Competitive Tracking"
+        )
     
     if compare_mode:
         st.caption("Enter 2-3 brands to compare:")
@@ -1039,10 +1060,15 @@ with st.sidebar:
         )
         
         if user_email.strip() and st.button("Generate Brief"):
-            st.session_state['generate_brief'] = True
-            st.session_state['user_need'] = user_need.strip()
-            st.session_state['user_email'] = user_email.strip()
-            st.session_state['brief_spinner_placeholder'] = st.empty()
+            # Check brief limit
+            can_generate, limit_msg = can_generate_brief(username)
+            if not can_generate:
+                st.error(f"🔒 {limit_msg}")
+            else:
+                st.session_state['generate_brief'] = True
+                st.session_state['user_need'] = user_need.strip()
+                st.session_state['user_email'] = user_email.strip()
+                st.session_state['brief_spinner_placeholder'] = st.empty()
 
 # Load all data once
 df_all = load_data()
@@ -2468,6 +2494,7 @@ if st.session_state.get('generate_brief'):
         with st.spinner("🎯 Generating your strategic brief..."):
             try:
                 brief, frameworks_used = generate_strategic_brief(user_need, df_all)
+                increment_brief_count(username)
             except Exception as e:
                 st.error(f"Error generating brief: {e}")
                 brief = f"Error: {e}"
