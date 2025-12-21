@@ -2509,3 +2509,92 @@ if st.session_state.get('generate_brief'):
         st.markdown(brief)
 
     st.session_state['generate_brief'] = False
+
+# ========================================
+# CHAT WITH YOUR DATA
+# ========================================
+st.markdown("---")
+st.header("💬 Ask Moodlight")
+st.caption("Ask questions about the data, trends, or get strategic recommendations")
+
+# Initialize chat history
+if "chat_messages" not in st.session_state:
+    st.session_state.chat_messages = []
+
+# Display chat history
+for message in st.session_state.chat_messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Chat input
+if prompt := st.chat_input("Ask a question about the data..."):
+    # Add user message to history
+    st.session_state.chat_messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    
+    # Generate response
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            # Build context from current data
+            context_parts = []
+            
+            # Global mood
+            if world_score:
+                context_parts.append(f"Global Mood Score: {world_score}/100 ({world_label})")
+            
+            # Topic distribution
+            if "topic" in df_all.columns:
+                top_topics = df_all["topic"].value_counts().head(5).to_dict()
+                context_parts.append(f"Top topics: {top_topics}")
+            
+            # Recent headlines
+            if "text" in df_all.columns:
+                recent_headlines = df_all.nlargest(10, "created_at")["text"].tolist() if "created_at" in df_all.columns else df_all["text"].head(10).tolist()
+                context_parts.append(f"Recent headlines: {recent_headlines}")
+            
+            # Empathy distribution
+            if "empathy_score" in df_all.columns:
+                avg_empathy = df_all["empathy_score"].mean()
+                context_parts.append(f"Average empathy score: {avg_empathy:.2f}")
+            
+            # Build the prompt
+            data_context = "\n".join(context_parts)
+            
+            client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+            
+            system_prompt = f"""You are Moodlight's AI analyst. You have access to real-time cultural intelligence data.
+
+Current Data Context:
+{data_context}
+
+Total posts analyzed: {len(df_all)}
+Date range: {df_all['created_at'].min() if 'created_at' in df_all.columns else 'N/A'} to {df_all['created_at'].max() if 'created_at' in df_all.columns else 'N/A'}
+
+Answer questions about:
+- Current mood and sentiment trends
+- Topic analysis and what's driving conversation
+- Strategic recommendations based on the data
+- Comparisons and patterns
+
+Be concise, specific, and actionable. Reference actual data points when possible."""
+
+            try:
+                response = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=1000,
+                    system=system_prompt,
+                    messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_messages]
+                )
+                assistant_message = response.content[0].text
+            except Exception as e:
+                assistant_message = f"Sorry, I encountered an error: {str(e)}"
+            
+            st.markdown(assistant_message)
+            st.session_state.chat_messages.append({"role": "assistant", "content": assistant_message})
+
+# Clear chat button
+if st.session_state.chat_messages:
+    if st.button("🗑️ Clear chat"):
+        st.session_state.chat_messages = []
+        st.rerun()
