@@ -51,15 +51,18 @@ def can_generate_brief(username: str) -> tuple[bool, str]:
     
     if user["briefs_used"] >= limit:
         tier = user["tier"]
-        if tier == "solo":
+        has_addon = user["extra_briefs_addon"]
+        if tier == "solo" and not has_addon:
+            return False, f"You've used all {limit} briefs this month. Contact us to add 2 more briefs/month for $199."
+        elif tier == "solo" and has_addon:
             return False, f"You've used all {limit} briefs this month. [Upgrade to Team](https://buy.stripe.com/bJe6oz4fxgc2g7Bh0I8ww04) for 10 briefs/month."
         elif tier == "team":
             return False, f"You've used all {limit} briefs this month. Contact us to upgrade to Enterprise for unlimited briefs."
         else:
             return False, f"You've used all {limit} briefs this month."
     return True, ""
-
 def increment_brief_count(username: str):
+
     """Increment brief count after generation"""
     engine = get_db_engine()
     with engine.connect() as conn:
