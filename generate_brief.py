@@ -63,7 +63,7 @@ client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 def load_recent_data():
     """Load last 24 hours of intelligence data"""
-    df = pd.read_csv("social.csv")
+    df = pd.read_csv("news_scored.csv")
     df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
     
     # Last 7 days
