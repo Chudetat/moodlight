@@ -50,7 +50,7 @@ def can_generate_brief(username: str) -> tuple[bool, str]:
         user["briefs_used"] = 0
     
     if user["briefs_used"] >= limit:
-        return False, f"You've used all {limit} briefs this month. Upgrade for more."
+        return False, f"You've used all {limit} briefs this month. [Upgrade to Team](https://buy.stripe.com/bJe6oz4fxgc2g7Bh0I8ww04) for 10 briefs/month."
     return True, ""
 
 def increment_brief_count(username: str):
