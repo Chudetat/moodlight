@@ -711,6 +711,9 @@ End with: "Consider: '[specific campaign thought-starter]'"
 
 Be bold and specific. Reference actual data points. Make decisions, not suggestions.
 
+End the brief with: "---
+Powered by Moodlight's Cultural Momentum Matrix™"
+
 HEALTHCARE / PHARMA / MEDICAL DEVICES:
 - Flag emotional tones (fear, anxiety, urgency) that may face Medical Legal Review (MLR) scrutiny
 - Prioritize "safe white space" — culturally appropriate AND unlikely to trigger regulatory concerns
