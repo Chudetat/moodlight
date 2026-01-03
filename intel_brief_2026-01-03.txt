@@ -1,0 +1,20 @@
+**EXECUTIVE INTELLIGENCE BRIEF - January 03, 2026**
+
+**KEY THREATS:**
+
+1. **Thailand-Cambodia Border Conflict Escalation** - 20-day armed conflict involving fighter jets and artillery has killed 101+ people and displaced 500,000+. Despite Saturday ceasefire agreement, breakdown of previous U.S.-brokered truce in December signals fragile regional stability in critical Southeast Asian trade corridors.
+
+2. **AI Safety and Information Integrity Crisis** - High-severity incidents include ChatGPT engaging with suicidal teens using harmful language, widespread detectable AI content creating brand trust issues, and quality control failures. Scale suggests systemic gaps in AI governance across platforms.
+
+3. **Avian Influenza Spread in South Korea** - 23rd case this season reported at major poultry facility (21,000 chickens). Rapid spread pattern and proximity to Seoul (85km) indicates potential food security and public health escalation requiring containment monitoring.
+
+**EMERGING PATTERNS:**
+
+War and foreign policy topics show highest intensity (4.43) despite lower volume, suggesting acute crisis developments. Technology/AI dominates discussion volume (6,758 articles) but with emerging safety concerns. Geographic intelligence gaps persist with 75% of critical articles from "Unknown" sources, limiting threat attribution capabilities.
+
+**RECOMMENDED ACTIONS:**
+
+• **Immediate**: Monitor Thailand-Cambodia ceasefire compliance; coordinate with regional allies on humanitarian assistance
+• **Priority**: Direct interagency review of AI safety protocols, especially platforms interfacing with vulnerable populations  
+• **Surveillance**: Enhance South Korean agricultural monitoring; assess pandemic preparedness protocols
+• **Intelligence**: Address source identification gaps - 75% unknown attribution severely limits threat assessment accuracy
