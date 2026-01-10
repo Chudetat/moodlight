@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def save_news_to_db(csv_path: str = "news_scored.csv"):
-    """Save news_scored.csv to PostgreSQL news_data table"""
+    """Save news_scored.csv to PostgreSQL news_scored table"""
     
     if not os.path.exists(csv_path):
         print(f"❌ {csv_path} not found")
@@ -33,12 +33,12 @@ def save_news_to_db(csv_path: str = "news_scored.csv"):
     with engine.connect() as conn:
         # Clear existing data older than 7 days
         conn.execute(text("""
-            DELETE FROM news_data 
+            DELETE FROM news_scored 
             WHERE created_at < NOW() - INTERVAL '7 days'
         """))
         
         # Get existing IDs
-        result = conn.execute(text("SELECT id FROM news_data"))
+        result = conn.execute(text("SELECT id FROM news_scored"))
         existing_ids = set(row[0] for row in result)
         
         # Filter to new rows only
@@ -46,7 +46,7 @@ def save_news_to_db(csv_path: str = "news_scored.csv"):
         print(f"📥 Inserting {len(df_new)} new rows")
         
         if len(df_new) > 0:
-            df_new.to_sql("news_data", conn, if_exists="append", index=False)
+            df_new.to_sql("news_scored", conn, if_exists="append", index=False)
         
         conn.commit()
     
