@@ -63,6 +63,22 @@ client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 def load_recent_data():
     """Load last 24 hours of intelligence data"""
+    # Try PostgreSQL first
+    db_url = os.getenv("DATABASE_URL", "")
+    if db_url:
+        try:
+            from sqlalchemy import create_engine
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+            engine = create_engine(db_url)
+            df = pd.read_sql("SELECT * FROM news_scored", engine)
+            if not df.empty:
+                print(f"✅ Loaded {len(df)} rows from PostgreSQL")
+                df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
+                cutoff = datetime.now(timezone.utc) - pd.Timedelta(days=7)
+                return df[df['created_at'] >= cutoff]
+        except Exception as e:
+            print(f"DB error: {e}")
+    # Fallback to CSV
     df = pd.read_csv("news_scored.csv")
     df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
     
