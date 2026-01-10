@@ -23,7 +23,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install pandas requests feedparser transformers torch anthropic python-dotenv tweepy
+          pip install pandas requests feedparser transformers torch anthropic python-dotenv tweepy sqlalchemy psycopg2-binary
       
       - name: Fetch markets
         env:
@@ -52,6 +52,10 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python score_empathy.py social.csv social_scored.csv
       
+      - name: Save news to PostgreSQL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python save_to_db.py news_scored.csv
 
       - name: Generate and send intelligence brief
         env:
@@ -59,14 +63,5 @@ jobs:
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python generate_brief.py
-
-      - name: Commit and push changes
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          git add -A
-          git diff --staged --quiet || git commit -m "Auto-update data $(date -u +%Y-%m-%d_%H:%M)"
-          git push --force origin HEAD:main
-
