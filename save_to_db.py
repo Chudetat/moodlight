@@ -20,34 +20,47 @@ def save_news_to_db(csv_path: str = "news_scored.csv"):
         print("❌ DATABASE_URL not set")
         return
     
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
     engine = create_engine(db_url)
     df = pd.read_csv(csv_path)
     
     print(f"📊 Loaded {len(df)} rows from {csv_path}")
     
-    # Convert created_at to datetime
+    # Convert created_at to datetime with UTC
     if "created_at" in df.columns:
-        df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce")
+        df["created_at"] = pd.to_datetime(df["created_at"], utc=True, errors="coerce")
     
-    # Upsert to database (delete old, insert new)
     with engine.connect() as conn:
-        # Clear existing data older than 7 days
+        # Drop and recreate table to ensure correct schema
+        conn.execute(text("DROP TABLE IF EXISTS news_scored"))
         conn.execute(text("""
-            DELETE FROM news_scored 
-            WHERE created_at < NOW() - INTERVAL '7 days'
+            CREATE TABLE news_scored (
+                id TEXT PRIMARY KEY,
+                text TEXT,
+                created_at TIMESTAMP WITH TIME ZONE,
+                link TEXT,
+                source TEXT,
+                topic TEXT,
+                engagement FLOAT DEFAULT 0,
+                country TEXT,
+                intensity FLOAT,
+                empathy_score FLOAT,
+                empathy_label TEXT,
+                emotion_top_1 TEXT,
+                emotion_top_2 TEXT,
+                emotion_top_3 TEXT
+            )
         """))
+        conn.commit()
         
-        # Get existing IDs
-        result = conn.execute(text("SELECT id FROM news_scored"))
-        existing_ids = set(row[0] for row in result)
+        # Only keep columns that exist in table
+        valid_cols = ["id", "text", "created_at", "link", "source", "topic", 
+                      "engagement", "country", "intensity", "empathy_score", 
+                      "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3"]
+        df_clean = df[[c for c in valid_cols if c in df.columns]].copy()
         
-        # Filter to new rows only
-        df_new = df[~df["id"].isin(existing_ids)]
-        print(f"📥 Inserting {len(df_new)} new rows")
-        
-        if len(df_new) > 0:
-            df_new.to_sql("news_scored", conn, if_exists="append", index=False)
-        
+        print(f"📥 Inserting {len(df_clean)} rows")
+        df_clean.to_sql("news_scored", conn, if_exists="append", index=False)
         conn.commit()
     
     print("✅ News data saved to PostgreSQL")
