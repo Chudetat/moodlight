@@ -28,3 +28,4 @@ Thumbs.db
 .env
 leads.csv
 active_sessions.json
+news_scored.csv
