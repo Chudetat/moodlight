@@ -24,18 +24,18 @@ def get_user_tier(username: str) -> dict:
                 "briefs_reset_date": row[2],
                 "extra_briefs_addon": row[3]
             }
-    return {"tier": "solo", "briefs_used": 0, "briefs_reset_date": date.today(), "extra_briefs_addon": False}
+    return {"tier": "starter", "briefs_used": 0, "briefs_reset_date": date.today(), "extra_briefs_addon": False}
 
 def get_brief_limit(tier: str, extra_briefs: bool = False) -> int:
     """Get brief limit based on tier"""
     limits = {
-        "solo": 3,
-        "team": 10,
+        "starter": 5,
+        "pro": 15,
         "enterprise": 999999  # unlimited
     }
-    base = limits.get(tier, 3)
-    if tier == "solo" and extra_briefs:
-        base = 5
+    base = limits.get(tier, 5)
+    if tier == "starter" and extra_briefs:
+        base = 10
     return base
 
 def can_generate_brief(username: str) -> tuple[bool, str]:
@@ -52,17 +52,17 @@ def can_generate_brief(username: str) -> tuple[bool, str]:
     if user["briefs_used"] >= limit:
         tier = user["tier"]
         has_addon = user["extra_briefs_addon"]
-        if tier == "solo" and not has_addon:
-            return False, f"You've used all {limit} briefs this month. Contact us to add 2 more briefs/month for $199."
-        elif tier == "solo" and has_addon:
-            return False, f"You've used all {limit} briefs this month. [Upgrade to Team](https://buy.stripe.com/bJe6oz4fxgc2g7Bh0I8ww04) for 10 briefs/month."
-        elif tier == "team":
+        if tier == "starter" and not has_addon:
+            return False, f"You've used all {limit} briefs this month. Contact us to add 5 more briefs/month for $199."
+        elif tier == "starter" and has_addon:
+            return False, f"You've used all {limit} briefs this month. Upgrade to Pro for 15 briefs/month."
+        elif tier == "pro":
             return False, f"You've used all {limit} briefs this month. Contact us to upgrade to Enterprise for unlimited briefs."
         else:
             return False, f"You've used all {limit} briefs this month."
     return True, ""
-def increment_brief_count(username: str):
 
+def increment_brief_count(username: str):
     """Increment brief count after generation"""
     engine = get_db_engine()
     with engine.connect() as conn:
@@ -88,9 +88,10 @@ def has_feature_access(username: str, feature: str) -> bool:
     tier = user["tier"]
     
     features = {
-        "brand_focus": ["team", "enterprise"],
-        "competitive_tracking": ["team", "enterprise"],
+        "brand_focus": ["pro", "enterprise"],
+        "competitive_tracking": ["pro", "enterprise"],
         "white_label": ["enterprise"],
+        "advanced_predictive": ["enterprise"],
     }
     
     allowed_tiers = features.get(feature, [])
