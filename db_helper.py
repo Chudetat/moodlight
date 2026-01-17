@@ -15,7 +15,7 @@ def save_df_to_db(df, table_name):
     if not engine or df.empty:
         return False
     try:
-        df.to_sql(table_name, engine, if_exists="replace", index=False, chunksize=50, method="multi")
+        df.to_sql(table_name, engine, if_exists="replace", index=False, chunksize=50)
         return True
     except Exception as e:
         print(f"DB error: {e}")

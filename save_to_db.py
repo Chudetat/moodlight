@@ -60,7 +60,7 @@ def save_news_to_db(csv_path: str = "news_scored.csv"):
         df_clean = df[[c for c in valid_cols if c in df.columns]].copy()
         
         print(f"📥 Inserting {len(df_clean)} rows")
-        df_clean.to_sql("news_scored", conn, if_exists="append", index=False, chunksize=50, method="multi")
+        df_clean.to_sql("news_scored", conn, if_exists="append", index=False, chunksize=50)
         conn.commit()
     
     print("✅ News data saved to PostgreSQL")
