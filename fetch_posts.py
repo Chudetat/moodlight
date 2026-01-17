@@ -481,14 +481,14 @@ def main():
 
 
         # Skip low-engagement tweets (quality filter)
-        if engagement < 50:
+        if engagement < 10:
             continue
         
-        # Skip accounts with fewer than 10,000 followers
+        # Skip accounts with fewer than 500 followers
         author_id = tw.get("author_id")
         user_data = users.get(author_id, {})
         follower_count = user_data.get("public_metrics", {}).get("followers_count", 0)
-        if follower_count < 1000:
+        if follower_count < 500:
             continue
         
         x_rows.append({
