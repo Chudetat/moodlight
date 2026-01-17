@@ -307,12 +307,12 @@ SPAM_KEYWORDS = [
     "crypto", "bitcoin", "btc", "eth", "ethereum", "nft", "airdrop", "presale", "whitelist",
     "pump", "moon", "lambo", "hodl", "doge", "shib", "memecoin", "web3", "defi",
     "investment savior", "investment recommendation", "funds to steadily", "investment guru",
-    "trading signals", "day trading", "daytrading", "forex", "binary options", 
+    "trading signals", "day trading", "daytrading", "forex", "binary options",
     "stock picks", "trade alert", "buy signal", "sell signal",
     "$PTN", "$GOOGL", "$SNAP", "$NBIS", "$GLTO", "$SMCI",  # Stock tickers with $
     "make money fast", "passive income", "get rich", "financial freedom",
     "guaranteed returns", "investment opportunity",
-    # Promotional spam  
+    # Promotional spam
     "promo code", "discount code", "use code", "limited time", "sign up now", "shop now",
     "% off", "giveaway", "enter to win", "#ad", "sponsored",
     # Engagement bait
@@ -320,17 +320,6 @@ SPAM_KEYWORDS = [
     "you won't believe", "trading bot",
     # Emojis commonly used in spam (multiple money/financial emojis)
     "💰💰", "🚀🚀", "📈📈", "💸💸", "🤑🤑",
-    # Sports (block all)
-    "game", "match", "tournament", "playoff", "championship", "league", "season",
-    "score", "win", "loss", "defeat", "victory", "team", "player", "athlete", "coach",
-    "nfl", "nba", "mlb", "nhl", "fifa", "uefa", "premier league", "super bowl",
-    "usmnt", "world cup", "goals scored",
-    # Entertainment/Celebrity
-    "movie", "film", "cinema", "box office", "premiere", "trailer", "actor", "actress",
-    "celebrity", "star", "hollywood", "tv show", "series", "episode", "streaming",
-    "album", "concert", "tour", "grammy", "oscar", "emmy",
-    # Gaming
-    "video game", "gaming", "gamer", "playstation", "xbox", "nintendo", "esports",
 ]
 
 def is_spam(text: str) -> bool:
@@ -339,22 +328,18 @@ def is_spam(text: str) -> bool:
     
     # Immediate ban list - these are ALWAYS spam
     instant_ban = [
-        "investment savior", "investment guru", "my investment", 
+        "investment savior", "investment guru", "my investment",
         "his recommendations", "her recommendations",
         "thank you for sharing", "funds to steadily",
         "check my profile", "link in bio", "dm for",
         "available at these retailers", "shop now", "buy now",
-        "air jordan", "releasing at", "drops at", "nike dunk", "yeezy",
         "use code", "discount code", "promo code",
         "@idos_network", "stablecoin", "tokenomics", "airdrop",
         "zero stress", "clean entries", "#STOCK", "#Finance", "overthink everything",
         "giveaway", "whitelist", "presale",
-        "sneaker", "yeezy", "air jordan", "nike air", "adidas",
-        "red carpet", "gown", "runway", "fashion week", "wore a",
-        "fast and furious", "soccer star", "football star",
-        "avatar", "chanel", "prada", "gucci", "louis vuitton",
-        "celebrity", "actress", "actor", "hollywood", "movie premiere",
-        "met gala", "golden globes", "best dressed", "worst dressed"
+        # Sneaker/drop spam (promotional)
+        "air jordan", "releasing at", "drops at", "nike dunk", "yeezy",
+        "sneaker", "nike air",
     ]
     
     if any(phrase in t for phrase in instant_ban):
@@ -496,7 +481,7 @@ def main():
 
 
         # Skip low-engagement tweets (quality filter)
-        if engagement < 1:
+        if engagement < 50:
             continue
         
         # Skip accounts with fewer than 10,000 followers
