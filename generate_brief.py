@@ -188,39 +188,47 @@ Total Social Posts Analyzed: {len(social_df)}
 
 def generate_brief(context):
     """Generate executive brief using Claude AI"""
-    
-    prompt = f"""You are a senior intelligence analyst preparing a daily executive brief for national security leadership.
 
-Based on the following intelligence data, create a concise executive summary that:
+    prompt = f"""You are a cultural strategist preparing a daily intelligence brief for entertainment and media executives.
 
-1. Highlights the TOP 3 CRITICAL THREATS or developments
-2. Identifies emerging patterns or trends
-3. Provides ACTIONABLE INSIGHTS for decision-makers
+Based on the following cultural intelligence data, create a concise executive summary that:
+
+1. Highlights the TOP 3 CULTURAL MOMENTS or opportunities
+2. Identifies emerging audience sentiment and trends
+3. Provides ACTIONABLE INSIGHTS using the Cultural Momentum Matrix:
+   - WHERE TO PLAY: Which topics/spaces to engage
+   - WHEN TO PLAY: Timing windows (rising vs peaked conversations)
+   - WHAT TO SAY: Tone and messaging to match the cultural mood
 4. Uses clear, direct language (no jargon)
-5. Keeps it under 300 words
+5. Keeps it under 400 words
 
 Format as:
-EXECUTIVE INTELLIGENCE BRIEF - {datetime.now(timezone.utc).strftime("%B %d, %Y")}
+CULTURAL INTELLIGENCE BRIEF - {datetime.now(timezone.utc).strftime("%B %d, %Y")}
 
-KEY THREATS:
-1. [Most critical]
+TOP CULTURAL MOMENTS:
+1. [Highest opportunity]
 2. [Second priority]
 3. [Third priority]
 
-EMERGING PATTERNS:
-[2-3 sentences on trends]
+AUDIENCE PULSE:
+[2-3 sentences on emotional climate and sentiment trends]
+
+CULTURAL MOMENTUM MATRIX:
+• WHERE TO PLAY: [Topics/spaces with momentum]
+• WHEN TO PLAY: [Timing insights - what's rising vs peaking]
+• WHAT TO SAY: [Tone calibration based on empathy temperature]
 
 RECOMMENDED ACTIONS:
-[Bullet points]
+[Bullet points for content/engagement strategy]
 
 DATA:
 {context}
 """
-    
+
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=500,
-        system="You are a senior intelligence analyst with 20 years of experience in national security and geopolitical risk assessment.",
+        max_tokens=600,
+        system="You are a senior cultural strategist with 20 years of experience in entertainment, media, and audience intelligence. You understand how cultural moments create opportunities for brands and content creators.",
         messages=[{"role": "user", "content": prompt}]
     )
     
