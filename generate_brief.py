@@ -81,30 +81,49 @@ def load_recent_data():
     # Fallback to CSV
     df = pd.read_csv("news_scored.csv")
     df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
-    
+
     # Last 7 days
     cutoff = datetime.now(timezone.utc) - pd.Timedelta(days=7)
     recent = df[df['created_at'] >= cutoff]
-    
+
     return recent
 
-def prepare_intelligence_context(df):
+
+def load_social_data():
+    """Load social media data for sentiment analysis"""
+    # Try social_scored.csv, fallback to backup
+    for csv_path in ["social_scored.csv", "social_scored_backup.csv"]:
+        if os.path.exists(csv_path):
+            try:
+                df = pd.read_csv(csv_path)
+                df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
+                cutoff = datetime.now(timezone.utc) - pd.Timedelta(days=7)
+                recent = df[df['created_at'] >= cutoff]
+                if not recent.empty:
+                    print(f"✅ Loaded {len(recent)} social posts from {csv_path}")
+                    return recent
+            except Exception as e:
+                print(f"Social data error ({csv_path}): {e}")
+    print("⚠️ No social data available")
+    return pd.DataFrame()
+
+def prepare_intelligence_context(news_df, social_df=None):
     """Prepare context for AI briefing"""
-    
+
     # Top topics by volume
-    topic_counts = df['topic'].value_counts().head(5)
-    
+    topic_counts = news_df['topic'].value_counts().head(5)
+
     # High intensity articles (4-5 severity)
-    critical = df[df['intensity'] >= 4]
-    
+    critical = news_df[news_df['intensity'] >= 4]
+
     # Geographic distribution
-    country_counts = df['country'].value_counts().head(5)
-    
+    country_counts = news_df['country'].value_counts().head(5)
+
     # Average intensity by topic
-    topic_intensity = df.groupby('topic')['intensity'].mean().sort_values(ascending=False).head(5)
-    
+    topic_intensity = news_df.groupby('topic')['intensity'].mean().sort_values(ascending=False).head(5)
+
     context = f"""
-INTELLIGENCE DATA SUMMARY (Last 24 Hours)
+INTELLIGENCE DATA SUMMARY (Last 7 Days)
 ==========================================
 
 TOP TOPICS BY VOLUME:
@@ -119,9 +138,52 @@ CRITICAL SEVERITY ARTICLES ({len(critical)} total):
 GEOGRAPHIC DISTRIBUTION:
 {country_counts.to_string()}
 
-Total Articles Analyzed: {len(df)}
+Total Articles Analyzed: {len(news_df)}
 """
-    
+
+    # Add social data if available
+    if social_df is not None and not social_df.empty:
+        # Top social topics
+        social_topics = social_df['topic'].value_counts().head(5)
+
+        # Emotional sentiment distribution
+        emotion_dist = social_df['emotion_top_1'].value_counts().head(5)
+
+        # Empathy score distribution
+        empathy_dist = social_df['empathy_label'].value_counts()
+
+        # High engagement posts (top by engagement score)
+        if 'engagement' in social_df.columns:
+            top_engagement = social_df.nlargest(5, 'engagement')[['text', 'engagement', 'emotion_top_1', 'source']]
+        else:
+            top_engagement = social_df.head(5)[['text', 'emotion_top_1', 'source']]
+
+        # Average empathy by topic (cultural temperature)
+        topic_empathy = social_df.groupby('topic')['empathy_score'].mean().sort_values(ascending=False).head(5)
+
+        context += f"""
+
+SOCIAL PULSE & CULTURAL MOMENTUM
+==========================================
+
+TRENDING SOCIAL TOPICS:
+{social_topics.to_string()}
+
+DOMINANT EMOTIONS:
+{emotion_dist.to_string()}
+
+EMPATHY TEMPERATURE:
+{empathy_dist.to_string()}
+
+CULTURAL HEAT BY TOPIC (Empathy Score):
+{topic_empathy.round(2).to_string()}
+
+HIGH-ENGAGEMENT CONTENT:
+{top_engagement.to_string()}
+
+Total Social Posts Analyzed: {len(social_df)}
+"""
+
     return context
 
 def generate_brief(context):
@@ -169,17 +231,18 @@ def main():
     print("GENERATING EXECUTIVE INTELLIGENCE BRIEF")
     print("=" * 60)
     print()
-    
-    df = load_recent_data()
-    
-    if len(df) == 0:
+
+    news_df = load_recent_data()
+    social_df = load_social_data()
+
+    if len(news_df) == 0 and len(social_df) == 0:
         print("No recent data available for briefing.")
         return
-    
-    print(f"Analyzing {len(df)} intelligence reports...")
+
+    print(f"Analyzing {len(news_df)} news articles + {len(social_df)} social posts...")
     print()
-    
-    context = prepare_intelligence_context(df)
+
+    context = prepare_intelligence_context(news_df, social_df)
     brief = generate_brief(context)
     
     print(brief)
