@@ -1143,7 +1143,7 @@ if brand_focus and custom_query.strip():
     search_term = custom_query.strip().lower()
     df_all = df_all[df_all["text"].str.lower().str.contains(search_term, na=False)]
     if len(df_all) == 0:
-        st.warning(f"No posts found matching '{custom_query}'. Try refreshing data or a different search term.")
+        st.info(f"🔍 No mentions found for '{custom_query}' yet — try a broader term or check back soon.")
         st.stop()
     st.info(f"🎯 Brand Focus Mode: Showing {len(df_all)} posts about '{custom_query}'")
 
@@ -1353,7 +1353,7 @@ st.markdown(f"## {current_date}")
 st.markdown("### Cultural Pulse")
 
 if world_score is None or len(df_48h) == 0:
-    st.warning("Not enough data from the last 48 hours yet. Try refreshing.")
+    st.info("🔄 Gathering fresh intelligence... Data refreshes automatically every 12 hours.")
 else:
     c1, c2 = st.columns([1, 2])
     with c1:
@@ -1406,7 +1406,7 @@ if compare_mode:
                         st.metric("Density", f"{vlds.get('density', 0):.0%}", vlds.get('density_label', ''))
                         st.metric("Scarcity", f"{vlds.get('scarcity', 0):.0%}", vlds.get('scarcity_label', ''))
                     else:
-                        st.warning(f"Not enough data for {brand}")
+                        st.info(f"🔍 Gathering data for {brand}...")
             
             st.markdown("### Empathy Score")
             emp_cols = st.columns(len(brands_to_compare))
@@ -1477,7 +1477,7 @@ if compare_mode:
                     st.write(response.content[0].text)
             st.markdown("---")
         else:
-            st.warning("Not enough data for comparison. Try different brands.")
+            st.info("📊 Need more mentions to compare — try brands with higher visibility.")
     
     elif len(brands_to_compare) == 1:
         st.info("Enter at least 2 brands to compare.")
@@ -2422,9 +2422,9 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns:
                 explanation = generate_chart_explanation("mood_history", data_summary, df_week)
                 st.info(f"📊 **Insight:**\n\n{explanation}")
     else:
-        st.info(f"No data in the last 7 days.")
+        st.info("🔄 Building 7-day history... Check back soon.")
 else:
-    st.info("No historical data available.")
+    st.info("🔄 Historical data loading...")
 
 # ========================================
 # SECTION 8: WORLD VIEW
