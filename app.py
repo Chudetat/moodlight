@@ -216,23 +216,65 @@ SPAM_KEYWORDS = ["crypto", "bitcoin", "btc", "eth", "ethereum", "nft", "airdrop"
     "trading signals", "forex", "binary options", "giveaway", "dm for", "link in bio"]
 
 EMOTION_COLORS = {
-    "joy": "#FFD700",
-    "sadness": "#4682B4",
+    "admiration": "#FFD700",
+    "amusement": "#FF8C00",
     "anger": "#DC143C",
-    "fear": "#8B008B",
-    "surprise": "#FF8C00",
+    "annoyance": "#CD5C5C",
+    "approval": "#32CD32",
+    "caring": "#FF69B4",
+    "confusion": "#9370DB",
+    "curiosity": "#00CED1",
+    "desire": "#FF1493",
+    "disappointment": "#708090",
+    "disapproval": "#B22222",
     "disgust": "#556B2F",
-    "neutral": "#808080"
+    "embarrassment": "#DDA0DD",
+    "excitement": "#FF4500",
+    "fear": "#8B008B",
+    "gratitude": "#20B2AA",
+    "grief": "#2F4F4F",
+    "joy": "#FFD700",
+    "love": "#FF69B4",
+    "nervousness": "#DA70D6",
+    "neutral": "#808080",
+    "optimism": "#98FB98",
+    "pride": "#4169E1",
+    "realization": "#00BFFF",
+    "relief": "#87CEEB",
+    "remorse": "#696969",
+    "sadness": "#4682B4",
+    "surprise": "#FF8C00"
 }
 
 EMOTION_EMOJIS = {
-    "joy": "😊",
-    "sadness": "😢",
+    "admiration": "🤩",
+    "amusement": "😄",
     "anger": "😠",
-    "fear": "😨",
-    "surprise": "😮",
+    "annoyance": "😒",
+    "approval": "👍",
+    "caring": "🤗",
+    "confusion": "😕",
+    "curiosity": "🤔",
+    "desire": "😍",
+    "disappointment": "😞",
+    "disapproval": "👎",
     "disgust": "🤢",
-    "neutral": "😐"
+    "embarrassment": "😳",
+    "excitement": "🎉",
+    "fear": "😨",
+    "gratitude": "🙏",
+    "grief": "😢",
+    "joy": "😊",
+    "love": "❤️",
+    "nervousness": "😰",
+    "neutral": "😐",
+    "optimism": "🌟",
+    "pride": "🦁",
+    "realization": "💡",
+    "relief": "😌",
+    "remorse": "😔",
+    "sadness": "😢",
+    "surprise": "😲"
 }
 
 # -------------------------------
@@ -715,7 +757,7 @@ End the brief with: "---
 Powered by Moodlight's Cultural Momentum Matrix™"
 
 HEALTHCARE / PHARMA / MEDICAL DEVICES:
-- Flag emotional tones (fear, anxiety, urgency) that may face Medical Legal Review (MLR) scrutiny
+- Flag emotional tones (fear, nervousness, anger, grief, sadness, disappointment) that may face Medical Legal Review (MLR) scrutiny
 - Prioritize "safe white space" — culturally appropriate AND unlikely to trigger regulatory concerns
 - Recommend messaging that builds trust and credibility over provocative hooks
 - Note velocity spikes that could indicate emerging issues requiring compliance awareness
@@ -891,7 +933,7 @@ def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFr
     prompts = {
         "empathy_by_topic": f"""Based on this empathy-by-topic data and the relevant headlines below, explain in 2-3 sentences why certain topics score higher/lower on empathy.\n\nData: {data_summary}\n\nRelevant headlines:\n{headline_context}\n\nBe specific about what is driving the scores. Reference actual events from the headlines. Keep it insightful and actionable.""",
         
-        "emotional_breakdown": f"""Based on this emotional distribution data and the relevant headlines below, explain in 2-3 sentences why certain emotions dominate.\n\nData: {data_summary}\n\nRelevant headlines:\n{headline_context}\n\nReference specific events driving fear, joy, anger, etc. Keep it insightful.""",
+        "emotional_breakdown": f"""Based on this emotional distribution data and the relevant headlines below, explain in 2-3 sentences why certain emotions dominate.\n\nData: {data_summary}\n\nRelevant headlines:\n{headline_context}\n\nReference specific events driving emotions like curiosity, admiration, excitement, fear, sadness, anger, etc. Keep it insightful.""",
         
         "empathy_distribution": f"""Based on this empathy distribution and the relevant headlines below, explain in 2-3 sentences why the sentiment skews this way.\n\nData: {data_summary}\n\nRelevant headlines:\n{headline_context}\n\nWhat is driving warm vs cold coverage? Be specific.""",
         

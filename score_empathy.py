@@ -10,7 +10,7 @@ NOW SUPPORTS INCREMENTAL SCORING:
 - Preserves previously scored data
 - Much faster for repeated runs!
 
-Uses: https://huggingface.co/bhadresh-savani/bert-base-uncased-emotion
+Uses: https://huggingface.co/SamLowe/roberta-base-go_emotions
 """
 
 import os
@@ -58,12 +58,19 @@ def empathy_label(score: float) -> str:
 # Prosocial emotions (GoEmotions)
 # -------------------------------
 PROSOCIAL = {
-    "admiration", "approval", "caring", "gratitude", "love",
-    "optimism", "pride", "relief", "joy", "amusement", "excitement"
+    "admiration",
+    "approval",
+    "caring",
+    "gratitude",
+    "joy",
+    "love",
+    "optimism",
+    "pride",
+    "relief"
 }
 
 # Correct model (exists and is fast)
-MODEL_NAME = "bhadresh-savani/bert-base-uncased-emotion"
+MODEL_NAME = "SamLowe/roberta-base-go_emotions"
 
 # -------------------------------
 # Load existing scored data
@@ -90,7 +97,7 @@ def load_existing_scores(output_csv: str) -> tuple[pd.DataFrame, Set[str]]:
 # -------------------------------
 def build_emotion_pipeline() -> Pipeline:
     """Build the emotion classification pipeline"""
-    print("Loading emotion model (bhadresh-savani/bert-base-uncased-emotion)...")
+    print("Loading emotion model (SamLowe/roberta-base-go_emotions)...")
 
     device = 0 if torch.cuda.is_available() else -1
     print(f"   Using {'GPU' if device == 0 else 'CPU'}")
