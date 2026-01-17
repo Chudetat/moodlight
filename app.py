@@ -1150,6 +1150,9 @@ if brand_focus and custom_query.strip():
 # Create filtered dataset
 if "created_at" in df_all.columns:
     cutoff = datetime.now(timezone.utc) - timedelta(days=FILTER_DAYS)
+    # Debug: log timestamp info
+    print(f"DEBUG TIMESTAMPS: cutoff={cutoff}, min={df_all['created_at'].min()}, max={df_all['created_at'].max()}")
+    print(f"DEBUG: Total rows={len(df_all)}, Rows after filter={len(df_all[df_all['created_at'] >= cutoff])}")
     df_48h = df_all[df_all["created_at"] >= cutoff].copy()
 else:
     df_48h = df_all.copy()
