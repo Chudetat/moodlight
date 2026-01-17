@@ -63,6 +63,12 @@ def save_news_to_db(csv_path: str = "news_scored.csv"):
                   "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3"]
     df_clean = df[[c for c in valid_cols if c in df.columns]].copy()
 
+    # Remove duplicate IDs to avoid PRIMARY KEY constraint violation
+    orig_len = len(df_clean)
+    df_clean = df_clean.drop_duplicates(subset=["id"], keep="first")
+    if len(df_clean) < orig_len:
+        print(f"⚠️ Removed {orig_len - len(df_clean)} duplicate IDs")
+
     try:
         # Use engine directly for to_sql() to avoid transaction issues
         print(f"📥 Inserting {len(df_clean)} rows...")
