@@ -1680,6 +1680,7 @@ if "empathy_score" in df_filtered.columns and len(df_filtered):
 
 if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and len(df_filtered):
     st.markdown("### Average Empathy by Topic")
+    st.caption("How warm or cold is the tone?")
     topic_avg = (
         df_filtered.groupby("topic")["empathy_score"]
         .agg(['mean', 'count'])
@@ -1746,7 +1747,7 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
 # ========================================
 if "emotion_top_1" in df_filtered.columns and len(df_filtered):
     st.markdown("### Emotional Breakdown")
-    st.caption("Dominant emotions detected across all posts")
+    st.caption("What emotions are being expressed?")
     
     emotion_counts = df_filtered["emotion_top_1"].value_counts()
     
