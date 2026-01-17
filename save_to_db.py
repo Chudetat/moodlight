@@ -30,49 +30,23 @@ def save_news_to_db(csv_path: str = "news_scored.csv"):
     if "created_at" in df.columns:
         df["created_at"] = pd.to_datetime(df["created_at"], utc=True, errors="coerce")
 
-    try:
-        # Use begin() for DDL operations (auto-commits on exit)
-        with engine.begin() as conn:
-            conn.execute(text("DROP TABLE IF EXISTS news_scored"))
-            conn.execute(text("""
-                CREATE TABLE news_scored (
-                    id TEXT PRIMARY KEY,
-                    text TEXT,
-                    created_at TIMESTAMP WITH TIME ZONE,
-                    link TEXT,
-                    source TEXT,
-                    topic TEXT,
-                    engagement FLOAT DEFAULT 0,
-                    country TEXT,
-                    intensity FLOAT,
-                    empathy_score FLOAT,
-                    empathy_label TEXT,
-                    emotion_top_1 TEXT,
-                    emotion_top_2 TEXT,
-                    emotion_top_3 TEXT
-                )
-            """))
-        print("✅ Table created successfully")
-    except Exception as e:
-        print(f"❌ Error creating table: {e}")
-        raise
-
     # Only keep columns that exist in table
     valid_cols = ["id", "text", "created_at", "link", "source", "topic",
                   "engagement", "country", "intensity", "empathy_score",
                   "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3"]
     df_clean = df[[c for c in valid_cols if c in df.columns]].copy()
 
-    # Remove duplicate IDs to avoid PRIMARY KEY constraint violation
+    # Remove duplicate IDs
     orig_len = len(df_clean)
     df_clean = df_clean.drop_duplicates(subset=["id"], keep="first")
     if len(df_clean) < orig_len:
         print(f"⚠️ Removed {orig_len - len(df_clean)} duplicate IDs")
 
     try:
-        # Use engine directly for to_sql() to avoid transaction issues
+        # Use if_exists="replace" to let pandas handle table creation
+        # This avoids PRIMARY KEY constraint issues entirely
         print(f"📥 Inserting {len(df_clean)} rows...")
-        df_clean.to_sql("news_scored", engine, if_exists="append", index=False, chunksize=50)
+        df_clean.to_sql("news_scored", engine, if_exists="replace", index=False, chunksize=50)
         print("✅ News data saved to PostgreSQL")
     except Exception as e:
         print(f"❌ Error inserting data: {e}")
