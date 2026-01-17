@@ -1349,8 +1349,8 @@ def create_trend_indicators(df: pd.DataFrame):
 current_date = datetime.now().strftime("%B %d, %Y")
 st.markdown(f"## {current_date}")
 
-# Social & News Sentiment Section
-st.markdown("### Social & News Sentiment")
+# Cultural Pulse Section
+st.markdown("### Cultural Pulse")
 
 if world_score is None or len(df_48h) == 0:
     st.warning("Not enough data from the last 48 hours yet. Try refreshing.")
