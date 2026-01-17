@@ -627,7 +627,7 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict:
 # UI
 # -------------------------------
 st.image("logo.png", width=300)
-st.caption("Real-time global news and culture analysis, prediction, and actionable intelligence")
+st.caption("Where culture is heading. What audiences feel. How to show up.")
 
 # Placeholder for success messages at top of page
 brief_message_placeholder = st.empty()
