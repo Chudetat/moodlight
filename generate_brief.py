@@ -189,37 +189,23 @@ Total Social Posts Analyzed: {len(social_df)}
 def generate_brief(context):
     """Generate executive brief using Claude AI"""
 
-    prompt = f"""You are a cultural strategist preparing a daily intelligence brief for entertainment and media executives.
+    prompt = f"""You are an intelligence analyst preparing a daily intelligence brief.
 
-Based on the following cultural intelligence data, create a concise executive summary that:
-
-1. Highlights the TOP 3 CULTURAL MOMENTS or opportunities
-2. Identifies emerging audience sentiment and trends
-3. Provides ACTIONABLE INSIGHTS using the Cultural Momentum Matrix:
-   - WHERE TO PLAY: Which topics/spaces to engage
-   - WHEN TO PLAY: Timing windows (rising vs peaked conversations)
-   - WHAT TO SAY: Tone and messaging to match the cultural mood
-4. Uses clear, direct language (no jargon)
-5. Keeps it under 400 words
+Based on the following intelligence data, create a concise executive summary.
 
 Format as:
-CULTURAL INTELLIGENCE BRIEF - {datetime.now(timezone.utc).strftime("%B %d, %Y")}
+DAILY INTELLIGENCE BRIEF - {datetime.now(timezone.utc).strftime("%B %d, %Y")}
 
-TOP CULTURAL MOMENTS:
-1. [Highest opportunity]
-2. [Second priority]
-3. [Third priority]
+KEY THREATS:
+[Top 3-5 high-intensity items requiring attention]
 
-AUDIENCE PULSE:
-[2-3 sentences on emotional climate and sentiment trends]
-
-CULTURAL MOMENTUM MATRIX:
-• WHERE TO PLAY: [Topics/spaces with momentum]
-• WHEN TO PLAY: [Timing insights - what's rising vs peaking]
-• WHAT TO SAY: [Tone calibration based on empathy temperature]
+EMERGING PATTERNS:
+[Notable trends, shifts, or developments across topics and regions]
 
 RECOMMENDED ACTIONS:
-[Bullet points for content/engagement strategy]
+[Prioritized actionable items based on the intelligence]
+
+Keep it under 400 words. Use clear, direct language.
 
 DATA:
 {context}
@@ -227,8 +213,8 @@ DATA:
 
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=600,
-        system="You are a senior cultural strategist with 20 years of experience in entertainment, media, and audience intelligence. You understand how cultural moments create opportunities for brands and content creators.",
+        max_tokens=500,
+        system="You are a senior intelligence analyst providing daily situational awareness briefings.",
         messages=[{"role": "user", "content": prompt}]
     )
     
