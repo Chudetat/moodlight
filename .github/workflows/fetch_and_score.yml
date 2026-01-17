@@ -55,7 +55,13 @@ jobs:
       - name: Save news to PostgreSQL
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python save_to_db.py news_scored.csv
+        run: python save_to_db.py news_scored.csv news_scored
+
+      - name: Save social to PostgreSQL
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python save_to_db.py social_scored.csv social_scored
 
       - name: Generate and send intelligence brief
         env:
