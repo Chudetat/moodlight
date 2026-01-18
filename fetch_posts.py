@@ -42,7 +42,7 @@ NEWSAPI_URL = "https://newsapi.org/v2/everything"
 # -------------------------------
 # Default queries (with viral filter)
 # -------------------------------
-X_DEFAULT_QUERY = "(from:Reuters OR from:AP OR from:WSJ OR from:Bloomberg OR from:CNBC OR from:BBCWorld) OR (diplomacy OR war OR military OR terrorism OR democracy OR elections OR White House OR legislation OR economy OR inflation OR recession OR GDP OR merger OR IPO OR AI OR technology OR semiconductor OR innovation OR space OR energy OR solar OR climate OR healthcare OR pharmaceutical OR advertising OR marketing OR branding) lang:en -is:retweet"
+X_DEFAULT_QUERY = "(from:Reuters OR from:AP OR from:WSJ OR from:Bloomberg OR from:CNBC OR from:BBCWorld) OR (diplomacy OR war OR military OR terrorism OR democracy OR elections OR White House OR legislation OR economy OR inflation OR recession OR GDP OR merger OR IPO OR AI OR technology OR semiconductor OR innovation OR space OR energy OR solar OR climate OR healthcare OR pharmaceutical OR advertising OR marketing OR branding OR streaming OR Netflix OR Hollywood) lang:en -is:retweet"
 
 # High-engagement trending query - viral content only
 X_TRENDING_QUERY = "(breaking OR developing OR just announced) lang:en -is:retweet"
@@ -481,14 +481,14 @@ def main():
 
 
         # Skip low-engagement tweets (quality filter)
-        if engagement < 10:
+        if engagement < 3:
             continue
         
         # Skip accounts with fewer than 500 followers
         author_id = tw.get("author_id")
         user_data = users.get(author_id, {})
         follower_count = user_data.get("public_metrics", {}).get("followers_count", 0)
-        if follower_count < 500:
+        if follower_count < 200:
             continue
         
         x_rows.append({

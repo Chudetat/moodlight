@@ -29,7 +29,7 @@ def save_to_db(csv_path: str, table_name: str):
 
     # Convert created_at to datetime with UTC
     if "created_at" in df.columns:
-        df["created_at"] = pd.to_datetime(df["created_at"], utc=True, errors="coerce")
+        df["created_at"] = pd.to_datetime(df["created_at"], format="mixed", utc=True, errors="coerce")
 
     # Only keep columns that exist in table
     valid_cols = ["id", "text", "created_at", "link", "source", "topic",
