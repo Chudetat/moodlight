@@ -656,6 +656,15 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict:
 st.image("logo.png", width=300)
 st.caption("Where culture is heading. What audiences feel. How to show up.")
 
+
+# Force scroll to top on load
+st.markdown("""
+<script>
+    window.onload = function() {
+        window.scrollTo(0, 0);
+    }
+</script>
+""", unsafe_allow_html=True)
 # Placeholder for success messages at top of page
 brief_message_placeholder = st.empty()
 from anthropic import Anthropic
