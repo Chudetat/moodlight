@@ -1354,6 +1354,7 @@ st.markdown(f"## {current_date}")
 
 # Cultural Pulse Section
 st.markdown("### Cultural Pulse")
+st.caption("The world's emotional temperature—are audiences receptive or reactive?")
 
 if world_score is None or len(df_48h) == 0:
     st.info("🔄 Gathering fresh intelligence... Data refreshes automatically every 12 hours.")
@@ -1490,6 +1491,7 @@ if compare_mode:
 # MARKET MOOD
 # ========================================
 st.markdown("### Market Sentiment")
+st.caption("Markets respond to mood before they respond to news.")
 
 df_markets = load_market_data()
 
@@ -1531,6 +1533,7 @@ st.markdown("---")
 # MOOD VS MARKET COMPARISON
 # ========================================
 st.markdown("## Mood vs Market: Leading Indicators")
+st.caption("When mood and markets diverge, that's your signal—opportunity or risk is coming.")
 
 # Check if brand focus is active and search for ticker
 brand_ticker = None
@@ -1683,7 +1686,7 @@ if "empathy_score" in df_filtered.columns and len(df_filtered):
 
 if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and len(df_filtered):
     st.markdown("### Average Empathy by Topic")
-    st.caption("How warm or cold is the tone?")
+    st.caption("Not all topics feel the same—where are audiences open versus guarded?")
     topic_avg = (
         df_filtered.groupby("topic")["empathy_score"]
         .agg(['mean', 'count'])
@@ -1750,7 +1753,7 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
 # ========================================
 if "emotion_top_1" in df_filtered.columns and len(df_filtered):
     st.markdown("### Emotional Breakdown")
-    st.caption("What emotions are being expressed?")
+    st.caption("Beyond positive/negative—what specific emotions are driving the conversation?")
     
     emotion_counts = df_filtered["emotion_top_1"].value_counts()
     
@@ -1797,7 +1800,7 @@ if "emotion_top_1" in df_filtered.columns and len(df_filtered):
 # ========================================
 if "empathy_label" in df_filtered.columns and len(df_filtered):
     st.markdown("### Empathy Distribution")
-    st.caption("How empathetically people are communicating (tone and approach)")
+    st.caption("The ratio of warmth to hostility—your cultural weather forecast.")
     counts = df_filtered["empathy_label"].value_counts().reindex(EMPATHY_LEVELS, fill_value=0)
     chart_df = counts.reset_index()
     chart_df.columns = ["label", "posts"]
@@ -1837,6 +1840,7 @@ if "empathy_label" in df_filtered.columns and len(df_filtered):
 # ========================================
 if "topic" in df_filtered.columns and len(df_filtered):
     st.markdown("### Topic Distribution")
+    st.caption("What the world is talking about, ranked by volume.")
     counts = df_filtered["topic"].value_counts().head(15)
     chart_df = counts.reset_index()
     chart_df.columns = ["topic", "posts"]
@@ -1876,7 +1880,7 @@ if "topic" in df_filtered.columns and len(df_filtered):
 # SECTION 5: TRENDING HEADLINES
 # ========================================
 st.markdown("### Trending Headlines")
-st.caption("Posts with highest engagement plotted by empathy vs. time")
+st.caption("The stories gaining momentum—what's about to become the conversation.")
 
 if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_all) > 0:
     now = datetime.now(timezone.utc)
@@ -1945,7 +1949,7 @@ st.markdown("---")
 # SECTION 6: VIRALITY × EMPATHY
 # ========================================
 st.markdown("### Virality × Empathy: Posts with Viral Potential")
-st.caption("High-engagement posts - bigger bubbles = higher engagement")
+st.caption("High engagement meets emotional resonance—these are the moments worth riding.")
 
 if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_all) > 0:
     cutoff_virality = datetime.now(timezone.utc) - timedelta(days=FILTER_DAYS)
@@ -2042,7 +2046,7 @@ st.markdown("---")
 # NEW SECTION: VELOCITY × LONGEVITY
 # ========================================
 st.markdown("### Velocity × Longevity: Topic Strategic Value")
-st.caption("Understand which topics are lasting movements vs. fleeting trends")
+st.caption("Is it a flash or a movement? Know before you commit resources.")
 
 try:
     longevity_df = pd.read_csv('topic_longevity.csv')
@@ -2123,7 +2127,7 @@ st.markdown("---")
 # DENSITY ANALYSIS
 # ========================================
 st.markdown("### Density: Where Conversations Are Concentrated")
-st.caption("Understand geographic, platform, and conversation depth")
+st.caption("How crowded is the conversation? High density = be louder or smarter.")
 
 try:
     density_df = pd.read_csv('topic_density.csv')
@@ -2187,7 +2191,7 @@ st.markdown("---")
 # SCARCITY ANALYSIS
 # ========================================
 st.markdown("### Scarcity: Topic Opportunity Gaps")
-st.caption("Discover underserved topics where brands can establish thought leadership")
+st.caption("White space—underserved topics where you can own the narrative.")
 
 try:
     scarcity_df = pd.read_csv('topic_scarcity.csv')
@@ -2437,7 +2441,7 @@ world_view_cutoff = datetime.now(timezone.utc) - timedelta(hours=72)
 df_world_view = df_filtered[df_filtered["created_at"] >= world_view_cutoff].copy() if "created_at" in df_filtered.columns else df_filtered.copy()
 
 st.markdown("### World View")
-st.caption("All posts from the last 72 hours - scroll to explore")
+st.caption("Where in the world is intensity spiking? Geographic heat map for global brands.")
 
 cols = [c for c in ["text", "source", "topic", "empathy_label", "emotion_top_1", "engagement", "created_at"] if c in df_filtered.columns]
 if len(df_world_view):
