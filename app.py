@@ -537,6 +537,18 @@ def compute_world_mood(df: pd.DataFrame) -> tuple[int | None, str | None, str]:
         emoji = "❤️"
     return score, label, emoji
 
+
+def normalize_empathy_score(avg: float) -> int:
+    """Normalize GoEmotions empathy score to 0-100 scale"""
+    if avg <= 0.04:
+        score = int(round(avg / 0.04 * 50))
+    elif avg <= 0.10:
+        score = int(round(50 + (avg - 0.04) / 0.06 * 15))
+    elif avg <= 0.30:
+        score = int(round(65 + (avg - 0.10) / 0.20 * 20))
+    else:
+        score = int(round(85 + (avg - 0.30) / 0.70 * 15))
+    return min(100, max(0, score))
 # -------------------------------
 # Brand-Specific VLDS Calculation
 # -------------------------------
@@ -1579,7 +1591,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             .reset_index()
         )
         daily_social = daily_social.rename(columns={'empathy_score': 'social_mood'})
-        daily_social["social_mood"] = (daily_social["social_mood"] * 100).round().astype(int)
+        daily_social["social_mood"] = daily_social["social_mood"].apply(normalize_empathy_score)
         daily_social["type"] = "Social Mood"
         
         # Use brand stock or fallback to market index
@@ -2402,11 +2414,11 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns:
             .reset_index()
         )
         daily = daily.rename(columns={'mean': 'mood_score'})
-        daily["mood_score"] = (daily["mood_score"] * 100).round().astype(int)
+        daily["mood_score"] = daily["mood_score"].apply(normalize_empathy_score)
         daily["label"] = daily["mood_score"].apply(
-            lambda x: "Very Cold / Hostile" if x < 25 else
+            lambda x: "Very Cold / Hostile" if x < 35 else
                       "Detached / Neutral" if x < 50 else
-                      "Warm / Supportive" if x < 75 else
+                      "Warm / Supportive" if x < 70 else
                       "Highly Empathetic"
         )
         
