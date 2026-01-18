@@ -509,14 +509,27 @@ def compute_world_mood(df: pd.DataFrame) -> tuple[int | None, str | None, str]:
     if "empathy_score" not in df.columns or df["empathy_score"].isna().all():
         return None, None, ""
     avg = df["empathy_score"].mean()
-    score = int(round(avg * 100))
-    if score < 25:
+    
+    # Normalize for GoEmotions output (median ~0.036, 95th ~0.33)
+    # Map: 0.0->0, 0.04->50, 0.10->65, 0.30->85, 1.0->100
+    if avg <= 0.04:
+        score = int(round(avg / 0.04 * 50))
+    elif avg <= 0.10:
+        score = int(round(50 + (avg - 0.04) / 0.06 * 15))
+    elif avg <= 0.30:
+        score = int(round(65 + (avg - 0.10) / 0.20 * 20))
+    else:
+        score = int(round(85 + (avg - 0.30) / 0.70 * 15))
+    
+    score = min(100, max(0, score))
+    
+    if score < 35:
         label = "Very Cold / Hostile"
         emoji = "🥶"
     elif score < 50:
         label = "Detached / Neutral"
         emoji = "😐"
-    elif score < 75:
+    elif score < 70:
         label = "Warm / Supportive"
         emoji = "🙂"
     else:
