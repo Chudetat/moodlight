@@ -301,11 +301,11 @@ def empathy_label_from_score(score: float) -> str | None:
     if score is None or math.isnan(score):
         return None
     score = max(0.0, min(1.0, float(score)))
-    if score < 0.25:
+    if score < 0.04:
         return EMPATHY_LEVELS[0]
-    if score < 0.5:
+    if score < 0.10:
         return EMPATHY_LEVELS[1]
-    if score < 0.75:
+    if score < 0.30:
         return EMPATHY_LEVELS[2]
     return EMPATHY_LEVELS[3]
 
