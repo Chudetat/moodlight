@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()
 import streamlit as st
 try:
     from db_helper import load_df_from_db
@@ -631,14 +633,10 @@ st.caption("Where culture is heading. What audiences feel. How to show up.")
 
 # Placeholder for success messages at top of page
 brief_message_placeholder = st.empty()
-
 from anthropic import Anthropic
-from dotenv import load_dotenv
 import os
 import csv
 from strategic_frameworks import select_frameworks, get_framework_prompt, STRATEGIC_FRAMEWORKS
-
-load_dotenv()
 
 def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> str:
     """Generate strategic campaign brief using AI and Moodlight data"""
