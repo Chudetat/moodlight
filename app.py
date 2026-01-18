@@ -2441,7 +2441,7 @@ world_view_cutoff = datetime.now(timezone.utc) - timedelta(hours=72)
 df_world_view = df_filtered[df_filtered["created_at"] >= world_view_cutoff].copy() if "created_at" in df_filtered.columns else df_filtered.copy()
 
 st.markdown("### World View")
-st.caption("Where in the world is intensity spiking? Geographic heat map for global brands.")
+st.caption("Everything happening right now—the raw intelligence feed.")
 
 cols = [c for c in ["text", "source", "topic", "empathy_label", "emotion_top_1", "engagement", "created_at"] if c in df_filtered.columns]
 if len(df_world_view):
