@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()
 import streamlit as st
 try:
     from db_helper import load_df_from_db
@@ -299,11 +301,11 @@ def empathy_label_from_score(score: float) -> str | None:
     if score is None or math.isnan(score):
         return None
     score = max(0.0, min(1.0, float(score)))
-    if score < 0.25:
+    if score < 0.04:
         return EMPATHY_LEVELS[0]
-    if score < 0.5:
+    if score < 0.10:
         return EMPATHY_LEVELS[1]
-    if score < 0.75:
+    if score < 0.30:
         return EMPATHY_LEVELS[2]
     return EMPATHY_LEVELS[3]
 
@@ -507,14 +509,27 @@ def compute_world_mood(df: pd.DataFrame) -> tuple[int | None, str | None, str]:
     if "empathy_score" not in df.columns or df["empathy_score"].isna().all():
         return None, None, ""
     avg = df["empathy_score"].mean()
-    score = int(round(avg * 100))
-    if score < 25:
+    
+    # Normalize for GoEmotions output (median ~0.036, 95th ~0.33)
+    # Map: 0.0->0, 0.04->50, 0.10->65, 0.30->85, 1.0->100
+    if avg <= 0.04:
+        score = int(round(avg / 0.04 * 50))
+    elif avg <= 0.10:
+        score = int(round(50 + (avg - 0.04) / 0.06 * 15))
+    elif avg <= 0.30:
+        score = int(round(65 + (avg - 0.10) / 0.20 * 20))
+    else:
+        score = int(round(85 + (avg - 0.30) / 0.70 * 15))
+    
+    score = min(100, max(0, score))
+    
+    if score < 35:
         label = "Very Cold / Hostile"
         emoji = "🥶"
     elif score < 50:
         label = "Detached / Neutral"
         emoji = "😐"
-    elif score < 75:
+    elif score < 70:
         label = "Warm / Supportive"
         emoji = "🙂"
     else:
@@ -522,6 +537,18 @@ def compute_world_mood(df: pd.DataFrame) -> tuple[int | None, str | None, str]:
         emoji = "❤️"
     return score, label, emoji
 
+
+def normalize_empathy_score(avg: float) -> int:
+    """Normalize GoEmotions empathy score to 0-100 scale"""
+    if avg <= 0.04:
+        score = int(round(avg / 0.04 * 50))
+    elif avg <= 0.10:
+        score = int(round(50 + (avg - 0.04) / 0.06 * 15))
+    elif avg <= 0.30:
+        score = int(round(65 + (avg - 0.10) / 0.20 * 20))
+    else:
+        score = int(round(85 + (avg - 0.30) / 0.70 * 15))
+    return min(100, max(0, score))
 # -------------------------------
 # Brand-Specific VLDS Calculation
 # -------------------------------
@@ -629,16 +656,21 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict:
 st.image("logo.png", width=300)
 st.caption("Where culture is heading. What audiences feel. How to show up.")
 
+
+# Force scroll to top on load
+st.markdown("""
+<script>
+    window.onload = function() {
+        window.scrollTo(0, 0);
+    }
+</script>
+""", unsafe_allow_html=True)
 # Placeholder for success messages at top of page
 brief_message_placeholder = st.empty()
-
 from anthropic import Anthropic
-from dotenv import load_dotenv
 import os
 import csv
 from strategic_frameworks import select_frameworks, get_framework_prompt, STRATEGIC_FRAMEWORKS
-
-load_dotenv()
 
 def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> str:
     """Generate strategic campaign brief using AI and Moodlight data"""
@@ -1571,7 +1603,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             .reset_index()
         )
         daily_social = daily_social.rename(columns={'empathy_score': 'social_mood'})
-        daily_social["social_mood"] = (daily_social["social_mood"] * 100).round().astype(int)
+        daily_social["social_mood"] = daily_social["social_mood"].apply(normalize_empathy_score)
         daily_social["type"] = "Social Mood"
         
         # Use brand stock or fallback to market index
@@ -2395,11 +2427,11 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns:
             .reset_index()
         )
         daily = daily.rename(columns={'mean': 'mood_score'})
-        daily["mood_score"] = (daily["mood_score"] * 100).round().astype(int)
+        daily["mood_score"] = daily["mood_score"].apply(normalize_empathy_score)
         daily["label"] = daily["mood_score"].apply(
-            lambda x: "Very Cold / Hostile" if x < 25 else
+            lambda x: "Very Cold / Hostile" if x < 35 else
                       "Detached / Neutral" if x < 50 else
-                      "Warm / Supportive" if x < 75 else
+                      "Warm / Supportive" if x < 70 else
                       "Highly Empathetic"
         )
         
