@@ -799,6 +799,18 @@ This is where you earn your fee. Include ALL of the following:
 
 End with: "The non-obvious move: [one sentence summary of the unexpected angle]"
 
+## 5. 🔥 WHY NOW: The Real-Time Trigger
+
+This brief must feel URGENT and TIMELY. Include:
+
+- **This Week's Catalyst**: Reference 2-3 specific headlines or trending stories from the data that create the current opportunity. Quote or paraphrase actual headlines.
+
+- **The Window**: Why does this opportunity exist RIGHT NOW but might not in 30 days? What's the expiration date on this insight?
+
+- **Cultural Collision**: What current events, news cycles, or cultural moments are colliding to create this specific opening?
+
+End with: "Act now because: [one sentence on why timing matters]"
+
 Be bold and specific. Reference actual data points. Make decisions, not suggestions.
 
 IMPORTANT: Do NOT include obvious "avoid" recommendations that any brand strategist already knows (e.g., "avoid war & foreign policy for brand safety"). Only mention Avoid Zones if:
