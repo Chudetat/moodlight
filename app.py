@@ -785,6 +785,12 @@ End with: "Consider: '[specific campaign thought-starter]'"
 
 Be bold and specific. Reference actual data points. Make decisions, not suggestions.
 
+IMPORTANT: Do NOT include obvious "avoid" recommendations that any brand strategist already knows (e.g., "avoid war & foreign policy for brand safety"). Only mention Avoid Zones if:
+1. The client's specific product/challenge intersects with that topic, OR
+2. There's a non-obvious risk the client might miss
+
+Focus on actionable opportunities, not generic warnings.
+
 End the brief with: "---
 Powered by Moodlight's Cultural Momentum Matrix™"
 
