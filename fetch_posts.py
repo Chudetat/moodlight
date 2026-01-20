@@ -42,7 +42,7 @@ NEWSAPI_URL = "https://newsapi.org/v2/everything"
 # -------------------------------
 # Default queries (with viral filter)
 # -------------------------------
-X_DEFAULT_QUERY = "(from:Reuters OR from:AP OR from:WSJ OR from:Bloomberg OR from:CNBC OR from:BBCWorld) OR (conflict OR democracy OR elections OR economy OR IPO OR AI OR technology OR energy OR climate OR healthcare OR advertising OR marketing OR entertainment OR streaming OR Netflix OR Hollywood OR television OR Peacock OR celebrity OR viral OR TikTok OR creator OR culture OR Google OR Apple OR Meta OR Microsoft OR Anthropic OR Nvidia OR Disney OR Spotify OR HBO OR YouTube OR Nike OR Adidas OR Coca-Cola OR Blackrock OR Tesla) lang:en -is:retweet"
+X_DEFAULT_QUERY = "(from:Reuters OR from:AP OR from:WSJ OR from:Bloomberg OR from:CNBC OR from:BBCWorld) OR (conflict OR democracy OR elections OR economy OR IPO OR AI OR technology OR energy OR climate OR healthcare OR advertising OR marketing OR entertainment OR streaming OR Netflix OR Hollywood OR television OR Peacock OR celebrity OR viral OR TikTok OR creator OR culture OR Google OR Alphabet OR Apple OR Meta OR Microsoft OR Anthropic OR Nvidia OR Disney OR Spotify OR HBO OR YouTube OR Nike OR Adidas OR Coca-Cola OR Blackrock OR Tesla) lang:en -is:retweet"
 
 # High-engagement trending query - viral content only
 X_TRENDING_QUERY = "(breaking OR developing OR just announced) lang:en -is:retweet"
