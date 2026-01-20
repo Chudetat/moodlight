@@ -39,6 +39,7 @@ jobs:
         continue-on-error: true
         env:
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
         run: python fetch_posts.py
       
       - name: Score news
