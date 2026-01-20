@@ -823,7 +823,7 @@ End with: "The non-obvious move: [one sentence summary of the unexpected angle]"
 
 This brief must feel URGENT and TIMELY. Use the RECENT HEADLINES and HIGH-ENGAGEMENT CONTENT sections above. Include:
 
-- **This Week's Catalyst**: Quote or paraphrase 2-3 specific headlines from the data above. Be specific - "The [topic] story about [specifics]" not generic references.
+- **This Week's Catalyst**: Quote or paraphrase 2-3 specific headlines from the data above that are DIRECTLY RELEVANT to the client's request. Skip unrelated headlines even if they're high-engagement. Be specific - "The [topic] story about [specifics]" not generic references.
 
 - **The Window**: Why does this opportunity exist RIGHT NOW but might not in 30 days? What's the expiration date on this insight?
 
