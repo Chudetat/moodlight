@@ -116,14 +116,19 @@ def search_ticker(brand_name: str) -> str | None:
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(url, params=params, headers=headers, timeout=5)
         data = response.json()
-        
+        print(f"DEBUG search_ticker: brand='{brand_name}', response={data}")
+
         if data.get("quotes"):
             # Return first stock result (not ETF/fund)
             for quote in data["quotes"]:
                 if quote.get("quoteType") in ["EQUITY", "INDEX"]:
+                    print(f"DEBUG search_ticker: found ticker={quote.get('symbol')}")
                     return quote.get("symbol")
             # Fallback to first result
-            return data["quotes"][0].get("symbol")
+            result = data["quotes"][0].get("symbol")
+            print(f"DEBUG search_ticker: fallback ticker={result}")
+            return result
+        print(f"DEBUG search_ticker: no quotes found")
         return None
     except Exception as e:
         print(f"Ticker search error: {e}")
@@ -141,8 +146,10 @@ def fetch_stock_data(ticker: str) -> dict | None:
         except Exception:
             pass
     if not api_key:
+        print(f"DEBUG fetch_stock_data: No API key found")
         return None
-    
+
+    print(f"DEBUG fetch_stock_data: ticker={ticker}, api_key={'SET' if api_key else 'MISSING'}")
     try:
         url = "https://www.alphavantage.co/query"
         params = {
@@ -152,15 +159,19 @@ def fetch_stock_data(ticker: str) -> dict | None:
         }
         response = requests.get(url, params=params, timeout=10)
         data = response.json()
-        
+        print(f"DEBUG fetch_stock_data: response={data}")
+
         if "Global Quote" in data and data["Global Quote"]:
             quote = data["Global Quote"]
-            return {
+            result = {
                 "symbol": quote.get("01. symbol", ticker),
                 "price": float(quote.get("05. price", 0)),
                 "change_percent": float(quote.get("10. change percent", "0").replace("%", "")),
                 "latest_day": quote.get("07. latest trading day", "")
             }
+            print(f"DEBUG fetch_stock_data: success, result={result}")
+            return result
+        print(f"DEBUG fetch_stock_data: no Global Quote in response")
         return None
     except Exception as e:
         print(f"Stock fetch error: {e}")
