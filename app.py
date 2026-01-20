@@ -699,7 +699,21 @@ def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> str:
         scarcity_data = scarcity_df.head(5).to_string()
     except Exception:
         scarcity_data = "No scarcity data available"
-    
+
+    # Get actual headlines for real-time grounding
+    recent_headlines = ""
+    viral_headlines = ""
+    if 'text' in df.columns:
+        # Most recent headlines (what just happened)
+        if 'created_at' in df.columns:
+            recent = df.nlargest(10, 'created_at')[['text', 'topic']].drop_duplicates('text')
+            recent_headlines = "\n".join([f"- [{row['topic']}] {row['text'][:150]}" for _, row in recent.iterrows()])
+
+        # Most viral/high-engagement (what's resonating)
+        if 'engagement' in df.columns:
+            viral = df.nlargest(8, 'engagement')[['text', 'topic', 'engagement']].drop_duplicates('text')
+            viral_headlines = "\n".join([f"- [{row['topic']}] {row['text'][:150]} (engagement: {int(row['engagement'])})" for _, row in viral.iterrows()])
+
     context = f"""
 MOODLIGHT INTELLIGENCE SNAPSHOT
 ================================
@@ -723,6 +737,12 @@ DENSITY (Topic saturation - high means crowded, low means opportunity):
 
 SCARCITY (Underserved topics - high scarcity = white space opportunity):
 {scarcity_data}
+
+RECENT HEADLINES (What just happened):
+{recent_headlines if recent_headlines else "No recent headlines available"}
+
+HIGH-ENGAGEMENT CONTENT (What's resonating now):
+{viral_headlines if viral_headlines else "No engagement data available"}
 
 Total Posts Analyzed: {len(df)}
 """
@@ -801,13 +821,13 @@ End with: "The non-obvious move: [one sentence summary of the unexpected angle]"
 
 ## 5. 🔥 WHY NOW: The Real-Time Trigger
 
-This brief must feel URGENT and TIMELY. Include:
+This brief must feel URGENT and TIMELY. Use the RECENT HEADLINES and HIGH-ENGAGEMENT CONTENT sections above. Include:
 
-- **This Week's Catalyst**: Reference 2-3 specific headlines or trending stories from the data that create the current opportunity. Quote or paraphrase actual headlines.
+- **This Week's Catalyst**: Quote or paraphrase 2-3 specific headlines from the data above. Be specific - "The [topic] story about [specifics]" not generic references.
 
 - **The Window**: Why does this opportunity exist RIGHT NOW but might not in 30 days? What's the expiration date on this insight?
 
-- **Cultural Collision**: What current events, news cycles, or cultural moments are colliding to create this specific opening?
+- **Cultural Collision**: What current events from the headlines are colliding to create this specific opening?
 
 End with: "Act now because: [one sentence on why timing matters]"
 
