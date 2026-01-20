@@ -783,6 +783,22 @@ Based on the empathy score and emotional climate:
 
 End with: "Consider: '[specific campaign thought-starter]'"
 
+## 4. ⚡ UNEXPECTED ANGLE: The Insight They Didn't See Coming
+
+This is where you earn your fee. Include ALL of the following:
+
+- **Contrarian Take**: One insight that challenges conventional thinking about this category. What would surprise the client? What do they NOT expect to hear but need to?
+
+- **Data Tension**: Look for contradictions (what people say vs. what they engage with, stated values vs. actual behavior). Call out one paradox in the data.
+
+- **Cultural Parallel**: Reference one analogy from another brand, category, or cultural moment that illuminates the current opportunity.
+
+- **Competitor Blind Spot**: What is one thing competitors in this space are likely missing right now?
+
+- **Creative Spark**: One bold campaign idea or hook that ONLY works in this specific cultural moment. Not generic. Not safe. Something that makes the client lean forward.
+
+End with: "The non-obvious move: [one sentence summary of the unexpected angle]"
+
 Be bold and specific. Reference actual data points. Make decisions, not suggestions.
 
 IMPORTANT: Do NOT include obvious "avoid" recommendations that any brand strategist already knows (e.g., "avoid war & foreign policy for brand safety"). Only mention Avoid Zones if:
