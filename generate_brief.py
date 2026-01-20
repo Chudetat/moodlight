@@ -213,7 +213,7 @@ DATA:
 
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=500,
+        max_tokens=1200,
         system="You are a senior intelligence analyst providing daily situational awareness briefings.",
         messages=[{"role": "user", "content": prompt}]
     )
