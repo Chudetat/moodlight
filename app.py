@@ -863,7 +863,7 @@ For all industries: Consider regulatory and reputational risk when recommending 
     
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=1024,
+        max_tokens=2500,
         system="You are a senior strategist who combines data intelligence with creative intuition. You speak plainly and give bold recommendations.",
         messages=[{"role": "user", "content": prompt}]
     )
