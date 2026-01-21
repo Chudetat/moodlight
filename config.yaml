@@ -7,6 +7,13 @@ credentials:
       failed_login_attempts: 0
       logged_in: False
 
+    ariellesantiago:
+      email: arielle.santiago@civic-us.com
+      name: Arielle
+      password: $2b$12$kWgvAOiRlwVlSJRFd5PA.OdI7rml7Qui/3AM554uts/njvcr6y1nm
+      failed_login_attempts: 0
+      logged_in: False
+
 cookie:
   expiry_days: 30
   key: moodlight_auth_key_2025
