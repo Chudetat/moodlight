@@ -107,72 +107,76 @@ import requests
 # ========================================
 # TICKER LOOKUP & STOCK DATA
 # ========================================
-@st.cache_data(ttl=86400)  # Cache for 24 hours
-def search_ticker(brand_name: str) -> str | None:
-    """Search for stock ticker by company name using Yahoo Finance."""
-    try:
-        url = f"https://query1.finance.yahoo.com/v1/finance/search"
-        params = {"q": brand_name, "quotesCount": 5, "newsCount": 0}
-        headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(url, params=params, headers=headers, timeout=5)
-        data = response.json()
-        print(f"DEBUG search_ticker: brand='{brand_name}', response={data}")
+class TickerNotFoundError(Exception):
+    """Raised when ticker lookup fails - prevents caching failures"""
+    pass
 
-        if data.get("quotes"):
-            # Return first stock result (not ETF/fund)
-            for quote in data["quotes"]:
-                if quote.get("quoteType") in ["EQUITY", "INDEX"]:
-                    print(f"DEBUG search_ticker: found ticker={quote.get('symbol')}")
-                    return quote.get("symbol")
-            # Fallback to first result
-            result = data["quotes"][0].get("symbol")
-            print(f"DEBUG search_ticker: fallback ticker={result}")
-            return result
-        print(f"DEBUG search_ticker: no quotes found")
-        return None
+class StockDataError(Exception):
+    """Raised when stock data fetch fails - prevents caching failures"""
+    pass
+
+@st.cache_data(ttl=86400)  # Cache for 24 hours
+def _search_ticker_cached(brand_name: str) -> str:
+    """Search for stock ticker - raises exception on failure (not cached)."""
+    url = f"https://query1.finance.yahoo.com/v1/finance/search"
+    params = {"q": brand_name, "quotesCount": 5, "newsCount": 0}
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(url, params=params, headers=headers, timeout=5)
+    data = response.json()
+
+    if data.get("quotes"):
+        # Return first stock result (not ETF/fund)
+        for quote in data["quotes"]:
+            if quote.get("quoteType") in ["EQUITY", "INDEX"]:
+                return quote.get("symbol")
+        # Fallback to first result
+        return data["quotes"][0].get("symbol")
+    raise TickerNotFoundError(f"No ticker found for {brand_name}")
+
+def search_ticker(brand_name: str) -> str | None:
+    """Search for stock ticker - returns None on failure (failures not cached)."""
+    try:
+        return _search_ticker_cached(brand_name)
     except Exception as e:
         print(f"Ticker search error: {e}")
         return None
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
+def _fetch_stock_data_cached(ticker: str, api_key: str) -> dict:
+    """Fetch stock data - raises exception on failure (not cached)."""
+    url = "https://www.alphavantage.co/query"
+    params = {
+        "function": "GLOBAL_QUOTE",
+        "symbol": ticker,
+        "apikey": api_key
+    }
+    response = requests.get(url, params=params, timeout=10)
+    data = response.json()
+
+    if "Global Quote" in data and data["Global Quote"]:
+        quote = data["Global Quote"]
+        return {
+            "symbol": quote.get("01. symbol", ticker),
+            "price": float(quote.get("05. price", 0)),
+            "change_percent": float(quote.get("10. change percent", "0").replace("%", "")),
+            "latest_day": quote.get("07. latest trading day", "")
+        }
+    raise StockDataError(f"No stock data for {ticker}")
+
 def fetch_stock_data(ticker: str) -> dict | None:
-    """Fetch stock data from Alpha Vantage."""
+    """Fetch stock data - returns None on failure (failures not cached)."""
     import os
     api_key = os.getenv("ALPHAVANTAGE_API_KEY", "")
     if not api_key:
-        # Try Streamlit secrets
         try:
             api_key = st.secrets.get("ALPHAVANTAGE_API_KEY", "")
         except Exception:
             pass
     if not api_key:
-        print(f"DEBUG fetch_stock_data: No API key found")
         return None
 
-    print(f"DEBUG fetch_stock_data: ticker={ticker}, api_key={'SET' if api_key else 'MISSING'}")
     try:
-        url = "https://www.alphavantage.co/query"
-        params = {
-            "function": "GLOBAL_QUOTE",
-            "symbol": ticker,
-            "apikey": api_key
-        }
-        response = requests.get(url, params=params, timeout=10)
-        data = response.json()
-        print(f"DEBUG fetch_stock_data: response={data}")
-
-        if "Global Quote" in data and data["Global Quote"]:
-            quote = data["Global Quote"]
-            result = {
-                "symbol": quote.get("01. symbol", ticker),
-                "price": float(quote.get("05. price", 0)),
-                "change_percent": float(quote.get("10. change percent", "0").replace("%", "")),
-                "latest_day": quote.get("07. latest trading day", "")
-            }
-            print(f"DEBUG fetch_stock_data: success, result={result}")
-            return result
-        print(f"DEBUG fetch_stock_data: no Global Quote in response")
-        return None
+        return _fetch_stock_data_cached(ticker, api_key)
     except Exception as e:
         print(f"Stock fetch error: {e}")
         return None
