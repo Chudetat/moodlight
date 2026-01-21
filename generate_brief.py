@@ -14,21 +14,23 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 def send_email_brief(brief_text):
-    """Send intelligence brief via email"""
+    """Send intelligence brief via email to each recipient individually"""
     sender = os.getenv("EMAIL_ADDRESS")
-    recipient = os.getenv("EMAIL_RECIPIENT")
+    recipients_str = os.getenv("EMAIL_RECIPIENT", "")
     password = os.getenv("EMAIL_PASSWORD")
-    
-    if not all([sender, recipient, password]):
+
+    if not all([sender, recipients_str, password]):
         print("Email credentials not configured. Skipping email.")
         return False
-    
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = f'Intelligence Brief - {datetime.now(timezone.utc).strftime("%B %d, %Y")}'
-    msg['From'] = sender
-    msg['To'] = recipient
-    
-    # Create HTML version for better formatting
+
+    # Split recipients by comma and clean whitespace
+    recipients = [r.strip() for r in recipients_str.split(",") if r.strip()]
+
+    if not recipients:
+        print("No valid recipients found. Skipping email.")
+        return False
+
+    # Create HTML content once (same for all recipients)
     html = f"""
     <html>
       <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
@@ -44,17 +46,30 @@ def send_email_brief(brief_text):
       </body>
     </html>
     """
-    
-    msg.attach(MIMEText(html, 'html'))
-    
+
+    success_count = 0
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(sender, password)
-            server.send_message(msg)
-        print(f"✅ Email sent to {recipient}")
-        return True
+
+            for recipient in recipients:
+                # Create fresh message for each recipient
+                msg = MIMEMultipart('alternative')
+                msg['Subject'] = f'Intelligence Brief - {datetime.now(timezone.utc).strftime("%B %d, %Y")}'
+                msg['From'] = sender
+                msg['To'] = recipient  # Only this recipient visible
+                msg.attach(MIMEText(html, 'html'))
+
+                try:
+                    server.send_message(msg)
+                    print(f"✅ Email sent to {recipient}")
+                    success_count += 1
+                except Exception as e:
+                    print(f"❌ Email failed for {recipient}: {e}")
+
+        return success_count > 0
     except Exception as e:
-        print(f"❌ Email failed: {e}")
+        print(f"❌ Email connection failed: {e}")
         return False
 
 load_dotenv()
