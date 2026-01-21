@@ -1047,7 +1047,7 @@ def load_existing_data() -> pd.DataFrame:
 
         # Keep entries from last 7 days only
         if "created_at" in df.columns:
-            df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce")
+            df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce", utc=True)
             cutoff = datetime.now(timezone.utc) - timedelta(days=7)
             df = df[df["created_at"] >= cutoff]
             print(f"Kept {len(df)} entries from last 7 days")
@@ -1140,7 +1140,7 @@ def main():
 
     # Sort by date (newest first)
     if "created_at" in combined_df.columns:
-        combined_df["created_at"] = pd.to_datetime(combined_df["created_at"], errors="coerce")
+        combined_df["created_at"] = pd.to_datetime(combined_df["created_at"], errors="coerce", utc=True)
         combined_df = combined_df.sort_values("created_at", ascending=False)
         # Convert back to ISO format strings
         # Only convert if it's actually datetime type
