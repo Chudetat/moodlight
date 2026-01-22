@@ -11,6 +11,11 @@ import yaml
 from yaml.loader import SafeLoader
 from session_manager import create_session, validate_session, clear_session
 from tier_helper import get_user_tier, can_generate_brief, increment_brief_count, has_feature_access
+try:
+    from polymarket_helper import fetch_polymarket_markets, calculate_sentiment_divergence
+    HAS_POLYMARKET = True
+except ImportError:
+    HAS_POLYMARKET = False
 # One-time spam cleanup (runs once on startup)
 import os
 if not os.path.exists(".cleanup_done"):
@@ -1755,6 +1760,73 @@ else:
     st.info("Insufficient data for comparison. Run data fetch to populate.")
 
 st.markdown("---")
+
+# ========================================
+# PREDICTION MARKETS (POLYMARKET)
+# ========================================
+if HAS_POLYMARKET:
+    st.markdown("## Prediction Markets")
+    st.caption("What the money says—prediction market odds vs. social sentiment divergence.")
+
+    @st.cache_data(ttl=300)  # Cache for 5 minutes
+    def load_polymarket_data():
+        return fetch_polymarket_markets(limit=15, min_volume=5000)
+
+    try:
+        polymarket_data = load_polymarket_data()
+
+        if polymarket_data:
+            # Calculate average social sentiment for comparison
+            avg_social_sentiment = df_all["empathy_score"].mean() if "empathy_score" in df_all.columns else 50
+
+            # Display top markets
+            col1, col2 = st.columns([2, 1])
+
+            with col1:
+                st.markdown("### Top Markets by Volume")
+                for i, market in enumerate(polymarket_data[:8]):
+                    with st.container():
+                        odds_color = "🟢" if market["yes_odds"] > 60 else "🔴" if market["yes_odds"] < 40 else "🟡"
+                        st.markdown(f"**{odds_color} {market['question'][:80]}{'...' if len(market['question']) > 80 else ''}**")
+
+                        mcol1, mcol2, mcol3 = st.columns(3)
+                        with mcol1:
+                            st.metric("Yes", f"{market['yes_odds']:.0f}%")
+                        with mcol2:
+                            st.metric("No", f"{market['no_odds']:.0f}%")
+                        with mcol3:
+                            st.metric("Volume", f"${market['volume']:,.0f}")
+
+                        if i < 7:
+                            st.markdown("---")
+
+            with col2:
+                st.markdown("### Market vs. Mood")
+                st.caption("When prediction markets diverge from social sentiment, opportunities emerge.")
+
+                # Overall divergence
+                avg_market_confidence = sum(max(m["yes_odds"], m["no_odds"]) for m in polymarket_data[:8]) / min(8, len(polymarket_data))
+                divergence_info = calculate_sentiment_divergence(avg_market_confidence, avg_social_sentiment)
+
+                st.metric("Avg Market Confidence", f"{avg_market_confidence:.0f}%")
+                st.metric("Avg Social Mood", f"{avg_social_sentiment:.0f}")
+                st.metric("Divergence", f"{divergence_info['divergence']:.0f} pts", delta=divergence_info['status'])
+                st.caption(divergence_info['interpretation'])
+
+                # Quick insight
+                if divergence_info['divergence'] > 20:
+                    st.warning("⚠️ Markets and social sentiment are misaligned. Watch for corrections.")
+                elif divergence_info['divergence'] < 10:
+                    st.success("✅ Markets and mood are aligned. Consensus forming.")
+
+        else:
+            st.info("📊 Prediction market data unavailable. API may be temporarily down.")
+
+    except Exception as e:
+        st.info(f"📊 Prediction markets: Unable to load data")
+        print(f"Polymarket error: {e}")
+
+    st.markdown("---")
 
 # ========================================
 # SECTION 2: DETAILED ANALYSIS
