@@ -1784,7 +1784,8 @@ if HAS_POLYMARKET:
 
             with col1:
                 st.markdown("### Top Markets by Volume")
-                for i, market in enumerate(polymarket_data[:8]):
+                markets_to_show = polymarket_data[:8]
+                for i, market in enumerate(markets_to_show):
                     with st.container():
                         odds_color = "🟢" if market["yes_odds"] > 60 else "🔴" if market["yes_odds"] < 40 else "🟡"
                         st.markdown(f"**{odds_color} {market['question'][:80]}{'...' if len(market['question']) > 80 else ''}**")
@@ -1797,7 +1798,7 @@ if HAS_POLYMARKET:
                         with mcol3:
                             st.metric("Volume", f"${market['volume']:,.0f}")
 
-                        if i < 6:
+                        if i < len(markets_to_show) - 1:
                             st.markdown("---")
 
             with col2:
