@@ -1768,7 +1768,7 @@ if HAS_POLYMARKET:
     st.markdown("## Prediction Markets")
     st.caption("What the money says—prediction market odds vs. social sentiment divergence.")
 
-    @st.cache_data(ttl=300)  # Cache for 5 minutes
+    @st.cache_data(ttl=180)  # Cache for 3 minutes
     def load_polymarket_data():
         return fetch_polymarket_markets(limit=15, min_volume=5000)
 
