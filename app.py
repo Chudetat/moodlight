@@ -1059,7 +1059,9 @@ def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFr
         
         "density": f"""Based on this density data for topics and headlines from crowded vs sparse topics, explain in 2-3 sentences which topics are oversaturated vs which have white space opportunity.\n\nData: {data_summary}\n\nHeadlines from high and low density topics:\n{headline_context}\n\nWhich topics are oversaturated and which represent open territory for brands? Be strategic.""",
         
-        "scarcity": f"""Based on this scarcity data for topics and the relevant headlines below, explain in 2-3 sentences which topics are underserved and represent first-mover opportunities.\n\nData: {data_summary}\n\nHeadlines showing coverage gaps:\n{headline_context}\n\nWhich topics should brands jump on before competitors? What gaps exist in the conversation?"""
+        "scarcity": f"""Based on this scarcity data for topics and the relevant headlines below, explain in 2-3 sentences which topics are underserved and represent first-mover opportunities.\n\nData: {data_summary}\n\nHeadlines showing coverage gaps:\n{headline_context}\n\nWhich topics should brands jump on before competitors? What gaps exist in the conversation?""",
+
+        "polymarket_divergence": f"""Based on this prediction market vs social sentiment data and headlines below, explain in 2-3 sentences why prediction markets and social mood diverge (or align).\n\nData: {data_summary}\n\nHeadlines driving sentiment:\n{headline_context}\n\nWhat does this divergence signal? Is the crowd wrong or are markets ahead? Any opportunity for contrarian positioning? Be specific and actionable."""
     }
     
     prompt = prompts.get(chart_type, "Explain this data pattern in 2-3 sentences.")
@@ -1821,11 +1823,13 @@ if HAS_POLYMARKET:
                 st.metric("Divergence", f"{divergence_info['divergence']:.0f} pts", delta=divergence_info['status'])
                 st.caption(divergence_info['interpretation'])
 
-                # Quick insight
-                if divergence_info['divergence'] > 20:
-                    st.warning("⚠️ Markets and social sentiment are misaligned. Watch for corrections.")
-                elif divergence_info['divergence'] < 10:
-                    st.success("✅ Markets and mood are aligned. Consensus forming.")
+                # Click-to-reveal AI explanation
+                if st.button("🔍 Why this divergence?", key="explain_polymarket_divergence"):
+                    with st.spinner("Analyzing patterns..."):
+                        top_markets = "; ".join([f"{m['question']}: {m['yes_odds']:.0f}% Yes" for m in polymarket_data[:5]])
+                        data_summary = f"Avg Market Confidence: {avg_market_confidence:.0f}%, Avg Social Mood: {avg_social_sentiment:.0f}, Divergence: {divergence_info['divergence']:.0f} pts ({divergence_info['status']})\n\nTop Markets: {top_markets}"
+                        explanation = generate_chart_explanation("polymarket_divergence", data_summary, df_all)
+                        st.info(f"📊 **Insight:**\n\n{explanation}")
 
         else:
             st.info("📊 Prediction market data unavailable. API may be temporarily down.")
