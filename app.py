@@ -1777,7 +1777,12 @@ if HAS_POLYMARKET:
 
         if polymarket_data:
             # Calculate average social sentiment for comparison
-            avg_social_sentiment = df_all["empathy_score"].mean() if "empathy_score" in df_all.columns else 50
+            if "empathy_score" in df_all.columns and len(df_all) > 0:
+                avg_social_sentiment = df_all["empathy_score"].mean()
+                if pd.isna(avg_social_sentiment):
+                    avg_social_sentiment = 50
+            else:
+                avg_social_sentiment = 50
 
             # Display top markets
             col1, col2 = st.columns([2, 1])
