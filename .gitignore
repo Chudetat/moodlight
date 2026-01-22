@@ -29,3 +29,7 @@ Thumbs.db
 leads.csv
 active_sessions.json
 news_scored.csv
+
+# Dopa
+dopa/*.db
+dopa/.env
