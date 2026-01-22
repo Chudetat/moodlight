@@ -1826,8 +1826,6 @@ if HAS_POLYMARKET:
         st.info(f"📊 Prediction markets: Unable to load data")
         print(f"Polymarket error: {e}")
 
-    st.markdown("---")
-
 # ========================================
 # SECTION 2: DETAILED ANALYSIS
 # ========================================
