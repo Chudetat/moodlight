@@ -1797,7 +1797,7 @@ if HAS_POLYMARKET:
                         with mcol3:
                             st.metric("Volume", f"${market['volume']:,.0f}")
 
-                        if i < 7:
+                        if i < 6:
                             st.markdown("---")
 
             with col2:
