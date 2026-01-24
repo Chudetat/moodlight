@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import get_settings
 from app.database import init_db, close_db
-from app.routers import auth
+from app.routers import auth, dashboard
 
 settings = get_settings()
 
@@ -44,6 +44,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(dashboard.router)
 
 
 # ============================================
@@ -62,36 +63,6 @@ async def root(request: Request):
     if user:
         return RedirectResponse(url="/dashboard", status_code=302)
     return RedirectResponse(url="/auth/login", status_code=302)
-
-
-@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    """
-    Main dashboard page.
-    Requires authentication.
-    """
-    from app.routers.auth import get_current_user
-    from app.database import AsyncSessionLocal
-    from app.services.tier import get_user_tier, get_tier_display_name
-
-    async with AsyncSessionLocal() as db:
-        user = await get_current_user(request, db)
-
-        if not user:
-            return RedirectResponse(url="/auth/login", status_code=302)
-
-        tier_info = await get_user_tier(db, user["username"])
-
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {
-            "request": request,
-            "user": user,
-            "tier_display": get_tier_display_name(user["tier"]),
-            "briefs_used": tier_info["briefs_used"],
-            "briefs_remaining": tier_info.get("briefs_limit", 5) - tier_info["briefs_used"]
-        }
-    )
 
 
 @app.get("/health")

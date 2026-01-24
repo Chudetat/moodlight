@@ -12,29 +12,17 @@
         </div>
 
         <!-- View Mode Toggle -->
-        <div class="flex items-center space-x-4" x-data="{ mode: 'strategic' }">
+        <div class="flex items-center space-x-4">
             <span class="text-sm text-gray-400">View Mode:</span>
             <div class="inline-flex rounded-lg bg-dark-card border border-dark-border p-1">
-                <button
-                    @click="mode = 'breaking'"
-                    :class="mode === 'breaking' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'"
-                    class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
-                    hx-get="/api/dashboard?mode=breaking"
-                    hx-target="#dashboard-content"
-                    hx-swap="innerHTML"
-                >
+                <a href="/dashboard?mode=breaking"
+                   class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors {% if view_mode == 'breaking' %}bg-primary text-white{% else %}text-gray-400 hover:text-white{% endif %}">
                     Breaking (48h)
-                </button>
-                <button
-                    @click="mode = 'strategic'"
-                    :class="mode === 'strategic' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'"
-                    class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
-                    hx-get="/api/dashboard?mode=strategic"
-                    hx-target="#dashboard-content"
-                    hx-swap="innerHTML"
-                >
+                </a>
+                <a href="/dashboard?mode=strategic"
+                   class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors {% if view_mode == 'strategic' %}bg-primary text-white{% else %}text-gray-400 hover:text-white{% endif %}">
                     Strategic (30d)
-                </button>
+                </a>
             </div>
 
             <!-- Refresh Button -->
@@ -42,29 +30,60 @@
                 class="p-2 rounded-lg bg-dark-card border border-dark-border hover:border-primary transition-colors"
                 hx-post="/api/refresh"
                 hx-swap="none"
+                hx-indicator="#refresh-spinner"
                 title="Refresh Data"
             >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg id="refresh-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                <svg id="refresh-spinner" class="htmx-indicator w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
             </button>
         </div>
     </div>
 
+    <!-- Stats Bar -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
+            <p class="text-sm text-gray-400">Total Items</p>
+            <p class="text-2xl font-bold">{{ total_items | default(0) }}</p>
+        </div>
+        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
+            <p class="text-sm text-gray-400">View Period</p>
+            <p class="text-2xl font-bold">{{ view_modes[view_mode].days if view_modes else 30 }}d</p>
+        </div>
+        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
+            <p class="text-sm text-gray-400">World Mood</p>
+            <p class="text-2xl font-bold {% if world_mood and world_mood.score %}text-primary{% else %}text-gray-500{% endif %}">
+                {{ world_mood.score if world_mood and world_mood.score else '--' }}
+            </p>
+        </div>
+        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
+            <p class="text-sm text-gray-400">Briefs Remaining</p>
+            <p class="text-2xl font-bold">{{ briefs_remaining | default(0) }}</p>
+        </div>
+    </div>
+
     <!-- Dashboard Content -->
     <div id="dashboard-content">
-        <!-- World Mood Card -->
+        <!-- World Mood & Charts Row -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <!-- Mood Gauge -->
             <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
                 <h2 class="text-lg font-semibold mb-4">World Mood</h2>
                 <div class="flex items-center justify-center h-48">
                     <div class="relative w-40 h-40">
-                        <!-- Placeholder gauge - will be replaced by Chart.js -->
                         <canvas id="mood-gauge"></canvas>
                         <div class="absolute inset-0 flex items-center justify-center flex-col">
-                            <span class="text-4xl font-bold text-primary" id="mood-score">--</span>
-                            <span class="text-sm text-gray-400" id="mood-label">Loading...</span>
+                            {% if world_mood and world_mood.score is not none %}
+                            <span class="text-4xl font-bold text-primary" id="mood-score">{{ world_mood.score }}</span>
+                            <span class="text-sm text-gray-400" id="mood-label">{{ world_mood.label }}</span>
+                            {% else %}
+                            <span class="text-2xl font-bold text-gray-500">--</span>
+                            <span class="text-sm text-gray-400">No Data</span>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -96,13 +115,61 @@
                 <h2 class="text-lg font-semibold">Trending Headlines</h2>
                 <a href="/headlines" class="text-primary text-sm hover:underline">View All</a>
             </div>
-            <div id="headlines-list" class="space-y-3">
-                <!-- Headlines will be loaded via HTMX -->
-                <div class="animate-pulse space-y-3">
-                    <div class="h-16 bg-dark-bg rounded-lg"></div>
-                    <div class="h-16 bg-dark-bg rounded-lg"></div>
-                    <div class="h-16 bg-dark-bg rounded-lg"></div>
+            <div id="headlines-list">
+                {% if headlines %}
+                <div class="space-y-3">
+                    {% for headline in headlines %}
+                    <div class="headline-card group">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="source-badge {% if headline.source == 'x' %}source-x{% elif 'news' in headline.source %}source-news{% elif 'reddit' in headline.source %}source-reddit{% else %}bg-gray-600{% endif %}">
+                                        {{ headline.source_display }}
+                                    </span>
+                                    {% if headline.topic %}
+                                    <span class="text-xs text-gray-500">{{ headline.topic }}</span>
+                                    {% endif %}
+                                </div>
+                                <p class="text-sm text-white group-hover:text-primary transition-colors line-clamp-2">
+                                    {% if headline.link %}
+                                    <a href="{{ headline.link }}" target="_blank" rel="noopener noreferrer" class="hover:underline">
+                                        {{ headline.text[:200] }}{% if headline.text|length > 200 %}...{% endif %}
+                                    </a>
+                                    {% else %}
+                                    {{ headline.text[:200] }}{% if headline.text|length > 200 %}...{% endif %}
+                                    {% endif %}
+                                </p>
+                                <div class="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                    {% if headline.emotion %}
+                                    <span class="emotion-tag">{{ headline.emotion }}</span>
+                                    {% endif %}
+                                    {% if headline.engagement and headline.engagement > 0 %}
+                                    <span>{{ headline.engagement }} engagement</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if headline.empathy_score is not none %}
+                            <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xs font-medium
+                                {% if headline.empathy_score < 0.04 %}bg-blue-900/30 text-blue-400
+                                {% elif headline.empathy_score < 0.10 %}bg-gray-700/50 text-gray-400
+                                {% elif headline.empathy_score < 0.30 %}bg-green-900/30 text-green-400
+                                {% else %}bg-pink-900/30 text-pink-400{% endif %}">
+                                {{ (headline.empathy_score * 100) | round(0) | int }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
+                {% else %}
+                <div class="text-center py-8 text-gray-500">
+                    <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
+                    </svg>
+                    <p>No headlines available</p>
+                    <p class="text-sm mt-1">Click Refresh to fetch latest data</p>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -119,38 +186,41 @@
 
 {% block scripts %}
 <script>
+    // Data from backend
+    const emotionsData = {{ emotions | tojson if emotions else '[]' | safe }};
+    const topicsData = {{ topics | tojson if topics else '[]' | safe }};
+    const moodHistoryData = {{ mood_history | tojson if mood_history else '[]' | safe }};
+    const emotionColors = {{ emotion_colors | tojson if emotion_colors else '{}' | safe }};
+    const worldMoodScore = {{ world_mood.score if world_mood and world_mood.score else 'null' }};
+
     // Initialize charts when page loads
     document.addEventListener('DOMContentLoaded', function() {
-        // Placeholder data - will be replaced with real API data
-        initMoodGauge(65);
         initEmotionChart();
         initTopicChart();
         initMoodHistoryChart();
     });
 
-    function initMoodGauge(score) {
-        document.getElementById('mood-score').textContent = score;
-
-        // Determine mood label
-        let label = 'Warm / Supportive';
-        if (score < 25) label = 'Cold / Hostile';
-        else if (score < 40) label = 'Detached / Neutral';
-        else if (score >= 70) label = 'Highly Empathetic';
-
-        document.getElementById('mood-label').textContent = label;
-    }
-
     function initEmotionChart() {
         const ctx = document.getElementById('emotion-chart');
         if (!ctx) return;
 
+        if (emotionsData.length === 0) {
+            // Show placeholder
+            ctx.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">No emotion data available</div>';
+            return;
+        }
+
+        const labels = emotionsData.map(e => e.emotion);
+        const data = emotionsData.map(e => e.percentage);
+        const colors = emotionsData.map(e => emotionColors[e.emotion] || '#808080');
+
         new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Curiosity', 'Optimism', 'Neutral', 'Anger', 'Fear'],
+                labels: labels,
                 datasets: [{
-                    data: [25, 20, 30, 15, 10],
-                    backgroundColor: ['#00CED1', '#98FB98', '#808080', '#DC143C', '#8B008B'],
+                    data: data,
+                    backgroundColor: colors,
                     borderWidth: 0
                 }]
             },
@@ -160,7 +230,18 @@
                 plugins: {
                     legend: {
                         position: 'right',
-                        labels: { color: '#9CA3AF', font: { size: 11 } }
+                        labels: {
+                            color: '#9CA3AF',
+                            font: { size: 11 },
+                            boxWidth: 12
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.raw.toFixed(1) + '%';
+                            }
+                        }
                     }
                 }
             }
@@ -171,12 +252,20 @@
         const ctx = document.getElementById('topic-chart');
         if (!ctx) return;
 
+        if (topicsData.length === 0) {
+            ctx.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">No topic data available</div>';
+            return;
+        }
+
+        const labels = topicsData.slice(0, 8).map(t => t.topic);
+        const data = topicsData.slice(0, 8).map(t => t.percentage);
+
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Politics', 'Tech', 'Business', 'Culture', 'Climate'],
+                labels: labels,
                 datasets: [{
-                    data: [30, 25, 20, 15, 10],
+                    data: data,
                     backgroundColor: '#FF4B4B',
                     borderRadius: 4
                 }]
@@ -185,15 +274,28 @@
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.raw.toFixed(1) + '%';
+                            }
+                        }
+                    }
+                },
                 scales: {
                     x: {
                         grid: { color: '#3D3D3D' },
-                        ticks: { color: '#9CA3AF' }
+                        ticks: { color: '#9CA3AF' },
+                        max: Math.max(...data) * 1.2
                     },
                     y: {
                         grid: { display: false },
-                        ticks: { color: '#9CA3AF' }
+                        ticks: {
+                            color: '#9CA3AF',
+                            font: { size: 10 }
+                        }
                     }
                 }
             }
@@ -204,26 +306,49 @@
         const ctx = document.getElementById('mood-history-chart');
         if (!ctx) return;
 
+        // Use real data or placeholder
+        let labels, data;
+
+        if (moodHistoryData.length > 0) {
+            labels = moodHistoryData.map(h => {
+                const date = new Date(h.date);
+                return date.toLocaleDateString('en-US', { weekday: 'short' });
+            });
+            data = moodHistoryData.map(h => h.score);
+        } else {
+            // Placeholder data if no history
+            labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            data = [50, 50, 50, 50, 50, 50, 50];
+        }
+
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                labels: labels,
                 datasets: [{
                     label: 'Empathy Score',
-                    data: [58, 62, 55, 70, 65, 68, 65],
+                    data: data,
                     borderColor: '#FF4B4B',
                     backgroundColor: 'rgba(255, 75, 75, 0.1)',
                     fill: true,
                     tension: 0.4,
                     pointRadius: 4,
-                    pointBackgroundColor: '#FF4B4B'
+                    pointBackgroundColor: '#FF4B4B',
+                    pointHoverRadius: 6
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false }
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Score: ' + context.raw;
+                            }
+                        }
+                    }
                 },
                 scales: {
                     x: {
@@ -234,11 +359,31 @@
                         min: 0,
                         max: 100,
                         grid: { color: '#3D3D3D' },
-                        ticks: { color: '#9CA3AF' }
+                        ticks: {
+                            color: '#9CA3AF',
+                            stepSize: 25
+                        }
                     }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
                 }
             }
         });
     }
+
+    // Handle refresh button response
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.pathInfo.requestPath === '/api/refresh') {
+            if (evt.detail.successful) {
+                showToast('Data refresh scheduled', 'success');
+                // Reload page after short delay
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showToast('Refresh failed', 'error');
+            }
+        }
+    });
 </script>
 {% endblock %}

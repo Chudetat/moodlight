@@ -1,0 +1,62 @@
+<!-- Topic Distribution Chart Partial -->
+<div class="h-48">
+    <canvas id="topic-chart-canvas"></canvas>
+</div>
+
+<script>
+    (function() {
+        const ctx = document.getElementById('topic-chart-canvas');
+        if (!ctx) return;
+
+        // Destroy existing chart if any
+        if (window.topicChart) {
+            window.topicChart.destroy();
+        }
+
+        const topics = {{ topics | tojson }};
+
+        const labels = topics.map(t => t.topic);
+        const data = topics.map(t => t.percentage);
+
+        window.topicChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: '#FF4B4B',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.raw.toFixed(1) + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: '#3D3D3D' },
+                        ticks: { color: '#9CA3AF' },
+                        max: 100
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#9CA3AF',
+                            font: { size: 10 }
+                        }
+                    }
+                }
+            }
+        });
+    })();
+</script>

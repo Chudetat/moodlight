@@ -1,0 +1,27 @@
+<!-- World Mood Gauge Partial -->
+<div class="flex items-center justify-center h-48">
+    <div class="relative w-40 h-40">
+        <canvas id="mood-gauge-canvas"></canvas>
+        <div class="absolute inset-0 flex items-center justify-center flex-col">
+            {% if world_mood.score is not none %}
+            <span class="text-4xl font-bold text-primary">{{ world_mood.score }}</span>
+            <span class="text-sm text-gray-400">{{ world_mood.label }}</span>
+            {% else %}
+            <span class="text-2xl font-bold text-gray-500">--</span>
+            <span class="text-sm text-gray-400">No Data</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<p class="text-center text-gray-400 text-sm mt-4">
+    Empathy Index (0-100)
+</p>
+
+<script>
+    // Update gauge if score available
+    {% if world_mood.score is not none %}
+    if (typeof updateMoodGauge === 'function') {
+        updateMoodGauge({{ world_mood.score }});
+    }
+    {% endif %}
+</script>
