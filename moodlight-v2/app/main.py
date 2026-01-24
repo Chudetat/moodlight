@@ -57,17 +57,9 @@ app.include_router(webhooks.router)
 # Root routes
 # ============================================
 
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
-    """Root route - redirect to dashboard or login."""
-    from app.routers.auth import get_current_user
-    from app.database import AsyncSessionLocal
-
-    async with AsyncSessionLocal() as db:
-        user = await get_current_user(request, db)
-
-    if user:
-        return RedirectResponse(url="/dashboard", status_code=302)
+@app.get("/")
+async def root():
+    """Root route - redirect to login page."""
     return RedirectResponse(url="/auth/login", status_code=302)
 
 
