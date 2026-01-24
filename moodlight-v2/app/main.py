@@ -1,20 +1,38 @@
 """
 Moodlight v2 - FastAPI + HTMX Application
 Main entry point and app configuration.
-Version: 2.0.1 - Railway deployment fix
+Version: 2.0.3 - Debug startup
 """
-from contextlib import asynccontextmanager
+import sys
+print("=== MOODLIGHT STARTUP ===", flush=True)
+print(f"Python version: {sys.version}", flush=True)
 
-from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+try:
+    from contextlib import asynccontextmanager
+    print("1. asynccontextmanager imported", flush=True)
 
-from app.config import get_settings
-from app.database import init_db, close_db
-from app.routers import auth, dashboard, headlines, markets, brands, briefs, webhooks
+    from fastapi import FastAPI, Request
+    from fastapi.responses import RedirectResponse, HTMLResponse
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.templating import Jinja2Templates
+    print("2. FastAPI imports done", flush=True)
 
-settings = get_settings()
+    from app.config import get_settings
+    print("3. config imported", flush=True)
+
+    from app.database import init_db, close_db
+    print("4. database imported", flush=True)
+
+    from app.routers import auth, dashboard, headlines, markets, brands, briefs, webhooks
+    print("5. routers imported", flush=True)
+
+    settings = get_settings()
+    print(f"6. settings loaded, db_url exists: {bool(settings.database_url)}", flush=True)
+except Exception as e:
+    print(f"STARTUP ERROR: {e}", flush=True)
+    import traceback
+    traceback.print_exc()
+    raise
 
 
 @asynccontextmanager
