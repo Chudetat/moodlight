@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Moodlight{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+
+    <!-- Alpine.js for interactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind CSS (via CDN for development) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF4B4B',
+                        dark: {
+                            bg: '#1E1E1E',
+                            card: '#2D2D2D',
+                            border: '#3D3D3D'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-dark-bg text-white min-h-screen" hx-headers='{"X-Requested-With": "htmx"}'>
+    <!-- Session check - polls every 30 seconds -->
+    <div hx-get="/auth/session-check" hx-trigger="every 30s" hx-swap="none"></div>
+
+    {% block body %}
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        {% if user %}
+        <aside class="w-64 bg-dark-card border-r border-dark-border p-4 flex flex-col">
+            <!-- Logo -->
+            <div class="mb-8">
+                <img src="/static/logo.png" alt="Moodlight" class="h-10">
+            </div>
+
+            <!-- User info -->
+            <div class="mb-6 p-3 bg-dark-bg rounded-lg">
+                <p class="text-sm text-gray-400">Welcome</p>
+                <p class="font-medium">{{ user.username }}</p>
+                <span class="inline-block mt-1 px-2 py-0.5 text-xs rounded bg-primary/20 text-primary">
+                    {{ tier_display }}
+                </span>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 space-y-1">
+                <a href="/dashboard"
+                   class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors {% if request.url.path == '/dashboard' %}bg-dark-bg text-primary{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="/headlines"
+                   class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors {% if request.url.path == '/headlines' %}bg-dark-bg text-primary{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
+                    </svg>
+                    Headlines
+                </a>
+                <a href="/markets"
+                   class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors {% if request.url.path == '/markets' %}bg-dark-bg text-primary{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                    Markets
+                </a>
+                <a href="/briefs"
+                   class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors {% if request.url.path == '/briefs' %}bg-dark-bg text-primary{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Strategic Briefs
+                    <span class="ml-auto text-xs text-gray-400">{{ briefs_remaining }} left</span>
+                </a>
+                <a href="/brands"
+                   class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors {% if request.url.path == '/brands' %}bg-dark-bg text-primary{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                    </svg>
+                    Brand Analysis
+                </a>
+            </nav>
+
+            <!-- Logout -->
+            <div class="mt-auto pt-4 border-t border-dark-border">
+                <a href="/auth/logout"
+                   class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors text-gray-400 hover:text-white">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    </svg>
+                    Logout
+                </a>
+            </div>
+        </aside>
+        {% endif %}
+
+        <!-- Main content -->
+        <main class="flex-1 overflow-auto">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    {% endblock %}
+
+    <!-- Toast notifications -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Global scripts -->
+    <script>
+        // HTMX event handlers
+        document.body.addEventListener('htmx:responseError', function(evt) {
+            if (evt.detail.xhr.status === 401) {
+                window.location.href = '/auth/login?error=session_expired';
+            }
+        });
+
+        // Handle HX-Redirect header
+        document.body.addEventListener('htmx:beforeSwap', function(evt) {
+            const redirect = evt.detail.xhr.getResponseHeader('HX-Redirect');
+            if (redirect) {
+                window.location.href = redirect;
+            }
+        });
+
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = {
+                info: 'bg-blue-600',
+                success: 'bg-green-600',
+                error: 'bg-red-600',
+                warning: 'bg-yellow-600'
+            };
+            toast.className = `${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            // Animate in
+            setTimeout(() => toast.classList.remove('translate-x-full'), 10);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

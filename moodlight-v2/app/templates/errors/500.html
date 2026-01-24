@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - Moodlight{% endblock %}
+
+{% block body %}
+<div class="min-h-screen flex items-center justify-center bg-dark-bg p-4">
+    <div class="text-center">
+        <h1 class="text-6xl font-bold text-red-500 mb-4">500</h1>
+        <p class="text-xl text-white mb-2">Server Error</p>
+        <p class="text-gray-400 mb-8">Something went wrong. Please try again later.</p>
+        <a href="/dashboard" class="inline-block py-3 px-6 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg transition-colors">
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

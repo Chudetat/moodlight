@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Moodlight{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-2xl font-bold">Dashboard</h1>
+            <p class="text-gray-400 mt-1">Cultural Intelligence Overview</p>
+        </div>
+
+        <!-- View Mode Toggle -->
+        <div class="flex items-center space-x-4" x-data="{ mode: 'strategic' }">
+            <span class="text-sm text-gray-400">View Mode:</span>
+            <div class="inline-flex rounded-lg bg-dark-card border border-dark-border p-1">
+                <button
+                    @click="mode = 'breaking'"
+                    :class="mode === 'breaking' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'"
+                    class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+                    hx-get="/api/dashboard?mode=breaking"
+                    hx-target="#dashboard-content"
+                    hx-swap="innerHTML"
+                >
+                    Breaking (48h)
+                </button>
+                <button
+                    @click="mode = 'strategic'"
+                    :class="mode === 'strategic' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'"
+                    class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+                    hx-get="/api/dashboard?mode=strategic"
+                    hx-target="#dashboard-content"
+                    hx-swap="innerHTML"
+                >
+                    Strategic (30d)
+                </button>
+            </div>
+
+            <!-- Refresh Button -->
+            <button
+                class="p-2 rounded-lg bg-dark-card border border-dark-border hover:border-primary transition-colors"
+                hx-post="/api/refresh"
+                hx-swap="none"
+                title="Refresh Data"
+            >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div id="dashboard-content">
+        <!-- World Mood Card -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Mood Gauge -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h2 class="text-lg font-semibold mb-4">World Mood</h2>
+                <div class="flex items-center justify-center h-48">
+                    <div class="relative w-40 h-40">
+                        <!-- Placeholder gauge - will be replaced by Chart.js -->
+                        <canvas id="mood-gauge"></canvas>
+                        <div class="absolute inset-0 flex items-center justify-center flex-col">
+                            <span class="text-4xl font-bold text-primary" id="mood-score">--</span>
+                            <span class="text-sm text-gray-400" id="mood-label">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-center text-gray-400 text-sm mt-4">
+                    Empathy Index (0-100)
+                </p>
+            </div>
+
+            <!-- Emotion Distribution -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h2 class="text-lg font-semibold mb-4">Emotional Breakdown</h2>
+                <div class="h-48">
+                    <canvas id="emotion-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Topic Distribution -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h2 class="text-lg font-semibold mb-4">Topic Distribution</h2>
+                <div class="h-48">
+                    <canvas id="topic-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trending Headlines -->
+        <div class="bg-dark-card rounded-xl p-6 border border-dark-border mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold">Trending Headlines</h2>
+                <a href="/headlines" class="text-primary text-sm hover:underline">View All</a>
+            </div>
+            <div id="headlines-list" class="space-y-3">
+                <!-- Headlines will be loaded via HTMX -->
+                <div class="animate-pulse space-y-3">
+                    <div class="h-16 bg-dark-bg rounded-lg"></div>
+                    <div class="h-16 bg-dark-bg rounded-lg"></div>
+                    <div class="h-16 bg-dark-bg rounded-lg"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mood History Chart -->
+        <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+            <h2 class="text-lg font-semibold mb-4">Mood History (7 Days)</h2>
+            <div class="h-64">
+                <canvas id="mood-history-chart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize charts when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Placeholder data - will be replaced with real API data
+        initMoodGauge(65);
+        initEmotionChart();
+        initTopicChart();
+        initMoodHistoryChart();
+    });
+
+    function initMoodGauge(score) {
+        document.getElementById('mood-score').textContent = score;
+
+        // Determine mood label
+        let label = 'Warm / Supportive';
+        if (score < 25) label = 'Cold / Hostile';
+        else if (score < 40) label = 'Detached / Neutral';
+        else if (score >= 70) label = 'Highly Empathetic';
+
+        document.getElementById('mood-label').textContent = label;
+    }
+
+    function initEmotionChart() {
+        const ctx = document.getElementById('emotion-chart');
+        if (!ctx) return;
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Curiosity', 'Optimism', 'Neutral', 'Anger', 'Fear'],
+                datasets: [{
+                    data: [25, 20, 30, 15, 10],
+                    backgroundColor: ['#00CED1', '#98FB98', '#808080', '#DC143C', '#8B008B'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: '#9CA3AF', font: { size: 11 } }
+                    }
+                }
+            }
+        });
+    }
+
+    function initTopicChart() {
+        const ctx = document.getElementById('topic-chart');
+        if (!ctx) return;
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Politics', 'Tech', 'Business', 'Culture', 'Climate'],
+                datasets: [{
+                    data: [30, 25, 20, 15, 10],
+                    backgroundColor: '#FF4B4B',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        grid: { color: '#3D3D3D' },
+                        ticks: { color: '#9CA3AF' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: '#9CA3AF' }
+                    }
+                }
+            }
+        });
+    }
+
+    function initMoodHistoryChart() {
+        const ctx = document.getElementById('mood-history-chart');
+        if (!ctx) return;
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Empathy Score',
+                    data: [58, 62, 55, 70, 65, 68, 65],
+                    borderColor: '#FF4B4B',
+                    backgroundColor: 'rgba(255, 75, 75, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#FF4B4B'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { color: '#3D3D3D' },
+                        ticks: { color: '#9CA3AF' }
+                    },
+                    y: {
+                        min: 0,
+                        max: 100,
+                        grid: { color: '#3D3D3D' },
+                        ticks: { color: '#9CA3AF' }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}
