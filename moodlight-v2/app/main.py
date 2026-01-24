@@ -66,7 +66,13 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for Railway/monitoring."""
-    return {"status": "healthy", "app": settings.app_name, "version": "2.0.0"}
+    return {"status": "healthy", "app": settings.app_name, "version": "2.0.2"}
+
+
+@app.get("/test")
+async def test_route():
+    """Test route to verify deployment."""
+    return {"test": "success", "version": "2.0.2"}
 
 
 # ============================================
