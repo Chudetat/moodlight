@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moodlight - Dashboard Mockup</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-dark: #0e1117;
+            --bg-card: #1a1d24;
+            --bg-sidebar: #14171f;
+            --text-primary: #fafafa;
+            --text-secondary: #a0a0a0;
+            --accent: #ff4b4b;
+            --accent-hover: #ff6b6b;
+            --border: #2d3139;
+            --success: #00d26a;
+            --warning: #ffc107;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-sidebar);
+            padding: 1.5rem;
+            border-right: 1px solid var(--border);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .logo { width: 180px; margin-bottom: 1rem; }
+        .tagline { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 2rem; }
+
+        .user-info {
+            padding: 1rem;
+            background: var(--bg-card);
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        .user-name { font-weight: 600; }
+        .user-tier { font-size: 0.8rem; color: var(--accent); }
+
+        .nav-section { margin-bottom: 1.5rem; }
+        .nav-label { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.75rem 1rem; border-radius: 8px;
+            cursor: pointer; transition: background 0.2s;
+            color: var(--text-secondary);
+        }
+        .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+        .nav-item.active { background: var(--accent); color: white; }
+
+        .filter-group { margin-bottom: 1.5rem; }
+        .filter-label { font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary); }
+
+        select, input {
+            width: 100%; padding: 0.6rem; border-radius: 6px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            color: var(--text-primary); font-size: 0.9rem;
+        }
+        select:focus, input:focus { outline: none; border-color: var(--accent); }
+
+        .btn {
+            width: 100%; padding: 0.75rem; border: none; border-radius: 8px;
+            background: var(--accent); color: white; font-weight: 600;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .btn:hover { background: var(--accent-hover); }
+
+        .logout-btn {
+            background: transparent; border: 1px solid var(--border);
+            margin-top: 2rem;
+        }
+        .logout-btn:hover { background: var(--bg-card); }
+
+        /* Main Content */
+        .main {
+            margin-left: 280px;
+            flex: 1;
+            padding: 2rem;
+        }
+
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 2rem;
+        }
+        .header h1 { font-size: 1.5rem; }
+        .last-updated { font-size: 0.85rem; color: var(--text-secondary); }
+
+        /* Mood Score Card */
+        .mood-card {
+            background: linear-gradient(135deg, #1a1d24 0%, #252830 100%);
+            border-radius: 16px; padding: 2rem;
+            display: flex; align-items: center; gap: 2rem;
+            margin-bottom: 2rem; border: 1px solid var(--border);
+        }
+
+        .mood-score {
+            width: 120px; height: 120px;
+            border-radius: 50%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: conic-gradient(var(--success) 0% 62%, var(--border) 62% 100%);
+            position: relative;
+        }
+        .mood-score-inner {
+            width: 100px; height: 100px;
+            background: var(--bg-card); border-radius: 50%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .mood-number { font-size: 2rem; font-weight: 700; }
+        .mood-label { font-size: 0.75rem; color: var(--text-secondary); }
+
+        .mood-details { flex: 1; }
+        .mood-title { font-size: 1.25rem; margin-bottom: 0.5rem; }
+        .mood-subtitle { color: var(--text-secondary); margin-bottom: 1rem; }
+        .mood-insight { font-size: 0.9rem; line-height: 1.5; color: var(--text-secondary); }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+        }
+        .metric-label { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+        .metric-value { font-size: 1.75rem; font-weight: 700; }
+        .metric-change { font-size: 0.8rem; margin-top: 0.25rem; }
+        .metric-change.up { color: var(--success); }
+        .metric-change.down { color: var(--accent); }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+        .chart-title { font-size: 1rem; margin-bottom: 1rem; }
+        .chart-container { height: 250px; }
+
+        /* Trending Topics */
+        .topics-list { list-style: none; }
+        .topic-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .topic-item:last-child { border-bottom: none; }
+        .topic-name { display: flex; align-items: center; gap: 0.5rem; }
+        .topic-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .topic-count { color: var(--text-secondary); font-size: 0.9rem; }
+
+        /* Headlines Section */
+        .headlines-section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+        .headlines-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1rem;
+        }
+        .headline-item {
+            padding: 1rem;
+            border-radius: 8px;
+            background: var(--bg-dark);
+            margin-bottom: 0.75rem;
+            display: flex; gap: 1rem;
+        }
+        .headline-source {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            background: var(--accent);
+            color: white;
+            white-space: nowrap;
+            height: fit-content;
+        }
+        .headline-text { font-size: 0.9rem; line-height: 1.4; }
+        .headline-meta { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; }
+        .headline-meta span { margin-right: 1rem; }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+            .charts-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+        }
+
+        /* HTMX Loading Indicator */
+        .htmx-request .htmx-indicator { display: inline-block; }
+        .htmx-indicator { display: none; }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <img src="logo.png" alt="Moodlight" class="logo" onerror="this.outerHTML='<h2 style=\'color:#ff4b4b;margin-bottom:0.5rem\'>Moodlight</h2>'">
+        <p class="tagline">Where culture is heading. What audiences feel.</p>
+
+        <div class="user-info">
+            <div class="user-name">👋 Welcome, Daniel</div>
+            <div class="user-tier">Pro Plan</div>
+        </div>
+
+        <nav class="nav-section">
+            <div class="nav-label">Navigation</div>
+            <div class="nav-item active">📊 Dashboard</div>
+            <div class="nav-item">📰 Headlines</div>
+            <div class="nav-item">📈 Markets</div>
+            <div class="nav-item">📋 Intel Brief</div>
+            <div class="nav-item">🔍 Brand Analysis</div>
+        </nav>
+
+        <div class="filter-group">
+            <div class="filter-label">View Mode</div>
+            <select>
+                <option>Strategic (30d)</option>
+                <option>Breaking (48h)</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <div class="filter-label">Topic Filter</div>
+            <select>
+                <option>All Topics</option>
+                <option>Politics</option>
+                <option>Technology & AI</option>
+                <option>Business</option>
+                <option>Healthcare</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <div class="filter-label">Source</div>
+            <select>
+                <option>All Sources</option>
+                <option>X (Twitter)</option>
+                <option>News</option>
+                <option>Reddit</option>
+            </select>
+        </div>
+
+        <button class="btn" hx-get="/refresh" hx-target="#main-content" hx-indicator=".htmx-indicator">
+            🔄 Refresh Data
+            <span class="htmx-indicator">...</span>
+        </button>
+
+        <button class="btn logout-btn">Logout</button>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main" id="main-content">
+        <div class="header">
+            <h1>Cultural Intelligence Dashboard</h1>
+            <span class="last-updated">Last updated: 2 minutes ago</span>
+        </div>
+
+        <!-- World Mood Score -->
+        <div class="mood-card">
+            <div class="mood-score">
+                <div class="mood-score-inner">
+                    <div class="mood-number">62</div>
+                    <div class="mood-label">Mood Score</div>
+                </div>
+            </div>
+            <div class="mood-details">
+                <h2 class="mood-title">🙂 Warm / Supportive</h2>
+                <p class="mood-subtitle">Cultural climate is receptive — optimal window for engagement</p>
+                <p class="mood-insight">
+                    The collective mood has shifted +4 points in the last 24 hours.
+                    Conversations around technology and healthcare are driving positive sentiment.
+                    Consider timing major announcements within this window.
+                </p>
+            </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Velocity</div>
+                <div class="metric-value">0.73</div>
+                <div class="metric-change up">↑ Rising Fast</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Longevity</div>
+                <div class="metric-value">0.58</div>
+                <div class="metric-change">→ Moderate</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Density</div>
+                <div class="metric-value">0.42</div>
+                <div class="metric-change up">↑ Room to grow</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Posts Analyzed</div>
+                <div class="metric-value">12.4K</div>
+                <div class="metric-change up">↑ 18% vs last week</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3 class="chart-title">Mood History (30 Days)</h3>
+                <div class="chart-container">
+                    <canvas id="moodChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3 class="chart-title">Trending Topics</h3>
+                <ul class="topics-list">
+                    <li class="topic-item">
+                        <span class="topic-name"><span class="topic-dot" style="background:#ff4b4b"></span> Technology & AI</span>
+                        <span class="topic-count">3,421</span>
+                    </li>
+                    <li class="topic-item">
+                        <span class="topic-name"><span class="topic-dot" style="background:#00d26a"></span> Politics</span>
+                        <span class="topic-count">2,891</span>
+                    </li>
+                    <li class="topic-item">
+                        <span class="topic-name"><span class="topic-dot" style="background:#ffc107"></span> Healthcare</span>
+                        <span class="topic-count">1,654</span>
+                    </li>
+                    <li class="topic-item">
+                        <span class="topic-name"><span class="topic-dot" style="background:#00bcd4"></span> Business</span>
+                        <span class="topic-count">1,203</span>
+                    </li>
+                    <li class="topic-item">
+                        <span class="topic-name"><span class="topic-dot" style="background:#9c27b0"></span> Climate</span>
+                        <span class="topic-count">892</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Headlines -->
+        <div class="headlines-section">
+            <div class="headlines-header">
+                <h3>🔥 High-Engagement Headlines</h3>
+                <select style="width:auto">
+                    <option>All Emotions</option>
+                    <option>Curiosity</option>
+                    <option>Excitement</option>
+                    <option>Anger</option>
+                </select>
+            </div>
+
+            <div class="headline-item">
+                <span class="headline-source">X</span>
+                <div>
+                    <div class="headline-text">Breaking: Major AI announcement expected this week as tech giants prepare for new regulations...</div>
+                    <div class="headline-meta">
+                        <span>🤔 Curiosity</span>
+                        <span>💬 2.3K engagements</span>
+                        <span>⏰ 2 hours ago</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="headline-item">
+                <span class="headline-source" style="background:#00bcd4">News</span>
+                <div>
+                    <div class="headline-text">Healthcare stocks surge as new treatment shows promising results in clinical trials</div>
+                    <div class="headline-meta">
+                        <span>🎉 Excitement</span>
+                        <span>💬 1.8K engagements</span>
+                        <span>⏰ 4 hours ago</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="headline-item">
+                <span class="headline-source" style="background:#ff9800">Reddit</span>
+                <div>
+                    <div class="headline-text">Discussion: The real impact of remote work policies on urban planning and housing markets</div>
+                    <div class="headline-meta">
+                        <span>💡 Realization</span>
+                        <span>💬 1.2K engagements</span>
+                        <span>⏰ 6 hours ago</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Mood Chart
+        const ctx = document.getElementById('moodChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Jan 1', 'Jan 5', 'Jan 10', 'Jan 15', 'Jan 20', 'Jan 25', 'Jan 30'],
+                datasets: [{
+                    label: 'Mood Score',
+                    data: [55, 58, 52, 61, 59, 64, 62],
+                    borderColor: '#ff4b4b',
+                    backgroundColor: 'rgba(255, 75, 75, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        min: 0, max: 100,
+                        grid: { color: '#2d3139' },
+                        ticks: { color: '#a0a0a0' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#a0a0a0' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
