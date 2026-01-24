@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Markets - Moodlight{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-2xl font-bold">Prediction Markets</h1>
+            <p class="text-gray-400 mt-1">Polymarket data vs social sentiment</p>
+        </div>
+
+        <!-- Social Mood Indicator -->
+        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
+            <div class="flex items-center gap-4">
+                <div>
+                    <p class="text-sm text-gray-400">Social Mood</p>
+                    <p class="text-2xl font-bold {% if world_mood.score %}text-primary{% else %}text-gray-500{% endif %}">
+                        {{ world_mood.score if world_mood.score else '--' }}
+                    </p>
+                </div>
+                <div class="text-sm text-gray-400">
+                    {{ world_mood.label if world_mood.label else 'No data' }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Divergence Explanation -->
+    <div class="bg-dark-card rounded-xl p-4 mb-6 border border-dark-border">
+        <h3 class="font-semibold mb-2">Understanding Divergence</h3>
+        <p class="text-sm text-gray-400">
+            We compare prediction market odds (what bettors think will happen) with social sentiment (how people feel).
+            <span class="text-green-400">Green = aligned</span>,
+            <span class="text-yellow-400">Yellow = moderate gap</span>,
+            <span class="text-red-400">Red = significant divergence</span> (potential opportunity or risk).
+        </p>
+    </div>
+
+    <!-- Markets Grid -->
+    {% if markets %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {% for market in markets %}
+        <div class="bg-dark-card rounded-xl p-6 border border-dark-border hover:border-primary/50 transition-colors">
+            <!-- Market Question -->
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <h3 class="font-semibold text-white">{{ market.question }}</h3>
+                {% if market.divergence %}
+                <span class="flex-shrink-0 px-2 py-1 rounded text-xs font-medium
+                    {% if market.divergence.color == 'green' %}bg-green-900/30 text-green-400
+                    {% elif market.divergence.color == 'yellow' %}bg-yellow-900/30 text-yellow-400
+                    {% else %}bg-red-900/30 text-red-400{% endif %}">
+                    {{ market.divergence.status }}
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Odds Bar -->
+            <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="text-green-400">Yes {{ market.yes_odds }}%</span>
+                    <span class="text-red-400">No {{ market.no_odds }}%</span>
+                </div>
+                <div class="h-3 bg-dark-bg rounded-full overflow-hidden flex">
+                    <div class="bg-green-500" style="width: {{ market.yes_odds }}%"></div>
+                    <div class="bg-red-500" style="width: {{ market.no_odds }}%"></div>
+                </div>
+            </div>
+
+            <!-- Divergence Info -->
+            {% if market.divergence %}
+            <div class="bg-dark-bg rounded-lg p-3 mb-4">
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-400">Market Signal</span>
+                    <span class="text-white">{{ market.divergence.market_signal }}%</span>
+                </div>
+                <div class="flex items-center justify-between text-sm mt-1">
+                    <span class="text-gray-400">Social Signal</span>
+                    <span class="text-white">{{ market.divergence.social_signal }}%</span>
+                </div>
+                <div class="flex items-center justify-between text-sm mt-1 pt-1 border-t border-dark-border">
+                    <span class="text-gray-400">Divergence</span>
+                    <span class="font-medium
+                        {% if market.divergence.color == 'green' %}text-green-400
+                        {% elif market.divergence.color == 'yellow' %}text-yellow-400
+                        {% else %}text-red-400{% endif %}">
+                        {{ market.divergence.divergence }}%
+                    </span>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Meta -->
+            <div class="flex items-center justify-between text-xs text-gray-500">
+                <span>{{ market.category }}</span>
+                <span>{{ market.volume_display }} volume</span>
+            </div>
+
+            <!-- Link -->
+            {% if market.url %}
+            <a href="{{ market.url }}" target="_blank" rel="noopener noreferrer"
+               class="mt-3 block text-center text-sm text-primary hover:underline">
+                View on Polymarket
+            </a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="bg-dark-card rounded-xl p-12 text-center border border-dark-border">
+        <svg class="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+        </svg>
+        <p class="text-lg text-gray-400">Unable to load prediction markets</p>
+        <p class="text-sm text-gray-500 mt-2">Polymarket API may be temporarily unavailable</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

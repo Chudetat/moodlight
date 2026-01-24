@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import get_settings
 from app.database import init_db, close_db
-from app.routers import auth, dashboard
+from app.routers import auth, dashboard, headlines, markets, brands
 
 settings = get_settings()
 
@@ -45,6 +45,9 @@ templates = Jinja2Templates(directory="app/templates")
 # Include routers
 app.include_router(auth.router)
 app.include_router(dashboard.router)
+app.include_router(headlines.router)
+app.include_router(markets.router)
+app.include_router(brands.router)
 
 
 # ============================================

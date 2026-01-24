@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Brand Analysis - Moodlight{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-2xl font-bold">Brand Analysis</h1>
+            <p class="text-gray-400 mt-1">VLDS metrics for cultural positioning</p>
+        </div>
+
+        <!-- View Mode -->
+        <div class="flex items-center space-x-2">
+            <a href="/brands?mode=breaking{% if brand %}&brand={{ brand }}{% endif %}"
+               class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors {% if view_mode == 'breaking' %}bg-primary text-white{% else %}bg-dark-card text-gray-400{% endif %}">
+                48h
+            </a>
+            <a href="/brands?mode=strategic{% if brand %}&brand={{ brand }}{% endif %}"
+               class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors {% if view_mode == 'strategic' %}bg-primary text-white{% else %}bg-dark-card text-gray-400{% endif %}">
+                30d
+            </a>
+        </div>
+    </div>
+
+    {% if can_use_brand_focus %}
+    <!-- Search Form -->
+    <div class="bg-dark-card rounded-xl p-6 mb-6 border border-dark-border">
+        <form method="GET" class="flex items-end gap-4">
+            <input type="hidden" name="mode" value="{{ view_mode }}">
+            <div class="flex-1">
+                <label class="block text-sm text-gray-400 mb-2">Brand or Keyword</label>
+                <input type="text" name="brand" value="{{ brand or '' }}"
+                       class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white placeholder-gray-500"
+                       placeholder="Enter brand name (e.g., Apple, Nike, Tesla)">
+            </div>
+            <button type="submit" class="px-8 py-3 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg transition-colors">
+                Analyze
+            </button>
+        </form>
+    </div>
+
+    {% if brand and brand_data %}
+    <!-- Results -->
+    <div class="space-y-6">
+        <!-- Overview -->
+        <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-xl font-bold">{{ brand_data.name }}</h2>
+                    <p class="text-gray-400">{{ brand_data.mention_count }} mentions in {{ view_modes[view_mode].days }} days</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-400">Empathy Score</p>
+                    <p class="text-3xl font-bold text-primary">
+                        {{ brand_data.world_mood.score if brand_data.world_mood.score else '--' }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        {% if vlds %}
+        <!-- VLDS Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Velocity -->
+            <div class="bg-dark-card rounded-xl p-5 border border-dark-border">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-semibold text-gray-400">Velocity</h3>
+                    <span class="text-2xl font-bold text-primary">{{ vlds.velocity.score }}</span>
+                </div>
+                <span class="inline-block px-2 py-0.5 text-xs rounded
+                    {% if vlds.velocity.label == 'Rising Fast' %}bg-green-900/30 text-green-400
+                    {% elif vlds.velocity.label == 'Declining' %}bg-red-900/30 text-red-400
+                    {% else %}bg-gray-700/50 text-gray-400{% endif %}">
+                    {{ vlds.velocity.label }}
+                </span>
+                <p class="text-xs text-gray-500 mt-2">{{ vlds.velocity.insight }}</p>
+            </div>
+
+            <!-- Longevity -->
+            <div class="bg-dark-card rounded-xl p-5 border border-dark-border">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-semibold text-gray-400">Longevity</h3>
+                    <span class="text-2xl font-bold text-primary">{{ vlds.longevity.score }}</span>
+                </div>
+                <span class="inline-block px-2 py-0.5 text-xs rounded
+                    {% if vlds.longevity.label == 'Sustained' %}bg-green-900/30 text-green-400
+                    {% elif vlds.longevity.label == 'Flash' %}bg-yellow-900/30 text-yellow-400
+                    {% else %}bg-gray-700/50 text-gray-400{% endif %}">
+                    {{ vlds.longevity.label }}
+                </span>
+                <p class="text-xs text-gray-500 mt-2">{{ vlds.longevity.insight }}</p>
+            </div>
+
+            <!-- Density -->
+            <div class="bg-dark-card rounded-xl p-5 border border-dark-border">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-semibold text-gray-400">Density</h3>
+                    <span class="text-2xl font-bold text-primary">{{ vlds.density.score }}</span>
+                </div>
+                <span class="inline-block px-2 py-0.5 text-xs rounded
+                    {% if vlds.density.label == 'White Space' %}bg-green-900/30 text-green-400
+                    {% elif vlds.density.label == 'Saturated' %}bg-red-900/30 text-red-400
+                    {% else %}bg-gray-700/50 text-gray-400{% endif %}">
+                    {{ vlds.density.label }}
+                </span>
+                <p class="text-xs text-gray-500 mt-2">{{ vlds.density.insight }}</p>
+            </div>
+
+            <!-- Scarcity -->
+            <div class="bg-dark-card rounded-xl p-5 border border-dark-border">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-semibold text-gray-400">Scarcity</h3>
+                    <span class="text-2xl font-bold text-primary">{{ vlds.scarcity.score }}</span>
+                </div>
+                <span class="inline-block px-2 py-0.5 text-xs rounded
+                    {% if vlds.scarcity.label == 'High Opportunity' %}bg-green-900/30 text-green-400
+                    {% elif vlds.scarcity.label == 'Crowded' %}bg-red-900/30 text-red-400
+                    {% else %}bg-gray-700/50 text-gray-400{% endif %}">
+                    {{ vlds.scarcity.label }}
+                </span>
+                <p class="text-xs text-gray-500 mt-2">{{ vlds.scarcity.insight }}</p>
+            </div>
+        </div>
+
+        <!-- Distribution Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Top Topics -->
+            {% if vlds.top_topics %}
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="font-semibold mb-4">Top Topics</h3>
+                <div class="space-y-3">
+                    {% for topic in vlds.top_topics %}
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">{{ topic.topic }}</span>
+                            <span class="text-white">{{ topic.percentage }}%</span>
+                        </div>
+                        <div class="h-2 bg-dark-bg rounded-full overflow-hidden">
+                            <div class="h-full bg-primary" style="width: {{ topic.percentage }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Top Emotions -->
+            {% if vlds.top_emotions %}
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="font-semibold mb-4">Top Emotions</h3>
+                <div class="space-y-3">
+                    {% for emotion in vlds.top_emotions %}
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">{{ emotion.emotion }}</span>
+                            <span class="text-white">{{ emotion.percentage }}%</span>
+                        </div>
+                        <div class="h-2 bg-dark-bg rounded-full overflow-hidden">
+                            <div class="h-full" style="width: {{ emotion.percentage }}%; background-color: {{ emotion_colors.get(emotion.emotion, '#FF4B4B') }}"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if vlds.emotion_insight %}
+        <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+            <h3 class="font-semibold mb-2">Emotional Insight</h3>
+            <p class="text-gray-400">{{ vlds.emotion_insight }}</p>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    {% elif brand %}
+    <!-- No Results -->
+    <div class="bg-dark-card rounded-xl p-12 text-center border border-dark-border">
+        <svg class="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <p class="text-lg text-gray-400">No mentions found for "{{ brand }}"</p>
+        <p class="text-sm text-gray-500 mt-2">Try a different keyword or check spelling</p>
+    </div>
+
+    {% else %}
+    <!-- Getting Started -->
+    <div class="bg-dark-card rounded-xl p-8 border border-dark-border">
+        <h3 class="text-lg font-semibold mb-4">VLDS Framework</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+            <div>
+                <h4 class="font-medium text-primary mb-2">Velocity</h4>
+                <p class="text-gray-400">Is conversation momentum rising or falling? High velocity means a topic is gaining traction.</p>
+            </div>
+            <div>
+                <h4 class="font-medium text-primary mb-2">Longevity</h4>
+                <p class="text-gray-400">How long has this been discussed? Sustained topics have lasting cultural relevance.</p>
+            </div>
+            <div>
+                <h4 class="font-medium text-primary mb-2">Density</h4>
+                <p class="text-gray-400">How crowded is this space? High density means harder to break through.</p>
+            </div>
+            <div>
+                <h4 class="font-medium text-primary mb-2">Scarcity</h4>
+                <p class="text-gray-400">What angles are underrepresented? Scarcity reveals opportunities for thought leadership.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Upgrade Required -->
+    <div class="bg-dark-card rounded-xl p-8 text-center border border-dark-border">
+        <svg class="w-16 h-16 mx-auto mb-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+        </svg>
+        <h3 class="text-xl font-bold mb-2">Pro Feature</h3>
+        <p class="text-gray-400 mb-6">Brand Focus analysis requires a Pro or Enterprise subscription.</p>
+        <a href="mailto:intel@moodlightintel.com" class="inline-block px-6 py-3 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg transition-colors">
+            Upgrade to Pro
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

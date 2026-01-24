@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Headlines - Moodlight{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-2xl font-bold">Headlines</h1>
+            <p class="text-gray-400 mt-1">{{ total_count }} items from the last {{ view_modes[view_mode].days }} days</p>
+        </div>
+
+        <!-- View Mode Toggle -->
+        <div class="flex items-center space-x-4">
+            <a href="/headlines?mode=breaking{% if filters.topic %}&topic={{ filters.topic }}{% endif %}{% if filters.source %}&source={{ filters.source }}{% endif %}"
+               class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors {% if view_mode == 'breaking' %}bg-primary text-white{% else %}bg-dark-card text-gray-400 hover:text-white{% endif %}">
+                Breaking (48h)
+            </a>
+            <a href="/headlines?mode=strategic{% if filters.topic %}&topic={{ filters.topic }}{% endif %}{% if filters.source %}&source={{ filters.source }}{% endif %}"
+               class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors {% if view_mode == 'strategic' %}bg-primary text-white{% else %}bg-dark-card text-gray-400 hover:text-white{% endif %}">
+                Strategic (30d)
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-dark-card rounded-xl p-4 mb-6 border border-dark-border">
+        <form method="GET" class="flex flex-wrap items-center gap-4">
+            <input type="hidden" name="mode" value="{{ view_mode }}">
+
+            <!-- Topic Filter -->
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm text-gray-400 mb-1">Topic</label>
+                <select name="topic" class="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-white">
+                    <option value="">All Topics</option>
+                    {% for topic in available_topics %}
+                    <option value="{{ topic }}" {% if filters.topic == topic %}selected{% endif %}>{{ topic }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Source Filter -->
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm text-gray-400 mb-1">Source</label>
+                <select name="source" class="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-white">
+                    <option value="">All Sources</option>
+                    {% for source in available_sources %}
+                    <option value="{{ source }}" {% if filters.source == source %}selected{% endif %}>{{ source }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Emotion Filter -->
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm text-gray-400 mb-1">Emotion</label>
+                <select name="emotion" class="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-white">
+                    <option value="">All Emotions</option>
+                    {% for emotion in available_emotions %}
+                    <option value="{{ emotion }}" {% if filters.emotion == emotion %}selected{% endif %}>{{ emotion }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="flex items-end">
+                <button type="submit" class="px-6 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors">
+                    Filter
+                </button>
+                {% if filters.topic or filters.source or filters.emotion %}
+                <a href="/headlines?mode={{ view_mode }}" class="ml-2 px-4 py-2 text-gray-400 hover:text-white">
+                    Clear
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Headlines List -->
+    <div class="bg-dark-card rounded-xl border border-dark-border">
+        {% if headlines %}
+        <div class="divide-y divide-dark-border">
+            {% for headline in headlines %}
+            <div class="p-4 hover:bg-dark-bg/50 transition-colors">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                        <!-- Source & Topic -->
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="source-badge {% if headline.source == 'x' %}source-x{% elif 'news' in headline.source %}source-news{% elif 'reddit' in headline.source %}source-reddit{% else %}bg-gray-600{% endif %}">
+                                {{ headline.source_display }}
+                            </span>
+                            {% if headline.topic %}
+                            <span class="px-2 py-0.5 text-xs rounded bg-dark-bg text-gray-400">{{ headline.topic }}</span>
+                            {% endif %}
+                            {% if headline.emotion %}
+                            <span class="emotion-tag" style="background-color: {{ emotion_colors.get(headline.emotion, '#808080') }}20; color: {{ emotion_colors.get(headline.emotion, '#808080') }}">
+                                {{ headline.emotion }}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Headline text -->
+                        <p class="text-white mb-2">
+                            {% if headline.link %}
+                            <a href="{{ headline.link }}" target="_blank" rel="noopener noreferrer" class="hover:text-primary hover:underline">
+                                {{ headline.text }}
+                            </a>
+                            {% else %}
+                            {{ headline.text }}
+                            {% endif %}
+                        </p>
+
+                        <!-- Meta -->
+                        <div class="flex items-center gap-4 text-xs text-gray-500">
+                            {% if headline.created_at %}
+                            <span>{{ headline.created_at[:10] }}</span>
+                            {% endif %}
+                            {% if headline.engagement and headline.engagement > 0 %}
+                            <span>{{ headline.engagement }} engagement</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Empathy Score -->
+                    {% if headline.empathy_score is not none %}
+                    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold
+                        {% if headline.empathy_score < 0.04 %}bg-blue-900/30 text-blue-400
+                        {% elif headline.empathy_score < 0.10 %}bg-gray-700/50 text-gray-400
+                        {% elif headline.empathy_score < 0.30 %}bg-green-900/30 text-green-400
+                        {% else %}bg-pink-900/30 text-pink-400{% endif %}">
+                        {{ (headline.empathy_score * 100) | round(0) | int }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div class="p-4 border-t border-dark-border flex items-center justify-between">
+            <p class="text-sm text-gray-400">
+                Page {{ page }} of {{ total_pages }}
+            </p>
+            <div class="flex items-center gap-2">
+                {% if page > 1 %}
+                <a href="/headlines?mode={{ view_mode }}&page={{ page - 1 }}{% if filters.topic %}&topic={{ filters.topic }}{% endif %}{% if filters.source %}&source={{ filters.source }}{% endif %}{% if filters.emotion %}&emotion={{ filters.emotion }}{% endif %}"
+                   class="px-3 py-1 rounded bg-dark-bg text-gray-400 hover:text-white">
+                    Previous
+                </a>
+                {% endif %}
+                {% if page < total_pages %}
+                <a href="/headlines?mode={{ view_mode }}&page={{ page + 1 }}{% if filters.topic %}&topic={{ filters.topic }}{% endif %}{% if filters.source %}&source={{ filters.source }}{% endif %}{% if filters.emotion %}&emotion={{ filters.emotion }}{% endif %}"
+                   class="px-3 py-1 rounded bg-dark-bg text-gray-400 hover:text-white">
+                    Next
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="p-12 text-center text-gray-500">
+            <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
+            </svg>
+            <p class="text-lg">No headlines found</p>
+            <p class="mt-2">Try adjusting your filters or refreshing the data</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
