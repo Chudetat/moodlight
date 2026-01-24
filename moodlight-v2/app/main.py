@@ -1,6 +1,7 @@
 """
 Moodlight v2 - FastAPI + HTMX Application
 Main entry point and app configuration.
+Version: 2.0.1 - Railway deployment fix
 """
 from contextlib import asynccontextmanager
 
