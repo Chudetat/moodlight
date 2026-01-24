@@ -30,10 +30,16 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
 
-    # Email
+    # Email / SMTP
     email_address: str = ""
     email_password: str = ""
     email_recipient: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    app_url: str = "https://moodlightintel.com"
 
     # Feature flags
     enable_polymarket: bool = True

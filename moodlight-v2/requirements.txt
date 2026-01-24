@@ -32,6 +32,7 @@ pydantic-settings==2.4.0
 
 # Email
 aiosmtplib==3.0.1
+markdown==3.6
 
 # Development
 pytest==8.3.2

@@ -136,6 +136,11 @@ class NewsItem(Base):
         Index("ix_news_items_topic_created", "topic", "created_at"),
     )
 
+    @property
+    def emotion(self) -> Optional[str]:
+        """Alias for emotion_top_1 for convenience."""
+        return self.emotion_top_1
+
     def __repr__(self) -> str:
         return f"<NewsItem {self.id[:20]}... ({self.source})>"
 
@@ -150,15 +155,14 @@ class Brief(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
 
-    # Brief input
-    product_service: Mapped[str] = mapped_column(Text, nullable=False)
-    target_audience: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    challenge: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    timeline: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    frameworks_used: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON array
+    # Brief input - the user's request/prompt
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Brief output
     content: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Frameworks used (stored as JSON list in PostgreSQL)
+    _frameworks_used: Mapped[Optional[str]] = mapped_column("frameworks_used", Text, nullable=True)
 
     # Status
     emailed: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -172,6 +176,23 @@ class Brief(Base):
     __table_args__ = (
         Index("ix_briefs_user_created", "user_id", "created_at"),
     )
+
+    @property
+    def frameworks_used(self) -> list[str]:
+        """Get frameworks as list."""
+        if not self._frameworks_used:
+            return []
+        import json
+        try:
+            return json.loads(self._frameworks_used)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    @frameworks_used.setter
+    def frameworks_used(self, value: list[str]) -> None:
+        """Set frameworks from list."""
+        import json
+        self._frameworks_used = json.dumps(value) if value else None
 
     def __repr__(self) -> str:
         return f"<Brief {self.id} for user_id={self.user_id}>"

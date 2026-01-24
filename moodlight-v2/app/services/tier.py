@@ -278,3 +278,74 @@ def get_upgrade_options(current_tier: str) -> list[dict]:
         })
 
     return upgrades
+
+
+def get_tier_config(tier: str) -> dict:
+    """
+    Get full tier configuration.
+
+    Args:
+        tier: User's subscription tier
+
+    Returns:
+        Dict with tier configuration including limits and features
+    """
+    brief_limit = TIER_LIMITS.get(tier, 5)
+    if brief_limit >= 999999:
+        brief_limit = -1  # Indicates unlimited
+
+    features = []
+    for feature, allowed_tiers in TIER_FEATURES.items():
+        if tier in allowed_tiers:
+            features.append(feature)
+
+    return {
+        "tier": tier,
+        "display_name": get_tier_display_name(tier),
+        "brief_limit": brief_limit,
+        "features": features,
+        "has_brand_focus": "brand_focus" in features,
+        "has_competitive_tracking": "competitive_tracking" in features,
+        "has_white_label": "white_label" in features,
+        "has_api_access": "api_access" in features,
+    }
+
+
+def can_generate_brief(user: User) -> bool:
+    """
+    Simple check if user can generate a brief (synchronous).
+
+    Args:
+        user: User object
+
+    Returns:
+        True if user can generate another brief
+    """
+    limit = get_brief_limit(user.tier, user.extra_briefs_addon or False)
+
+    # Check monthly reset
+    today = date.today()
+    if user.briefs_reset_date and user.briefs_reset_date.month != today.month:
+        return True  # Will be reset on next generation
+
+    return (user.briefs_used or 0) < limit
+
+
+async def increment_brief_count(user: User, db: AsyncSession) -> None:
+    """
+    Increment brief count for a user object.
+
+    Args:
+        user: User object to update
+        db: Database session
+    """
+    today = date.today()
+
+    # Reset if new month
+    if user.briefs_reset_date and user.briefs_reset_date.month != today.month:
+        user.briefs_used = 1
+        user.briefs_reset_date = today
+    else:
+        user.briefs_used = (user.briefs_used or 0) + 1
+        if not user.briefs_reset_date:
+            user.briefs_reset_date = today
