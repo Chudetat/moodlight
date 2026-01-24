@@ -30,6 +30,9 @@ torch==2.4.1
 python-dotenv==1.0.1
 pydantic-settings==2.4.0
 
+# Payments
+stripe==10.8.0
+
 # Email
 aiosmtplib==3.0.1
 markdown==3.6

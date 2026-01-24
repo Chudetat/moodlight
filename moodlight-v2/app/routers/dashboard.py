@@ -309,3 +309,132 @@ async def refresh_data(
         "status": "ok",
         "message": "Data refresh scheduled. New data will appear shortly."
     }
+
+
+# ============================================
+# Stock Data Endpoints
+# ============================================
+
+@router.get("/api/stock/search")
+async def search_stock_ticker(
+    brand: str = Query(..., description="Brand/company name to search"),
+    user: dict = Depends(require_auth)
+):
+    """
+    Search for a stock ticker symbol.
+    """
+    from app.services.stock import search_ticker
+
+    ticker = await search_ticker(brand)
+    if ticker:
+        return {"ticker": ticker, "brand": brand}
+    return {"ticker": None, "brand": brand, "message": "No ticker found"}
+
+
+@router.get("/api/stock/quote")
+async def get_stock_quote(
+    ticker: str = Query(..., description="Stock ticker symbol"),
+    user: dict = Depends(require_auth)
+):
+    """
+    Get stock quote data.
+    """
+    from app.services.stock import fetch_stock_data
+
+    data = await fetch_stock_data(ticker)
+    if data:
+        return data
+    return {"error": f"No data available for {ticker}"}
+
+
+@router.get("/api/stock/brand")
+async def get_brand_stock(
+    brand: str = Query(..., description="Brand/company name"),
+    user: dict = Depends(require_auth)
+):
+    """
+    Search for brand ticker and get stock data in one call.
+    """
+    from app.services.stock import get_brand_stock_data
+
+    data = await get_brand_stock_data(brand)
+    if data:
+        return data
+    return {"error": f"No stock data available for {brand}"}
+
+
+@router.get("/api/stock/market")
+async def get_market_index(
+    user: dict = Depends(require_auth)
+):
+    """
+    Get S&P 500 (SPY) as market index.
+    """
+    from app.services.stock import get_market_index
+
+    data = await get_market_index()
+    if data:
+        return data
+    return {"error": "Market index data unavailable"}
+
+
+@router.get("/api/mood-vs-market")
+async def get_mood_vs_market(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    mode: str = Query("strategic"),
+    brand: Optional[str] = Query(None, description="Optional brand for stock comparison"),
+    user: dict = Depends(require_auth)
+):
+    """
+    Get mood vs market comparison data.
+    """
+    from app.services.stock import get_brand_stock_data, get_market_index, stock_change_to_mood_score
+
+    view_config = VIEW_MODES.get(mode, VIEW_MODES["strategic"])
+    df = await load_data(db, days=view_config["days"])
+
+    # Get social mood
+    world_mood = compute_world_mood(df)
+    social_mood = world_mood["score"]
+
+    # Get market data
+    market_label = "S&P 500"
+    market_mood = 50  # Neutral default
+
+    if brand:
+        stock_data = await get_brand_stock_data(brand)
+        if stock_data:
+            market_label = f"{stock_data['symbol']} Stock"
+            market_mood = stock_change_to_mood_score(stock_data["change_percent"])
+        else:
+            # Fallback to market index
+            market_data = await get_market_index()
+            if market_data:
+                market_mood = stock_change_to_mood_score(market_data["change_percent"])
+    else:
+        market_data = await get_market_index()
+        if market_data:
+            market_mood = stock_change_to_mood_score(market_data["change_percent"])
+
+    # Calculate divergence
+    divergence = abs(social_mood - market_mood)
+    if divergence > 20:
+        divergence_status = "high"
+        divergence_message = "High divergence - opportunity or risk signal"
+    elif divergence > 10:
+        divergence_status = "moderate"
+        divergence_message = "Moderate divergence - worth monitoring"
+    else:
+        divergence_status = "low"
+        divergence_message = "Markets and mood aligned"
+
+    return {
+        "social_mood": social_mood,
+        "market_mood": market_mood,
+        "market_label": market_label,
+        "divergence": divergence,
+        "divergence_status": divergence_status,
+        "divergence_message": divergence_message,
+        "brand": brand
+    }
