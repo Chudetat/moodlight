@@ -28,6 +28,7 @@ async def load_data_from_db(
 ) -> pd.DataFrame:
     """
     Load scored data from database.
+    Queries both news_scored and social_scored tables (v1 schema).
 
     Args:
         db: Database session
@@ -39,40 +40,64 @@ async def load_data_from_db(
     """
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-    # Build query
-    query = select(NewsItem).where(NewsItem.created_at >= cutoff)
+    # Build SQL query that unions both v1 tables (news_scored and social_scored)
+    # These are the actual tables used by v1 to store scored data
+    base_columns = """
+        id, text, created_at, link, source, topic,
+        COALESCE(engagement, 0) as engagement, country, intensity,
+        empathy_score, empathy_label, emotion_top_1, emotion_top_2, emotion_top_3
+    """
 
+    source_clause = ""
+    params = {"cutoff": cutoff}
     if source_filter:
-        query = query.where(NewsItem.source == source_filter)
+        source_clause = "AND source = :source"
+        params["source"] = source_filter
 
-    query = query.order_by(NewsItem.created_at.desc())
+    sql = text(f"""
+        SELECT {base_columns} FROM news_scored
+        WHERE created_at >= :cutoff {source_clause}
+        UNION ALL
+        SELECT {base_columns} FROM social_scored
+        WHERE created_at >= :cutoff {source_clause}
+        ORDER BY created_at DESC
+    """)
 
-    result = await db.execute(query)
-    items = result.scalars().all()
+    try:
+        result = await db.execute(sql, params)
+        rows = result.fetchall()
+    except Exception as e:
+        # If tables don't exist, try just one or the other
+        print(f"Error querying both tables: {e}")
+        try:
+            sql_news = text(f"""
+                SELECT {base_columns} FROM news_scored
+                WHERE created_at >= :cutoff {source_clause}
+                ORDER BY created_at DESC
+            """)
+            result = await db.execute(sql_news, params)
+            rows = result.fetchall()
+        except Exception:
+            try:
+                sql_social = text(f"""
+                    SELECT {base_columns} FROM social_scored
+                    WHERE created_at >= :cutoff {source_clause}
+                    ORDER BY created_at DESC
+                """)
+                result = await db.execute(sql_social, params)
+                rows = result.fetchall()
+            except Exception:
+                return pd.DataFrame()
 
-    if not items:
+    if not rows:
         return pd.DataFrame()
 
     # Convert to DataFrame
-    data = [
-        {
-            "id": item.id,
-            "text": item.text,
-            "created_at": item.created_at,
-            "link": item.link,
-            "source": item.source,
-            "topic": item.topic,
-            "engagement": item.engagement or 0,
-            "country": item.country,
-            "intensity": item.intensity,
-            "empathy_score": item.empathy_score,
-            "empathy_label": item.empathy_label,
-            "emotion_top_1": item.emotion_top_1,
-            "emotion_top_2": item.emotion_top_2,
-            "emotion_top_3": item.emotion_top_3,
-        }
-        for item in items
-    ]
+    columns = ["id", "text", "created_at", "link", "source", "topic",
+               "engagement", "country", "intensity", "empathy_score",
+               "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3"]
+
+    data = [dict(zip(columns, row)) for row in rows]
 
     return pd.DataFrame(data)
 
