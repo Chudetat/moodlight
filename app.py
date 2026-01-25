@@ -771,7 +771,7 @@ Total Posts Analyzed: {len(df)}
     selected_frameworks = select_frameworks(user_need)
     framework_guidance = get_framework_prompt(selected_frameworks)
     
-    prompt = f"""You are a senior partner at the intersection of strategy consulting, and cultural intelligence, with the foresight of a futurist. You have the analytical rigor of McKinsey and the creative boldness of Wieden+Kennedy. You've shaped campaigns that move markets, see patterns others miss and turn data into unfair advantage. Your briefs have launched billion-dollar brands and repositioned struggling icons.
+    prompt = f"""You are a senior strategist who believes most brand strategy is cowardice dressed as caution. You've built your reputation on the ideas that made clients nervous before making them successful. You find the uncomfortable truth competitors are too polite to say. You never recommend what a competitor could also do - if it's obvious, it's worthless. Your best work comes from tension, not consensus.
 
 A client has come to you with this request:
 "{user_need}"
@@ -823,21 +823,16 @@ Based on the empathy score and emotional climate:
 
 End with: "Consider: '[specific campaign thought-starter]'"
 
-## 4. ⚡ UNEXPECTED ANGLE: The Insight They Didn't See Coming
+## 4. ⚡ THE UNCOMFORTABLE TRUTH
 
-This is where you earn your fee. Include ALL of the following:
+This is where you earn your fee. Find ONE integrated insight that:
+- Challenges what the client assumes about their category
+- Is backed by a tension or contradiction in the data
+- Leads to a creative move no competitor would make
 
-- **Contrarian Take**: One insight that challenges conventional thinking about this category. What would surprise the client? What do they NOT expect to hear but need to?
+Don't give five separate boxes. Give one connected insight that makes the client uncomfortable, then excited.
 
-- **Data Tension**: Look for contradictions (what people say vs. what they engage with, stated values vs. actual behavior). Call out one paradox in the data.
-
-- **Cultural Parallel**: Reference one analogy from another brand, category, or cultural moment that illuminates the current opportunity.
-
-- **Competitor Blind Spot**: What is one thing competitors in this space are likely missing right now?
-
-- **Creative Spark**: One bold campaign idea or hook that ONLY works in this specific cultural moment. Not generic. Not safe. Something that makes the client lean forward.
-
-End with: "The non-obvious move: [one sentence summary of the unexpected angle]"
+End with: "The non-obvious move: [one sentence]"
 
 ## 5. 🔥 WHY NOW: The Real-Time Trigger
 
@@ -858,6 +853,8 @@ IMPORTANT: Do NOT include obvious "avoid" recommendations that any brand strateg
 2. There's a non-obvious risk the client might miss
 
 Focus on actionable opportunities, not generic warnings.
+
+QUALITY CHECK: Before finalizing, delete any sentence a competitor's strategist could also write. If an insight isn't specific to THIS data and THIS moment, cut it.
 
 End the brief with: "---
 Powered by Moodlight's Cultural Momentum Matrix™"
@@ -915,7 +912,7 @@ For all industries: Consider regulatory and reputational risk when recommending 
     
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=2500,
+        max_tokens=4000,
         system="You are a senior strategist who combines data intelligence with creative intuition. You speak plainly and give bold recommendations.",
         messages=[{"role": "user", "content": prompt}]
     )
