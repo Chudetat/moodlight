@@ -44,9 +44,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(
+        expire = datetime.utcnow() + timedelta(
             minutes=settings.access_token_expire_minutes
         )
 
@@ -167,7 +167,7 @@ async def create_session(
 
     # Create new session
     session_id = str(uuid.uuid4())
-    expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
+    expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
 
     session = UserSession(
         user_id=user_id,
@@ -212,14 +212,14 @@ async def validate_session(
         return False
 
     # Check expiration
-    if session.expires_at and session.expires_at < datetime.now(timezone.utc):
+    if session.expires_at and session.expires_at < datetime.utcnow():
         # Session expired
         session.is_active = False
         await db.commit()
         return False
 
     # Update last activity
-    session.last_activity = datetime.now(timezone.utc)
+    session.last_activity = datetime.utcnow()
     await db.commit()
 
     return True
@@ -281,7 +281,7 @@ async def cleanup_expired_sessions(db: AsyncSession) -> int:
     """
     result = await db.execute(
         delete(UserSession).where(
-            UserSession.expires_at < datetime.now(timezone.utc)
+            UserSession.expires_at < datetime.utcnow()
         )
     )
     await db.commit()
