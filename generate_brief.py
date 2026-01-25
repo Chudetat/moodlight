@@ -223,13 +223,18 @@ KEY THREATS:
    What: [One sentence on what happened]
    So What: [Why this matters / implications]
 
+WATCH LIST:
+[Lower priority items worth monitoring - not urgent but could escalate]
+
 EMERGING PATTERNS:
-[Notable trends, shifts, or developments - look for connections across topics]
+[Group related signals. Note if each pattern is ACCELERATING ↑ or DECELERATING ↓]
 
 RECOMMENDED ACTIONS:
-[Prioritized: IMMEDIATE (24h) / SHORT-TERM (this week) / MONITOR]
+- IMMEDIATE (24h): [...]
+- SHORT-TERM (this week): [...]
+- MONITOR: [...]
 
-Keep it under 500 words. Use clear, direct language. No fluff.
+Keep it under 550 words. Use clear, direct language. No fluff.
 
 DATA:
 {context}
