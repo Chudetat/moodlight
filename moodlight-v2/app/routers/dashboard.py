@@ -31,11 +31,14 @@ templates = Jinja2Templates(directory="app/templates")
 async def dashboard_page(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    mode: str = "strategic"
+    mode: str = "strategic",
+    brand: Optional[str] = None
 ):
     """
-    Render the main dashboard page.
+    Render the main dashboard page - single scrollable view like v1.
     """
+    from datetime import datetime
+
     user = await get_current_user(request, db)
     if not user:
         from fastapi.responses import RedirectResponse
@@ -51,12 +54,24 @@ async def dashboard_page(
     # Load data
     df = await load_data(db, days=days)
 
-    # Calculate metrics
+    # Calculate all metrics for v1-style dashboard
     world_mood = compute_world_mood(df)
     emotions = get_emotion_distribution(df)
     topics = get_topic_distribution(df)
-    headlines = get_trending_headlines(df, limit=5)
+    sources = get_source_distribution(df)
+    headlines = get_trending_headlines(df, limit=10)
     mood_history = get_mood_history(df)
+    geo_data = get_geographic_distribution(df)
+
+    # Brand-specific analysis if requested
+    brand_data = None
+    if brand:
+        brand_df = df[df["text"].str.contains(brand, case=False, na=False)]
+        if not brand_df.empty:
+            brand_data = calculate_brand_vlds(brand_df)
+
+    # Current date formatted
+    current_date = datetime.now().strftime("%B %d, %Y")
 
     return templates.TemplateResponse(
         "dashboard.html",
@@ -71,12 +86,78 @@ async def dashboard_page(
             "world_mood": world_mood,
             "emotions": emotions,
             "topics": topics,
+            "sources": sources,
             "headlines": headlines,
             "mood_history": mood_history,
+            "geo_data": geo_data,
             "emotion_colors": EMOTION_COLORS,
             "total_items": len(df),
+            "current_date": current_date,
+            "brand_query": brand,
+            "brand_data": brand_data,
+            "market_data": None,  # TODO: Add stock data integration
+            "vlds_data": None,  # TODO: Add global VLDS calculation
         }
     )
+
+
+def calculate_brand_vlds(df) -> dict:
+    """Calculate VLDS metrics for a filtered brand dataset."""
+    import pandas as pd
+
+    if df.empty or len(df) < 5:
+        return None
+
+    total_posts = len(df)
+    results = {"total_posts": total_posts}
+
+    # Velocity - recent vs older activity
+    if "created_at" in df.columns:
+        df_copy = df.copy()
+        df_copy["date"] = df_copy["created_at"].dt.date
+        daily_counts = df_copy.groupby("date").size()
+
+        if len(daily_counts) >= 2:
+            recent = daily_counts.tail(2).mean()
+            older = daily_counts.head(max(1, len(daily_counts) - 2)).mean()
+            velocity = (recent / older) if older > 0 else 1.0
+            velocity_score = min(velocity / 2.0, 1.0)
+        else:
+            velocity_score = 0.5
+
+        results["velocity"] = round(velocity_score, 2)
+        results["velocity_label"] = "Rising Fast" if velocity_score > 0.7 else "Stable" if velocity_score > 0.4 else "Declining"
+
+        # Longevity - span of days
+        unique_days = df_copy["date"].nunique()
+        longevity_score = min(unique_days / 7.0, 1.0)
+        results["longevity"] = round(longevity_score, 2)
+        results["longevity_label"] = "Sustained" if longevity_score > 0.7 else "Moderate" if longevity_score > 0.4 else "Flash"
+
+    # Density - concentration
+    if "source" in df.columns:
+        density_score = min(total_posts / 100.0, 1.0)
+        results["density"] = round(density_score, 2)
+        results["density_label"] = "Saturated" if density_score > 0.7 else "Moderate" if density_score > 0.3 else "White Space"
+
+        # Scarcity - inverse of density
+        results["scarcity"] = round(1.0 - density_score, 2)
+        results["scarcity_label"] = "High Opportunity" if results["scarcity"] > 0.7 else "Some Opportunity" if results["scarcity"] > 0.4 else "Crowded"
+
+    # Top emotions
+    if "emotion_top_1" in df.columns:
+        emotion_counts = df["emotion_top_1"].value_counts()
+        top_emotions = []
+        for emotion, count in emotion_counts.head(5).items():
+            if pd.notna(emotion):
+                top_emotions.append({
+                    "emotion": emotion,
+                    "count": int(count),
+                    "percentage": round((count / total_posts) * 100, 1)
+                })
+        results["top_emotions_detailed"] = top_emotions
+
+    return results
 
 
 # ============================================

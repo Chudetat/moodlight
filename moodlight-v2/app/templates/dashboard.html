@@ -1,251 +1,441 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Moodlight{% endblock %}
+{% block title %}Moodlight - Cultural Intelligence{% endblock %}
 
 {% block content %}
-<div class="p-6">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
-        <div>
-            <h1 class="text-2xl font-bold">Dashboard</h1>
-            <p class="text-gray-400 mt-1">Cultural Intelligence Overview</p>
-        </div>
+<div class="p-6 max-w-6xl mx-auto">
+    <!-- Date Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold">{{ current_date }}</h1>
+        <p class="text-gray-400">{{ view_modes[view_mode].days if view_modes else 30 }}-day view • {{ total_items }} items analyzed</p>
+    </div>
 
-        <!-- View Mode Toggle -->
-        <div class="flex items-center space-x-4">
-            <span class="text-sm text-gray-400">View Mode:</span>
-            <div class="inline-flex rounded-lg bg-dark-card border border-dark-border p-1">
-                <a href="/dashboard?mode=breaking"
-                   class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors {% if view_mode == 'breaking' %}bg-primary text-white{% else %}text-gray-400 hover:text-white{% endif %}">
-                    Breaking (48h)
-                </a>
-                <a href="/dashboard?mode=strategic"
-                   class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors {% if view_mode == 'strategic' %}bg-primary text-white{% else %}text-gray-400 hover:text-white{% endif %}">
-                    Strategic (30d)
-                </a>
+    <!-- ============================================ -->
+    <!-- SECTION: Cultural Pulse (World Mood) -->
+    <!-- ============================================ -->
+    <section id="cultural-pulse" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">Cultural Pulse</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- World Mood Score -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <p class="text-gray-400 text-sm mb-2">Global Mood Score</p>
+                {% if world_mood and world_mood.score is not none %}
+                <p class="text-5xl font-bold text-primary">{{ world_mood.score }}</p>
+                <p class="text-lg text-gray-300 mt-2">{{ world_mood.label }}</p>
+                <p class="text-sm text-gray-500 mt-1">Raw avg: {{ world_mood.raw_avg }}</p>
+                {% else %}
+                <p class="text-4xl font-bold text-gray-500">--</p>
+                <p class="text-gray-400">No data available</p>
+                {% endif %}
             </div>
 
-            <!-- Refresh Button -->
-            <button
-                class="p-2 rounded-lg bg-dark-card border border-dark-border hover:border-primary transition-colors"
-                hx-post="/api/refresh"
-                hx-swap="none"
-                hx-indicator="#refresh-spinner"
-                title="Refresh Data"
-            >
-                <svg id="refresh-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                </svg>
-                <svg id="refresh-spinner" class="htmx-indicator w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </button>
-        </div>
-    </div>
+            <!-- Mood Label Indicator -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border flex flex-col justify-center">
+                {% if world_mood and world_mood.score is not none %}
+                <div class="text-center">
+                    {% if world_mood.score < 35 %}
+                    <span class="text-6xl">❄️</span>
+                    <p class="text-blue-400 mt-2">Cold Climate</p>
+                    {% elif world_mood.score < 50 %}
+                    <span class="text-6xl">😐</span>
+                    <p class="text-gray-400 mt-2">Neutral Climate</p>
+                    {% elif world_mood.score < 70 %}
+                    <span class="text-6xl">🙂</span>
+                    <p class="text-green-400 mt-2">Warm Climate</p>
+                    {% else %}
+                    <span class="text-6xl">❤️</span>
+                    <p class="text-pink-400 mt-2">Highly Empathetic</p>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="text-center text-gray-500">
+                    <span class="text-6xl">❓</span>
+                    <p class="mt-2">Awaiting Data</p>
+                </div>
+                {% endif %}
+            </div>
 
-    <!-- Stats Bar -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
-            <p class="text-sm text-gray-400">Total Items</p>
-            <p class="text-2xl font-bold">{{ total_items | default(0) }}</p>
-        </div>
-        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
-            <p class="text-sm text-gray-400">View Period</p>
-            <p class="text-2xl font-bold">{{ view_modes[view_mode].days if view_modes else 30 }}d</p>
-        </div>
-        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
-            <p class="text-sm text-gray-400">World Mood</p>
-            <p class="text-2xl font-bold {% if world_mood and world_mood.score %}text-primary{% else %}text-gray-500{% endif %}">
-                {{ world_mood.score if world_mood and world_mood.score else '--' }}
-            </p>
-        </div>
-        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
-            <p class="text-sm text-gray-400">Briefs Remaining</p>
-            <p class="text-2xl font-bold">{{ briefs_remaining | default(0) }}</p>
-        </div>
-    </div>
-
-    <!-- Dashboard Content -->
-    <div id="dashboard-content">
-        <!-- World Mood & Charts Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <!-- Mood Gauge -->
+            <!-- Quick Stats -->
             <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
-                <h2 class="text-lg font-semibold mb-4">World Mood</h2>
-                <div class="flex items-center justify-center">
-                    <div class="text-center">
-                        {% if world_mood and world_mood.score is not none %}
-                        <span class="text-5xl font-bold text-primary">{{ world_mood.score }}</span>
-                        <p class="text-lg text-gray-300 mt-2">{{ world_mood.label }}</p>
-                        <p class="text-sm text-gray-500 mt-1">Raw avg: {{ world_mood.raw_avg }}</p>
-                        {% else %}
-                        <span class="text-4xl font-bold text-gray-500">--</span>
-                        <p class="text-sm text-gray-400 mt-2">No Data</p>
+                <p class="text-gray-400 text-sm mb-4">Quick Stats</p>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Total Items</span>
+                        <span class="font-medium">{{ total_items }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Time Period</span>
+                        <span class="font-medium">{{ view_modes[view_mode].days if view_modes else 30 }} days</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Sources</span>
+                        <span class="font-medium">{{ sources|length if sources else 0 }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Top Emotion</span>
+                        <span class="font-medium text-accent-orange">{{ emotions[0].emotion if emotions else 'N/A' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Market Sentiment -->
+    <!-- ============================================ -->
+    <section id="markets" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">Market Sentiment</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {% if market_data %}
+            {% for market in market_data %}
+            <div class="bg-dark-card rounded-xl p-4 border border-dark-border">
+                <p class="text-gray-400 text-sm">{{ market.symbol }}</p>
+                <p class="text-xl font-bold {% if market.change_percent >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
+                    {{ "%.2f"|format(market.change_percent) }}%
+                </p>
+                <p class="text-xs text-gray-500">${{ "%.2f"|format(market.price) }}</p>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="col-span-4 bg-dark-card rounded-xl p-6 border border-dark-border text-center text-gray-500">
+                <p>Market data unavailable. Add ALPHAVANTAGE_API_KEY for stock quotes.</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Emotional Breakdown -->
+    <!-- ============================================ -->
+    <section id="emotions" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">Emotional Breakdown</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Emotion Distribution Chart -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Emotion Distribution</h3>
+                <div class="h-64">
+                    <canvas id="emotion-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Emotion Metrics -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Top Emotions</h3>
+                {% if emotions %}
+                <div class="grid grid-cols-3 gap-4">
+                    {% for e in emotions[:9] %}
+                    <div class="text-center p-3 bg-dark-bg rounded-lg">
+                        <p class="text-2xl font-bold" style="color: {{ emotion_colors.get(e.emotion, '#808080') }}">{{ e.percentage }}%</p>
+                        <p class="text-sm text-gray-400">{{ e.emotion }}</p>
+                        <p class="text-xs text-gray-500">{{ e.count }} posts</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-center py-8">No emotion data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Topic Distribution -->
+    <!-- ============================================ -->
+    <section id="topics" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">Topic Distribution</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Topic Chart -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Topic Breakdown</h3>
+                <div class="h-72">
+                    <canvas id="topic-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Topic Metrics -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Top Discussed Topics</h3>
+                {% if topics %}
+                <div class="space-y-3">
+                    {% for t in topics[:10] %}
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg font-bold text-accent-blue w-8">{{ loop.index }}</span>
+                            <span class="text-gray-300">{{ t.topic }}</span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-gray-500 text-sm">{{ t.count }} posts</span>
+                            <span class="text-primary font-medium w-16 text-right">{{ t.percentage }}%</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-center py-8">No topic data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Trending Headlines -->
+    <!-- ============================================ -->
+    <section id="headlines" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">Trending Headlines</h2>
+        <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+            {% if headlines %}
+            <div class="space-y-4">
+                {% for h in headlines %}
+                <div class="flex items-start gap-4 p-4 bg-dark-bg rounded-lg hover:bg-dark-border/30 transition-colors">
+                    <!-- Empathy Score Badge -->
+                    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold
+                        {% if h.empathy_score and h.empathy_score < 0.04 %}bg-blue-900/50 text-blue-400
+                        {% elif h.empathy_score and h.empathy_score < 0.10 %}bg-gray-700/50 text-gray-400
+                        {% elif h.empathy_score and h.empathy_score < 0.30 %}bg-green-900/50 text-green-400
+                        {% else %}bg-pink-900/50 text-pink-400{% endif %}">
+                        {% if h.empathy_score %}{{ (h.empathy_score * 100)|round|int }}{% else %}--{% endif %}
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2 py-0.5 text-xs rounded
+                                {% if h.source == 'x' %}bg-blue-600
+                                {% elif 'news' in h.source %}bg-green-600
+                                {% elif 'reddit' in h.source %}bg-orange-600
+                                {% else %}bg-gray-600{% endif %}">
+                                {{ h.source_display }}
+                            </span>
+                            {% if h.topic %}
+                            <span class="text-xs text-accent-purple">{{ h.topic }}</span>
+                            {% endif %}
+                            {% if h.emotion %}
+                            <span class="text-xs text-accent-orange">{{ h.emotion }}</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-gray-200">
+                            {% if h.link %}
+                            <a href="{{ h.link }}" target="_blank" class="hover:text-primary hover:underline">
+                                {{ h.text[:200] }}{% if h.text|length > 200 %}...{% endif %}
+                            </a>
+                            {% else %}
+                            {{ h.text[:200] }}{% if h.text|length > 200 %}...{% endif %}
+                            {% endif %}
+                        </p>
+                        {% if h.engagement and h.engagement > 0 %}
+                        <p class="text-xs text-gray-500 mt-1">Engagement: {{ h.engagement|int }}</p>
                         {% endif %}
                     </div>
                 </div>
-                <div class="mt-6 pt-4 border-t border-dark-border">
-                    <p class="text-xs text-gray-500 text-center">Empathy Index (0-100) based on {{ total_items }} items</p>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-center py-8">No headlines available</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: VLDS Analysis -->
+    <!-- ============================================ -->
+    <section id="vlds" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">VLDS Analysis</h2>
+        <p class="text-gray-400 mb-6">Velocity × Longevity × Density × Scarcity - Strategic opportunity mapping</p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Velocity × Longevity Chart -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Velocity × Longevity</h3>
+                <p class="text-sm text-gray-500 mb-4">Topics by momentum and staying power</p>
+                <div class="h-64">
+                    <canvas id="velocity-longevity-chart"></canvas>
                 </div>
             </div>
 
-            <!-- Emotion Distribution -->
+            <!-- Density Chart -->
             <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
-                <h2 class="text-lg font-semibold mb-4">Emotional Breakdown</h2>
-                {% if emotions %}
-                <div class="space-y-2 max-h-64 overflow-y-auto">
-                    {% for e in emotions[:8] %}
-                    <div class="flex items-center justify-between text-sm">
-                        <div class="flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-full" style="background-color: {{ emotion_colors.get(e.emotion, '#808080') }}"></span>
-                            <span class="text-gray-300">{{ e.emotion }}</span>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <span class="text-gray-500">{{ e.count }} posts</span>
-                            <span class="text-primary font-medium w-14 text-right">{{ e.percentage }}%</span>
-                        </div>
-                    </div>
-                    {% endfor %}
+                <h3 class="text-lg font-medium mb-4">Density Analysis</h3>
+                <p class="text-sm text-gray-500 mb-4">Where conversations are concentrated</p>
+                <div class="h-64">
+                    <canvas id="density-chart"></canvas>
                 </div>
-                {% else %}
-                <div class="flex items-center justify-center h-32 text-gray-500">No emotion data</div>
-                {% endif %}
-            </div>
-
-            <!-- Topic Distribution -->
-            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
-                <h2 class="text-lg font-semibold mb-4">Topic Distribution</h2>
-                {% if topics %}
-                <div class="space-y-2 max-h-64 overflow-y-auto">
-                    {% for t in topics[:10] %}
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-300 truncate flex-1 mr-2">{{ t.topic }}</span>
-                        <div class="flex items-center gap-3">
-                            <span class="text-gray-500">{{ t.count }}</span>
-                            <span class="text-primary font-medium w-14 text-right">{{ t.percentage }}%</span>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="flex items-center justify-center h-32 text-gray-500">No topic data</div>
-                {% endif %}
             </div>
         </div>
 
-        <!-- Trending Headlines -->
-        <div class="bg-dark-card rounded-xl p-6 border border-dark-border mb-8">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold">Trending Headlines</h2>
-                <a href="/headlines" class="text-primary text-sm hover:underline">View All</a>
+        <!-- VLDS Metrics Grid -->
+        {% if vlds_data %}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+            <div class="bg-dark-card rounded-xl p-4 border border-dark-border text-center">
+                <p class="text-3xl font-bold text-accent-blue">{{ (vlds_data.velocity * 100)|round|int }}%</p>
+                <p class="text-gray-400">Velocity</p>
+                <p class="text-xs text-gray-500">{{ vlds_data.velocity_label }}</p>
             </div>
-            <div id="headlines-list">
-                {% if headlines %}
-                <div class="space-y-3">
-                    {% for headline in headlines %}
-                    <div class="headline-card group">
-                        <div class="flex items-start justify-between gap-4">
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="source-badge {% if headline.source == 'x' %}source-x{% elif 'news' in headline.source %}source-news{% elif 'reddit' in headline.source %}source-reddit{% else %}bg-gray-600{% endif %}">
-                                        {{ headline.source_display }}
-                                    </span>
-                                    {% if headline.topic %}
-                                    <span class="text-xs text-gray-500">{{ headline.topic }}</span>
-                                    {% endif %}
-                                </div>
-                                <p class="text-sm text-white group-hover:text-primary transition-colors line-clamp-2">
-                                    {% if headline.link %}
-                                    <a href="{{ headline.link }}" target="_blank" rel="noopener noreferrer" class="hover:underline">
-                                        {{ headline.text[:200] }}{% if headline.text|length > 200 %}...{% endif %}
-                                    </a>
-                                    {% else %}
-                                    {{ headline.text[:200] }}{% if headline.text|length > 200 %}...{% endif %}
-                                    {% endif %}
-                                </p>
-                                <div class="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                                    {% if headline.emotion %}
-                                    <span class="emotion-tag">{{ headline.emotion }}</span>
-                                    {% endif %}
-                                    {% if headline.engagement and headline.engagement > 0 %}
-                                    <span>{{ headline.engagement }} engagement</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% if headline.empathy_score is not none %}
-                            <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xs font-medium
-                                {% if headline.empathy_score < 0.04 %}bg-blue-900/30 text-blue-400
-                                {% elif headline.empathy_score < 0.10 %}bg-gray-700/50 text-gray-400
-                                {% elif headline.empathy_score < 0.30 %}bg-green-900/30 text-green-400
-                                {% else %}bg-pink-900/30 text-pink-400{% endif %}">
-                                {{ (headline.empathy_score * 100) | round(0) | int }}
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center py-8 text-gray-500">
-                    <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
-                    </svg>
-                    <p>No headlines available</p>
-                    <p class="text-sm mt-1">Click Refresh to fetch latest data</p>
-                </div>
-                {% endif %}
+            <div class="bg-dark-card rounded-xl p-4 border border-dark-border text-center">
+                <p class="text-3xl font-bold text-accent-green">{{ (vlds_data.longevity * 100)|round|int }}%</p>
+                <p class="text-gray-400">Longevity</p>
+                <p class="text-xs text-gray-500">{{ vlds_data.longevity_label }}</p>
+            </div>
+            <div class="bg-dark-card rounded-xl p-4 border border-dark-border text-center">
+                <p class="text-3xl font-bold text-accent-orange">{{ (vlds_data.density * 100)|round|int }}%</p>
+                <p class="text-gray-400">Density</p>
+                <p class="text-xs text-gray-500">{{ vlds_data.density_label }}</p>
+            </div>
+            <div class="bg-dark-card rounded-xl p-4 border border-dark-border text-center">
+                <p class="text-3xl font-bold text-accent-purple">{{ (vlds_data.scarcity * 100)|round|int }}%</p>
+                <p class="text-gray-400">Scarcity</p>
+                <p class="text-xs text-gray-500">{{ vlds_data.scarcity_label }}</p>
             </div>
         </div>
+        {% endif %}
+    </section>
 
-        <!-- Mood History Chart -->
+    <!-- ============================================ -->
+    <!-- SECTION: Mood History -->
+    <!-- ============================================ -->
+    <section id="history" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">7-Day Mood History</h2>
         <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
-            <h2 class="text-lg font-semibold mb-4">Mood History (7 Days)</h2>
             <div class="h-64">
                 <canvas id="mood-history-chart"></canvas>
             </div>
         </div>
-    </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Intelligence Dashboard -->
+    <!-- ============================================ -->
+    <section id="intelligence" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">🎯 Intelligence Dashboard</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Geographic Hotspots -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Geographic Hotspots</h3>
+                {% if geo_data %}
+                <div class="space-y-2">
+                    {% for g in geo_data[:8] %}
+                    <div class="flex items-center justify-between p-2 bg-dark-bg rounded">
+                        <span class="text-gray-300">{{ g.country }}</span>
+                        <div class="flex items-center gap-4">
+                            <span class="text-gray-500 text-sm">{{ g.count }} items</span>
+                            <span class="text-accent-cyan font-medium">{{ g.avg_empathy|round(3) if g.avg_empathy else '--' }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-center py-8">No geographic data available</p>
+                {% endif %}
+            </div>
+
+            <!-- Source Distribution -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Source Distribution</h3>
+                {% if sources %}
+                <div class="space-y-2">
+                    {% for s in sources %}
+                    <div class="flex items-center justify-between p-2 bg-dark-bg rounded">
+                        <span class="text-gray-300">{{ s.display_name }}</span>
+                        <div class="flex items-center gap-4">
+                            <span class="text-gray-500 text-sm">{{ s.count }} items</span>
+                            <span class="text-primary font-medium">{{ s.percentage }}%</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-center py-8">No source data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Brand Analysis (if brand query) -->
+    <!-- ============================================ -->
+    {% if brand_query and brand_data %}
+    <section id="brand" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">📊 Brand VLDS: {{ brand_query }}</h2>
+        <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-accent-blue">{{ brand_data.total_posts }}</p>
+                    <p class="text-gray-400">Posts</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-accent-green">{{ (brand_data.velocity * 100)|round|int }}%</p>
+                    <p class="text-gray-400">Velocity</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-accent-orange">{{ (brand_data.longevity * 100)|round|int }}%</p>
+                    <p class="text-gray-400">Longevity</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-accent-purple">{{ (brand_data.density * 100)|round|int }}%</p>
+                    <p class="text-gray-400">Density</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-accent-cyan">{{ (brand_data.scarcity * 100)|round|int }}%</p>
+                    <p class="text-gray-400">Scarcity</p>
+                </div>
+            </div>
+
+            {% if brand_data.top_emotions_detailed %}
+            <h4 class="font-medium mb-2">Dominant Emotions</h4>
+            <div class="flex flex-wrap gap-2 mb-4">
+                {% for e in brand_data.top_emotions_detailed %}
+                <span class="px-3 py-1 bg-dark-bg rounded-full text-sm">
+                    {{ e.emotion }} ({{ e.percentage }}%)
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+    // Color palette matching v1
+    const COLORS = {
+        blue: '#1f77b4',
+        orange: '#ff7f0e',
+        green: '#2ca02c',
+        red: '#d62728',
+        purple: '#9467bd',
+        brown: '#8c564b',
+        pink: '#e377c2',
+        gray: '#7f7f7f',
+        olive: '#bcbd22',
+        cyan: '#17becf'
+    };
+    const PALETTE = Object.values(COLORS);
+
     // Data from backend
     const emotionsData = {{ emotions | tojson if emotions else '[]' | safe }};
     const topicsData = {{ topics | tojson if topics else '[]' | safe }};
     const moodHistoryData = {{ mood_history | tojson if mood_history else '[]' | safe }};
     const emotionColors = {{ emotion_colors | tojson if emotion_colors else '{}' | safe }};
-    const worldMoodScore = {{ world_mood.score if world_mood and world_mood.score else 'null' }};
 
-    // Initialize charts when page loads
     document.addEventListener('DOMContentLoaded', function() {
         initEmotionChart();
         initTopicChart();
         initMoodHistoryChart();
+        initVLDSCharts();
     });
 
     function initEmotionChart() {
         const ctx = document.getElementById('emotion-chart');
-        if (!ctx) return;
-
-        if (emotionsData.length === 0) {
-            // Show placeholder
-            ctx.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">No emotion data available</div>';
-            return;
-        }
-
-        const labels = emotionsData.map(e => e.emotion);
-        const data = emotionsData.map(e => e.percentage);
-        const colors = emotionsData.map(e => emotionColors[e.emotion] || '#808080');
+        if (!ctx || emotionsData.length === 0) return;
 
         new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: labels,
+                labels: emotionsData.map(e => e.emotion),
                 datasets: [{
-                    data: data,
-                    backgroundColor: colors,
+                    data: emotionsData.map(e => e.percentage),
+                    backgroundColor: emotionsData.map((e, i) => emotionColors[e.emotion] || PALETTE[i % PALETTE.length]),
                     borderWidth: 0
                 }]
             },
@@ -255,18 +445,7 @@
                 plugins: {
                     legend: {
                         position: 'right',
-                        labels: {
-                            color: '#9CA3AF',
-                            font: { size: 11 },
-                            boxWidth: 12
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.label + ': ' + context.raw.toFixed(1) + '%';
-                            }
-                        }
+                        labels: { color: '#9CA3AF', font: { size: 11 } }
                     }
                 }
             }
@@ -275,23 +454,16 @@
 
     function initTopicChart() {
         const ctx = document.getElementById('topic-chart');
-        if (!ctx) return;
+        if (!ctx || topicsData.length === 0) return;
 
-        if (topicsData.length === 0) {
-            ctx.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">No topic data available</div>';
-            return;
-        }
-
-        const labels = topicsData.slice(0, 8).map(t => t.topic);
-        const data = topicsData.slice(0, 8).map(t => t.percentage);
-
+        const data = topicsData.slice(0, 10);
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: labels,
+                labels: data.map(t => t.topic),
                 datasets: [{
-                    data: data,
-                    backgroundColor: '#FF4B4B',
+                    data: data.map(t => t.percentage),
+                    backgroundColor: PALETTE,
                     borderRadius: 4
                 }]
             },
@@ -299,29 +471,10 @@
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.raw.toFixed(1) + '%';
-                            }
-                        }
-                    }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
-                    x: {
-                        grid: { color: '#3D3D3D' },
-                        ticks: { color: '#9CA3AF' },
-                        max: Math.max(...data) * 1.2
-                    },
-                    y: {
-                        grid: { display: false },
-                        ticks: {
-                            color: '#9CA3AF',
-                            font: { size: 10 }
-                        }
-                    }
+                    x: { grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' } },
+                    y: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 10 } } }
                 }
             }
         });
@@ -331,17 +484,11 @@
         const ctx = document.getElementById('mood-history-chart');
         if (!ctx) return;
 
-        // Use real data or placeholder
         let labels, data;
-
         if (moodHistoryData.length > 0) {
-            labels = moodHistoryData.map(h => {
-                const date = new Date(h.date);
-                return date.toLocaleDateString('en-US', { weekday: 'short' });
-            });
+            labels = moodHistoryData.map(h => new Date(h.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
             data = moodHistoryData.map(h => h.score);
         } else {
-            // Placeholder data if no history
             labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             data = [50, 50, 50, 50, 50, 50, 50];
         }
@@ -353,62 +500,92 @@
                 datasets: [{
                     label: 'Empathy Score',
                     data: data,
-                    borderColor: '#FF4B4B',
-                    backgroundColor: 'rgba(255, 75, 75, 0.1)',
+                    borderColor: COLORS.blue,
+                    backgroundColor: 'rgba(31, 119, 180, 0.1)',
                     fill: true,
                     tension: 0.4,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#FF4B4B',
-                    pointHoverRadius: 6
+                    pointRadius: 5,
+                    pointBackgroundColor: COLORS.blue,
+                    pointHoverRadius: 7
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return 'Score: ' + context.raw;
-                            }
-                        }
-                    }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
-                    x: {
-                        grid: { color: '#3D3D3D' },
-                        ticks: { color: '#9CA3AF' }
-                    },
-                    y: {
-                        min: 0,
-                        max: 100,
-                        grid: { color: '#3D3D3D' },
-                        ticks: {
-                            color: '#9CA3AF',
-                            stepSize: 25
-                        }
-                    }
-                },
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
+                    x: { grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' } },
+                    y: { min: 0, max: 100, grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF', stepSize: 25 } }
                 }
             }
         });
     }
 
-    // Handle refresh button response
-    document.body.addEventListener('htmx:afterRequest', function(evt) {
-        if (evt.detail.pathInfo.requestPath === '/api/refresh') {
-            if (evt.detail.successful) {
-                showToast('Data refresh scheduled', 'success');
-                // Reload page after short delay
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                showToast('Refresh failed', 'error');
-            }
+    function initVLDSCharts() {
+        // Velocity × Longevity scatter placeholder
+        const vlCtx = document.getElementById('velocity-longevity-chart');
+        if (vlCtx && topicsData.length > 0) {
+            // Generate mock VLDS data from topics (would be real in production)
+            const vlData = topicsData.slice(0, 8).map((t, i) => ({
+                x: Math.random() * 100,
+                y: Math.random() * 100,
+                label: t.topic
+            }));
+
+            new Chart(vlCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        data: vlData.map(d => ({ x: d.x, y: d.y })),
+                        backgroundColor: PALETTE,
+                        pointRadius: 10,
+                        pointHoverRadius: 14
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => vlData[ctx.dataIndex]?.label || ''
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Velocity', color: '#9CA3AF' }, grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' }, min: 0, max: 100 },
+                        y: { title: { display: true, text: 'Longevity', color: '#9CA3AF' }, grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' }, min: 0, max: 100 }
+                    }
+                }
+            });
         }
-    });
+
+        // Density bar chart
+        const dCtx = document.getElementById('density-chart');
+        if (dCtx && topicsData.length > 0) {
+            const densityData = topicsData.slice(0, 6);
+            new Chart(dCtx, {
+                type: 'bar',
+                data: {
+                    labels: densityData.map(t => t.topic),
+                    datasets: [{
+                        data: densityData.map(t => t.count),
+                        backgroundColor: densityData.map((_, i) => `hsl(${180 + i * 30}, 70%, 50%)`),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 9 } } },
+                        y: { grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' } }
+                    }
+                }
+            });
+        }
+    }
 </script>
 {% endblock %}

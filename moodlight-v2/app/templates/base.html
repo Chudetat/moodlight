@@ -20,7 +20,7 @@
     <!-- Tailwind CSS (via CDN for development) -->
     <script src="https://cdn.tailwindcss.com?plugins="></script>
     <style>
-        /* Hide Tailwind CDN development indicator - multiple selectors */
+        /* Hide Tailwind CDN development indicator */
         #__tailwind_inspector_badge_container,
         [class*="tailwind"],
         [id*="tailwind"],
@@ -30,6 +30,13 @@
             visibility: hidden !important;
             opacity: 0 !important;
         }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1E1E1E; }
+        ::-webkit-scrollbar-thumb { background: #3D3D3D; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4D4D4D; }
+        /* Smooth scroll */
+        html { scroll-behavior: smooth; }
     </style>
     <script>
         tailwind.config = {
@@ -38,10 +45,23 @@
                 extend: {
                     colors: {
                         primary: '#FF4B4B',
+                        accent: {
+                            blue: '#1f77b4',
+                            orange: '#ff7f0e',
+                            green: '#2ca02c',
+                            red: '#d62728',
+                            purple: '#9467bd',
+                            brown: '#8c564b',
+                            pink: '#e377c2',
+                            gray: '#7f7f7f',
+                            olive: '#bcbd22',
+                            cyan: '#17becf'
+                        },
                         dark: {
-                            bg: '#1E1E1E',
-                            card: '#2D2D2D',
-                            border: '#3D3D3D'
+                            bg: '#0E1117',
+                            card: '#262730',
+                            border: '#3D3D3D',
+                            sidebar: '#1E1E1E'
                         }
                     }
                 }
@@ -60,68 +80,90 @@
 
     {% block body %}
     <div class="flex min-h-screen">
-        <!-- Sidebar -->
+        <!-- Sidebar - Controls (like v1 Streamlit) -->
         {% if user %}
-        <aside class="w-64 bg-dark-card border-r border-dark-border p-4 flex flex-col">
+        <aside class="w-72 bg-dark-sidebar border-r border-dark-border p-4 flex flex-col h-screen sticky top-0 overflow-y-auto">
             <!-- Logo -->
-            <div class="mb-8">
-                <img src="/static/logo.png" alt="Moodlight" class="h-10">
+            <div class="mb-6">
+                <img src="/static/logo.png" alt="Moodlight" class="h-12">
+                <p class="text-xs text-gray-500 mt-1">Where culture is heading. What audiences feel.</p>
             </div>
 
             <!-- User info -->
             <div class="mb-6 p-3 bg-dark-bg rounded-lg">
-                <p class="text-sm text-gray-400">Welcome</p>
-                <p class="font-medium">{{ user.username }}</p>
+                <p class="text-sm text-gray-400">Welcome, <span class="text-white font-medium">{{ user.username }}</span></p>
                 <span class="inline-block mt-1 px-2 py-0.5 text-xs rounded bg-primary/20 text-primary">
                     {{ tier_display }}
                 </span>
             </div>
 
-            <!-- Navigation -->
-            <nav class="flex-1 space-y-1">
-                <a href="/dashboard"
-                   class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors {% if request.url.path == '/dashboard' %}bg-dark-bg text-primary{% endif %}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                    </svg>
-                    Dashboard
-                </a>
-                <a href="/headlines"
-                   class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors {% if request.url.path == '/headlines' %}bg-dark-bg text-primary{% endif %}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
-                    </svg>
-                    Headlines
-                </a>
-                <a href="/markets"
-                   class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors {% if request.url.path == '/markets' %}bg-dark-bg text-primary{% endif %}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                    </svg>
-                    Markets
-                </a>
-                <a href="/briefs"
-                   class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors {% if request.url.path == '/briefs' %}bg-dark-bg text-primary{% endif %}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    Strategic Briefs
-                    <span class="ml-auto text-xs text-gray-400">{{ briefs_remaining }} left</span>
-                </a>
-                <a href="/brands"
-                   class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors {% if request.url.path == '/brands' %}bg-dark-bg text-primary{% endif %}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
-                    </svg>
-                    Brand Analysis
-                </a>
-            </nav>
+            <!-- Controls Section -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Controls</h3>
 
-            <!-- Logout -->
+                <!-- View Mode Toggle -->
+                <div class="mb-4">
+                    <label class="text-xs text-gray-500 block mb-2">View Mode</label>
+                    <div class="flex rounded-lg bg-dark-bg p-1">
+                        <a href="?mode=breaking"
+                           class="flex-1 px-3 py-2 text-center text-sm rounded-md transition-colors {% if view_mode == 'breaking' %}bg-primary text-white{% else %}text-gray-400 hover:text-white{% endif %}">
+                            Breaking (48h)
+                        </a>
+                        <a href="?mode=strategic"
+                           class="flex-1 px-3 py-2 text-center text-sm rounded-md transition-colors {% if view_mode == 'strategic' %}bg-primary text-white{% else %}text-gray-400 hover:text-white{% endif %}">
+                            Strategic (30d)
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Brand Tracking Input -->
+                <div class="mb-4">
+                    <label class="text-xs text-gray-500 block mb-2">Brand Tracking</label>
+                    <form action="/dashboard" method="get" class="flex gap-2">
+                        <input type="hidden" name="mode" value="{{ view_mode }}">
+                        <input type="text" name="brand" value="{{ brand_query or '' }}"
+                               placeholder="Enter brand name..."
+                               class="flex-1 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm focus:outline-none focus:border-primary">
+                        <button type="submit" class="px-3 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/80">
+                            Track
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Strategic Brief Section -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">🎯 Strategic Brief</h3>
+                <form hx-post="/api/briefs/generate" hx-target="#brief-output" hx-swap="innerHTML">
+                    <textarea name="prompt" rows="3"
+                              placeholder="What do you need a brief for? (e.g., 'Launch campaign for Gen Z audience')"
+                              class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm focus:outline-none focus:border-primary resize-none mb-2"></textarea>
+                    <button type="submit" class="w-full px-3 py-2 bg-accent-blue text-white rounded-lg text-sm hover:opacity-80 transition-opacity">
+                        Generate Brief ({{ briefs_remaining }} left)
+                    </button>
+                </form>
+                <div id="brief-output" class="mt-2 text-xs text-gray-400"></div>
+            </div>
+
+            <!-- Quick Navigation (scroll anchors) -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Jump To</h3>
+                <nav class="space-y-1 text-sm">
+                    <a href="#cultural-pulse" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">Cultural Pulse</a>
+                    <a href="#markets" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">Markets</a>
+                    <a href="#emotions" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">Emotions</a>
+                    <a href="#topics" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">Topics</a>
+                    <a href="#headlines" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">Headlines</a>
+                    <a href="#vlds" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">VLDS Analysis</a>
+                    <a href="#intelligence" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">Intelligence</a>
+                </nav>
+            </div>
+
+            <!-- Logout at bottom -->
             <div class="mt-auto pt-4 border-t border-dark-border">
                 <a href="/auth/logout"
                    class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors text-gray-400 hover:text-white">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                     </svg>
                     Logout
@@ -130,8 +172,8 @@
         </aside>
         {% endif %}
 
-        <!-- Main content -->
-        <main class="flex-1 overflow-auto">
+        <!-- Main content - Single scrollable area -->
+        <main class="flex-1 overflow-y-auto">
             {% block content %}{% endblock %}
         </main>
     </div>
