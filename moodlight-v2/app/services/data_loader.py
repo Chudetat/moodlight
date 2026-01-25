@@ -40,11 +40,13 @@ async def load_data_from_db(
     """
     print(f"[data_loader] Loading data for {days} days", flush=True)
 
-    # Build SQL query that unions both v1 tables (news_scored and social_scored)
+    # Query each table separately to avoid UNION type mismatch issues
+    # Cast all columns to text to handle schema differences
     base_columns = """
-        id, text, created_at, link, source, topic,
-        COALESCE(engagement, 0) as engagement, country, intensity,
-        empathy_score, empathy_label, emotion_top_1, emotion_top_2, emotion_top_3
+        id::text as id, text, created_at::text as created_at, link, source, topic,
+        COALESCE(engagement::text, '0') as engagement, country, intensity::text as intensity,
+        empathy_score::text as empathy_score, empathy_label,
+        emotion_top_1, emotion_top_2, emotion_top_3
     """
 
     source_clause = ""
@@ -53,59 +55,77 @@ async def load_data_from_db(
         source_clause = "WHERE source = :source"
         params["source"] = source_filter
 
-    # First try without date filter to see if tables have data
-    sql = text(f"""
-        SELECT {base_columns} FROM news_scored {source_clause}
-        UNION ALL
-        SELECT {base_columns} FROM social_scored {source_clause}
-        ORDER BY created_at DESC
-        LIMIT 1000
-    """)
-
-    rows = []
-    try:
-        print(f"[data_loader] Executing query on news_scored + social_scored", flush=True)
-        result = await db.execute(sql, params)
-        rows = result.fetchall()
-        print(f"[data_loader] Got {len(rows)} rows from combined query", flush=True)
-    except Exception as e:
-        print(f"[data_loader] Error querying both tables: {e}", flush=True)
-        # Try just news_scored
-        try:
-            sql_news = text(f"SELECT {base_columns} FROM news_scored {source_clause} ORDER BY created_at DESC LIMIT 500")
-            result = await db.execute(sql_news, params)
-            rows = result.fetchall()
-            print(f"[data_loader] Got {len(rows)} rows from news_scored only", flush=True)
-        except Exception as e2:
-            print(f"[data_loader] Error querying news_scored: {e2}", flush=True)
-            # Try social_scored
-            try:
-                sql_social = text(f"SELECT {base_columns} FROM social_scored {source_clause} ORDER BY created_at DESC LIMIT 500")
-                result = await db.execute(sql_social, params)
-                rows = result.fetchall()
-                print(f"[data_loader] Got {len(rows)} rows from social_scored only", flush=True)
-            except Exception as e3:
-                print(f"[data_loader] Error querying social_scored: {e3}", flush=True)
-                return pd.DataFrame()
-
-    if not rows:
-        print("[data_loader] No rows returned", flush=True)
-        return pd.DataFrame()
-
-    # Convert to DataFrame
     columns = ["id", "text", "created_at", "link", "source", "topic",
                "engagement", "country", "intensity", "empathy_score",
                "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3"]
 
-    data = [dict(zip(columns, row)) for row in rows]
+    all_rows = []
+
+    # Query news_scored
+    news_rows = []
+    try:
+        sql_news = text(f"SELECT {base_columns} FROM news_scored {source_clause} ORDER BY created_at DESC LIMIT 500")
+        print(f"[data_loader] Querying news_scored...", flush=True)
+        result = await db.execute(sql_news, params)
+        news_rows = result.fetchall()
+        print(f"[data_loader] Got {len(news_rows)} rows from news_scored", flush=True)
+    except Exception as e:
+        print(f"[data_loader] Error querying news_scored: {e}", flush=True)
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+
+    # Query social_scored - need fresh connection state
+    social_rows = []
+    try:
+        # Commit any pending state to reset transaction
+        try:
+            await db.commit()
+        except Exception:
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+
+        sql_social = text(f"SELECT {base_columns} FROM social_scored {source_clause} ORDER BY created_at DESC LIMIT 500")
+        print(f"[data_loader] Querying social_scored...", flush=True)
+        result = await db.execute(sql_social, params)
+        social_rows = result.fetchall()
+        print(f"[data_loader] Got {len(social_rows)} rows from social_scored", flush=True)
+    except Exception as e:
+        print(f"[data_loader] Error querying social_scored: {e}", flush=True)
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+
+    all_rows = list(news_rows) + list(social_rows)
+
+    if not all_rows:
+        print("[data_loader] No rows returned from either table", flush=True)
+        return pd.DataFrame()
+
+    print(f"[data_loader] Total rows: {len(all_rows)}", flush=True)
+
+    # Convert to DataFrame
+    data = [dict(zip(columns, row)) for row in all_rows]
     df = pd.DataFrame(data)
 
-    # Filter by date in pandas (more reliable than SQL date comparison)
+    # Convert types
+    df["engagement"] = pd.to_numeric(df["engagement"], errors="coerce").fillna(0)
+    df["intensity"] = pd.to_numeric(df["intensity"], errors="coerce")
+    df["empathy_score"] = pd.to_numeric(df["empathy_score"], errors="coerce")
+
+    # Filter by date in pandas
     if "created_at" in df.columns and len(df) > 0:
         df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce", utc=True)
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         df = df[df["created_at"] >= cutoff]
         print(f"[data_loader] After date filter: {len(df)} rows", flush=True)
+
+    # Sort by created_at
+    df = df.sort_values("created_at", ascending=False)
 
     return df
 
