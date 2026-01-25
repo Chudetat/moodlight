@@ -40,6 +40,12 @@ async def load_data_from_db(
     """
     print(f"[data_loader] Loading data for {days} days", flush=True)
 
+    # Ensure clean transaction state
+    try:
+        await db.rollback()
+    except Exception:
+        pass
+
     # Query each table separately to avoid UNION type mismatch issues
     # Cast all columns to text to handle schema differences
     base_columns = """
