@@ -18,7 +18,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Tailwind CSS (via CDN for development) -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins="></script>
+    <style>
+        /* Hide Tailwind CDN development indicator */
+        #__tailwind_inspector_badge_container { display: none !important; }
+    </style>
     <script>
         tailwind.config = {
             darkMode: 'class',
