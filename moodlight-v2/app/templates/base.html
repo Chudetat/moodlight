@@ -20,8 +20,16 @@
     <!-- Tailwind CSS (via CDN for development) -->
     <script src="https://cdn.tailwindcss.com?plugins="></script>
     <style>
-        /* Hide Tailwind CDN development indicator */
-        #__tailwind_inspector_badge_container { display: none !important; }
+        /* Hide Tailwind CDN development indicator - multiple selectors */
+        #__tailwind_inspector_badge_container,
+        [class*="tailwind"],
+        [id*="tailwind"],
+        .tw-indicator,
+        div[style*="z-index: 99999"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+        }
     </style>
     <script>
         tailwind.config = {
