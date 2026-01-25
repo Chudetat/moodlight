@@ -823,21 +823,16 @@ Based on the empathy score and emotional climate:
 
 End with: "Consider: '[specific campaign thought-starter]'"
 
-## 4. ⚡ UNEXPECTED ANGLE: The Insight They Didn't See Coming
+## 4. ⚡ THE UNCOMFORTABLE TRUTH
 
-This is where you earn your fee. Include ALL of the following:
+This is where you earn your fee. Find ONE integrated insight that:
+- Challenges what the client assumes about their category
+- Is backed by a tension or contradiction in the data
+- Leads to a creative move no competitor would make
 
-- **Contrarian Take**: One insight that challenges conventional thinking about this category. What would surprise the client? What do they NOT expect to hear but need to?
+Don't give five separate boxes. Give one connected insight that makes the client uncomfortable, then excited.
 
-- **Data Tension**: Look for contradictions (what people say vs. what they engage with, stated values vs. actual behavior). Call out one paradox in the data.
-
-- **Cultural Parallel**: Reference one analogy from another brand, category, or cultural moment that illuminates the current opportunity.
-
-- **Competitor Blind Spot**: What is one thing competitors in this space are likely missing right now?
-
-- **Creative Spark**: One bold campaign idea or hook that ONLY works in this specific cultural moment. Not generic. Not safe. Something that makes the client lean forward.
-
-End with: "The non-obvious move: [one sentence summary of the unexpected angle]"
+End with: "The non-obvious move: [one sentence]"
 
 ## 5. 🔥 WHY NOW: The Real-Time Trigger
 
@@ -851,13 +846,9 @@ This brief must feel URGENT and TIMELY. Use the RECENT HEADLINES and HIGH-ENGAGE
 
 End with: "Act now because: [one sentence on why timing matters]"
 
-Be bold and specific. Reference actual data points. Make decisions, not suggestions.
+---
 
-IMPORTANT: Do NOT include obvious "avoid" recommendations that any brand strategist already knows (e.g., "avoid war & foreign policy for brand safety"). Only mention Avoid Zones if:
-1. The client's specific product/challenge intersects with that topic, OR
-2. There's a non-obvious risk the client might miss
-
-Focus on actionable opportunities, not generic warnings.
+QUALITY CHECK: Before finalizing, delete any sentence a competitor's strategist could also write. If an insight isn't specific to THIS data and THIS moment, cut it.
 
 End the brief with: "---
 Powered by Moodlight's Cultural Momentum Matrix™"
