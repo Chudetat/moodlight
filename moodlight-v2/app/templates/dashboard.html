@@ -73,39 +73,64 @@
             <!-- Mood Gauge -->
             <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
                 <h2 class="text-lg font-semibold mb-4">World Mood</h2>
-                <div class="flex items-center justify-center h-48">
-                    <div class="relative w-40 h-40">
-                        <canvas id="mood-gauge"></canvas>
-                        <div class="absolute inset-0 flex items-center justify-center flex-col">
-                            {% if world_mood and world_mood.score is not none %}
-                            <span class="text-4xl font-bold text-primary" id="mood-score">{{ world_mood.score }}</span>
-                            <span class="text-sm text-gray-400" id="mood-label">{{ world_mood.label }}</span>
-                            {% else %}
-                            <span class="text-2xl font-bold text-gray-500">--</span>
-                            <span class="text-sm text-gray-400">No Data</span>
-                            {% endif %}
-                        </div>
+                <div class="flex items-center justify-center">
+                    <div class="text-center">
+                        {% if world_mood and world_mood.score is not none %}
+                        <span class="text-5xl font-bold text-primary">{{ world_mood.score }}</span>
+                        <p class="text-lg text-gray-300 mt-2">{{ world_mood.label }}</p>
+                        <p class="text-sm text-gray-500 mt-1">Raw avg: {{ world_mood.raw_avg }}</p>
+                        {% else %}
+                        <span class="text-4xl font-bold text-gray-500">--</span>
+                        <p class="text-sm text-gray-400 mt-2">No Data</p>
+                        {% endif %}
                     </div>
                 </div>
-                <p class="text-center text-gray-400 text-sm mt-4">
-                    Empathy Index (0-100)
-                </p>
+                <div class="mt-6 pt-4 border-t border-dark-border">
+                    <p class="text-xs text-gray-500 text-center">Empathy Index (0-100) based on {{ total_items }} items</p>
+                </div>
             </div>
 
             <!-- Emotion Distribution -->
             <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
                 <h2 class="text-lg font-semibold mb-4">Emotional Breakdown</h2>
-                <div class="h-48">
-                    <canvas id="emotion-chart"></canvas>
+                {% if emotions %}
+                <div class="space-y-2 max-h-64 overflow-y-auto">
+                    {% for e in emotions[:8] %}
+                    <div class="flex items-center justify-between text-sm">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full" style="background-color: {{ emotion_colors.get(e.emotion, '#808080') }}"></span>
+                            <span class="text-gray-300">{{ e.emotion }}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-gray-500">{{ e.count }} posts</span>
+                            <span class="text-primary font-medium w-14 text-right">{{ e.percentage }}%</span>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
+                {% else %}
+                <div class="flex items-center justify-center h-32 text-gray-500">No emotion data</div>
+                {% endif %}
             </div>
 
             <!-- Topic Distribution -->
             <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
                 <h2 class="text-lg font-semibold mb-4">Topic Distribution</h2>
-                <div class="h-48">
-                    <canvas id="topic-chart"></canvas>
+                {% if topics %}
+                <div class="space-y-2 max-h-64 overflow-y-auto">
+                    {% for t in topics[:10] %}
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-300 truncate flex-1 mr-2">{{ t.topic }}</span>
+                        <div class="flex items-center gap-3">
+                            <span class="text-gray-500">{{ t.count }}</span>
+                            <span class="text-primary font-medium w-14 text-right">{{ t.percentage }}%</span>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
+                {% else %}
+                <div class="flex items-center justify-center h-32 text-gray-500">No topic data</div>
+                {% endif %}
             </div>
         </div>
 
