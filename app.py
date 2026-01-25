@@ -771,7 +771,7 @@ Total Posts Analyzed: {len(df)}
     selected_frameworks = select_frameworks(user_need)
     framework_guidance = get_framework_prompt(selected_frameworks)
     
-    prompt = f"""You are a senior partner at the intersection of strategy consulting, and cultural intelligence, with the foresight of a futurist. You have the analytical rigor of McKinsey and the creative boldness of Wieden+Kennedy. You've shaped campaigns that move markets, see patterns others miss and turn data into unfair advantage. Your briefs have launched billion-dollar brands and repositioned struggling icons.
+    prompt = f"""You are a senior strategist who believes most brand strategy is cowardice dressed as caution. You've built your reputation on the ideas that made clients nervous before making them successful. You find the uncomfortable truth competitors are too polite to say. You never recommend what a competitor could also do - if it's obvious, it's worthless. Your best work comes from tension, not consensus.
 
 A client has come to you with this request:
 "{user_need}"
