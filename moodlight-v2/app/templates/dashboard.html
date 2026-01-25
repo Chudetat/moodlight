@@ -180,13 +180,73 @@
     <!-- ============================================ -->
     <!-- SECTION: Trending Headlines -->
     <!-- ============================================ -->
-    <section id="headlines" class="mb-12">
-        <h2 class="text-2xl font-semibold mb-6">Trending Headlines <span class="text-sm font-normal text-gray-500">({{ headlines|length }} items - scroll to browse)</span></h2>
+    <section id="headlines" class="mb-12" x-data="{
+        filterTopic: '',
+        filterSource: '',
+        filterEmotion: '',
+        visibleCount: {{ headlines|length if headlines else 0 }},
+        filterHeadlines() {
+            const items = document.querySelectorAll('.headline-item');
+            let count = 0;
+            items.forEach(item => {
+                const topic = item.dataset.topic || '';
+                const source = item.dataset.source || '';
+                const emotion = item.dataset.emotion || '';
+                const matchTopic = !this.filterTopic || topic === this.filterTopic;
+                const matchSource = !this.filterSource || source === this.filterSource;
+                const matchEmotion = !this.filterEmotion || emotion === this.filterEmotion;
+                if (matchTopic && matchSource && matchEmotion) {
+                    item.classList.remove('hidden');
+                    count++;
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+            this.visibleCount = count;
+        }
+    }">
+        <h2 class="text-2xl font-semibold mb-6">Trending Headlines <span class="text-sm font-normal text-gray-500" x-text="'(' + visibleCount + ' items - scroll to browse)'"></span></h2>
+
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-3 mb-4">
+            <select x-model="filterTopic" @change="filterHeadlines()"
+                    class="px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm focus:outline-none focus:border-primary">
+                <option value="">All Topics</option>
+                {% for t in topics[:15] %}
+                <option value="{{ t.topic }}">{{ t.topic }} ({{ t.count }})</option>
+                {% endfor %}
+            </select>
+
+            <select x-model="filterSource" @change="filterHeadlines()"
+                    class="px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm focus:outline-none focus:border-primary">
+                <option value="">All Sources</option>
+                {% for s in sources %}
+                <option value="{{ s.source }}">{{ s.display_name }} ({{ s.count }})</option>
+                {% endfor %}
+            </select>
+
+            <select x-model="filterEmotion" @change="filterHeadlines()"
+                    class="px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm focus:outline-none focus:border-primary">
+                <option value="">All Emotions</option>
+                {% for e in emotions[:10] %}
+                <option value="{{ e.emotion }}">{{ e.emotion }} ({{ e.count }})</option>
+                {% endfor %}
+            </select>
+
+            <button @click="filterTopic=''; filterSource=''; filterEmotion=''; filterHeadlines()"
+                    class="px-3 py-2 text-sm text-gray-400 hover:text-white">
+                Clear Filters
+            </button>
+        </div>
+
         <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
             {% if headlines %}
-            <div class="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+            <div id="headlines-container" class="space-y-4 max-h-[600px] overflow-y-auto pr-2">
                 {% for h in headlines %}
-                <div class="flex items-start gap-4 p-4 bg-dark-bg rounded-lg hover:bg-dark-border/30 transition-colors">
+                <div class="headline-item flex items-start gap-4 p-4 bg-dark-bg rounded-lg hover:bg-dark-border/30 transition-colors"
+                     data-topic="{{ h.topic or '' }}"
+                     data-source="{{ h.source or '' }}"
+                     data-emotion="{{ h.emotion or '' }}">
                     <!-- Empathy Score Badge -->
                     <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold
                         {% if h.empathy_score and h.empathy_score < 0.04 %}bg-blue-900/50 text-blue-400
