@@ -2625,7 +2625,7 @@ df_world_view = df_filtered[df_filtered["created_at"] >= world_view_cutoff].copy
 st.markdown("### World View")
 st.caption("Everything happening right now—the raw intelligence feed.")
 
-cols = [c for c in ["text", "source", "topic", "empathy_label", "emotion_top_1", "engagement", "created_at"] if c in df_filtered.columns]
+cols = [c for c in ["text", "link", "source", "topic", "empathy_label", "emotion_top_1", "engagement", "created_at"] if c in df_filtered.columns]
 if len(df_world_view):
     display_df = df_world_view[cols].copy()
     if "created_at" in display_df.columns:
@@ -2637,6 +2637,7 @@ if len(df_world_view):
         use_container_width=True,
         column_config={
             "text": st.column_config.TextColumn("Post", width="large"),
+            "link": st.column_config.LinkColumn("Link", width="small", display_text="Open"),
             "source": st.column_config.TextColumn("Source", width="small"),
             "engagement": st.column_config.NumberColumn("Engagement", format="%d"),
             "empathy_label": st.column_config.TextColumn("Empathy"),
