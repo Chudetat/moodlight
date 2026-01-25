@@ -477,6 +477,7 @@
     const topicsData = {{ topics | tojson if topics else '[]' | safe }};
     const moodHistoryData = {{ mood_history | tojson if mood_history else '[]' | safe }};
     const emotionColors = {{ emotion_colors | tojson if emotion_colors else '{}' | safe }};
+    const topicVldsData = {{ topic_vlds | tojson if topic_vlds else '[]' | safe }};
 
     document.addEventListener('DOMContentLoaded', function() {
         initEmotionChart();
@@ -582,24 +583,24 @@
     }
 
     function initVLDSCharts() {
-        // Velocity × Longevity scatter placeholder
+        // Velocity × Longevity scatter with real VLDS data
         const vlCtx = document.getElementById('velocity-longevity-chart');
-        if (vlCtx && topicsData.length > 0) {
-            // Generate mock VLDS data from topics (would be real in production)
-            const vlData = topicsData.slice(0, 8).map((t, i) => ({
-                x: Math.random() * 100,
-                y: Math.random() * 100,
-                label: t.topic
-            }));
+        const vlData = topicVldsData.length > 0 ? topicVldsData : topicsData.slice(0, 8).map((t, i) => ({
+            topic: t.topic,
+            velocity: 50,
+            longevity: 50,
+            density: 50
+        }));
 
+        if (vlCtx && vlData.length > 0) {
             new Chart(vlCtx, {
                 type: 'scatter',
                 data: {
                     datasets: [{
-                        data: vlData.map(d => ({ x: d.x, y: d.y })),
+                        data: vlData.map(d => ({ x: d.velocity, y: d.longevity })),
                         backgroundColor: PALETTE,
-                        pointRadius: 10,
-                        pointHoverRadius: 14
+                        pointRadius: 12,
+                        pointHoverRadius: 16
                     }]
                 },
                 options: {
@@ -609,29 +610,34 @@
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: (ctx) => vlData[ctx.dataIndex]?.label || ''
+                                label: (ctx) => {
+                                    const d = vlData[ctx.dataIndex];
+                                    return d ? `${d.topic}: V=${d.velocity}%, L=${d.longevity}%` : '';
+                                }
                             }
                         }
                     },
                     scales: {
-                        x: { title: { display: true, text: 'Velocity', color: '#9CA3AF' }, grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' }, min: 0, max: 100 },
-                        y: { title: { display: true, text: 'Longevity', color: '#9CA3AF' }, grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' }, min: 0, max: 100 }
+                        x: { title: { display: true, text: 'Velocity →', color: '#9CA3AF' }, grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' }, min: 0, max: 100 },
+                        y: { title: { display: true, text: 'Longevity ↑', color: '#9CA3AF' }, grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' }, min: 0, max: 100 }
                     }
                 }
             });
         }
 
-        // Density bar chart
+        // Density bar chart with real data
         const dCtx = document.getElementById('density-chart');
-        if (dCtx && topicsData.length > 0) {
-            const densityData = topicsData.slice(0, 6);
+        const densityData = topicVldsData.length > 0 ? topicVldsData.slice(0, 6) : topicsData.slice(0, 6).map(t => ({ topic: t.topic, density: t.percentage }));
+
+        if (dCtx && densityData.length > 0) {
             new Chart(dCtx, {
                 type: 'bar',
                 data: {
                     labels: densityData.map(t => t.topic),
                     datasets: [{
-                        data: densityData.map(t => t.count),
-                        backgroundColor: densityData.map((_, i) => `hsl(${180 + i * 30}, 70%, 50%)`),
+                        label: 'Density Score',
+                        data: densityData.map(t => t.density),
+                        backgroundColor: densityData.map((_, i) => PALETTE[i % PALETTE.length]),
                         borderRadius: 4
                     }]
                 },
@@ -641,7 +647,7 @@
                     plugins: { legend: { display: false } },
                     scales: {
                         x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 9 } } },
-                        y: { grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' } }
+                        y: { title: { display: true, text: 'Density %', color: '#9CA3AF' }, grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' }, min: 0, max: 100 }
                     }
                 }
             });

@@ -131,6 +131,62 @@
                 </div>
             </div>
 
+            <!-- Ask Moodlight Chat Section -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">💬 Ask Moodlight</h3>
+                <div x-data="{
+                    message: '',
+                    chatHistory: [],
+                    isLoading: false,
+                    async sendMessage() {
+                        if (!this.message.trim() || this.isLoading) return;
+                        const userMsg = this.message;
+                        this.chatHistory.push({ role: 'user', content: userMsg });
+                        this.message = '';
+                        this.isLoading = true;
+                        try {
+                            const resp = await fetch('/api/chat', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ message: userMsg })
+                            });
+                            const data = await resp.json();
+                            this.chatHistory.push({ role: 'assistant', content: data.response || data.error || 'No response' });
+                        } catch(e) {
+                            this.chatHistory.push({ role: 'assistant', content: 'Error: Could not connect to chat service.' });
+                        }
+                        this.isLoading = false;
+                        this.$nextTick(() => { document.getElementById('chat-messages').scrollTop = 999999; });
+                    }
+                }">
+                    <!-- Chat Messages -->
+                    <div id="chat-messages" class="h-32 overflow-y-auto bg-dark-bg rounded-lg p-2 mb-2 text-xs space-y-2">
+                        <template x-for="(msg, i) in chatHistory" :key="i">
+                            <div :class="msg.role === 'user' ? 'text-right' : 'text-left'">
+                                <span :class="msg.role === 'user' ? 'bg-primary/20 text-primary' : 'bg-dark-card text-gray-300'"
+                                      class="inline-block px-2 py-1 rounded-lg max-w-[90%]" x-text="msg.content"></span>
+                            </div>
+                        </template>
+                        <div x-show="chatHistory.length === 0" class="text-gray-500 text-center py-4">
+                            Ask questions about the data...
+                        </div>
+                        <div x-show="isLoading" class="text-gray-400 text-center">
+                            <span class="animate-pulse">Thinking...</span>
+                        </div>
+                    </div>
+                    <!-- Input -->
+                    <div class="flex gap-2">
+                        <input type="text" x-model="message" @keydown.enter="sendMessage()"
+                               placeholder="What's trending today?"
+                               class="flex-1 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm focus:outline-none focus:border-primary">
+                        <button @click="sendMessage()" :disabled="isLoading"
+                                class="px-3 py-2 bg-accent-purple text-white rounded-lg text-sm hover:opacity-80 transition-opacity disabled:opacity-50">
+                            Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Strategic Brief Section -->
             <div class="mb-6">
                 <h3 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">🎯 Strategic Brief</h3>

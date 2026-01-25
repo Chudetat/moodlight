@@ -3,7 +3,7 @@ Dashboard router - main dashboard page and data API endpoints.
 """
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, Request, Query, Body
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -70,6 +70,12 @@ async def dashboard_page(
         if not brand_df.empty:
             brand_data = calculate_brand_vlds(brand_df)
 
+    # Global VLDS calculations
+    vlds_data = calculate_global_vlds(df)
+
+    # Topic-level VLDS for scatter chart
+    topic_vlds = calculate_topic_vlds(df, top_n=10)
+
     # Current date formatted
     current_date = datetime.now().strftime("%B %d, %Y")
 
@@ -96,7 +102,8 @@ async def dashboard_page(
             "brand_query": brand,
             "brand_data": brand_data,
             "market_data": None,  # TODO: Add stock data integration
-            "vlds_data": None,  # TODO: Add global VLDS calculation
+            "vlds_data": vlds_data,
+            "topic_vlds": topic_vlds
         }
     )
 
@@ -156,6 +163,107 @@ def calculate_brand_vlds(df) -> dict:
                     "percentage": round((count / total_posts) * 100, 1)
                 })
         results["top_emotions_detailed"] = top_emotions
+
+    return results
+
+
+def calculate_global_vlds(df) -> dict:
+    """Calculate global VLDS metrics from the full dataset."""
+    import pandas as pd
+
+    if df.empty or len(df) < 5:
+        return None
+
+    total_posts = len(df)
+    results = {"total_posts": total_posts}
+
+    if "created_at" not in df.columns:
+        return None
+
+    df_copy = df.copy()
+    df_copy["date"] = df_copy["created_at"].dt.date
+    daily_counts = df_copy.groupby("date").size()
+
+    # Velocity - recent activity trend
+    if len(daily_counts) >= 2:
+        recent = daily_counts.tail(2).mean()
+        older = daily_counts.head(max(1, len(daily_counts) - 2)).mean()
+        velocity = (recent / older) if older > 0 else 1.0
+        velocity_score = min(velocity / 2.0, 1.0)
+    else:
+        velocity_score = 0.5
+
+    results["velocity"] = round(velocity_score, 2)
+    results["velocity_label"] = "Rising Fast" if velocity_score > 0.7 else "Stable" if velocity_score > 0.4 else "Declining"
+
+    # Longevity - span of days covered
+    unique_days = df_copy["date"].nunique()
+    longevity_score = min(unique_days / 7.0, 1.0)
+    results["longevity"] = round(longevity_score, 2)
+    results["longevity_label"] = "Sustained" if longevity_score > 0.7 else "Moderate" if longevity_score > 0.4 else "Flash"
+
+    # Density - average posts per day
+    avg_daily = daily_counts.mean()
+    density_score = min(avg_daily / 50.0, 1.0)
+    results["density"] = round(density_score, 2)
+    results["density_label"] = "Saturated" if density_score > 0.7 else "Moderate" if density_score > 0.3 else "White Space"
+
+    # Scarcity - opportunity space (inverse of density)
+    results["scarcity"] = round(1.0 - density_score, 2)
+    results["scarcity_label"] = "High Opportunity" if results["scarcity"] > 0.7 else "Some Opportunity" if results["scarcity"] > 0.4 else "Crowded"
+
+    return results
+
+
+def calculate_topic_vlds(df, top_n: int = 10) -> list:
+    """
+    Calculate VLDS metrics per topic for scatter chart.
+    Returns list of topics with velocity, longevity, density scores.
+    """
+    import pandas as pd
+
+    if df.empty or "topic" not in df.columns or "created_at" not in df.columns:
+        return []
+
+    df_copy = df.copy()
+    df_copy["date"] = df_copy["created_at"].dt.date
+
+    results = []
+    topic_counts = df["topic"].value_counts()
+
+    for topic in topic_counts.head(top_n).index:
+        if pd.isna(topic):
+            continue
+
+        topic_df = df_copy[df_copy["topic"] == topic]
+        if len(topic_df) < 2:
+            continue
+
+        daily_counts = topic_df.groupby("date").size()
+
+        # Velocity
+        if len(daily_counts) >= 2:
+            recent = daily_counts.tail(2).mean()
+            older = daily_counts.head(max(1, len(daily_counts) - 2)).mean()
+            velocity = (recent / older) if older > 0 else 1.0
+            velocity_score = min(velocity / 2.0, 1.0)
+        else:
+            velocity_score = 0.5
+
+        # Longevity
+        unique_days = topic_df["date"].nunique()
+        longevity_score = min(unique_days / 7.0, 1.0)
+
+        # Density (posts count normalized)
+        density_score = min(len(topic_df) / 50.0, 1.0)
+
+        results.append({
+            "topic": topic,
+            "count": int(topic_counts[topic]),
+            "velocity": round(velocity_score * 100, 1),
+            "longevity": round(longevity_score * 100, 1),
+            "density": round(density_score * 100, 1)
+        })
 
     return results
 
@@ -519,3 +627,97 @@ async def get_mood_vs_market(
         "divergence_message": divergence_message,
         "brand": brand
     }
+
+
+# ============================================
+# Ask Moodlight Chat Endpoint
+# ============================================
+
+@router.post("/api/chat")
+async def chat_with_data(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    payload: dict = Body(...),
+    user: dict = Depends(require_auth)
+):
+    """
+    Chat with Moodlight - answer questions about the data.
+    Uses the current data context to provide insights.
+    """
+    message = payload.get("message", "").strip().lower()
+
+    if not message:
+        return {"response": "Please ask me a question about the data."}
+
+    # Load current data for context
+    df = await load_data(db, days=30)
+
+    if df.empty:
+        return {"response": "No data is currently available. Try again later."}
+
+    # Get context metrics
+    world_mood = compute_world_mood(df)
+    emotions = get_emotion_distribution(df)
+    topics = get_topic_distribution(df)
+    sources = get_source_distribution(df)
+
+    # Simple pattern matching for common questions
+    response = None
+
+    # Mood/sentiment questions
+    if any(word in message for word in ["mood", "sentiment", "feeling", "vibe", "pulse"]):
+        if world_mood and world_mood.get("score") is not None:
+            response = f"The current global mood score is {world_mood['score']}/100 ({world_mood['label']}). This is based on analysis of {len(df)} recent items."
+        else:
+            response = "Unable to calculate mood score from current data."
+
+    # Trending/popular topics
+    elif any(word in message for word in ["trending", "popular", "hot", "top topic", "what's happening"]):
+        if topics:
+            top_topics = [t["topic"] for t in topics[:5]]
+            response = f"Top trending topics right now: {', '.join(top_topics)}. The #1 topic '{topics[0]['topic']}' accounts for {topics[0]['percentage']}% of discussions."
+        else:
+            response = "No topic data available."
+
+    # Emotion questions
+    elif any(word in message for word in ["emotion", "feel", "angry", "happy", "sad", "fear"]):
+        if emotions:
+            top_emotions = [f"{e['emotion']} ({e['percentage']}%)" for e in emotions[:5]]
+            response = f"Top emotions in the data: {', '.join(top_emotions)}. The dominant emotion is '{emotions[0]['emotion']}'."
+        else:
+            response = "No emotion data available."
+
+    # Source questions
+    elif any(word in message for word in ["source", "where", "platform", "social media"]):
+        if sources:
+            source_list = [f"{s['display_name']} ({s['count']} items)" for s in sources[:5]]
+            response = f"Data sources: {', '.join(source_list)}."
+        else:
+            response = "No source data available."
+
+    # Stats/numbers
+    elif any(word in message for word in ["how many", "count", "total", "stats", "statistics"]):
+        response = f"Currently analyzing {len(df)} items from {len(sources) if sources else 0} sources. Top topic: {topics[0]['topic'] if topics else 'N/A'}. Dominant emotion: {emotions[0]['emotion'] if emotions else 'N/A'}."
+
+    # Headlines
+    elif any(word in message for word in ["headline", "news", "story", "stories"]):
+        headlines = get_trending_headlines(df, limit=3)
+        if headlines:
+            headline_texts = [f"• {h['text'][:80]}..." for h in headlines]
+            response = f"Top headlines:\n" + "\n".join(headline_texts)
+        else:
+            response = "No headlines available."
+
+    # Brand mentions
+    elif "brand" in message or "company" in message or "mention" in message:
+        response = "To track a specific brand, use the Brand Tracking input in the sidebar. Enter a brand name to see its VLDS metrics and sentiment analysis."
+
+    # Help
+    elif any(word in message for word in ["help", "what can you", "how do i"]):
+        response = "I can answer questions about: trending topics, emotions, mood/sentiment, sources, headlines, and statistics. Try asking 'What's trending?' or 'How's the mood today?'"
+
+    # Default response
+    if not response:
+        response = f"Based on {len(df)} items analyzed: Global mood is {world_mood['score'] if world_mood.get('score') else 'N/A'}/100. Top topic: {topics[0]['topic'] if topics else 'N/A'}. Dominant emotion: {emotions[0]['emotion'] if emotions else 'N/A'}. Ask me about specific topics, emotions, or trends!"
+
+    return {"response": response}
