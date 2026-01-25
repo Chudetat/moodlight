@@ -148,7 +148,7 @@ HIGHEST INTENSITY TOPICS:
 {topic_intensity.round(2).to_string()}
 
 CRITICAL SEVERITY ARTICLES ({len(critical)} total):
-{critical[['text', 'country', 'intensity']].head(10).to_string()}
+{critical[['created_at', 'text', 'country', 'intensity']].head(10).apply(lambda x: f"[{x['created_at'].strftime('%b %d') if pd.notna(x['created_at']) else 'N/A'}] {x['text'][:100]}... | {x['country']} | Intensity: {x['intensity']}", axis=1).to_string()}
 
 GEOGRAPHIC DISTRIBUTION:
 {country_counts.to_string()}
@@ -169,9 +169,9 @@ Total Articles Analyzed: {len(news_df)}
 
         # High engagement posts (top by engagement score)
         if 'engagement' in social_df.columns:
-            top_engagement = social_df.nlargest(5, 'engagement')[['text', 'engagement', 'emotion_top_1', 'source']]
+            top_engagement = social_df.nlargest(5, 'engagement')[['created_at', 'text', 'engagement', 'emotion_top_1', 'source']]
         else:
-            top_engagement = social_df.head(5)[['text', 'emotion_top_1', 'source']]
+            top_engagement = social_df.head(5)[['created_at', 'text', 'emotion_top_1', 'source']]
 
         # Average empathy by topic (cultural temperature)
         topic_empathy = social_df.groupby('topic')['empathy_score'].mean().sort_values(ascending=False).head(5)
@@ -194,7 +194,7 @@ CULTURAL HEAT BY TOPIC (Empathy Score):
 {topic_empathy.round(2).to_string()}
 
 HIGH-ENGAGEMENT CONTENT:
-{top_engagement.to_string()}
+{top_engagement.apply(lambda x: f"[{x['created_at'].strftime('%b %d') if pd.notna(x['created_at']) else 'N/A'}] {str(x['text'])[:80]}... | {x.get('engagement', 'N/A')} eng | {x['source']}", axis=1).to_string()}
 
 Total Social Posts Analyzed: {len(social_df)}
 """
