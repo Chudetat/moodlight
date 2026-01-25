@@ -59,7 +59,7 @@ async def dashboard_page(
     emotions = get_emotion_distribution(df)
     topics = get_topic_distribution(df)
     sources = get_source_distribution(df)
-    headlines = get_trending_headlines(df, limit=10)
+    headlines = get_trending_headlines(df, limit=100)  # Show many headlines, scrollable like v1
     mood_history = get_mood_history(df)
     geo_data = get_geographic_distribution(df)
 
