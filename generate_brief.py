@@ -208,19 +208,33 @@ def generate_brief(context):
 
 Based on the following intelligence data, create a concise executive summary.
 
+IMPORTANT GUIDELINES:
+- Consolidate related stories: If multiple articles cover the same event (e.g., Venezuela), group them into ONE threat entry, not separate items
+- Prioritize by RECENCY + INTENSITY: Recent high-intensity events outrank older high-intensity events
+- For each threat, include the "SO WHAT?" - why it matters, not just what happened
+- Flag each threat as [NEW] (first appeared in last 48h) or [ONGOING] (continuing situation)
+- Add confidence indicator based on data volume: [HIGH CONFIDENCE] = 10+ sources, [MODERATE] = 3-9 sources, [LIMITED] = 1-2 sources
+
 Format as:
 DAILY INTELLIGENCE BRIEF - {datetime.now(timezone.utc).strftime("%B %d, %Y")}
 
 KEY THREATS:
-[Top 3-5 high-intensity items requiring attention]
+1. [NEW/ONGOING] **Threat Title** - [CONFIDENCE LEVEL]
+   What: [One sentence on what happened]
+   So What: [Why this matters / implications]
+
+WATCH LIST:
+[Lower priority items worth monitoring - not urgent but could escalate]
 
 EMERGING PATTERNS:
-[Notable trends, shifts, or developments across topics and regions]
+[Group related signals. Note if each pattern is ACCELERATING ↑ or DECELERATING ↓]
 
 RECOMMENDED ACTIONS:
-[Prioritized actionable items based on the intelligence]
+- IMMEDIATE (24h): [...]
+- SHORT-TERM (this week): [...]
+- MONITOR: [...]
 
-Keep it under 400 words. Use clear, direct language.
+Target 600-800 words. Use clear, direct language. No fluff.
 
 DATA:
 {context}
@@ -228,8 +242,8 @@ DATA:
 
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=1200,
-        system="You are a senior intelligence analyst providing daily situational awareness briefings.",
+        max_tokens=2000,
+        system="You are a senior intelligence analyst. You consolidate noise into signal, distinguish new developments from ongoing situations, and always explain WHY something matters - not just WHAT happened.",
         messages=[{"role": "user", "content": prompt}]
     )
     
