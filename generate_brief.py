@@ -234,7 +234,7 @@ RECOMMENDED ACTIONS:
 - SHORT-TERM (this week): [...]
 - MONITOR: [...]
 
-Keep it under 550 words. Use clear, direct language. No fluff.
+Target 600-800 words. Use clear, direct language. No fluff.
 
 DATA:
 {context}
@@ -242,7 +242,7 @@ DATA:
 
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=1200,
+        max_tokens=2000,
         system="You are a senior intelligence analyst. You consolidate noise into signal, distinguish new developments from ongoing situations, and always explain WHY something matters - not just WHAT happened.",
         messages=[{"role": "user", "content": prompt}]
     )
