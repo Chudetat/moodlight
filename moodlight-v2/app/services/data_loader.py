@@ -38,10 +38,9 @@ async def load_data_from_db(
     Returns:
         DataFrame with scored items
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    print(f"[data_loader] Loading data for {days} days", flush=True)
 
     # Build SQL query that unions both v1 tables (news_scored and social_scored)
-    # These are the actual tables used by v1 to store scored data
     base_columns = """
         id, text, created_at, link, source, topic,
         COALESCE(engagement, 0) as engagement, country, intensity,
@@ -49,47 +48,48 @@ async def load_data_from_db(
     """
 
     source_clause = ""
-    params = {"cutoff": cutoff}
+    params = {}
     if source_filter:
-        source_clause = "AND source = :source"
+        source_clause = "WHERE source = :source"
         params["source"] = source_filter
 
+    # First try without date filter to see if tables have data
     sql = text(f"""
-        SELECT {base_columns} FROM news_scored
-        WHERE created_at >= :cutoff {source_clause}
+        SELECT {base_columns} FROM news_scored {source_clause}
         UNION ALL
-        SELECT {base_columns} FROM social_scored
-        WHERE created_at >= :cutoff {source_clause}
+        SELECT {base_columns} FROM social_scored {source_clause}
         ORDER BY created_at DESC
+        LIMIT 1000
     """)
 
+    rows = []
     try:
+        print(f"[data_loader] Executing query on news_scored + social_scored", flush=True)
         result = await db.execute(sql, params)
         rows = result.fetchall()
+        print(f"[data_loader] Got {len(rows)} rows from combined query", flush=True)
     except Exception as e:
-        # If tables don't exist, try just one or the other
-        print(f"Error querying both tables: {e}")
+        print(f"[data_loader] Error querying both tables: {e}", flush=True)
+        # Try just news_scored
         try:
-            sql_news = text(f"""
-                SELECT {base_columns} FROM news_scored
-                WHERE created_at >= :cutoff {source_clause}
-                ORDER BY created_at DESC
-            """)
+            sql_news = text(f"SELECT {base_columns} FROM news_scored {source_clause} ORDER BY created_at DESC LIMIT 500")
             result = await db.execute(sql_news, params)
             rows = result.fetchall()
-        except Exception:
+            print(f"[data_loader] Got {len(rows)} rows from news_scored only", flush=True)
+        except Exception as e2:
+            print(f"[data_loader] Error querying news_scored: {e2}", flush=True)
+            # Try social_scored
             try:
-                sql_social = text(f"""
-                    SELECT {base_columns} FROM social_scored
-                    WHERE created_at >= :cutoff {source_clause}
-                    ORDER BY created_at DESC
-                """)
+                sql_social = text(f"SELECT {base_columns} FROM social_scored {source_clause} ORDER BY created_at DESC LIMIT 500")
                 result = await db.execute(sql_social, params)
                 rows = result.fetchall()
-            except Exception:
+                print(f"[data_loader] Got {len(rows)} rows from social_scored only", flush=True)
+            except Exception as e3:
+                print(f"[data_loader] Error querying social_scored: {e3}", flush=True)
                 return pd.DataFrame()
 
     if not rows:
+        print("[data_loader] No rows returned", flush=True)
         return pd.DataFrame()
 
     # Convert to DataFrame
@@ -98,8 +98,16 @@ async def load_data_from_db(
                "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3"]
 
     data = [dict(zip(columns, row)) for row in rows]
+    df = pd.DataFrame(data)
 
-    return pd.DataFrame(data)
+    # Filter by date in pandas (more reliable than SQL date comparison)
+    if "created_at" in df.columns and len(df) > 0:
+        df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce", utc=True)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        df = df[df["created_at"] >= cutoff]
+        print(f"[data_loader] After date filter: {len(df)} rows", flush=True)
+
+    return df
 
 
 def load_data_from_csv(days: int = 30) -> pd.DataFrame:
