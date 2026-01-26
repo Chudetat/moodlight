@@ -846,13 +846,9 @@ This brief must feel URGENT and TIMELY. Use the RECENT HEADLINES and HIGH-ENGAGE
 
 End with: "Act now because: [one sentence on why timing matters]"
 
-Be bold and specific. Reference actual data points. Make decisions, not suggestions.
+---
 
-IMPORTANT: Do NOT include obvious "avoid" recommendations that any brand strategist already knows (e.g., "avoid war & foreign policy for brand safety"). Only mention Avoid Zones if:
-1. The client's specific product/challenge intersects with that topic, OR
-2. There's a non-obvious risk the client might miss
-
-Focus on actionable opportunities, not generic warnings.
+QUALITY CHECK: Before finalizing, delete any sentence a competitor's strategist could also write. If an insight isn't specific to THIS data and THIS moment, cut it.
 
 QUALITY CHECK: Before finalizing, delete any sentence a competitor's strategist could also write. If an insight isn't specific to THIS data and THIS moment, cut it.
 

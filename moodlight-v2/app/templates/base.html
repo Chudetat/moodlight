@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Moodlight{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+
+    <!-- Alpine.js for interactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind CSS (via CDN for development) -->
+    <script src="https://cdn.tailwindcss.com?plugins="></script>
+    <style>
+        /* Hide Tailwind CDN development indicator */
+        #__tailwind_inspector_badge_container,
+        [class*="tailwind"],
+        [id*="tailwind"],
+        .tw-indicator,
+        div[style*="z-index: 99999"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1E1E1E; }
+        ::-webkit-scrollbar-thumb { background: #3D3D3D; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4D4D4D; }
+        /* Smooth scroll */
+        html { scroll-behavior: smooth; }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF4B4B',
+                        accent: {
+                            blue: '#1f77b4',
+                            orange: '#ff7f0e',
+                            green: '#2ca02c',
+                            red: '#d62728',
+                            purple: '#9467bd',
+                            brown: '#8c564b',
+                            pink: '#e377c2',
+                            gray: '#7f7f7f',
+                            olive: '#bcbd22',
+                            cyan: '#17becf'
+                        },
+                        dark: {
+                            bg: '#0E1117',
+                            card: '#262730',
+                            border: '#3D3D3D',
+                            sidebar: '#1E1E1E'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-dark-bg text-white min-h-screen" hx-headers='{"X-Requested-With": "htmx"}'>
+    <!-- Session check - polls every 30 seconds -->
+    <div hx-get="/auth/session-check" hx-trigger="every 30s" hx-swap="none"></div>
+
+    {% block body %}
+    <div class="flex min-h-screen">
+        <!-- Sidebar - Controls (like v1 Streamlit) -->
+        {% if user %}
+        <aside class="w-72 bg-dark-sidebar border-r border-dark-border p-4 flex flex-col h-screen sticky top-0 overflow-y-auto">
+            <!-- Logo -->
+            <div class="mb-6">
+                <img src="/static/logo.png" alt="Moodlight" class="h-12">
+                <p class="text-xs text-gray-500 mt-1">Where culture is heading. What audiences feel.</p>
+            </div>
+
+            <!-- User info -->
+            <div class="mb-6 p-3 bg-dark-bg rounded-lg">
+                <p class="text-sm text-gray-400">Welcome, <span class="text-white font-medium">{{ user.username }}</span></p>
+                <span class="inline-block mt-1 px-2 py-0.5 text-xs rounded bg-primary/20 text-primary">
+                    {{ tier_display }}
+                </span>
+            </div>
+
+            <!-- Controls Section -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Controls</h3>
+
+                <!-- View Mode Toggle -->
+                <div class="mb-4">
+                    <label class="text-xs text-gray-500 block mb-2">View Mode</label>
+                    <div class="flex rounded-lg bg-dark-bg p-1">
+                        <a href="?mode=breaking"
+                           class="flex-1 px-3 py-2 text-center text-sm rounded-md transition-colors {% if view_mode == 'breaking' %}bg-primary text-white{% else %}text-gray-400 hover:text-white{% endif %}">
+                            Breaking (48h)
+                        </a>
+                        <a href="?mode=strategic"
+                           class="flex-1 px-3 py-2 text-center text-sm rounded-md transition-colors {% if view_mode == 'strategic' %}bg-primary text-white{% else %}text-gray-400 hover:text-white{% endif %}">
+                            Strategic (30d)
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Brand Tracking Input -->
+                <div class="mb-4">
+                    <label class="text-xs text-gray-500 block mb-2">Brand Tracking</label>
+                    <form action="/dashboard" method="get" class="flex gap-2">
+                        <input type="hidden" name="mode" value="{{ view_mode }}">
+                        <input type="text" name="brand" value="{{ brand_query or '' }}"
+                               placeholder="Enter brand name..."
+                               class="flex-1 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm focus:outline-none focus:border-primary">
+                        <button type="submit" class="px-3 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/80">
+                            Track
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Ask Moodlight Chat Section -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">💬 Ask Moodlight</h3>
+                <div x-data="{
+                    message: '',
+                    chatHistory: [],
+                    isLoading: false,
+                    async sendMessage() {
+                        if (!this.message.trim() || this.isLoading) return;
+                        const userMsg = this.message;
+                        this.chatHistory.push({ role: 'user', content: userMsg });
+                        this.message = '';
+                        this.isLoading = true;
+                        try {
+                            const resp = await fetch('/api/chat', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ message: userMsg })
+                            });
+                            const data = await resp.json();
+                            this.chatHistory.push({ role: 'assistant', content: data.response || data.error || 'No response' });
+                        } catch(e) {
+                            this.chatHistory.push({ role: 'assistant', content: 'Error: Could not connect to chat service.' });
+                        }
+                        this.isLoading = false;
+                        this.$nextTick(() => { document.getElementById('chat-messages').scrollTop = 999999; });
+                    }
+                }">
+                    <!-- Chat Messages -->
+                    <div id="chat-messages" class="h-32 overflow-y-auto bg-dark-bg rounded-lg p-2 mb-2 text-xs space-y-2">
+                        <template x-for="(msg, i) in chatHistory" :key="i">
+                            <div :class="msg.role === 'user' ? 'text-right' : 'text-left'">
+                                <span :class="msg.role === 'user' ? 'bg-primary/20 text-primary' : 'bg-dark-card text-gray-300'"
+                                      class="inline-block px-2 py-1 rounded-lg max-w-[90%]" x-text="msg.content"></span>
+                            </div>
+                        </template>
+                        <div x-show="chatHistory.length === 0" class="text-gray-500 text-center py-4">
+                            Ask questions about the data...
+                        </div>
+                        <div x-show="isLoading" class="text-gray-400 text-center">
+                            <span class="animate-pulse">Thinking...</span>
+                        </div>
+                    </div>
+                    <!-- Input -->
+                    <div class="flex gap-2">
+                        <input type="text" x-model="message" @keydown.enter="sendMessage()"
+                               placeholder="What's trending today?"
+                               class="flex-1 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm focus:outline-none focus:border-primary">
+                        <button @click="sendMessage()" :disabled="isLoading"
+                                class="px-3 py-2 bg-accent-purple text-white rounded-lg text-sm hover:opacity-80 transition-opacity disabled:opacity-50">
+                            Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Strategic Brief Section -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">🎯 Strategic Brief</h3>
+                <form hx-post="/api/briefs/generate" hx-target="#brief-output" hx-swap="innerHTML">
+                    <textarea name="prompt" rows="3"
+                              placeholder="What do you need a brief for? (e.g., 'Launch campaign for Gen Z audience')"
+                              class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm focus:outline-none focus:border-primary resize-none mb-2"></textarea>
+                    <button type="submit" class="w-full px-3 py-2 bg-accent-blue text-white rounded-lg text-sm hover:opacity-80 transition-opacity">
+                        Generate Brief ({{ briefs_remaining }} left)
+                    </button>
+                </form>
+                <div id="brief-output" class="mt-2 text-xs text-gray-400"></div>
+            </div>
+
+            <!-- Quick Navigation (scroll anchors) -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Jump To</h3>
+                <nav class="space-y-1 text-sm">
+                    <a href="#cultural-pulse" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">Cultural Pulse</a>
+                    <a href="#markets" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">Markets</a>
+                    <a href="#emotions" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">Emotions</a>
+                    <a href="#topics" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">Topics</a>
+                    <a href="#headlines" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">Headlines</a>
+                    <a href="#vlds" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">VLDS Analysis</a>
+                    <a href="#intelligence" class="block px-2 py-1 text-gray-400 hover:text-white hover:bg-dark-bg rounded">Intelligence</a>
+                </nav>
+            </div>
+
+            <!-- Logout at bottom -->
+            <div class="mt-auto pt-4 border-t border-dark-border">
+                <a href="/auth/logout"
+                   class="flex items-center px-3 py-2 rounded-lg hover:bg-dark-bg transition-colors text-gray-400 hover:text-white">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    </svg>
+                    Logout
+                </a>
+            </div>
+        </aside>
+        {% endif %}
+
+        <!-- Main content - Single scrollable area -->
+        <main class="flex-1 overflow-y-auto">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    {% endblock %}
+
+    <!-- Toast notifications -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Global scripts -->
+    <script>
+        // HTMX event handlers
+        document.body.addEventListener('htmx:responseError', function(evt) {
+            if (evt.detail.xhr.status === 401) {
+                window.location.href = '/auth/login?error=session_expired';
+            }
+        });
+
+        // Handle HX-Redirect header
+        document.body.addEventListener('htmx:beforeSwap', function(evt) {
+            const redirect = evt.detail.xhr.getResponseHeader('HX-Redirect');
+            if (redirect) {
+                window.location.href = redirect;
+            }
+        });
+
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = {
+                info: 'bg-blue-600',
+                success: 'bg-green-600',
+                error: 'bg-red-600',
+                warning: 'bg-yellow-600'
+            };
+            toast.className = `${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            // Animate in
+            setTimeout(() => toast.classList.remove('translate-x-full'), 10);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

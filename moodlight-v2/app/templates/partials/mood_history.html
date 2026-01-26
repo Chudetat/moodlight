@@ -1,0 +1,75 @@
+<!-- Mood History Chart Partial -->
+<div class="h-64">
+    <canvas id="mood-history-canvas"></canvas>
+</div>
+
+<script>
+    (function() {
+        const ctx = document.getElementById('mood-history-canvas');
+        if (!ctx) return;
+
+        // Destroy existing chart if any
+        if (window.moodHistoryChart) {
+            window.moodHistoryChart.destroy();
+        }
+
+        const history = {{ mood_history | tojson }};
+
+        const labels = history.map(h => {
+            const date = new Date(h.date);
+            return date.toLocaleDateString('en-US', { weekday: 'short' });
+        });
+        const data = history.map(h => h.score);
+
+        window.moodHistoryChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Empathy Score',
+                    data: data,
+                    borderColor: '#FF4B4B',
+                    backgroundColor: 'rgba(255, 75, 75, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#FF4B4B',
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Score: ' + context.raw;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: '#3D3D3D' },
+                        ticks: { color: '#9CA3AF' }
+                    },
+                    y: {
+                        min: 0,
+                        max: 100,
+                        grid: { color: '#3D3D3D' },
+                        ticks: {
+                            color: '#9CA3AF',
+                            stepSize: 25
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        });
+    })();
+</script>

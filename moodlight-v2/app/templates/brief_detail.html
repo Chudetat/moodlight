@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Brief - Moodlight{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <a href="/briefs" class="text-gray-400 hover:text-white text-sm flex items-center gap-1 mb-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                Back to Briefs
+            </a>
+            <h1 class="text-2xl font-bold">Strategic Brief</h1>
+            <p class="text-gray-400 mt-1">Generated {{ brief.created_at.strftime('%B %d, %Y at %H:%M') }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button hx-post="/briefs/{{ brief.id }}/email"
+                    hx-target="#email-status"
+                    hx-indicator="#email-indicator"
+                    class="px-4 py-2 bg-dark-card hover:bg-dark-bg text-white text-sm font-medium rounded-lg transition-colors border border-dark-border flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+                Email Brief
+            </button>
+            <div id="email-indicator" class="htmx-indicator">
+                <svg class="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+            <div id="email-status"></div>
+        </div>
+    </div>
+
+    <!-- Request -->
+    <div class="bg-dark-card rounded-xl p-6 border border-dark-border mb-6">
+        <h2 class="text-sm font-medium text-gray-400 mb-2">Original Request</h2>
+        <p class="text-white">{{ brief.prompt }}</p>
+    </div>
+
+    <!-- Frameworks Used -->
+    {% if brief.frameworks_used %}
+    <div class="flex items-center gap-2 mb-6">
+        <span class="text-sm text-gray-400">Frameworks Applied:</span>
+        {% for fw in brief.frameworks_used %}
+        <span class="px-3 py-1 text-sm rounded-full bg-primary/20 text-primary">{{ fw }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Brief Content -->
+    <div class="bg-dark-card rounded-xl p-8 border border-dark-border prose prose-invert max-w-none">
+        {{ brief.content | safe }}
+    </div>
+</div>
+
+<style>
+.prose h2 { @apply text-xl font-bold text-primary mt-8 mb-4; }
+.prose h3 { @apply text-lg font-semibold text-white mt-6 mb-3; }
+.prose p { @apply text-gray-300 mb-4; }
+.prose ul { @apply list-disc list-inside space-y-2 text-gray-300 mb-4; }
+.prose ol { @apply list-decimal list-inside space-y-2 text-gray-300 mb-4; }
+.prose li { @apply text-gray-300; }
+.prose strong { @apply text-white font-semibold; }
+.prose hr { @apply border-dark-border my-8; }
+.prose blockquote { @apply border-l-4 border-primary pl-4 italic text-gray-400; }
+</style>
+{% endblock %}

@@ -1,0 +1,61 @@
+<!-- Full Headlines List Partial (for HTMX pagination) -->
+{% if headlines %}
+<div class="divide-y divide-dark-border">
+    {% for headline in headlines %}
+    <div class="p-4 hover:bg-dark-bg/50 transition-colors">
+        <div class="flex items-start justify-between gap-4">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="source-badge {% if headline.source == 'x' %}source-x{% elif 'news' in headline.source %}source-news{% elif 'reddit' in headline.source %}source-reddit{% else %}bg-gray-600{% endif %}">
+                        {{ headline.source_display }}
+                    </span>
+                    {% if headline.topic %}
+                    <span class="px-2 py-0.5 text-xs rounded bg-dark-bg text-gray-400">{{ headline.topic }}</span>
+                    {% endif %}
+                    {% if headline.emotion %}
+                    <span class="emotion-tag" style="background-color: {{ emotion_colors.get(headline.emotion, '#808080') }}20; color: {{ emotion_colors.get(headline.emotion, '#808080') }}">
+                        {{ headline.emotion }}
+                    </span>
+                    {% endif %}
+                </div>
+                <p class="text-white mb-2">
+                    {% if headline.link %}
+                    <a href="{{ headline.link }}" target="_blank" rel="noopener noreferrer" class="hover:text-primary hover:underline">
+                        {{ headline.text }}
+                    </a>
+                    {% else %}
+                    {{ headline.text }}
+                    {% endif %}
+                </p>
+                <div class="flex items-center gap-4 text-xs text-gray-500">
+                    {% if headline.created_at %}
+                    <span>{{ headline.created_at[:10] }}</span>
+                    {% endif %}
+                    {% if headline.engagement and headline.engagement > 0 %}
+                    <span>{{ headline.engagement }} engagement</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% if headline.empathy_score is not none %}
+            <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold
+                {% if headline.empathy_score < 0.04 %}bg-blue-900/30 text-blue-400
+                {% elif headline.empathy_score < 0.10 %}bg-gray-700/50 text-gray-400
+                {% elif headline.empathy_score < 0.30 %}bg-green-900/30 text-green-400
+                {% else %}bg-pink-900/30 text-pink-400{% endif %}">
+                {{ (headline.empathy_score * 100) | round(0) | int }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="p-4 border-t border-dark-border flex items-center justify-between text-sm text-gray-400">
+    <span>{{ total_count }} total items</span>
+    <span>Page {{ page }} of {{ total_pages }}</span>
+</div>
+{% else %}
+<div class="p-12 text-center text-gray-500">
+    <p>No headlines match your filters</p>
+</div>
+{% endif %}

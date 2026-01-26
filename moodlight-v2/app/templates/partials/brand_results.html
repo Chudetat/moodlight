@@ -1,0 +1,72 @@
+<!-- Brand Results Partial (for HTMX updates) -->
+<div class="space-y-6">
+    <!-- Overview -->
+    <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="text-xl font-bold">{{ brand_data.name }}</h2>
+                <p class="text-gray-400">{{ brand_data.mention_count }} mentions</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-gray-400">Empathy Score</p>
+                <p class="text-3xl font-bold text-primary">
+                    {{ brand_data.world_mood.score if brand_data.world_mood.score else '--' }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    {% if vlds %}
+    <!-- VLDS Grid -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-sm text-gray-400">Velocity</span>
+                <span class="text-xl font-bold text-primary">{{ vlds.velocity.score }}</span>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded
+                {% if vlds.velocity.label == 'Rising Fast' %}bg-green-900/30 text-green-400
+                {% elif vlds.velocity.label == 'Declining' %}bg-red-900/30 text-red-400
+                {% else %}bg-gray-700/50 text-gray-400{% endif %}">
+                {{ vlds.velocity.label }}
+            </span>
+        </div>
+        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-sm text-gray-400">Longevity</span>
+                <span class="text-xl font-bold text-primary">{{ vlds.longevity.score }}</span>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded
+                {% if vlds.longevity.label == 'Sustained' %}bg-green-900/30 text-green-400
+                {% elif vlds.longevity.label == 'Flash' %}bg-yellow-900/30 text-yellow-400
+                {% else %}bg-gray-700/50 text-gray-400{% endif %}">
+                {{ vlds.longevity.label }}
+            </span>
+        </div>
+        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-sm text-gray-400">Density</span>
+                <span class="text-xl font-bold text-primary">{{ vlds.density.score }}</span>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded
+                {% if vlds.density.label == 'White Space' %}bg-green-900/30 text-green-400
+                {% elif vlds.density.label == 'Saturated' %}bg-red-900/30 text-red-400
+                {% else %}bg-gray-700/50 text-gray-400{% endif %}">
+                {{ vlds.density.label }}
+            </span>
+        </div>
+        <div class="bg-dark-card rounded-lg p-4 border border-dark-border">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-sm text-gray-400">Scarcity</span>
+                <span class="text-xl font-bold text-primary">{{ vlds.scarcity.score }}</span>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded
+                {% if vlds.scarcity.label == 'High Opportunity' %}bg-green-900/30 text-green-400
+                {% elif vlds.scarcity.label == 'Crowded' %}bg-red-900/30 text-red-400
+                {% else %}bg-gray-700/50 text-gray-400{% endif %}">
+                {{ vlds.scarcity.label }}
+            </span>
+        </div>
+    </div>
+    {% endif %}
+</div>

@@ -1,0 +1,657 @@
+{% extends "base.html" %}
+
+{% block title %}Moodlight - Cultural Intelligence{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-6xl mx-auto">
+    <!-- Date Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold">{{ current_date }}</h1>
+        <p class="text-gray-400">{{ view_modes[view_mode].days if view_modes else 30 }}-day view • {{ total_items }} items analyzed</p>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Cultural Pulse (World Mood) -->
+    <!-- ============================================ -->
+    <section id="cultural-pulse" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">Cultural Pulse</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- World Mood Score -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <p class="text-gray-400 text-sm mb-2">Global Mood Score</p>
+                {% if world_mood and world_mood.score is not none %}
+                <p class="text-5xl font-bold text-primary">{{ world_mood.score }}</p>
+                <p class="text-lg text-gray-300 mt-2">{{ world_mood.label }}</p>
+                <p class="text-sm text-gray-500 mt-1">Raw avg: {{ world_mood.raw_avg }}</p>
+                {% else %}
+                <p class="text-4xl font-bold text-gray-500">--</p>
+                <p class="text-gray-400">No data available</p>
+                {% endif %}
+            </div>
+
+            <!-- Mood Label Indicator -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border flex flex-col justify-center">
+                {% if world_mood and world_mood.score is not none %}
+                <div class="text-center">
+                    {% if world_mood.score < 35 %}
+                    <span class="text-6xl">❄️</span>
+                    <p class="text-blue-400 mt-2">Cold Climate</p>
+                    {% elif world_mood.score < 50 %}
+                    <span class="text-6xl">😐</span>
+                    <p class="text-gray-400 mt-2">Neutral Climate</p>
+                    {% elif world_mood.score < 70 %}
+                    <span class="text-6xl">🙂</span>
+                    <p class="text-green-400 mt-2">Warm Climate</p>
+                    {% else %}
+                    <span class="text-6xl">❤️</span>
+                    <p class="text-pink-400 mt-2">Highly Empathetic</p>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="text-center text-gray-500">
+                    <span class="text-6xl">❓</span>
+                    <p class="mt-2">Awaiting Data</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <p class="text-gray-400 text-sm mb-4">Quick Stats</p>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Total Items</span>
+                        <span class="font-medium">{{ total_items }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Time Period</span>
+                        <span class="font-medium">{{ view_modes[view_mode].days if view_modes else 30 }} days</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Sources</span>
+                        <span class="font-medium">{{ sources|length if sources else 0 }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Top Emotion</span>
+                        <span class="font-medium text-accent-orange">{{ emotions[0].emotion if emotions else 'N/A' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Market Sentiment -->
+    <!-- ============================================ -->
+    <section id="markets" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">Market Sentiment</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {% if market_data %}
+            {% for market in market_data %}
+            <div class="bg-dark-card rounded-xl p-4 border border-dark-border">
+                <p class="text-gray-400 text-sm">{{ market.symbol }}</p>
+                <p class="text-xl font-bold {% if market.change_percent >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
+                    {{ "%.2f"|format(market.change_percent) }}%
+                </p>
+                <p class="text-xs text-gray-500">${{ "%.2f"|format(market.price) }}</p>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="col-span-4 bg-dark-card rounded-xl p-6 border border-dark-border text-center text-gray-500">
+                <p>Market data unavailable. Add ALPHAVANTAGE_API_KEY for stock quotes.</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Emotional Breakdown -->
+    <!-- ============================================ -->
+    <section id="emotions" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">Emotional Breakdown</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Emotion Distribution Chart -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Emotion Distribution</h3>
+                <div class="h-64">
+                    <canvas id="emotion-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Emotion Metrics -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Top Emotions</h3>
+                {% if emotions %}
+                <div class="grid grid-cols-3 gap-4">
+                    {% for e in emotions[:9] %}
+                    <div class="text-center p-3 bg-dark-bg rounded-lg">
+                        <p class="text-2xl font-bold" style="color: {{ emotion_colors.get(e.emotion, '#808080') }}">{{ e.percentage }}%</p>
+                        <p class="text-sm text-gray-400">{{ e.emotion }}</p>
+                        <p class="text-xs text-gray-500">{{ e.count }} posts</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-center py-8">No emotion data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Topic Distribution -->
+    <!-- ============================================ -->
+    <section id="topics" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">Topic Distribution</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Topic Chart -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Topic Breakdown</h3>
+                <div class="h-72">
+                    <canvas id="topic-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Topic Metrics -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Top Discussed Topics</h3>
+                {% if topics %}
+                <div class="space-y-3">
+                    {% for t in topics[:10] %}
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg font-bold text-accent-blue w-8">{{ loop.index }}</span>
+                            <span class="text-gray-300">{{ t.topic }}</span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-gray-500 text-sm">{{ t.count }} posts</span>
+                            <span class="text-primary font-medium w-16 text-right">{{ t.percentage }}%</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-center py-8">No topic data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Trending Headlines -->
+    <!-- ============================================ -->
+    <section id="headlines" class="mb-12" x-data="{
+        filterTopic: '',
+        filterSource: '',
+        filterEmotion: '',
+        visibleCount: {{ headlines|length if headlines else 0 }},
+        filterHeadlines() {
+            const items = document.querySelectorAll('.headline-item');
+            let count = 0;
+            items.forEach(item => {
+                const topic = item.dataset.topic || '';
+                const source = item.dataset.source || '';
+                const emotion = item.dataset.emotion || '';
+                const matchTopic = !this.filterTopic || topic === this.filterTopic;
+                const matchSource = !this.filterSource || source === this.filterSource;
+                const matchEmotion = !this.filterEmotion || emotion === this.filterEmotion;
+                if (matchTopic && matchSource && matchEmotion) {
+                    item.classList.remove('hidden');
+                    count++;
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+            this.visibleCount = count;
+        }
+    }">
+        <h2 class="text-2xl font-semibold mb-6">Trending Headlines <span class="text-sm font-normal text-gray-500" x-text="'(' + visibleCount + ' items - scroll to browse)'"></span></h2>
+
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-3 mb-4">
+            <select x-model="filterTopic" @change="filterHeadlines()"
+                    class="px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm focus:outline-none focus:border-primary">
+                <option value="">All Topics</option>
+                {% for t in topics[:15] %}
+                <option value="{{ t.topic }}">{{ t.topic }} ({{ t.count }})</option>
+                {% endfor %}
+            </select>
+
+            <select x-model="filterSource" @change="filterHeadlines()"
+                    class="px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm focus:outline-none focus:border-primary">
+                <option value="">All Sources</option>
+                {% for s in sources %}
+                <option value="{{ s.source }}">{{ s.display_name }} ({{ s.count }})</option>
+                {% endfor %}
+            </select>
+
+            <select x-model="filterEmotion" @change="filterHeadlines()"
+                    class="px-3 py-2 bg-dark-card border border-dark-border rounded-lg text-sm focus:outline-none focus:border-primary">
+                <option value="">All Emotions</option>
+                {% for e in emotions[:10] %}
+                <option value="{{ e.emotion }}">{{ e.emotion }} ({{ e.count }})</option>
+                {% endfor %}
+            </select>
+
+            <button @click="filterTopic=''; filterSource=''; filterEmotion=''; filterHeadlines()"
+                    class="px-3 py-2 text-sm text-gray-400 hover:text-white">
+                Clear Filters
+            </button>
+        </div>
+
+        <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+            {% if headlines %}
+            <div id="headlines-container" class="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                {% for h in headlines %}
+                <div class="headline-item flex items-start gap-4 p-4 bg-dark-bg rounded-lg hover:bg-dark-border/30 transition-colors"
+                     data-topic="{{ h.topic or '' }}"
+                     data-source="{{ h.source or '' }}"
+                     data-emotion="{{ h.emotion or '' }}">
+                    <!-- Empathy Score Badge -->
+                    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold
+                        {% if h.empathy_score and h.empathy_score < 0.04 %}bg-blue-900/50 text-blue-400
+                        {% elif h.empathy_score and h.empathy_score < 0.10 %}bg-gray-700/50 text-gray-400
+                        {% elif h.empathy_score and h.empathy_score < 0.30 %}bg-green-900/50 text-green-400
+                        {% else %}bg-pink-900/50 text-pink-400{% endif %}">
+                        {% if h.empathy_score %}{{ (h.empathy_score * 100)|round|int }}{% else %}--{% endif %}
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2 py-0.5 text-xs rounded
+                                {% if h.source == 'x' %}bg-blue-600
+                                {% elif 'news' in h.source %}bg-green-600
+                                {% elif 'reddit' in h.source %}bg-orange-600
+                                {% else %}bg-gray-600{% endif %}">
+                                {{ h.source_display }}
+                            </span>
+                            {% if h.topic %}
+                            <span class="text-xs text-accent-purple">{{ h.topic }}</span>
+                            {% endif %}
+                            {% if h.emotion %}
+                            <span class="text-xs text-accent-orange">{{ h.emotion }}</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-gray-200">
+                            {% if h.link %}
+                            <a href="{{ h.link }}" target="_blank" class="hover:text-primary hover:underline">
+                                {{ h.text[:200] }}{% if h.text|length > 200 %}...{% endif %}
+                            </a>
+                            {% else %}
+                            {{ h.text[:200] }}{% if h.text|length > 200 %}...{% endif %}
+                            {% endif %}
+                        </p>
+                        {% if h.engagement and h.engagement > 0 %}
+                        <p class="text-xs text-gray-500 mt-1">Engagement: {{ h.engagement|int }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-center py-8">No headlines available</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: VLDS Analysis -->
+    <!-- ============================================ -->
+    <section id="vlds" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">VLDS Analysis</h2>
+        <p class="text-gray-400 mb-6">Velocity × Longevity × Density × Scarcity - Strategic opportunity mapping</p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Velocity × Longevity Chart -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Velocity × Longevity</h3>
+                <p class="text-sm text-gray-500 mb-4">Topics by momentum and staying power</p>
+                <div class="h-64">
+                    <canvas id="velocity-longevity-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Density Chart -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Density Analysis</h3>
+                <p class="text-sm text-gray-500 mb-4">Where conversations are concentrated</p>
+                <div class="h-64">
+                    <canvas id="density-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- VLDS Metrics Grid -->
+        {% if vlds_data %}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+            <div class="bg-dark-card rounded-xl p-4 border border-dark-border text-center">
+                <p class="text-3xl font-bold text-accent-blue">{{ (vlds_data.velocity * 100)|round|int }}%</p>
+                <p class="text-gray-400">Velocity</p>
+                <p class="text-xs text-gray-500">{{ vlds_data.velocity_label }}</p>
+            </div>
+            <div class="bg-dark-card rounded-xl p-4 border border-dark-border text-center">
+                <p class="text-3xl font-bold text-accent-green">{{ (vlds_data.longevity * 100)|round|int }}%</p>
+                <p class="text-gray-400">Longevity</p>
+                <p class="text-xs text-gray-500">{{ vlds_data.longevity_label }}</p>
+            </div>
+            <div class="bg-dark-card rounded-xl p-4 border border-dark-border text-center">
+                <p class="text-3xl font-bold text-accent-orange">{{ (vlds_data.density * 100)|round|int }}%</p>
+                <p class="text-gray-400">Density</p>
+                <p class="text-xs text-gray-500">{{ vlds_data.density_label }}</p>
+            </div>
+            <div class="bg-dark-card rounded-xl p-4 border border-dark-border text-center">
+                <p class="text-3xl font-bold text-accent-purple">{{ (vlds_data.scarcity * 100)|round|int }}%</p>
+                <p class="text-gray-400">Scarcity</p>
+                <p class="text-xs text-gray-500">{{ vlds_data.scarcity_label }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Mood History -->
+    <!-- ============================================ -->
+    <section id="history" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">7-Day Mood History</h2>
+        <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+            <div class="h-64">
+                <canvas id="mood-history-chart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Intelligence Dashboard -->
+    <!-- ============================================ -->
+    <section id="intelligence" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">🎯 Intelligence Dashboard</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Geographic Hotspots -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Geographic Hotspots</h3>
+                {% if geo_data %}
+                <div class="space-y-2">
+                    {% for g in geo_data[:8] %}
+                    <div class="flex items-center justify-between p-2 bg-dark-bg rounded">
+                        <span class="text-gray-300">{{ g.country }}</span>
+                        <div class="flex items-center gap-4">
+                            <span class="text-gray-500 text-sm">{{ g.count }} items</span>
+                            <span class="text-accent-cyan font-medium">{{ g.avg_empathy|round(3) if g.avg_empathy else '--' }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-center py-8">No geographic data available</p>
+                {% endif %}
+            </div>
+
+            <!-- Source Distribution -->
+            <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+                <h3 class="text-lg font-medium mb-4">Source Distribution</h3>
+                {% if sources %}
+                <div class="space-y-2">
+                    {% for s in sources %}
+                    <div class="flex items-center justify-between p-2 bg-dark-bg rounded">
+                        <span class="text-gray-300">{{ s.display_name }}</span>
+                        <div class="flex items-center gap-4">
+                            <span class="text-gray-500 text-sm">{{ s.count }} items</span>
+                            <span class="text-primary font-medium">{{ s.percentage }}%</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-center py-8">No source data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION: Brand Analysis (if brand query) -->
+    <!-- ============================================ -->
+    {% if brand_query and brand_data %}
+    <section id="brand" class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">📊 Brand VLDS: {{ brand_query }}</h2>
+        <div class="bg-dark-card rounded-xl p-6 border border-dark-border">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-accent-blue">{{ brand_data.total_posts }}</p>
+                    <p class="text-gray-400">Posts</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-accent-green">{{ (brand_data.velocity * 100)|round|int }}%</p>
+                    <p class="text-gray-400">Velocity</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-accent-orange">{{ (brand_data.longevity * 100)|round|int }}%</p>
+                    <p class="text-gray-400">Longevity</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-accent-purple">{{ (brand_data.density * 100)|round|int }}%</p>
+                    <p class="text-gray-400">Density</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-accent-cyan">{{ (brand_data.scarcity * 100)|round|int }}%</p>
+                    <p class="text-gray-400">Scarcity</p>
+                </div>
+            </div>
+
+            {% if brand_data.top_emotions_detailed %}
+            <h4 class="font-medium mb-2">Dominant Emotions</h4>
+            <div class="flex flex-wrap gap-2 mb-4">
+                {% for e in brand_data.top_emotions_detailed %}
+                <span class="px-3 py-1 bg-dark-bg rounded-full text-sm">
+                    {{ e.emotion }} ({{ e.percentage }}%)
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Color palette matching v1
+    const COLORS = {
+        blue: '#1f77b4',
+        orange: '#ff7f0e',
+        green: '#2ca02c',
+        red: '#d62728',
+        purple: '#9467bd',
+        brown: '#8c564b',
+        pink: '#e377c2',
+        gray: '#7f7f7f',
+        olive: '#bcbd22',
+        cyan: '#17becf'
+    };
+    const PALETTE = Object.values(COLORS);
+
+    // Data from backend
+    const emotionsData = {{ emotions | tojson if emotions else '[]' | safe }};
+    const topicsData = {{ topics | tojson if topics else '[]' | safe }};
+    const moodHistoryData = {{ mood_history | tojson if mood_history else '[]' | safe }};
+    const emotionColors = {{ emotion_colors | tojson if emotion_colors else '{}' | safe }};
+    const topicVldsData = {{ topic_vlds | tojson if topic_vlds else '[]' | safe }};
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initEmotionChart();
+        initTopicChart();
+        initMoodHistoryChart();
+        initVLDSCharts();
+    });
+
+    function initEmotionChart() {
+        const ctx = document.getElementById('emotion-chart');
+        if (!ctx || emotionsData.length === 0) return;
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: emotionsData.map(e => e.emotion),
+                datasets: [{
+                    data: emotionsData.map(e => e.percentage),
+                    backgroundColor: emotionsData.map((e, i) => emotionColors[e.emotion] || PALETTE[i % PALETTE.length]),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: '#9CA3AF', font: { size: 11 } }
+                    }
+                }
+            }
+        });
+    }
+
+    function initTopicChart() {
+        const ctx = document.getElementById('topic-chart');
+        if (!ctx || topicsData.length === 0) return;
+
+        const data = topicsData.slice(0, 10);
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(t => t.topic),
+                datasets: [{
+                    data: data.map(t => t.percentage),
+                    backgroundColor: PALETTE,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' } },
+                    y: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 10 } } }
+                }
+            }
+        });
+    }
+
+    function initMoodHistoryChart() {
+        const ctx = document.getElementById('mood-history-chart');
+        if (!ctx) return;
+
+        let labels, data;
+        if (moodHistoryData.length > 0) {
+            labels = moodHistoryData.map(h => new Date(h.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+            data = moodHistoryData.map(h => h.score);
+        } else {
+            labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            data = [50, 50, 50, 50, 50, 50, 50];
+        }
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Empathy Score',
+                    data: data,
+                    borderColor: COLORS.blue,
+                    backgroundColor: 'rgba(31, 119, 180, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointBackgroundColor: COLORS.blue,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' } },
+                    y: { min: 0, max: 100, grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF', stepSize: 25 } }
+                }
+            }
+        });
+    }
+
+    function initVLDSCharts() {
+        // Velocity × Longevity scatter with real VLDS data
+        const vlCtx = document.getElementById('velocity-longevity-chart');
+        const vlData = topicVldsData.length > 0 ? topicVldsData : topicsData.slice(0, 8).map((t, i) => ({
+            topic: t.topic,
+            velocity: 50,
+            longevity: 50,
+            density: 50
+        }));
+
+        if (vlCtx && vlData.length > 0) {
+            new Chart(vlCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        data: vlData.map(d => ({ x: d.velocity, y: d.longevity })),
+                        backgroundColor: PALETTE,
+                        pointRadius: 12,
+                        pointHoverRadius: 16
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const d = vlData[ctx.dataIndex];
+                                    return d ? `${d.topic}: V=${d.velocity}%, L=${d.longevity}%` : '';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Velocity →', color: '#9CA3AF' }, grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' }, min: 0, max: 100 },
+                        y: { title: { display: true, text: 'Longevity ↑', color: '#9CA3AF' }, grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' }, min: 0, max: 100 }
+                    }
+                }
+            });
+        }
+
+        // Density bar chart with real data
+        const dCtx = document.getElementById('density-chart');
+        const densityData = topicVldsData.length > 0 ? topicVldsData.slice(0, 6) : topicsData.slice(0, 6).map(t => ({ topic: t.topic, density: t.percentage }));
+
+        if (dCtx && densityData.length > 0) {
+            new Chart(dCtx, {
+                type: 'bar',
+                data: {
+                    labels: densityData.map(t => t.topic),
+                    datasets: [{
+                        label: 'Density Score',
+                        data: densityData.map(t => t.density),
+                        backgroundColor: densityData.map((_, i) => PALETTE[i % PALETTE.length]),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 9 } } },
+                        y: { title: { display: true, text: 'Density %', color: '#9CA3AF' }, grid: { color: '#3D3D3D' }, ticks: { color: '#9CA3AF' }, min: 0, max: 100 }
+                    }
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,56 @@
+<!-- Emotion Distribution Chart Partial -->
+<div class="h-48">
+    <canvas id="emotion-chart-canvas"></canvas>
+</div>
+
+<script>
+    (function() {
+        const ctx = document.getElementById('emotion-chart-canvas');
+        if (!ctx) return;
+
+        // Destroy existing chart if any
+        if (window.emotionChart) {
+            window.emotionChart.destroy();
+        }
+
+        const emotions = {{ emotions | tojson }};
+        const emotionColors = {{ emotion_colors | tojson }};
+
+        const labels = emotions.map(e => e.emotion);
+        const data = emotions.map(e => e.percentage);
+        const colors = emotions.map(e => emotionColors[e.emotion] || '#808080');
+
+        window.emotionChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: '#9CA3AF',
+                            font: { size: 11 },
+                            boxWidth: 12
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.raw.toFixed(1) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    })();
+</script>

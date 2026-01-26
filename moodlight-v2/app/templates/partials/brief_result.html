@@ -1,0 +1,57 @@
+<!-- Brief Generation Result Partial -->
+<div class="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
+    <!-- Success Header -->
+    <div class="bg-green-900/20 border-b border-green-800/30 px-6 py-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span class="text-green-400 font-medium">Brief Generated Successfully</span>
+            </div>
+            <div class="flex items-center gap-2">
+                {% if email_sent %}
+                <span class="px-3 py-1 text-xs rounded-full bg-blue-900/30 text-blue-400">
+                    Emailed
+                </span>
+                {% endif %}
+                <a href="/briefs/{{ brief.id }}" class="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg transition-colors">
+                    View Full Brief
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Frameworks Used -->
+    {% if frameworks_used %}
+    <div class="px-6 py-3 bg-dark-bg/50 border-b border-dark-border">
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-400">Frameworks Applied:</span>
+            {% for fw in frameworks_used %}
+            <span class="px-2 py-1 text-xs rounded bg-primary/20 text-primary">{{ fw }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Brief Content Preview -->
+    <div class="p-6">
+        <div class="prose prose-invert prose-sm max-w-none">
+            {{ brief_content[:2000] | safe }}{% if brief_content|length > 2000 %}
+            <div class="mt-4 pt-4 border-t border-dark-border">
+                <a href="/briefs/{{ brief.id }}" class="text-primary hover:text-primary/80 font-medium">
+                    Continue reading full brief...
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.prose h2 { @apply text-lg font-bold text-primary mt-6 mb-3; }
+.prose h3 { @apply text-base font-semibold text-white mt-4 mb-2; }
+.prose p { @apply text-gray-300 mb-3; }
+.prose ul { @apply list-disc list-inside space-y-1 text-gray-300 mb-3; }
+.prose strong { @apply text-white; }
+</style>
