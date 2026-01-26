@@ -340,6 +340,9 @@ def is_spam(text: str) -> bool:
         # Sneaker/drop spam (promotional)
         "air jordan", "releasing at", "drops at", "nike dunk", "yeezy",
         "sneaker", "nike air",
+        # Adult/porn content
+        "xxx", "porn", "onlyfans", "nsfw", "nude", "nudes", "sex video",
+        "leaked video", "adult content", "18+", "🔞", "studentxxx",
     ]
     
     if any(phrase in t for phrase in instant_ban):
