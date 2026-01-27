@@ -697,57 +697,72 @@ def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> str:
     
     client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     
-    top_topics = df['topic'].value_counts().head(5).to_string() if 'topic' in df.columns else "No topic data"
+    top_topics = df['topic'].value_counts().head(10).to_string() if 'topic' in df.columns else "No topic data"
     empathy_dist = df['empathy_label'].value_counts().to_string() if 'empathy_label' in df.columns else "No empathy data"
-    top_emotions = df['emotion_top_1'].value_counts().head(5).to_string() if 'emotion_top_1' in df.columns else "No emotion data"
-    geo_dist = df['country'].value_counts().head(5).to_string() if 'country' in df.columns else "No geographic data"
-    
+    top_emotions = df['emotion_top_1'].value_counts().head(10).to_string() if 'emotion_top_1' in df.columns else "No emotion data"
+    geo_dist = df['country'].value_counts().head(10).to_string() if 'country' in df.columns else "No geographic data"
+    source_dist = df['source'].value_counts().head(10).to_string() if 'source' in df.columns else "No source data"
+    avg_empathy = f"{df['empathy_score'].mean():.1f}/100" if 'empathy_score' in df.columns else "N/A"
+
     try:
         velocity_df = pd.read_csv('topic_longevity.csv')
-        velocity_data = velocity_df[['topic', 'velocity_score', 'longevity_score']].head(5).to_string()
+        velocity_data = velocity_df[['topic', 'velocity_score', 'longevity_score']].head(10).to_string()
     except Exception:
         velocity_data = "No velocity/longevity data available"
-    
+
     try:
         density_df = pd.read_csv('topic_density.csv')
-        density_data = density_df.head(5).to_string()
+        density_data = density_df[['topic', 'density_score', 'post_count', 'primary_platform']].head(10).to_string()
     except Exception:
         density_data = "No density data available"
-    
+
     try:
         scarcity_df = pd.read_csv('topic_scarcity.csv')
-        scarcity_data = scarcity_df.head(5).to_string()
+        scarcity_data = scarcity_df[['topic', 'scarcity_score', 'mention_count', 'opportunity']].head(10).to_string()
     except Exception:
         scarcity_data = "No scarcity data available"
 
-    # Get actual headlines for real-time grounding
+    # Get actual headlines for real-time grounding with full metadata
     recent_headlines = ""
     viral_headlines = ""
     if 'text' in df.columns:
+        headline_cols = ['text', 'topic', 'source', 'engagement', 'empathy_label', 'emotion_top_1']
+        available_cols = [c for c in headline_cols if c in df.columns]
+
         # Most recent headlines (what just happened)
         if 'created_at' in df.columns:
-            recent = df.nlargest(10, 'created_at')[['text', 'topic']].drop_duplicates('text')
-            recent_headlines = "\n".join([f"- [{row['topic']}] {row['text'][:150]}" for _, row in recent.iterrows()])
+            recent = df.nlargest(15, 'created_at')[available_cols].drop_duplicates('text')
+            recent_headlines = "\n".join([
+                f"- [{row.get('topic', 'N/A')}] {row['text'][:150]} | Source: {row.get('source', 'N/A')} | Empathy: {row.get('empathy_label', 'N/A')} | Emotion: {row.get('emotion_top_1', 'N/A')}"
+                for _, row in recent.iterrows()
+            ])
 
         # Most viral/high-engagement (what's resonating)
         if 'engagement' in df.columns:
-            viral = df.nlargest(8, 'engagement')[['text', 'topic', 'engagement']].drop_duplicates('text')
-            viral_headlines = "\n".join([f"- [{row['topic']}] {row['text'][:150]} (engagement: {int(row['engagement'])})" for _, row in viral.iterrows()])
+            viral = df.nlargest(10, 'engagement')[available_cols].drop_duplicates('text')
+            viral_headlines = "\n".join([
+                f"- [{row.get('topic', 'N/A')}] {row['text'][:150]} | Engagement: {int(row.get('engagement', 0))} | Source: {row.get('source', 'N/A')} | Emotion: {row.get('emotion_top_1', 'N/A')}"
+                for _, row in viral.iterrows()
+            ])
 
     context = f"""
 MOODLIGHT INTELLIGENCE SNAPSHOT
 ================================
-TOP TOPICS:
+TOP TOPICS (by mention volume):
 {top_topics}
 
-EMOTIONAL CLIMATE:
+EMOTIONAL CLIMATE (top emotions detected):
 {top_emotions}
 
 EMPATHY DISTRIBUTION:
 {empathy_dist}
+Average Empathy Score: {avg_empathy}
 
 GEOGRAPHIC HOTSPOTS:
 {geo_dist}
+
+SOURCE DISTRIBUTION (which publications/platforms are driving conversation):
+{source_dist}
 
 VELOCITY & LONGEVITY (Which topics are rising fast vs. enduring):
 {velocity_data}
@@ -758,10 +773,10 @@ DENSITY (Topic saturation - high means crowded, low means opportunity):
 SCARCITY (Underserved topics - high scarcity = white space opportunity):
 {scarcity_data}
 
-RECENT HEADLINES (What just happened):
+RECENT HEADLINES (What just happened - with source, empathy, emotion):
 {recent_headlines if recent_headlines else "No recent headlines available"}
 
-HIGH-ENGAGEMENT CONTENT (What's resonating now):
+HIGH-ENGAGEMENT CONTENT (What's resonating now - with engagement scores):
 {viral_headlines if viral_headlines else "No engagement data available"}
 
 Total Posts Analyzed: {len(df)}
