@@ -823,16 +823,21 @@ Based on the empathy score and emotional climate:
 
 End with: "Consider: '[specific campaign thought-starter]'"
 
-## 4. ⚡ THE UNCOMFORTABLE TRUTH
+## 4. ⚡ UNEXPECTED ANGLE: The Insight They Didn't See Coming
 
-This is where you earn your fee. Find ONE integrated insight that:
-- Challenges what the client assumes about their category
-- Is backed by a tension or contradiction in the data
-- Leads to a creative move no competitor would make
+This is where you earn your fee. Include ALL of the following:
 
-Don't give five separate boxes. Give one connected insight that makes the client uncomfortable, then excited.
+- **Contrarian Take**: One insight that challenges conventional thinking about this category. What would surprise the client? What do they NOT expect to hear but need to?
 
-End with: "The non-obvious move: [one sentence]"
+- **Data Tension**: Look for contradictions (what people say vs. what they engage with, stated values vs. actual behavior). Call out one paradox in the data.
+
+- **Cultural Parallel**: Reference one analogy from another brand, category, or cultural moment that illuminates the current opportunity.
+
+- **Competitor Blind Spot**: What is one thing competitors in this space are likely missing right now?
+
+- **Creative Spark**: One bold campaign idea or hook that ONLY works in this specific cultural moment. Not generic. Not safe. Something that makes the client lean forward.
+
+End with: "The non-obvious move: [one sentence summary of the unexpected angle]"
 
 ## 5. 🔥 WHY NOW: The Real-Time Trigger
 
@@ -845,6 +850,31 @@ This brief must feel URGENT and TIMELY. Use the RECENT HEADLINES and HIGH-ENGAGE
 - **Cultural Collision**: What current events from the headlines are colliding to create this specific opening?
 
 End with: "Act now because: [one sentence on why timing matters]"
+
+## 6. 🎯 MAKE IT REAL: Tangible Outputs
+
+Based on the above analysis, provide:
+
+**Opening Hooks (3 options):**
+- One that leads with tension
+- One that leads with aspiration
+- One that's provocative/contrarian
+
+**Campaign Concept (1 paragraph):**
+A single activatable idea—name it, describe it in 2-3 sentences, explain why it fits this cultural moment.
+
+**Platform Play:**
+Which platform (X, LinkedIn, TikTok, OOH, etc.) is best suited for this moment and why? One sentence.
+
+**First 48 Hours:**
+If the client said "go" right now, what's the single most important action in the next 48 hours? Be specific.
+
+**Steal This Line:**
+One sentence the client can use verbatim in a deck, ad, or pitch tomorrow.
+
+End with: "This is your starting point, not your ceiling."
+
+---
 
 Be bold and specific. Reference actual data points. Make decisions, not suggestions.
 
