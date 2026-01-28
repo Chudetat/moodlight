@@ -2949,7 +2949,7 @@ When answering:
             try:
                 response = client.messages.create(
                     model="claude-opus-4-20250514",
-                    max_tokens=1500,
+                    max_tokens=4096,
                     system=system_prompt,
                     messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_messages]
                 )
