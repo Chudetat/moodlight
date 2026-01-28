@@ -288,17 +288,19 @@ FEEDS: List[tuple[str, str]] = [
     ("Healthcare Dive", "https://www.healthcaredive.com/feeds/news/"),
     ("Pharma Times", "https://www.pharmatimes.com/rss"),
 
-    # Tech / AI Deep Dive
+    # Tech / AI / Enterprise SaaS
     ("TechCrunch", "https://techcrunch.com/feed/"),
     ("VentureBeat", "https://venturebeat.com/feed/"),
     ("MIT Tech Review", "https://www.technologyreview.com/feed/"),
     ("The Verge", "https://www.theverge.com/rss/index.xml"),
     ("AI News", "https://www.artificialintelligence-news.com/feed/"),
+    ("SaaStr", "https://www.saastr.com/feed/"),
 
-    # Retail / Consumer
+    # Retail / Consumer / CPG
     ("Retail Dive", "https://www.retaildive.com/feeds/news/"),
     ("Retail Wire", "https://retailwire.com/feed/"),
     ("Consumer Goods Technology", "https://consumergoods.com/rss.xml"),
+    ("Grocery Dive", "https://www.grocerydive.com/feeds/news/"),
 
     # Sustainability / ESG
     ("GreenBiz", "https://www.greenbiz.com/rss.xml"),
@@ -322,6 +324,8 @@ FEEDS: List[tuple[str, str]] = [
     ("Car and Driver", "https://www.caranddriver.com/rss/all.xml"),
     ("Electrek", "https://electrek.co/feed/"),
     ("InsideEVs", "https://insideevs.com/rss/"),
+    ("Automotive News", "https://www.autonews.com/rss.xml"),
+    ("Automotive Dive", "https://www.automotivedive.com/feeds/news/"),
 
 
     # Real Estate / Property
@@ -332,10 +336,14 @@ FEEDS: List[tuple[str, str]] = [
     ("Supply Chain Dive", "https://www.supplychaindive.com/feeds/news/"),
     ("FreightWaves", "https://www.freightwaves.com/feed"),
 
-    # Food & Beverage
+    # Food & Beverage / QSR
     ("Food Dive", "https://www.fooddive.com/feeds/news/"),
     ("Nation's Restaurant News", "https://www.nrn.com/rss.xml"),
     ("Beverage Industry", "https://www.bevindustry.com/rss"),
+    ("QSR Magazine", "https://www.qsrmagazine.com/rss.xml"),
+    ("Restaurant Business", "https://www.restaurantbusinessonline.com/rss.xml"),
+    ("Restaurant Dive", "https://www.restaurantdive.com/feeds/news/"),
+    ("FSR Magazine", "https://www.fsrmagazine.com/rss.xml"),
 
     # Travel & Hospitality
     ("Skift", "https://skift.com/feed/"),
@@ -350,6 +358,7 @@ FEEDS: List[tuple[str, str]] = [
     ("Finextra", "https://www.finextra.com/rss/headlines.aspx"),
     ("PaymentsSource", "https://www.paymentssource.com/feed"),
     ("Finovate", "https://finovate.com/feed/"),
+    ("Tearsheet", "https://tearsheet.co/feed/"),
 
     # Aerospace / Defense
     ("Defense News", "https://www.defensenews.com/arc/outboundfeeds/rss/"),
