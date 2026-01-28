@@ -77,7 +77,17 @@ FEEDS: List[tuple[str, str]] = [
 
     ("Japan Times", "https://www.japantimes.co.jp/feed/"),
 
+    # Sports & Sports Business
     ("ESPN", "https://www.espn.com/espn/rss/news"),
+    ("Sports Business Journal", "https://www.sportsbusinessjournal.com/rss/feed.aspx"),
+    ("Front Office Sports", "https://frontofficesports.com/feed/"),
+    ("Sportico", "https://www.sportico.com/feed/"),
+    ("The Athletic", "https://theathletic.com/feed/"),
+    ("Bleacher Report", "https://bleacherreport.com/articles/feed"),
+    ("CBS Sports", "https://www.cbssports.com/rss/headlines/"),
+    ("Yahoo Sports", "https://sports.yahoo.com/rss/"),
+    ("NFL News", "https://www.nfl.com/rss/rsslanding?searchString=home"),
+    ("NBA News", "https://www.nba.com/feed.xml"),
 
     ("TechCrunch", "http://feeds.feedburner.com/TechCrunch/"),
     ("The Verge", "https://www.theverge.com/rss/index.xml"),
@@ -672,8 +682,8 @@ TOPIC_KEYWORDS = {
     "labor & work": ["labor", "union", "strike", "worker", "job", "wage", "employment", "unemployment"],
     "housing": ["housing", "rent", "landlord", "mortgage", "eviction", "real estate", "property"],
     "religion & values": ["religion", "church", "faith", "spiritual", "bible", "religious", "muslim", "christian"],
-    "sports": ["sports", "game", "match", "team", "player", "athlete", "championship", "football", "basketball"],
-    "entertainment": ["movie", "film", "tv", "music", "concert", "celebrity", "actor", "entertainment"],
+    "sports": ["sports", "game", "match", "team", "player", "athlete", "championship", "football", "basketball", "nba", "nfl", "nhl", "mlb", "ncaa", "college sports", "sports media", "nil", "transfer portal", "free agency", "draft", "playoff", "super bowl", "world series", "stanley cup", "march madness", "espn", "sports betting", "sportsbook"],
+    "entertainment": ["movie", "film", "tv", "music", "concert", "celebrity", "actor", "entertainment", "box office", "streaming", "netflix", "disney", "hbo", "theatrical", "studio", "producer", "director", "showrunner", "writers room", "production", "content", "subscriber", "ratings", "premiere", "franchise", "sequel", "reboot", "adaptation"],
 }
 
 def classify_topic(text: str) -> str:

@@ -627,7 +627,7 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict:
         results['top_topics_detailed'] = top_topics_detailed
         
         # White space: topics with <10% share, filtered for relevance
-        irrelevant_topics = ['other', 'sports', 'entertainment', 'religion & values', 'race & ethnicity', 'gender & sexuality']
+        irrelevant_topics = ['other', 'religion & values', 'race & ethnicity', 'gender & sexuality']
         scarce_topics_detailed = []
         for topic, count in topic_counts.items():
             pct = (count / total_posts) * 100
