@@ -956,7 +956,7 @@ For all industries: Consider regulatory and reputational risk when recommending 
 """
     
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-opus-4-20250514",
         max_tokens=4000,
         system="You are a senior strategist who combines data intelligence with creative intuition. You speak plainly and give bold recommendations.",
         messages=[{"role": "user", "content": prompt}]
@@ -1110,7 +1110,7 @@ def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFr
     
     try:
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-opus-4-20250514",
             max_tokens=800,
             system="You are a senior intelligence analyst. Give concise, specific insights that connect the quantitative data to actual events in the headlines. Show your work - explain WHAT happened, not just what the numbers show. No fluff.",
             messages=[{"role": "user", "content": prompt}]
@@ -1623,7 +1623,7 @@ if compare_mode:
                     
                     client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
                     response = client.messages.create(
-                        model="claude-sonnet-4-20250514",
+                        model="claude-opus-4-20250514",
                         messages=[{"role": "user", "content": prompt}],
                         max_tokens=500
                     )
@@ -2591,7 +2591,7 @@ Be specific and prescriptive. Reference the actual scores. No generic advice. (2
                 
                 client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
                 response = client.messages.create(
-                    model="claude-sonnet-4-20250514",
+                    model="claude-opus-4-20250514",
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=500
                 )
@@ -2948,7 +2948,7 @@ When answering:
 
             try:
                 response = client.messages.create(
-                    model="claude-sonnet-4-20250514",
+                    model="claude-opus-4-20250514",
                     max_tokens=1500,
                     system=system_prompt,
                     messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_messages]
