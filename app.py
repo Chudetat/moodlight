@@ -690,7 +690,60 @@ brief_message_placeholder = st.empty()
 from anthropic import Anthropic
 import os
 import csv
+import feedparser
 from strategic_frameworks import select_frameworks, get_framework_prompt, STRATEGIC_FRAMEWORKS
+
+
+def fetch_brand_news(brand_name: str, max_results: int = 10) -> list:
+    """Fetch recent news about a brand via Google News RSS"""
+    try:
+        query = brand_name.replace(' ', '+')
+        url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
+        response = requests.get(url, timeout=10, headers={
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+        })
+        response.raise_for_status()
+        feed = feedparser.parse(response.content)
+
+        articles = []
+        for entry in feed.entries[:max_results]:
+            title = entry.get("title", "")
+            source = entry.get("source", {}).get("title", "Unknown") if hasattr(entry.get("source", {}), "get") else "Unknown"
+            published = entry.get("published", "")
+            link = entry.get("link", "")
+            summary = entry.get("summary", "")
+            # Clean HTML from summary
+            import re
+            summary = re.sub(r"<[^>]+>", "", summary)[:200]
+
+            articles.append({
+                "title": title,
+                "source": source,
+                "published": published,
+                "summary": summary,
+                "link": link
+            })
+        return articles
+    except Exception as e:
+        print(f"Brand search error: {e}")
+        return []
+
+
+def detect_brand_query(user_message: str, client: Anthropic) -> str:
+    """Use a fast model to detect if user is asking about a specific brand"""
+    try:
+        response = client.messages.create(
+            model="claude-haiku-3-20240307",
+            max_tokens=50,
+            system="Extract the brand or company name from this message. If the user is asking about a specific brand or company, return ONLY the brand name. If not asking about a specific brand, return NONE. No explanation.",
+            messages=[{"role": "user", "content": user_message}]
+        )
+        result = response.content[0].text.strip()
+        if result.upper() == "NONE" or len(result) > 50:
+            return ""
+        return result
+    except Exception:
+        return ""
 
 def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> str:
     """Generate strategic campaign brief using AI and Moodlight data"""
@@ -2836,6 +2889,13 @@ if prompt := st.chat_input("Ask a question about the data..."):
     # Generate response
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
+            # Detect if user is asking about a specific brand
+            client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+            brand_name = detect_brand_query(prompt, client)
+            brand_articles = []
+            if brand_name:
+                brand_articles = fetch_brand_news(brand_name)
+
             # Build comprehensive context from all available data
             context_parts = []
 
@@ -2914,10 +2974,16 @@ if prompt := st.chat_input("Ask a question about the data..."):
                 source_dist = df_all["source"].value_counts().head(10).to_dict()
                 context_parts.append(f"SOURCE DISTRIBUTION: {source_dist}")
 
+            # 9. Brand web search results (if brand detected)
+            if brand_articles:
+                brand_results = "\n".join([
+                    f"- {a['title']} | Source: {a['source']} | Published: {a['published']}\n  Summary: {a['summary']}"
+                    for a in brand_articles
+                ])
+                context_parts.append(f"LIVE WEB RESULTS FOR '{brand_name.upper()}':\n{brand_results}")
+
             # Build the full context
             data_context = "\n\n".join(context_parts)
-            
-            client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
             
             system_prompt = f"""You are Moodlight's AI analyst with full access to real-time cultural intelligence data.
 
@@ -2944,7 +3010,19 @@ When answering:
 - Reference specific data points (scores, counts, percentages)
 - Name specific topics, sources, or headlines when relevant
 - Be direct and actionable
-- If asked about a brand/company, filter mentally for relevant mentions in the headlines"""
+- If asked about a brand/company, use both the dashboard data and any live web results provided to give a comprehensive diagnosis"""
+
+            # Add brand analysis instructions when web results are present
+            if brand_articles:
+                system_prompt += f"""
+
+=== BRAND ANALYSIS MODE: {brand_name.upper()} ===
+Live web search results for this brand have been injected into your data above. When analyzing {brand_name}:
+1. Current media narrative: What's being said right now
+2. Cultural positioning: How the brand sits in the current cultural moment
+3. Sentiment read: Positive/negative/mixed signals from the coverage
+4. Strategic opportunities: What the brand should consider
+5. Connection to broader cultural trends: Link brand findings to dashboard signals above"""
 
             try:
                 response = client.messages.create(
