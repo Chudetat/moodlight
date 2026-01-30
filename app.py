@@ -3005,12 +3005,22 @@ You can answer questions about:
 - Sources: Which publications/platforms are driving conversation
 - Geography: Where conversations are happening
 - Strategic recommendations: When to engage, what to say, where to play
+- Strategic brief prompts: Generate ready-to-paste inputs for the Strategic Brief Generator
 
 When answering:
 - Reference specific data points (scores, counts, percentages)
 - Name specific topics, sources, or headlines when relevant
 - Be direct and actionable
-- If asked about a brand/company, use both the dashboard data and any live web results provided to give a comprehensive diagnosis"""
+- If asked about a brand/company, use both the dashboard data and any live web results provided to give a comprehensive diagnosis
+- If the user asks for a strategic brief prompt, brief inputs, or anything related to generating a brief, format your response using EXACTLY these five fields so they can copy-paste directly into the Strategic Brief Generator:
+
+  **Product/Service:** [specific product, service, or brand to build the brief around]
+  **Target Audience:** [who the brief should speak to]
+  **Markets/Geography:** [regions or markets to focus on]
+  **Key Challenge:** [the core strategic problem or opportunity]
+  **Timeline/Budget:** [timeframe and any resource context]
+
+  Base each field on what the dashboard data is actually showing — trending topics, high-scarcity opportunities, emotional signals, and cultural moments. Make the inputs specific and actionable, not generic."""
 
             # Add brand analysis instructions when web results are present
             if brand_articles:
