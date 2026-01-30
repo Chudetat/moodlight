@@ -10,7 +10,7 @@ import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 from session_manager import create_session, validate_session, clear_session
-from tier_helper import get_user_tier, can_generate_brief, increment_brief_count, has_feature_access
+from tier_helper import get_user_tier, can_generate_brief, decrement_brief_credits, has_feature_access, get_brief_credits
 try:
     from polymarket_helper import fetch_polymarket_markets, calculate_sentiment_divergence
     HAS_POLYMARKET = True
@@ -1227,37 +1227,17 @@ with st.sidebar:
         placeholder='e.g. "student loans"',
         help="Leave empty for default.",
     )
-    # Check tier access for Brand Focus Mode
-    if has_feature_access(username, "brand_focus"):
-        brand_focus = st.checkbox(
-            "Brand Focus Mode",
-            value=False,
-            help="When enabled, shows only posts matching your search query"
-        )
-    else:
-        brand_focus = False
-        st.checkbox(
-            "Brand Focus Mode 🔒",
-            value=False,
-            disabled=True,
-            help="Upgrade to Team or Enterprise to unlock Brand Focus Mode"
-        )
-    
-    # Check tier access for Competitive Tracking
-    if has_feature_access(username, "competitive_tracking"):
-        compare_mode = st.checkbox(
-            "Compare Brands",
-            value=False,
-            help="Compare VLDS metrics across 2-3 brands side by side"
-        )
-    else:
-        compare_mode = False
-        st.checkbox(
-            "Compare Brands 🔒",
-            value=False,
-            disabled=True,
-            help="Upgrade to Team or Enterprise to unlock Competitive Tracking"
-        )
+    brand_focus = st.checkbox(
+        "Brand Focus Mode",
+        value=False,
+        help="When enabled, shows only posts matching your search query"
+    )
+
+    compare_mode = st.checkbox(
+        "Compare Brands",
+        value=False,
+        help="Compare VLDS metrics across 2-3 brands side by side"
+    )
     
     if compare_mode:
         st.caption("Enter 2-3 brands to compare:")
@@ -1322,13 +1302,20 @@ with st.sidebar:
 
     
     if brief_product.strip():
+        # Show remaining brief credits
+        remaining_credits = get_brief_credits(username)
+        if remaining_credits == -1:
+            st.caption("Brief credits: **Unlimited** (Enterprise)")
+        else:
+            st.caption(f"Brief credits remaining: **{remaining_credits}**")
+
         user_email = st.text_input(
             "Your email (to receive brief)",
             placeholder="you@company.com"
         )
-        
+
         if user_email.strip() and st.button("Generate Brief"):
-            # Check brief limit
+            # Check brief credits
             can_generate, limit_msg = can_generate_brief(username)
             if not can_generate:
                 st.error(f"🔒 {limit_msg}")
@@ -2847,7 +2834,7 @@ if st.session_state.get('generate_brief'):
         with st.spinner("🎯 Generating your strategic brief..."):
             try:
                 brief, frameworks_used = generate_strategic_brief(user_need, df_all)
-                increment_brief_count(username)
+                decrement_brief_credits(username)
             except Exception as e:
                 st.error(f"Error generating brief: {e}")
                 brief = f"Error: {e}"
