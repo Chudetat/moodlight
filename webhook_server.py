@@ -29,9 +29,9 @@ BRIEF_PACK_CREDITS = {
     # 10-Pack: $4,000 = 10 credits
     # 20-Pack: $7,000 = 20 credits
     # Add Stripe price IDs here when created:
-    # "price_xxx": 1,
-    # "price_yyy": 10,
-    # "price_zzz": 20,
+    # "https://buy.stripe.com/aFaaEPbHZ0d41cH6m48ww0g": 1,
+    # "https://buy.stripe.com/5kQ6oz3bt7Fwg7B7q88ww0h": 10,
+    # "https://buy.stripe.com/cNi14f4fxaRIaNh6m48ww0i": 20,
 }
 
 def update_user_tier_by_email(email: str, tier: str, customer_id: str, subscription_id: str):
