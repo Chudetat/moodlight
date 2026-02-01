@@ -345,6 +345,14 @@ FEEDS: List[tuple[str, str]] = [
     ("Restaurant Dive", "https://www.restaurantdive.com/feeds/news/"),
     ("FSR Magazine", "https://www.fsrmagazine.com/rss.xml"),
 
+    # Alcohol & Spirits
+    ("The Spirits Business", "https://www.thespiritsbusiness.com/feed/"),
+    ("The Drinks Business", "https://www.thedrinksbusiness.com/feed/"),
+    ("VinePair", "https://vinepair.com/feed/"),
+    ("Beverage Dynamics", "https://beveragedynamics.com/feed/"),
+    ("Brewbound", "https://www.brewbound.com/rss"),
+    ("SevenFifty Daily", "https://daily.sevenfifty.com/feed/"),
+
     # Travel & Hospitality
     ("Skift", "https://skift.com/feed/"),
 
@@ -547,7 +555,25 @@ GOOGLE_NEWS_QUERIES = [
     "KFC",
     "Dominos",
     "Papa Johns",
-    
+
+    # Alcohol & Spirits
+    "Diageo",
+    "Smirnoff",
+    "Bacardi",
+    "Pernod Ricard",
+    "Brown-Forman",
+    "Jack Daniels",
+    "Hennessy",
+    "Grey Goose",
+    "Absolut Vodka",
+    "Johnnie Walker",
+    "Crown Royal",
+    "Patron Tequila",
+    "Don Julio",
+    "Modelo",
+    "Anheuser-Busch",
+    "Constellation Brands",
+
     # Entertainment/Media
     "Disney",
     "Warner Bros",
