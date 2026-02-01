@@ -1262,32 +1262,27 @@ with st.sidebar:
     
     brief_product = st.text_input(
         "Product / Service",
-        help='e.g. "premium running shoe for women"',
-        key="brief_product"
+        help='e.g. "premium running shoe for women"'
     )
 
     brief_audience = st.text_input(
         "Target Audience",
-        help='e.g. "women 25-40, urban, health-conscious"',
-        key="brief_audience"
+        help='e.g. "women 25-40, urban, health-conscious"'
     )
 
     brief_markets = st.text_input(
         "Markets / Geography",
-        help='e.g. "US, UK, Canada"',
-        key="brief_markets"
+        help='e.g. "US, UK, Canada"'
     )
 
     brief_challenge = st.text_input(
         "Key Challenge",
-        help='e.g. "competing against On and Hoka"',
-        key="brief_challenge"
+        help='e.g. "competing against On and Hoka"'
     )
 
     brief_timeline = st.text_input(
         "Timeline / Budget",
-        help='e.g. "Q1 2025, $2M digital"',
-        key="brief_timeline"
+        help='e.g. "Q1 2025, $2M digital"'
     )
     
     # Combine into user_need
@@ -2873,55 +2868,6 @@ for message in st.session_state.chat_messages:
 
 # Chat input
 if prompt := st.chat_input("Ask a question about the data..."):
-    # Check for Autopop command
-    if prompt.strip().lower() == "autopop":
-        # Find the last assistant message with brief fields
-        import re
-        last_brief = None
-        for msg in reversed(st.session_state.chat_messages):
-            if msg["role"] == "assistant" and "Product/Service" in msg["content"]:
-                last_brief = msg["content"]
-                break
-
-        if last_brief:
-            # Parse the 5 fields from the assistant's response
-            # Handles both plain text (Product/Service:) and bold (**Product/Service:**)
-            field_map = {
-                r"\*?\*?Product/Service\*?\*?:\s*(.+)": "brief_product",
-                r"\*?\*?Target Audience\*?\*?:\s*(.+)": "brief_audience",
-                r"\*?\*?Markets/Geography\*?\*?:\s*(.+)": "brief_markets",
-                r"\*?\*?Key Challenge\*?\*?:\s*(.+)": "brief_challenge",
-                r"\*?\*?Timeline/Budget\*?\*?:\s*(.+)": "brief_timeline",
-            }
-            populated = []
-            for pattern, key in field_map.items():
-                match = re.search(pattern, last_brief)
-                if match:
-                    st.session_state[key] = match.group(1).strip()
-                    populated.append(key.replace("brief_", "").replace("_", " ").title())
-
-            if populated:
-                st.session_state.chat_messages.append({"role": "user", "content": prompt})
-                st.session_state.chat_messages.append({
-                    "role": "assistant",
-                    "content": f"Done. Strategic Brief fields populated: {', '.join(populated)}. Check the sidebar — fields are ready to go."
-                })
-                st.rerun()
-            else:
-                st.session_state.chat_messages.append({"role": "user", "content": prompt})
-                st.session_state.chat_messages.append({
-                    "role": "assistant",
-                    "content": "Couldn't parse the brief fields. Ask me to generate a brief prompt first, then type 'Autopop'."
-                })
-                st.rerun()
-        else:
-            st.session_state.chat_messages.append({"role": "user", "content": prompt})
-            st.session_state.chat_messages.append({
-                "role": "assistant",
-                "content": "No brief prompt found in our conversation. Ask me to generate a brief prompt first, then type 'Autopop'."
-            })
-            st.rerun()
-
     # Add user message to history
     st.session_state.chat_messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
