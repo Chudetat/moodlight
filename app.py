@@ -2885,12 +2885,13 @@ if prompt := st.chat_input("Ask a question about the data..."):
 
         if last_brief:
             # Parse the 5 fields from the assistant's response
+            # Handles both plain text (Product/Service:) and bold (**Product/Service:**)
             field_map = {
-                r"\*\*Product/Service:\*\*\s*(.+?)(?:\n|$)": "brief_product",
-                r"\*\*Target Audience:\*\*\s*(.+?)(?:\n|$)": "brief_audience",
-                r"\*\*Markets/Geography:\*\*\s*(.+?)(?:\n|$)": "brief_markets",
-                r"\*\*Key Challenge:\*\*\s*(.+?)(?:\n|$)": "brief_challenge",
-                r"\*\*Timeline/Budget:\*\*\s*(.+?)(?:\n|$)": "brief_timeline",
+                r"\*?\*?Product/Service\*?\*?:\s*(.+)": "brief_product",
+                r"\*?\*?Target Audience\*?\*?:\s*(.+)": "brief_audience",
+                r"\*?\*?Markets/Geography\*?\*?:\s*(.+)": "brief_markets",
+                r"\*?\*?Key Challenge\*?\*?:\s*(.+)": "brief_challenge",
+                r"\*?\*?Timeline/Budget\*?\*?:\s*(.+)": "brief_timeline",
             }
             populated = []
             for pattern, key in field_map.items():
