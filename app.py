@@ -693,6 +693,57 @@ import csv
 import feedparser
 from strategic_frameworks import select_frameworks, get_framework_prompt, STRATEGIC_FRAMEWORKS
 
+# Shared regulatory guidance used by both Strategic Brief Generator and Ask Moodlight
+REGULATORY_GUIDANCE = """HEALTHCARE / PHARMA / MEDICAL DEVICES:
+- Flag emotional tones (fear, nervousness, anger, grief, sadness, disappointment) that may face Medical Legal Review (MLR) scrutiny
+- Prioritize "safe white space" — culturally appropriate AND unlikely to trigger regulatory concerns
+- Recommend messaging that builds trust and credibility over provocative hooks
+- Note velocity spikes that could indicate emerging issues requiring compliance awareness
+- Frame recommendations as "MLR-friendly" where appropriate
+- Ensure fair balance when discussing benefits vs. risks
+
+FINANCIAL SERVICES / BANKING / INVESTMENTS:
+- Never promise or imply guaranteed returns
+- Flag any claims that could be seen as misleading by SEC, FINRA, or CFPB
+- Include appropriate risk disclosure language in recommendations
+- Avoid superlatives ("best," "guaranteed," "risk-free") without substantiation
+- Be cautious with testimonials — results not typical disclaimers required
+- Fair lending language required — no discriminatory implications
+
+ALCOHOL / SPIRITS / BEER / WINE:
+- Never target or appeal to audiences under 21
+- No health benefit claims whatsoever
+- Include responsible drinking messaging considerations
+- Avoid associating alcohol with success, social acceptance, or sexual prowess
+- Cannot show excessive consumption or intoxication positively
+- Platform restrictions: Meta/Google have strict alcohol ad policies
+
+CANNABIS / CBD:
+- Highly fragmented state-by-state regulations — recommend geo-specific strategies
+- No medical or health claims unless FDA-approved
+- Strict age-gating requirements in all messaging
+- Major platform restrictions: Meta, Google, TikTok prohibit cannabis ads
+- Recommend owned media and experiential strategies over paid social
+- Cannot target or appeal to minors in any way
+
+INSURANCE:
+- No guaranteed savings claims without substantiation
+- State DOI regulations vary — flag need for state-specific compliance review
+- Required disclosures on coverage limitations
+- Fair treatment language required — no discriminatory implications
+- Testimonials require "results may vary" disclaimers
+- Avoid fear-based messaging that could be seen as coercive
+
+LEGAL SERVICES:
+- No guarantees of case outcomes whatsoever
+- State bar regulations vary — recommend jurisdiction-specific review
+- Required disclaimers on attorney advertising
+- Restrictions on client testimonials in many states
+- Cannot create unjustified expectations
+- Avoid comparative claims against other firms without substantiation
+
+For all industries: Consider regulatory and reputational risk when recommending bold creative angles. When in doubt, recommend client consult with their legal/compliance team before execution."""
+
 
 def fetch_brand_news(brand_name: str, max_results: int = 10) -> list:
     """Fetch recent news about a brand via Google News RSS"""
@@ -957,55 +1008,7 @@ QUALITY CHECK: Before finalizing, delete any sentence a competitor's strategist 
 End the brief with: "---
 Powered by Moodlight's Cultural Momentum Matrix™"
 
-HEALTHCARE / PHARMA / MEDICAL DEVICES:
-- Flag emotional tones (fear, nervousness, anger, grief, sadness, disappointment) that may face Medical Legal Review (MLR) scrutiny
-- Prioritize "safe white space" — culturally appropriate AND unlikely to trigger regulatory concerns
-- Recommend messaging that builds trust and credibility over provocative hooks
-- Note velocity spikes that could indicate emerging issues requiring compliance awareness
-- Frame recommendations as "MLR-friendly" where appropriate
-- Ensure fair balance when discussing benefits vs. risks
-
-FINANCIAL SERVICES / BANKING / INVESTMENTS:
-- Never promise or imply guaranteed returns
-- Flag any claims that could be seen as misleading by SEC, FINRA, or CFPB
-- Include appropriate risk disclosure language in recommendations
-- Avoid superlatives ("best," "guaranteed," "risk-free") without substantiation
-- Be cautious with testimonials — results not typical disclaimers required
-- Fair lending language required — no discriminatory implications
-
-ALCOHOL / SPIRITS / BEER / WINE:
-- Never target or appeal to audiences under 21
-- No health benefit claims whatsoever
-- Include responsible drinking messaging considerations
-- Avoid associating alcohol with success, social acceptance, or sexual prowess
-- Cannot show excessive consumption or intoxication positively
-- Platform restrictions: Meta/Google have strict alcohol ad policies
-
-CANNABIS / CBD:
-- Highly fragmented state-by-state regulations — recommend geo-specific strategies
-- No medical or health claims unless FDA-approved
-- Strict age-gating requirements in all messaging
-- Major platform restrictions: Meta, Google, TikTok prohibit cannabis ads
-- Recommend owned media and experiential strategies over paid social
-- Cannot target or appeal to minors in any way
-
-INSURANCE:
-- No guaranteed savings claims without substantiation
-- State DOI regulations vary — flag need for state-specific compliance review
-- Required disclosures on coverage limitations
-- Fair treatment language required — no discriminatory implications
-- Testimonials require "results may vary" disclaimers
-- Avoid fear-based messaging that could be seen as coercive
-
-LEGAL SERVICES:
-- No guarantees of case outcomes whatsoever
-- State bar regulations vary — recommend jurisdiction-specific review
-- Required disclaimers on attorney advertising
-- Restrictions on client testimonials in many states
-- Cannot create unjustified expectations
-- Avoid comparative claims against other firms without substantiation
-
-For all industries: Consider regulatory and reputational risk when recommending bold creative angles. When in doubt, recommend client consult with their legal/compliance team before execution.
+{REGULATORY_GUIDANCE}
 """
     
     response = client.messages.create(
@@ -3077,7 +3080,12 @@ Only reference Moodlight's cultural data scores (mood scores, empathy scores, to
 
 Never repurpose general dashboard metrics by reframing them as category-specific data. If the number 3,086 comes from total technology posts, do not present it as 'technology signals in [specific category].' If the mood score of 62 is a global number, do not present it as relevant to a specific brand or market. Only cite a metric if it was actually derived from data about the topic being analyzed. Misattributing general data as category-specific data destroys credibility.
 
-STRICT RULE: You may only cite a specific number, score, or metric if you can confirm it was directly measured from data about the brand, category, or topic the user asked about. General dashboard numbers (global mood score, total topic counts, overall empathy scores) must NEVER appear in brand-specific or category-specific analysis. If you don't have category-specific metrics, don't cite any metrics — the analysis should stand on the strength of the strategic reasoning alone. An insight without a number is better than an insight with a fake number.
+STRICT RULE — ZERO TOLERANCE: You may only cite a specific number, score, or metric if you can confirm it was directly measured from data about the brand, category, or topic the user asked about. General dashboard numbers (global mood score, total topic counts, overall empathy scores) must NEVER appear in brand-specific or category-specific analysis. If you don't have category-specific metrics, don't cite any metrics — the analysis should stand on the strength of the strategic reasoning alone. An insight without a number is better than an insight with a fake number. Any response that cites a general dashboard metric as if it applies to the specific brand or category being analyzed is a failure. When in doubt, omit the number entirely.
+
+=== REGULATORY AND FEASIBILITY FILTER ===
+When generating creative territories, campaign concepts, or strategic recommendations, apply a basic feasibility filter. Do not recommend positioning that would violate advertising regulations for the category. Flag regulatory constraints where relevant.
+
+{REGULATORY_GUIDANCE}
 
 === YOUR CAPABILITIES ===
 You can answer questions about:
