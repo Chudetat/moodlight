@@ -75,6 +75,12 @@ if st.session_state.get("authentication_status") == None:
 username = st.session_state.get("username")
 name = st.session_state.get("name")
 
+# Admin access check
+ADMIN_EMAILS = {"daniel@moodlightintel.com", "intel@moodlightintel.com"}
+_user_cfg = config['credentials']['usernames'].get(username, {})
+_user_email = _user_cfg.get('email', '')
+is_admin = _user_email in ADMIN_EMAILS
+
 # Clear cache on fresh login
 if "cache_cleared" not in st.session_state:
     st.cache_data.clear()
@@ -103,6 +109,9 @@ if authenticator.logout('Logout', 'sidebar'):
 import math
 import subprocess
 import sys
+import bcrypt
+import secrets
+from sqlalchemy import create_engine, text as sql_text
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
@@ -1223,6 +1232,229 @@ def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str,
         print(f"Email failed: {e}")
         return False
 
+# =============================================
+# ADMIN PANEL
+# =============================================
+def _get_admin_engine():
+    url = os.getenv("DATABASE_URL", "")
+    if url:
+        url = url.replace("postgres://", "postgresql://", 1)
+    return create_engine(url) if url else None
+
+def _load_all_customers(engine):
+    """Load all customers from database"""
+    with engine.connect() as conn:
+        result = conn.execute(sql_text(
+            "SELECT email, username, tier, brief_credits, created_at FROM users ORDER BY created_at DESC"
+        ))
+        return result.fetchall()
+
+def render_admin_panel():
+    """Render the admin panel for customer management"""
+    st.title("Admin Panel")
+    st.caption("Manage Moodlight customers")
+
+    engine = _get_admin_engine()
+    if not engine:
+        st.error("Database connection not available. Check DATABASE_URL.")
+        return
+
+    customers = _load_all_customers(engine)
+    customer_emails = [c[0] for c in customers]
+
+    tab1, tab2, tab3, tab4 = st.tabs(["Customers", "Add Customer", "Add Credits", "Edit / Delete"])
+
+    # --- TAB 1: Customer List ---
+    with tab1:
+        if customers:
+            rows = []
+            for c in customers:
+                email, uname, tier, credits, created = c
+                rows.append({
+                    "Email": email,
+                    "Name": uname,
+                    "Tier": tier,
+                    "Credits": "Unlimited" if tier == "enterprise" else str(credits),
+                    "Created": str(created)[:10] if created else "N/A"
+                })
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            st.caption(f"Total: {len(customers)} customers")
+        else:
+            st.info("No customers found.")
+
+    # --- TAB 2: Add Customer ---
+    with tab2:
+        with st.form("admin_add_customer"):
+            st.subheader("Add New Customer")
+            new_email = st.text_input("Email", placeholder="jane@company.com")
+            new_name = st.text_input("Name", placeholder="Jane Smith")
+            new_tier = st.selectbox("Tier", ["foundation", "enterprise"])
+            new_credits = st.number_input("Initial Brief Credits", min_value=0, value=0, step=1)
+            add_submitted = st.form_submit_button("Create Customer")
+
+        if add_submitted:
+            if not new_email.strip():
+                st.error("Email is required.")
+            elif new_email.strip().lower() in [c[0] for c in customers]:
+                st.error(f"User with email {new_email.strip()} already exists.")
+            else:
+                clean_email = new_email.strip().lower()
+                clean_name = new_name.strip() if new_name.strip() else clean_email.split("@")[0]
+                new_username = clean_name.lower().replace(" ", "_")
+
+                # Ensure username is unique
+                existing_usernames = [c[1] for c in customers]
+                if new_username in existing_usernames:
+                    suffix = 1
+                    while f"{new_username}_{suffix}" in existing_usernames:
+                        suffix += 1
+                    new_username = f"{new_username}_{suffix}"
+
+                temp_password = secrets.token_urlsafe(12)
+                password_hash = bcrypt.hashpw(temp_password.encode(), bcrypt.gensalt()).decode()
+
+                try:
+                    with engine.connect() as conn:
+                        conn.execute(sql_text("""
+                            INSERT INTO users (username, email, password_hash, tier, brief_credits)
+                            VALUES (:username, :email, :password_hash, :tier, :credits)
+                        """), {
+                            "username": new_username,
+                            "email": clean_email,
+                            "password_hash": password_hash,
+                            "tier": new_tier,
+                            "credits": new_credits
+                        })
+                        conn.commit()
+
+                    # Add to config.yaml so streamlit_authenticator can authenticate them
+                    config['credentials']['usernames'][new_username] = {
+                        'email': clean_email,
+                        'name': clean_name,
+                        'password': password_hash,
+                        'failed_login_attempts': 0,
+                        'logged_in': False
+                    }
+                    with open('config.yaml', 'w') as f:
+                        yaml.dump(config, f, default_flow_style=False)
+
+                    st.success("Customer created successfully!")
+                    st.code(
+                        f"Email:    {clean_email}\n"
+                        f"Username: {new_username}\n"
+                        f"Password: {temp_password}\n"
+                        f"Tier:     {new_tier}\n"
+                        f"Credits:  {new_credits}",
+                        language=None
+                    )
+                    st.caption("Share the password with the customer. They should change it after first login.")
+                except Exception as e:
+                    st.error(f"Failed to create customer: {e}")
+
+    # --- TAB 3: Add Credits ---
+    with tab3:
+        if customer_emails:
+            with st.form("admin_add_credits"):
+                st.subheader("Add Brief Credits")
+                credit_email = st.selectbox("Customer Email", customer_emails)
+                credits_to_add = st.number_input("Credits to Add", min_value=1, value=1, step=1)
+                credits_submitted = st.form_submit_button("Add Credits")
+
+            if credits_submitted:
+                user_info = next((c for c in customers if c[0] == credit_email), None)
+                if user_info and user_info[2] == "enterprise":
+                    st.info(f"{credit_email} is on Enterprise tier (unlimited briefs). No credits needed.")
+                else:
+                    try:
+                        with engine.connect() as conn:
+                            conn.execute(sql_text("""
+                                UPDATE users SET brief_credits = brief_credits + :credits,
+                                updated_at = CURRENT_TIMESTAMP WHERE email = :email
+                            """), {"email": credit_email, "credits": credits_to_add})
+                            conn.commit()
+                        old_credits = user_info[3] if user_info else 0
+                        st.success(f"Added {credits_to_add} credits to {credit_email}. New total: {old_credits + credits_to_add}")
+                    except Exception as e:
+                        st.error(f"Failed to add credits: {e}")
+        else:
+            st.info("No customers found.")
+
+    # --- TAB 4: Edit / Delete ---
+    with tab4:
+        if customer_emails:
+            edit_email = st.selectbox("Select Customer", customer_emails, key="admin_edit_select")
+            user_info = next((c for c in customers if c[0] == edit_email), None)
+            current_tier = user_info[2] if user_info else "foundation"
+            current_credits = user_info[3] if user_info else 0
+
+            st.caption(f"Current tier: **{current_tier}** | Credits: **{'Unlimited' if current_tier == 'enterprise' else current_credits}**")
+
+            # Edit tier
+            st.subheader("Change Tier")
+            with st.form("admin_edit_tier"):
+                tier_options = ["foundation", "enterprise"]
+                new_tier_val = st.selectbox("New Tier", tier_options,
+                    index=tier_options.index(current_tier) if current_tier in tier_options else 0)
+                tier_submitted = st.form_submit_button("Update Tier")
+
+            if tier_submitted:
+                try:
+                    with engine.connect() as conn:
+                        conn.execute(sql_text("""
+                            UPDATE users SET tier = :tier, updated_at = CURRENT_TIMESTAMP
+                            WHERE email = :email
+                        """), {"email": edit_email, "tier": new_tier_val})
+                        conn.commit()
+                    st.success(f"Updated {edit_email} to **{new_tier_val}** tier.")
+                except Exception as e:
+                    st.error(f"Failed to update tier: {e}")
+
+            # Delete customer
+            st.markdown("---")
+            st.subheader("Delete Customer")
+
+            if edit_email == _user_email:
+                st.warning("You cannot delete your own admin account.")
+            else:
+                confirm_key = f"confirm_delete_{edit_email}"
+                if st.button("Delete this customer", key="admin_delete_btn"):
+                    st.session_state[confirm_key] = True
+
+                if st.session_state.get(confirm_key):
+                    st.error(f"Permanently delete **{edit_email}**? This cannot be undone.")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("Yes, delete permanently", key="admin_confirm_delete"):
+                            try:
+                                with engine.connect() as conn:
+                                    row = conn.execute(sql_text(
+                                        "SELECT username FROM users WHERE email = :email"
+                                    ), {"email": edit_email}).fetchone()
+                                    del_username = row[0] if row else None
+
+                                    conn.execute(sql_text(
+                                        "DELETE FROM users WHERE email = :email"
+                                    ), {"email": edit_email})
+                                    conn.commit()
+
+                                if del_username and del_username in config['credentials']['usernames']:
+                                    del config['credentials']['usernames'][del_username]
+                                    with open('config.yaml', 'w') as f:
+                                        yaml.dump(config, f, default_flow_style=False)
+
+                                st.session_state.pop(confirm_key, None)
+                                st.success(f"Deleted {edit_email}.")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Failed to delete: {e}")
+                    with col2:
+                        if st.button("Cancel", key="admin_cancel_delete"):
+                            st.session_state.pop(confirm_key, None)
+                            st.rerun()
+        else:
+            st.info("No customers found.")
+
+
 with st.sidebar:
     st.header("Controls")
     custom_query = st.text_input(
@@ -1327,6 +1559,16 @@ with st.sidebar:
                 st.session_state['user_need'] = user_need.strip()
                 st.session_state['user_email'] = user_email.strip()
                 st.session_state['brief_spinner_placeholder'] = st.empty()
+
+    # Admin panel toggle (admin users only)
+    if is_admin:
+        st.markdown("---")
+        st.checkbox("Admin Panel", key="admin_panel_active")
+
+# Render admin panel if active (before loading dashboard data)
+if is_admin and st.session_state.get("admin_panel_active"):
+    render_admin_panel()
+    st.stop()
 
 # Load all data once
 df_all = load_data()
