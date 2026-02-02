@@ -2889,146 +2889,200 @@ if prompt := st.chat_input("Ask a question about the data..."):
             # =============================================
             # SECTION 1: BRAND-SPECIFIC SIGNALS (if brand detected)
             # =============================================
-            brand_context_parts = []
+            brand_section = ""
+            web_section = ""
             has_brand_signals = False
 
             if brand_name and "text" in df_all.columns:
-                # Search df_all for brand mentions
                 brand_lower = brand_name.lower()
                 brand_mask = df_all["text"].str.lower().str.contains(brand_lower, na=False)
                 brand_posts = df_all[brand_mask]
 
                 if len(brand_posts) > 0:
                     has_brand_signals = True
-                    headline_cols = ['text', 'source', 'topic', 'engagement', 'empathy_label', 'emotion_top_1']
-                    available_cols = [c for c in headline_cols if c in brand_posts.columns]
+                    brand_lines = []
+                    for _, row in brand_posts.drop_duplicates('text').head(20).iterrows():
+                        entry = f"- {row['text'][:200]}"
+                        meta = []
+                        if 'source' in brand_posts.columns:
+                            meta.append(f"source: {row.get('source', 'N/A')}")
+                        if 'created_at' in brand_posts.columns:
+                            meta.append(f"date: {row.get('created_at', 'N/A')}")
+                        if 'empathy_score' in brand_posts.columns:
+                            meta.append(f"empathy: {row.get('empathy_score', 'N/A')}")
+                        elif 'empathy_label' in brand_posts.columns:
+                            meta.append(f"empathy: {row.get('empathy_label', 'N/A')}")
+                        if meta:
+                            entry += f" ({', '.join(meta)})"
+                        brand_lines.append(entry)
 
-                    # Brand mentions with full metadata
-                    brand_headlines = brand_posts[available_cols].drop_duplicates('text').head(20)
-                    brand_str = "\n".join([
-                        f"- {row['text'][:200]} | Source: {row.get('source', 'N/A')} | Empathy: {row.get('empathy_label', 'N/A')} | Emotion: {row.get('emotion_top_1', 'N/A')} | Engagement: {row.get('engagement', 'N/A')}"
-                        for _, row in brand_headlines.iterrows()
-                    ])
-                    brand_context_parts.append(f"BRAND MENTIONS IN DASHBOARD ({len(brand_posts)} posts found):\n{brand_str}")
+                    brand_parts = []
+                    brand_parts.append(f"[BRAND-SPECIFIC SIGNALS — {brand_name.upper()}]")
+                    brand_parts.append(f"Posts mentioning '{brand_name}': {len(brand_posts)}")
+                    brand_parts.append("\n".join(brand_lines))
 
-                    # Brand-specific sentiment
                     if "empathy_label" in brand_posts.columns:
                         brand_empathy = brand_posts["empathy_label"].value_counts().to_dict()
-                        brand_context_parts.append(f"BRAND SENTIMENT BREAKDOWN: {brand_empathy}")
+                        brand_parts.append(f"Brand Sentiment: {brand_empathy}")
                     if "empathy_score" in brand_posts.columns and len(brand_posts) > 0:
-                        brand_avg_empathy = brand_posts["empathy_score"].mean()
-                        brand_context_parts.append(f"BRAND AVERAGE EMPATHY: {brand_avg_empathy:.2f}/100")
-
-                    # Brand-specific emotions
+                        brand_avg = brand_posts["empathy_score"].mean()
+                        brand_parts.append(f"Brand Average Empathy: {brand_avg:.2f}/100")
                     if "emotion_top_1" in brand_posts.columns:
                         brand_emotions = brand_posts["emotion_top_1"].value_counts().head(5).to_dict()
-                        brand_context_parts.append(f"BRAND DOMINANT EMOTIONS: {brand_emotions}")
-
-                    # Brand topics
+                        brand_parts.append(f"Brand Emotions: {brand_emotions}")
                     if "topic" in brand_posts.columns:
                         brand_topics = brand_posts["topic"].value_counts().head(5).to_dict()
-                        brand_context_parts.append(f"BRAND TOPIC COVERAGE: {brand_topics}")
-                else:
-                    brand_context_parts.append(f"NO DIRECT MENTIONS of '{brand_name}' found in {len(df_all)} dashboard posts. This means the brand has zero share of voice in tracked cultural signals — web search results below are critical for brand-specific intelligence.")
+                        brand_parts.append(f"Brand Topics: {brand_topics}")
 
-            # Web search results for brand
+                    brand_parts.append(f"[END BRAND-SPECIFIC SIGNALS]")
+                    brand_section = "\n\n".join(brand_parts)
+                else:
+                    brand_section = f"[NO BRAND-SPECIFIC SIGNALS FOUND FOR {brand_name.upper()} — USE WEB SEARCH FOR BRAND INTELLIGENCE]"
+
+            # Web search results for brand (outside verified tags — external source)
             if brand_articles:
-                brand_results = "\n".join([
+                web_lines = "\n".join([
                     f"- {a['title']} | Source: {a['source']} | Published: {a['published']}\n  Summary: {a['summary']}"
                     for a in brand_articles
                 ])
-                brand_context_parts.append(f"LIVE WEB INTELLIGENCE FOR '{brand_name.upper()}' ({len(brand_articles)} articles):\n{brand_results}")
+                web_section = f"LIVE WEB INTELLIGENCE FOR '{brand_name.upper()}' ({len(brand_articles)} articles):\n{web_lines}"
 
             # =============================================
-            # SECTION 2: GENERAL CULTURAL CONTEXT
+            # SECTION 2: VERIFIED DASHBOARD DATA
             # =============================================
-            cultural_context_parts = []
+            verified_parts = []
 
-            # 1. Global mood score
+            # Global mood score
             if world_score:
-                cultural_context_parts.append(f"GLOBAL MOOD SCORE: {world_score}/100 ({world_label})")
+                verified_parts.append(f"Global Mood Score: {world_score}/100 ({world_label})")
 
-            # 2. Topic distribution with counts
+            # Topic breakdown with density/velocity if available
+            topic_density_map = {}
+            topic_velocity_map = {}
+            topic_longevity_map = {}
+            try:
+                density_csv = pd.read_csv('topic_density.csv')
+                if 'topic' in density_csv.columns and 'density_score' in density_csv.columns:
+                    topic_density_map = dict(zip(density_csv['topic'], density_csv['density_score']))
+            except Exception:
+                pass
+            try:
+                velocity_csv = pd.read_csv('topic_longevity.csv')
+                if 'topic' in velocity_csv.columns and 'velocity_score' in velocity_csv.columns:
+                    topic_velocity_map = dict(zip(velocity_csv['topic'], velocity_csv['velocity_score']))
+                if 'topic' in velocity_csv.columns and 'longevity_score' in velocity_csv.columns:
+                    topic_longevity_map = dict(zip(velocity_csv['topic'], velocity_csv['longevity_score']))
+            except Exception:
+                pass
+
             if "topic" in df_all.columns:
-                topic_counts = df_all["topic"].value_counts().head(10).to_dict()
-                cultural_context_parts.append(f"TOPIC DISTRIBUTION (top 10): {topic_counts}")
+                topic_counts = df_all["topic"].value_counts().head(10)
+                topic_lines = []
+                for topic_name, count in topic_counts.items():
+                    line = f"- {topic_name}: {count} posts"
+                    if topic_name in topic_density_map:
+                        line += f", density {topic_density_map[topic_name]}"
+                    if topic_name in topic_velocity_map:
+                        line += f", velocity {topic_velocity_map[topic_name]}"
+                    if topic_name in topic_longevity_map:
+                        line += f", longevity {topic_longevity_map[topic_name]}"
+                    topic_lines.append(line)
+                verified_parts.append("Topic Breakdown:\n" + "\n".join(topic_lines))
 
-            # 3. VLDS Metrics (Velocity, Longevity, Density, Scarcity)
+            # Scarcity (white space opportunities)
             try:
-                velocity_df = pd.read_csv('topic_longevity.csv')
-                vlds_summary = velocity_df[['topic', 'velocity_score', 'longevity_score']].head(10).to_string(index=False)
-                cultural_context_parts.append(f"VELOCITY & LONGEVITY BY TOPIC:\n{vlds_summary}")
+                scarcity_csv = pd.read_csv('topic_scarcity.csv')
+                scarcity_cols = [c for c in ['topic', 'scarcity_score', 'mention_count', 'opportunity'] if c in scarcity_csv.columns]
+                if 'topic' in scarcity_csv.columns and 'scarcity_score' in scarcity_csv.columns:
+                    scarcity_lines = []
+                    for _, row in scarcity_csv.head(10).iterrows():
+                        line = f"- {row['topic']}: scarcity {row['scarcity_score']}"
+                        if 'mention_count' in scarcity_csv.columns:
+                            line += f", mentions {row['mention_count']}"
+                        if 'opportunity' in scarcity_csv.columns:
+                            line += f", opportunity: {row['opportunity']}"
+                        scarcity_lines.append(line)
+                    verified_parts.append("Scarcity (White Space Opportunities):\n" + "\n".join(scarcity_lines))
             except Exception:
                 pass
 
-            try:
-                density_df = pd.read_csv('topic_density.csv')
-                density_summary = density_df[['topic', 'density_score', 'post_count', 'primary_platform']].head(10).to_string(index=False)
-                cultural_context_parts.append(f"DENSITY BY TOPIC:\n{density_summary}")
-            except Exception:
-                pass
+            # Recent headlines
+            if "text" in df_all.columns and "created_at" in df_all.columns:
+                recent_cols = [c for c in ['text', 'source', 'created_at', 'engagement', 'empathy_label', 'emotion_top_1'] if c in df_all.columns]
+                recent = df_all.nlargest(10, "created_at")[recent_cols].drop_duplicates('text')
+                headline_lines = []
+                for _, row in recent.iterrows():
+                    entry = f"- {row['text'][:150]}"
+                    meta = []
+                    if 'source' in df_all.columns:
+                        meta.append(f"source: {row.get('source', 'N/A')}")
+                    if 'created_at' in df_all.columns:
+                        meta.append(f"date: {row.get('created_at', 'N/A')}")
+                    if meta:
+                        entry += f" ({', '.join(meta)})"
+                    headline_lines.append(entry)
+                verified_parts.append("Recent Headlines:\n" + "\n".join(headline_lines))
 
-            try:
-                scarcity_df = pd.read_csv('topic_scarcity.csv')
-                scarcity_summary = scarcity_df[['topic', 'scarcity_score', 'mention_count', 'opportunity']].head(10).to_string(index=False)
-                cultural_context_parts.append(f"SCARCITY BY TOPIC (white space opportunities):\n{scarcity_summary}")
-            except Exception:
-                pass
+            # Highest engagement content
+            if "text" in df_all.columns and "engagement" in df_all.columns:
+                viral_cols = [c for c in ['text', 'source', 'engagement', 'emotion_top_1'] if c in df_all.columns]
+                viral = df_all.nlargest(10, "engagement")[viral_cols].drop_duplicates('text')
+                viral_lines = []
+                for _, row in viral.iterrows():
+                    entry = f"- {row['text'][:150]}"
+                    meta = []
+                    if 'engagement' in df_all.columns:
+                        meta.append(f"engagement: {int(row.get('engagement', 0))}")
+                    if 'source' in df_all.columns:
+                        meta.append(f"source: {row.get('source', 'N/A')}")
+                    if meta:
+                        entry += f" ({', '.join(meta)})"
+                    viral_lines.append(entry)
+                verified_parts.append("Highest Engagement Content:\n" + "\n".join(viral_lines))
 
-            # 4. Top headlines with full context
-            if "text" in df_all.columns:
-                headline_cols = ['text', 'source', 'topic', 'engagement', 'empathy_label', 'emotion_top_1']
-                available_cols = [c for c in headline_cols if c in df_all.columns]
-
-                if "created_at" in df_all.columns:
-                    recent = df_all.nlargest(15, "created_at")[available_cols].drop_duplicates('text')
-                    headlines_str = "\n".join([
-                        f"- [{row.get('topic', 'N/A')}] {row['text'][:150]} | Source: {row.get('source', 'N/A')} | Engagement: {row.get('engagement', 'N/A')} | Empathy: {row.get('empathy_label', 'N/A')} | Emotion: {row.get('emotion_top_1', 'N/A')}"
-                        for _, row in recent.iterrows()
-                    ])
-                    cultural_context_parts.append(f"RECENT HEADLINES (with full metadata):\n{headlines_str}")
-
-                if "engagement" in df_all.columns:
-                    viral = df_all.nlargest(10, "engagement")[available_cols].drop_duplicates('text')
-                    viral_str = "\n".join([
-                        f"- [{row.get('topic', 'N/A')}] {row['text'][:150]} | Engagement: {int(row.get('engagement', 0))} | Source: {row.get('source', 'N/A')} | Emotion: {row.get('emotion_top_1', 'N/A')}"
-                        for _, row in viral.iterrows()
-                    ])
-                    cultural_context_parts.append(f"HIGHEST ENGAGEMENT CONTENT:\n{viral_str}")
-
-            # 5. Empathy distribution
-            if "empathy_label" in df_all.columns:
-                empathy_dist = df_all["empathy_label"].value_counts().to_dict()
-                cultural_context_parts.append(f"EMPATHY DISTRIBUTION: {empathy_dist}")
+            # Empathy
             if "empathy_score" in df_all.columns:
                 avg_empathy = df_all["empathy_score"].mean()
-                cultural_context_parts.append(f"AVERAGE EMPATHY SCORE: {avg_empathy:.2f}/100")
+                verified_parts.append(f"Empathy Score (Global Average): {avg_empathy:.2f}/100")
+            if "empathy_label" in df_all.columns:
+                empathy_dist = df_all["empathy_label"].value_counts().to_dict()
+                verified_parts.append(f"Empathy Distribution: {empathy_dist}")
 
-            # 6. Emotional temperature
+            # Emotion distribution
             if "emotion_top_1" in df_all.columns:
                 emotion_dist = df_all["emotion_top_1"].value_counts().head(10).to_dict()
-                cultural_context_parts.append(f"EMOTIONAL TEMPERATURE (top emotions): {emotion_dist}")
+                emotion_lines = [f"- {emotion}: {count} posts" for emotion, count in emotion_dist.items()]
+                verified_parts.append("Emotion Distribution:\n" + "\n".join(emotion_lines))
 
-            # 7. Geographic distribution
+            # Geographic distribution
             if "country" in df_all.columns:
                 geo_dist = df_all["country"].value_counts().head(10).to_dict()
-                cultural_context_parts.append(f"GEOGRAPHIC DISTRIBUTION: {geo_dist}")
+                verified_parts.append(f"Geographic Distribution: {geo_dist}")
 
-            # 8. Source distribution
+            # Source distribution
             if "source" in df_all.columns:
                 source_dist = df_all["source"].value_counts().head(10).to_dict()
-                cultural_context_parts.append(f"SOURCE DISTRIBUTION: {source_dist}")
+                verified_parts.append(f"Source Distribution: {source_dist}")
+
+            # Date range and totals
+            if "created_at" in df_all.columns:
+                verified_parts.append(f"Date Range: {df_all['created_at'].min()} to {df_all['created_at'].max()}")
+            verified_parts.append(f"Total Posts Analyzed: {len(df_all)}")
 
             # =============================================
-            # BUILD FINAL CONTEXT (structured for brand queries)
+            # BUILD FINAL CONTEXT (structured with fencing)
             # =============================================
-            if brand_name and brand_context_parts:
-                data_context = f"=== BRAND-SPECIFIC INTELLIGENCE: {brand_name.upper()} ===\n"
-                data_context += "\n\n".join(brand_context_parts)
-                data_context += "\n\n=== GENERAL CULTURAL CONTEXT (supporting evidence) ===\n"
-                data_context += "\n\n".join(cultural_context_parts)
+            verified_data = "[VERIFIED DASHBOARD DATA — ONLY CITE NUMBERS FROM THIS SECTION]\n\n"
+            verified_data += "\n\n".join(verified_parts)
+            verified_data += "\n\n[END VERIFIED DASHBOARD DATA]"
+
+            if brand_name and brand_section:
+                data_context = brand_section
+                if web_section:
+                    data_context += "\n\n" + web_section
+                data_context += "\n\n" + verified_data
             else:
-                data_context = "\n\n".join(cultural_context_parts)
+                data_context = verified_data
 
             # =============================================
             # SYSTEM PROMPT
@@ -3039,11 +3093,14 @@ if prompt := st.chat_input("Ask a question about the data..."):
 
 HIGHEST PRIORITY INSTRUCTION: Never cite general dashboard metrics in brand-specific analysis. This includes global mood scores, total topic counts, overall empathy averages, and engagement numbers from unrelated topics. If a metric was not specifically measured from data about the brand or category the user asked about, it must not appear in the response. An insight without data is always better than an insight with misattributed data. Violating this rule undermines the product's credibility. Before including ANY number, score, or metric in your response, ask yourself: "Was this number derived from data specifically about the brand or category the user asked about?" If the answer is no — or if you are unsure — do not include it.
 
+CRITICAL DATA INTEGRITY RULE: When citing specific metrics — density scores, empathy scores, post counts, velocity scores, scarcity scores, longevity scores, emotion counts, or any numerical value — you may ONLY cite numbers that appear in the data context provided below. Do not generate plausible-looking metrics. Do not round, estimate, or inflate numbers that are not explicitly present in your data context. If the data shows 184 curiosity posts, say 184 — not 241. If empathy is 48.7% cold/hostile, say 48.7% — not 53%. If you need a data point to support an argument and it does not exist in the data context, say so explicitly: 'No dashboard signal on this yet' or 'No category-specific data available.' Then make the argument on strategic reasoning alone. The worst thing you can do is hallucinate a metric that looks like it came from the dashboard. The user is looking at the same dashboard. If your numbers don't match, the entire product loses credibility.
+
 METRIC EMBELLISHMENT PREVENTION:
 When you cite real dashboard metrics, NEVER stack invented claims on top. The data speaks — don't dress it up with fiction.
 
 KILL these patterns:
 - Invented timelines ("30-day window," "watch for X launching in 10 days," "expect movement by Q3") — unless the data contains an actual date or deadline
+This includes strategic execution timelines. Do not invent campaign launch dates, briefing deadlines, or 'move by X date' urgency unless the data contains a real deadline (e.g., a regulatory filing date, an earnings call, a confirmed event). '60-90 days before the window closes' is invented. 'Launch by March' is invented. 'Have partnerships locked by Valentine's Day' is invented. None of these come from the data — they come from the model wanting to sound decisive. You can recommend urgency without fabricating a clock. Say 'this window is narrow' or 'move before a competitor claims this space' — that's strategic judgment. Saying 'you have 60-90 days' is a fabricated number dressed as strategy. Earned urgency = 'the cultural signal is live now and no brand has claimed it.' Fake urgency = 'you have 47 days before the window closes.'
 - Conspiratorial framing ("someone's orchestrating," "this isn't random," "there's a coordinated push") — normal signal clustering is just Tuesday, not a conspiracy
 - Fabricated benchmarks ("this outpaces 90% of category signals," "historically this leads to...") — unless you can point to the specific data or a verifiable external pattern
 
@@ -3099,6 +3156,8 @@ Only reference Moodlight's cultural data scores (mood scores, empathy scores, to
 Never repurpose general dashboard metrics by reframing them as category-specific data. If the number 3,086 comes from total technology posts, do not present it as 'technology signals in [specific category].' If the mood score of 62 is a global number, do not present it as relevant to a specific brand or market. Only cite a metric if it was actually derived from data about the topic being analyzed. Misattributing general data as category-specific data destroys credibility.
 
 STRICT RULE — ZERO TOLERANCE: You may only cite a specific number, score, or metric if you can confirm it was directly measured from data about the brand, category, or topic the user asked about. General dashboard numbers (global mood score, total topic counts, overall empathy scores) must NEVER appear in brand-specific or category-specific analysis. If you don't have category-specific metrics, don't cite any metrics — the analysis should stand on the strength of the strategic reasoning alone. An insight without a number is better than an insight with a fake number. Any response that cites a general dashboard metric as if it applies to the specific brand or category being analyzed is a failure. When in doubt, omit the number entirely.
+
+You may ONLY cite numerical metrics that appear between the [VERIFIED DASHBOARD DATA] tags. Any number not present in that section does not exist in the dashboard and must not be cited as if it does. If you need a data point that is not in the verified section, either use web search to find a verifiable external source or state explicitly that no dashboard data exists for that claim.
 
 === REGULATORY AND FEASIBILITY FILTER ===
 When generating creative territories, campaign concepts, or strategic recommendations, apply a basic feasibility filter. Do not recommend positioning that would violate advertising regulations for the category. Flag regulatory constraints where relevant.
