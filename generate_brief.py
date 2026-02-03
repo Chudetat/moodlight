@@ -40,7 +40,6 @@ def send_email_brief(brief_text):
     sender = os.getenv("EMAIL_ADDRESS")
     recipients_str = os.getenv("EMAIL_RECIPIENT", "")
     password = os.getenv("EMAIL_PASSWORD")
-    admin_email = os.getenv("ADMIN_EMAIL", "daniel@moodlightintel.com")
 
     if not all([sender, recipients_str, password]):
         print("Email credentials not configured. Skipping email.")
@@ -49,17 +48,24 @@ def send_email_brief(brief_text):
     # Split recipients by comma and clean whitespace
     recipients = [r.strip() for r in recipients_str.split(",") if r.strip()]
 
+    # Admin always receives the brief — use sender email as primary admin,
+    # plus any additional admin emails configured via ADMIN_EMAIL
+    admin_emails = {sender.lower()}
+    extra_admin = os.getenv("ADMIN_EMAIL", "")
+    if extra_admin.strip():
+        admin_emails.add(extra_admin.strip().lower())
+
     if not recipients:
         print("No valid recipients found. Skipping email.")
         return False
 
-    # Filter against active subscribers in database
+    # Filter against active subscribers in database (admins always pass)
     active_emails = get_active_subscriber_emails()
     if active_emails is not None:
         original_count = len(recipients)
         recipients = [
             r for r in recipients
-            if r.lower() in active_emails or r.lower() == admin_email.lower()
+            if r.lower() in active_emails or r.lower() in admin_emails
         ]
         filtered_count = original_count - len(recipients)
         if filtered_count > 0:
