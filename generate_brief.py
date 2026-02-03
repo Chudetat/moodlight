@@ -13,11 +13,34 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+def get_active_subscriber_emails():
+    """Get emails of users with active subscriptions from the database"""
+    db_url = os.getenv("DATABASE_URL", "")
+    if not db_url:
+        return None  # No database — fall back to EMAIL_RECIPIENT
+    try:
+        from sqlalchemy import create_engine, text
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT email FROM users
+                WHERE stripe_subscription_id IS NOT NULL
+                   OR tier = 'enterprise'
+            """))
+            emails = {row[0].lower() for row in result.fetchall()}
+            print(f"Active subscribers from database: {emails}")
+            return emails
+    except Exception as e:
+        print(f"Could not query active subscribers: {e}")
+        return None  # Fall back to EMAIL_RECIPIENT
+
 def send_email_brief(brief_text):
-    """Send intelligence brief via email to each recipient individually"""
+    """Send intelligence brief via email to each active subscriber individually"""
     sender = os.getenv("EMAIL_ADDRESS")
     recipients_str = os.getenv("EMAIL_RECIPIENT", "")
     password = os.getenv("EMAIL_PASSWORD")
+    admin_email = os.getenv("ADMIN_EMAIL", "daniel@moodlightintel.com")
 
     if not all([sender, recipients_str, password]):
         print("Email credentials not configured. Skipping email.")
@@ -29,6 +52,21 @@ def send_email_brief(brief_text):
     if not recipients:
         print("No valid recipients found. Skipping email.")
         return False
+
+    # Filter against active subscribers in database
+    active_emails = get_active_subscriber_emails()
+    if active_emails is not None:
+        original_count = len(recipients)
+        recipients = [
+            r for r in recipients
+            if r.lower() in active_emails or r.lower() == admin_email.lower()
+        ]
+        filtered_count = original_count - len(recipients)
+        if filtered_count > 0:
+            print(f"Filtered out {filtered_count} inactive/cancelled subscriber(s)")
+        if not recipients:
+            print("No active subscribers to send to. Skipping email.")
+            return False
 
     # Create HTML content once (same for all recipients)
     html = f"""
