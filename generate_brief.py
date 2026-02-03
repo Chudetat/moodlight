@@ -13,11 +13,14 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-def get_active_subscriber_emails():
-    """Get emails of users with active subscriptions from the database"""
+def get_cancelled_subscriber_emails():
+    """Get emails of users who cancelled their subscription.
+    Only these emails will be excluded from the daily brief.
+    Anyone in EMAIL_RECIPIENT who is NOT in this list passes through,
+    including the admin (who may not have a Stripe subscription at all)."""
     db_url = os.getenv("DATABASE_URL", "")
     if not db_url:
-        return None  # No database — fall back to EMAIL_RECIPIENT
+        return None  # No database — send to full EMAIL_RECIPIENT list
     try:
         from sqlalchemy import create_engine, text
         db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -25,18 +28,20 @@ def get_active_subscriber_emails():
         with engine.connect() as conn:
             result = conn.execute(text("""
                 SELECT email FROM users
-                WHERE stripe_subscription_id IS NOT NULL
-                   OR tier = 'enterprise'
+                WHERE stripe_subscription_id IS NULL
+                  AND tier != 'enterprise'
+                  AND username != 'admin'
             """))
             emails = {row[0].lower() for row in result.fetchall()}
-            print(f"Active subscribers from database: {emails}")
+            print(f"Cancelled/inactive subscribers (will be excluded): {emails}")
             return emails
     except Exception as e:
-        print(f"Could not query active subscribers: {e}")
-        return None  # Fall back to EMAIL_RECIPIENT
+        print(f"Could not query subscriber status: {e}")
+        return None  # Send to full EMAIL_RECIPIENT list
 
 def send_email_brief(brief_text):
-    """Send intelligence brief via email to each active subscriber individually"""
+    """Send intelligence brief via email to each recipient individually.
+    Cancelled subscribers are filtered out; everyone else passes through."""
     sender = os.getenv("EMAIL_ADDRESS")
     recipients_str = os.getenv("EMAIL_RECIPIENT", "")
     password = os.getenv("EMAIL_PASSWORD")
@@ -48,30 +53,20 @@ def send_email_brief(brief_text):
     # Split recipients by comma and clean whitespace
     recipients = [r.strip() for r in recipients_str.split(",") if r.strip()]
 
-    # Admin always receives the brief — use sender email as primary admin,
-    # plus any additional admin emails configured via ADMIN_EMAIL
-    admin_emails = {sender.lower()}
-    extra_admin = os.getenv("ADMIN_EMAIL", "")
-    if extra_admin.strip():
-        admin_emails.add(extra_admin.strip().lower())
-
     if not recipients:
         print("No valid recipients found. Skipping email.")
         return False
 
-    # Filter against active subscribers in database (admins always pass)
-    active_emails = get_active_subscriber_emails()
-    if active_emails is not None:
+    # Remove cancelled subscribers only — everyone else passes through
+    cancelled_emails = get_cancelled_subscriber_emails()
+    if cancelled_emails is not None and cancelled_emails:
         original_count = len(recipients)
-        recipients = [
-            r for r in recipients
-            if r.lower() in active_emails or r.lower() in admin_emails
-        ]
+        recipients = [r for r in recipients if r.lower() not in cancelled_emails]
         filtered_count = original_count - len(recipients)
         if filtered_count > 0:
-            print(f"Filtered out {filtered_count} inactive/cancelled subscriber(s)")
+            print(f"Filtered out {filtered_count} cancelled subscriber(s)")
         if not recipients:
-            print("No active subscribers to send to. Skipping email.")
+            print("All recipients are cancelled. Skipping email.")
             return False
 
     # Create HTML content once (same for all recipients)
