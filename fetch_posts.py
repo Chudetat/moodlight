@@ -33,7 +33,7 @@ load_dotenv()
 BEARER_TOKEN = os.getenv("X_BEARER_TOKEN")
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 
-TOTAL_MAX_TWEETS = 500
+TOTAL_MAX_TWEETS = 400  # Reduced for 3x/day within X API limits
 TOTAL_MAX_NEWS = 400
 OUTPUT_CSV = "social.csv"
 SEARCH_URL = "https://api.twitter.com/2/tweets/search/recent"

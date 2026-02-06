@@ -1,0 +1,47 @@
+name: Fetch Social (3x Daily)
+
+on:
+  schedule:
+    # 3x/day to stay within X API limits (1,667 reads/day)
+    - cron: '0 14 * * *'  # 6am PST
+    - cron: '0 22 * * *'  # 2pm PST
+    - cron: '0 6 * * *'   # 10pm PST
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  fetch-social:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pandas requests feedparser transformers torch anthropic python-dotenv tweepy sqlalchemy psycopg2-binary
+
+      - name: Fetch X posts
+        continue-on-error: true
+        env:
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+        run: python fetch_posts.py
+
+      - name: Score social
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python score_empathy.py social.csv social_scored.csv
+
+      - name: Save social to PostgreSQL
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python save_to_db.py social_scored.csv social_scored
