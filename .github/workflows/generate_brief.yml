@@ -1,0 +1,36 @@
+name: Generate Intelligence Brief (2x Daily)
+
+on:
+  schedule:
+    # 2x/day - morning and evening briefs
+    - cron: '0 14 * * *'  # 6am PST
+    - cron: '0 2 * * *'   # 6pm PST
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  generate-brief:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pandas requests anthropic python-dotenv sqlalchemy psycopg2-binary
+
+      - name: Generate and send intelligence brief
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python generate_brief.py
