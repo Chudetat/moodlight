@@ -697,6 +697,195 @@ GOOGLE_NEWS_QUERIES = [
     "GroupM",
 ]
 
+# -------------------------------
+# EXPANDED BRAND LIST (~200 more)
+# -------------------------------
+EXPANDED_BRANDS = [
+    # DTC / Emerging Brands
+    "Warby Parker", "Glossier", "Allbirds", "Casper", "Away Luggage",
+    "Dollar Shave Club", "Harry's", "Bombas", "Rent the Runway", "ThirdLove",
+    "Everlane", "Outdoor Voices", "Reformation", "Fabletics", "Mejuri",
+    "Brooklinen", "Parachute Home", "Quip", "Hims", "Hers",
+    "Athletic Greens", "Liquid Death", "Olipop", "Poppi", "Prime Hydration",
+
+    # Private Equity Portfolio / Growth Brands
+    "Peloton", "Mirror Fitness", "Tonal", "Whoop", "Oura Ring",
+    "Eight Sleep", "Purple Mattress", "Nectar Sleep", "Helix Sleep", "Saatva",
+    "SimpliSafe", "Ring Doorbell", "Wyze", "Arlo", "Eufy",
+
+    # Regional Retailers
+    "Publix", "HEB", "Wegmans", "Aldi", "Lidl",
+    "Trader Joe's", "Sprouts", "Natural Grocers", "Fresh Market", "Hy-Vee",
+    "Meijer", "WinCo", "Food Lion", "Giant Eagle", "ShopRite",
+
+    # Hospitality / Restaurants
+    "Shake Shack", "Sweetgreen", "Cava", "Wingstop", "Dutch Bros",
+    "Raising Cane's", "In-N-Out", "Culver's", "Portillo's", "Whataburger",
+    "Panda Express", "Noodles & Company", "Panera Bread", "Cheesecake Factory", "Olive Garden",
+    "Outback Steakhouse", "Red Lobster", "Buffalo Wild Wings", "Applebee's", "Chili's",
+
+    # Fintech / Financial Services
+    "Chime", "SoFi", "Affirm", "Klarna", "Afterpay",
+    "Cash App", "Venmo", "Zelle", "Wise", "Revolut",
+    "Betterment", "Wealthfront", "Acorns", "Stash", "Public",
+    "Brex", "Ramp", "Mercury", "Gusto", "Rippling",
+
+    # Enterprise Tech
+    "Snowflake", "Databricks", "Confluent", "HashiCorp", "Datadog",
+    "Crowdstrike", "Zscaler", "Okta", "Twilio", "Cloudflare",
+    "MongoDB", "Elastic", "Splunk", "ServiceNow", "Workday",
+    "Zoom", "Slack", "Asana", "Monday.com", "Notion",
+
+    # Gaming / Entertainment
+    "Roblox", "Epic Games", "Riot Games", "Activision Blizzard", "Electronic Arts",
+    "Take-Two", "Ubisoft", "Capcom", "Square Enix", "Bandai Namco",
+    "DraftKings", "FanDuel", "BetMGM", "Caesars Sportsbook", "PointsBet",
+
+    # Automotive (additional)
+    "Polestar", "VinFast", "Fisker", "Canoo", "Lordstown",
+    "Nio", "XPeng", "Li Auto", "BYD", "Geely",
+
+    # Healthcare / Biotech
+    "Teladoc", "Hims & Hers", "Ro", "Nurx", "GoodRx",
+    "Oscar Health", "Clover Health", "Alignment Healthcare", "Oak Street Health", "One Medical",
+    "23andMe", "Ancestry", "Illumina", "Exact Sciences", "Guardant Health",
+
+    # Retail Tech / E-commerce
+    "Shopify", "BigCommerce", "WooCommerce", "Magento", "Squarespace",
+    "Wix", "Webflow", "Klaviyo", "Attentive", "Yotpo",
+
+    # Media / Streaming
+    "Peacock", "Paramount Plus", "Discovery Plus", "Apple TV Plus", "Amazon Prime Video",
+    "Crunchyroll", "Funimation", "Pluto TV", "Tubi", "Roku Channel",
+    "Sirius XM", "iHeartRadio", "Pandora", "Audible", "Scribd",
+
+    # CPG / FMCG (additional)
+    "Oatly", "Beyond Meat", "Impossible Foods", "Just Egg", "Califia Farms",
+    "Chobani", "Fage", "Siggi's", "Noosa", "Two Good",
+    "Kind Snacks", "RXBar", "Perfect Bar", "Larabar", "Clif Bar",
+    "Hint Water", "Bai", "Body Armor", "Celsius", "Bang Energy",
+
+    # Beauty / Personal Care (additional)
+    "Fenty Beauty", "Rare Beauty", "Charlotte Tilbury", "Drunk Elephant", "The Ordinary",
+    "CeraVe", "La Roche-Posay", "Neutrogena", "Olay", "Dove",
+    "Native Deodorant", "Schmidt's", "Tom's of Maine", "Method", "Mrs. Meyer's",
+
+    # Pet / Animal
+    "Chewy", "Petco", "PetSmart", "BarkBox", "Farmer's Dog",
+    "Ollie", "Nom Nom", "JustFoodForDogs", "Blue Buffalo", "Hill's Science Diet",
+]
+
+# -------------------------------
+# INDUSTRY/TOPIC QUERIES (~50 trending topics)
+# -------------------------------
+TOPIC_QUERIES = [
+    # Regulatory / Policy
+    "AI regulation", "data privacy law", "antitrust tech", "FTC investigation",
+    "SEC enforcement", "GDPR fine", "tariffs trade war", "sanctions policy",
+
+    # Economic Trends
+    "retail bankruptcy", "layoffs tech", "hiring freeze", "recession fears",
+    "inflation consumer", "interest rates Fed", "housing market crash", "commercial real estate crisis",
+
+    # Industry Disruption
+    "streaming wars", "EV transition", "autonomous vehicles", "drone delivery",
+    "generative AI business", "metaverse enterprise", "Web3 adoption", "quantum computing breakthrough",
+
+    # Consumer Trends
+    "Gen Z spending", "millennial homebuyers", "luxury resale", "subscription fatigue",
+    "return to office", "hybrid work", "mental health workplace", "sustainability consumer",
+
+    # Marketing / Advertising
+    "brand safety controversy", "influencer marketing scandal", "Super Bowl ads",
+    "privacy advertising", "cookie deprecation", "retail media network", "creator economy",
+
+    # Crisis / Reputation
+    "product recall", "data breach", "CEO resignation", "activist investor",
+    "ESG controversy", "greenwashing accusation", "labor dispute strike",
+
+    # M&A / Deals
+    "acquisition announced", "merger blocked", "IPO filing", "SPAC deal",
+    "private equity buyout", "venture funding round",
+]
+
+# -------------------------------
+# COMPETITOR SETS (brand vs brand intelligence)
+# -------------------------------
+COMPETITOR_QUERIES = [
+    # Fast Food Wars
+    "McDonald's vs Burger King", "Starbucks vs Dunkin", "Chick-fil-A vs Popeyes",
+    "Chipotle vs Qdoba", "Domino's vs Pizza Hut",
+
+    # Streaming Wars
+    "Netflix vs Disney Plus", "HBO Max vs Paramount Plus", "Spotify vs Apple Music",
+    "YouTube vs TikTok", "Twitch vs YouTube Gaming",
+
+    # Tech Giants
+    "Apple vs Samsung", "Google vs Microsoft", "AWS vs Azure vs Google Cloud",
+    "iPhone vs Android", "ChatGPT vs Claude vs Gemini",
+
+    # Auto Wars
+    "Tesla vs Ford", "Tesla vs GM", "Toyota vs Honda", "BMW vs Mercedes",
+    "Rivian vs Lucid", "Ford F-150 vs Chevy Silverado",
+
+    # Retail Wars
+    "Amazon vs Walmart", "Target vs Walmart", "Costco vs Sam's Club",
+    "Nike vs Adidas", "Lululemon vs Nike", "Sephora vs Ulta",
+
+    # Finance Wars
+    "Visa vs Mastercard", "PayPal vs Square", "Robinhood vs Fidelity",
+    "JPMorgan vs Goldman Sachs", "Chime vs traditional banks",
+
+    # CPG Wars
+    "Coca-Cola vs Pepsi", "Bud Light vs Miller Lite", "P&G vs Unilever",
+    "L'Oreal vs Estee Lauder", "Beyond Meat vs Impossible Foods",
+
+    # Airlines
+    "Delta vs United", "Southwest vs JetBlue", "American vs Delta",
+]
+
+# -------------------------------
+# GEOGRAPHIC EXPANSION (UK, EU markets)
+# -------------------------------
+UK_EU_BRANDS = [
+    # UK Retailers
+    "Tesco", "Sainsbury's", "Asda", "Morrisons", "Marks & Spencer",
+    "John Lewis", "Boots", "Superdrug", "Primark", "Next",
+    "ASOS", "Boohoo", "Gymshark", "JD Sports", "Sports Direct",
+
+    # UK Finance
+    "Barclays", "HSBC", "Lloyds", "NatWest", "Monzo",
+    "Starling Bank", "Revolut UK", "Hargreaves Lansdown", "AJ Bell",
+
+    # UK Media / Telecom
+    "BBC", "ITV", "Sky UK", "BT", "Vodafone UK",
+    "EE", "Three UK", "Virgin Media",
+
+    # EU Luxury
+    "LVMH", "Kering", "Richemont", "Hermes", "Moncler",
+    "Brunello Cucinelli", "Salvatore Ferragamo", "Tod's", "Hugo Boss",
+
+    # EU Auto
+    "Volkswagen Group", "Stellantis", "Renault", "Volvo", "BMW Group",
+    "Mercedes-Benz Group", "Porsche AG", "Ferrari", "Lamborghini",
+
+    # EU Tech
+    "SAP", "ASML", "Spotify AB", "Klarna", "Adyen",
+    "Delivery Hero", "Just Eat Takeaway", "Zalando", "Bolt",
+
+    # EU Retail / CPG
+    "Carrefour", "Auchan", "Lidl", "Aldi", "Metro AG",
+    "Inditex", "H&M Group", "Ikea", "Decathlon",
+    "Nestle", "Danone", "Unilever", "AB InBev", "Heineken",
+
+    # EU Airlines / Travel
+    "Lufthansa", "Air France-KLM", "British Airways", "Ryanair", "easyJet",
+    "Booking Holdings", "TUI", "Accor", "InterContinental",
+]
+
+# Combine all query lists
+ALL_NEWSAPI_QUERIES = GOOGLE_NEWS_QUERIES + EXPANDED_BRANDS + TOPIC_QUERIES + COMPETITOR_QUERIES + UK_EU_BRANDS
+
 def get_google_news_feeds() -> List[tuple[str, str]]:
     """Generate Google News RSS feeds for brand queries - DEPRECATED, use NewsAPI instead"""
     feeds = []
@@ -710,7 +899,7 @@ def get_google_news_feeds() -> List[tuple[str, str]]:
 # NewsAPI Brand Fetcher
 # -------------------------------
 def fetch_newsapi_brands() -> List[Dict[str, Any]]:
-    """Fetch brand articles from NewsAPI (replaces Google News RSS)"""
+    """Fetch all queries from NewsAPI (brands, topics, competitors, UK/EU)"""
     if not NEWSAPI_KEY:
         print("NEWSAPI_KEY not set, falling back to Google News RSS")
         return None  # Signal to use fallback
@@ -719,11 +908,15 @@ def fetch_newsapi_brands() -> List[Dict[str, Any]]:
     now = datetime.now(timezone.utc)
     from_date = (now - timedelta(days=3)).strftime("%Y-%m-%d")
 
-    print(f"\nFetching {len(GOOGLE_NEWS_QUERIES)} brand queries from NewsAPI...")
+    print(f"\nFetching {len(ALL_NEWSAPI_QUERIES)} queries from NewsAPI...")
+    print(f"   Brands: {len(GOOGLE_NEWS_QUERIES) + len(EXPANDED_BRANDS)}")
+    print(f"   Topics: {len(TOPIC_QUERIES)}")
+    print(f"   Competitors: {len(COMPETITOR_QUERIES)}")
+    print(f"   UK/EU: {len(UK_EU_BRANDS)}")
 
-    # Batch queries to reduce API calls (5 brands per request)
+    # Batch queries to reduce API calls (5 per request)
     batch_size = 5
-    batches = [GOOGLE_NEWS_QUERIES[i:i+batch_size] for i in range(0, len(GOOGLE_NEWS_QUERIES), batch_size)]
+    batches = [ALL_NEWSAPI_QUERIES[i:i+batch_size] for i in range(0, len(ALL_NEWSAPI_QUERIES), batch_size)]
 
     successful = 0
     failed = 0
