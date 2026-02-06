@@ -27,7 +27,7 @@ load_dotenv()
 # -------------------------------
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 NEWSAPI_URL = "https://newsapi.org/v2/everything"
-MAX_ARTICLES_PER_BRAND = 10  # Keep focused per brand
+MAX_ARTICLES_PER_BRAND = 25  # Increased for better brand coverage
 
 # -------------------------------
 # HTTP Session with retry + timeout
