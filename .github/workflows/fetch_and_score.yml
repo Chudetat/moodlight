@@ -2,8 +2,8 @@ name: Fetch and Score Data
 
 on:
   schedule:
-    - cron: '0 14 * * *'  # 6am PST
-    - cron: '0 2 * * *'   # 6pm PST
+    # Hourly runs for near real-time data freshness
+    - cron: '0 * * * *'  # Every hour on the hour
   workflow_dispatch:  # Allow manual trigger
 
 jobs:

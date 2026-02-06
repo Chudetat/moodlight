@@ -755,7 +755,52 @@ For all industries: Consider regulatory and reputational risk when recommending 
 
 
 def fetch_brand_news(brand_name: str, max_results: int = 10) -> list:
-    """Fetch recent news about a brand via Google News RSS"""
+    """Fetch recent news about a brand via NewsAPI (with Google News RSS fallback)"""
+    articles = []
+
+    # Try NewsAPI first (better data quality)
+    newsapi_key = os.getenv("NEWSAPI_KEY")
+    if newsapi_key:
+        try:
+            from datetime import timedelta
+            from_date = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+            params = {
+                "q": f'"{brand_name}"',
+                "language": "en",
+                "pageSize": max_results,
+                "sortBy": "publishedAt",
+                "from": from_date,
+            }
+            headers = {"X-Api-Key": newsapi_key}
+            response = requests.get(
+                "https://newsapi.org/v2/everything",
+                params=params,
+                headers=headers,
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                for art in data.get("articles", []):
+                    title = art.get("title", "") or ""
+                    source = art.get("source", {}).get("name", "Unknown")
+                    published = art.get("publishedAt", "")
+                    summary = art.get("description", "") or ""
+                    link = art.get("url", "")
+
+                    if title:
+                        articles.append({
+                            "title": title,
+                            "source": source,
+                            "published": published,
+                            "summary": summary[:200] if summary else "",
+                            "link": link
+                        })
+                if articles:
+                    return articles
+        except Exception as e:
+            print(f"NewsAPI brand search error: {e}")
+
+    # Fallback to Google News RSS
     try:
         query = brand_name.replace(' ', '+')
         url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
@@ -765,7 +810,6 @@ def fetch_brand_news(brand_name: str, max_results: int = 10) -> list:
         response.raise_for_status()
         feed = feedparser.parse(response.content)
 
-        articles = []
         for entry in feed.entries[:max_results]:
             title = entry.get("title", "")
             source = entry.get("source", {}).get("title", "Unknown") if hasattr(entry.get("source", {}), "get") else "Unknown"
