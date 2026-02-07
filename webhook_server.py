@@ -17,8 +17,7 @@ def get_db_engine():
 # Professional = $899/month subscription (all-access, unlimited briefs)
 # Enterprise = custom pricing subscription
 PRICE_TO_TIER = {
-    "price_1SgsGD1OGs3ZkUZaGMYsURSQ": "professional",
-    "price_1SgsGs1OGs3ZkUZauDjOAwdL": "professional",
+    "price_1SyI3P1OGs3ZkUZa8IwdSO85": "professional",  # $899/mo
     "price_1SgsID1OGs3ZkUZazlD10RZN": "enterprise",
 }
 
