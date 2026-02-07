@@ -1318,7 +1318,7 @@ def render_admin_panel():
                     "Email": email,
                     "Name": uname,
                     "Tier": tier,
-                    "Credits": "Unlimited" if tier == "enterprise" else str(credits),
+                    "Credits": "Unlimited" if tier in ("professional", "enterprise") else str(credits),
                     "Created": str(created)[:10] if created else "N/A"
                 })
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
@@ -1332,7 +1332,7 @@ def render_admin_panel():
             st.subheader("Add New Customer")
             new_email = st.text_input("Email", placeholder="jane@company.com")
             new_name = st.text_input("Name", placeholder="Jane Smith")
-            new_tier = st.selectbox("Tier", ["foundation", "enterprise"])
+            new_tier = st.selectbox("Tier", ["professional", "enterprise"])
             new_credits = st.number_input("Initial Brief Credits", min_value=0, value=0, step=1)
             add_submitted = st.form_submit_button("Create Customer")
 
@@ -1406,8 +1406,8 @@ def render_admin_panel():
 
             if credits_submitted:
                 user_info = next((c for c in customers if c[0] == credit_email), None)
-                if user_info and user_info[2] == "enterprise":
-                    st.info(f"{credit_email} is on Enterprise tier (unlimited briefs). No credits needed.")
+                if user_info and user_info[2] in ("professional", "enterprise"):
+                    st.info(f"{credit_email} is on {user_info[2].title()} tier (unlimited briefs). No credits needed.")
                 else:
                     try:
                         with engine.connect() as conn:
@@ -1428,15 +1428,15 @@ def render_admin_panel():
         if customer_emails:
             edit_email = st.selectbox("Select Customer", customer_emails, key="admin_edit_select")
             user_info = next((c for c in customers if c[0] == edit_email), None)
-            current_tier = user_info[2] if user_info else "foundation"
+            current_tier = user_info[2] if user_info else "professional"
             current_credits = user_info[3] if user_info else 0
 
-            st.caption(f"Current tier: **{current_tier}** | Credits: **{'Unlimited' if current_tier == 'enterprise' else current_credits}**")
+            st.caption(f"Current tier: **{current_tier}** | Credits: **{'Unlimited' if current_tier in ('professional', 'enterprise') else current_credits}**")
 
             # Edit tier
             st.subheader("Change Tier")
             with st.form("admin_edit_tier"):
-                tier_options = ["foundation", "enterprise"]
+                tier_options = ["professional", "enterprise"]
                 new_tier_val = st.selectbox("New Tier", tier_options,
                     index=tier_options.index(current_tier) if current_tier in tier_options else 0)
                 tier_submitted = st.form_submit_button("Update Tier")
