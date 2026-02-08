@@ -22,23 +22,19 @@ def get_user_tier(username: str) -> dict:
                 "tier": row[0],
                 "brief_credits": row[1]
             }
-    return {"tier": "foundation", "brief_credits": 0}
+    return {"tier": "professional", "brief_credits": 0}
 
 def can_generate_brief(username: str) -> tuple[bool, str]:
-    """Check if user can generate a brief based on credits"""
+    """Check if user can generate a brief - Professional and Enterprise have unlimited access"""
     user = get_user_tier(username)
     tier = user["tier"]
-    credits = user["brief_credits"]
 
-    # Enterprise users have unlimited briefs
-    if tier == "enterprise":
+    # Professional and Enterprise users have unlimited briefs
+    if tier in ("professional", "enterprise"):
         return True, ""
 
-    # Foundation users need brief credits
-    if credits <= 0:
-        return False, "You have no brief credits remaining. Purchase a brief pack to continue generating strategic briefs."
-
-    return True, ""
+    # Unknown/invalid tier - deny access
+    return False, "Your account does not have access to strategic briefs. Please contact support."
 
 def decrement_brief_credits(username: str):
     """Decrement brief credits by 1 after successful generation"""
@@ -61,9 +57,9 @@ def add_brief_credits(username: str, credits: int):
         conn.commit()
 
 def get_brief_credits(username: str) -> int:
-    """Get remaining brief credits for a user"""
+    """Get remaining brief credits for a user - Professional and Enterprise have unlimited"""
     user = get_user_tier(username)
-    if user["tier"] == "enterprise":
+    if user["tier"] in ("professional", "enterprise"):
         return -1  # unlimited
     return user["brief_credits"]
 
@@ -72,11 +68,11 @@ def has_feature_access(username: str, feature: str) -> bool:
     user = get_user_tier(username)
     tier = user["tier"]
 
-    # Foundation gets all standard features
+    # Professional gets all standard features
     # Only enterprise-exclusive features are gated
     features = {
-        "brand_focus": ["foundation", "enterprise"],
-        "competitive_tracking": ["foundation", "enterprise"],
+        "brand_focus": ["professional", "enterprise"],
+        "competitive_tracking": ["professional", "enterprise"],
         "white_label": ["enterprise"],
         "advanced_predictive": ["enterprise"],
     }

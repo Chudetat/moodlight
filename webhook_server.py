@@ -14,23 +14,11 @@ def get_db_engine():
     return create_engine(os.getenv("DATABASE_URL"))
 
 # Map Stripe price IDs to tiers
-# Foundation = $499/month subscription
+# Professional = $899/month subscription (all-access, unlimited briefs)
 # Enterprise = custom pricing subscription
-# Brief packs are one-time payments handled separately
 PRICE_TO_TIER = {
-    "price_1SgsGD1OGs3ZkUZaGMYsURSQ": "foundation",
-    "price_1SgsGs1OGs3ZkUZauDjOAwdL": "foundation",
+    "price_1SyI3P1OGs3ZkUZa8IwdSO85": "professional",  # $899/mo
     "price_1SgsID1OGs3ZkUZazlD10RZN": "enterprise",
-}
-
-# Map Stripe price IDs for brief credit packs (one-time payments)
-BRIEF_PACK_CREDITS = {
-    # Single Brief: $500 = 1 credit
-    # 10-Pack: $4,000 = 10 credits
-    # 20-Pack: $7,000 = 20 credits
-    "price_1SvQyg1OGs3ZkUZaR2hZXrQR": 1,
-    "price_1SvQzh1OGs3ZkUZajIphinuj": 10,
-    "price_1SvR0M1OGs3ZkUZaErSldyM5": 20,
 }
 
 def update_user_tier_by_email(email: str, tier: str, customer_id: str, subscription_id: str):
@@ -67,12 +55,12 @@ def add_brief_credits_by_email(email: str, credits: int):
         conn.commit()
 
 def downgrade_user_by_subscription(subscription_id: str):
-    """Downgrade user to foundation on cancellation"""
+    """Remove user tier on cancellation"""
     engine = get_db_engine()
     with engine.connect() as conn:
         conn.execute(text("""
             UPDATE users
-            SET tier = 'foundation',
+            SET tier = 'cancelled',
                 stripe_subscription_id = NULL,
                 updated_at = CURRENT_TIMESTAMP
             WHERE stripe_subscription_id = :subscription_id
@@ -101,30 +89,21 @@ async def stripe_webhook(request: Request):
         subscription_id = session.get("subscription")
 
         if subscription_id:
-            # Subscription purchase (Foundation or Enterprise)
+            # Subscription purchase (Professional or Enterprise)
             subscription = stripe.Subscription.retrieve(subscription_id)
             price_id = subscription["items"]["data"][0]["price"]["id"]
-            tier = PRICE_TO_TIER.get(price_id, "foundation")
+            tier = PRICE_TO_TIER.get(price_id, "professional")
 
             if customer_email:
                 update_user_tier_by_email(customer_email, tier, customer_id, subscription_id)
                 print(f"✅ Updated {customer_email} to {tier}")
-        else:
-            # One-time purchase (brief credit packs)
-            line_items = stripe.checkout.Session.list_line_items(session["id"])
-            for item in line_items.data:
-                price_id = item["price"]["id"]
-                credits = BRIEF_PACK_CREDITS.get(price_id, 0)
-                if credits > 0 and customer_email:
-                    add_brief_credits_by_email(customer_email, credits)
-                    print(f"✅ Added {credits} brief credits to {customer_email}")
 
     # Handle subscription updates (upgrade/downgrade)
     elif event["type"] == "customer.subscription.updated":
         subscription = event["data"]["object"]
         subscription_id = subscription["id"]
         price_id = subscription["items"]["data"][0]["price"]["id"]
-        tier = PRICE_TO_TIER.get(price_id, "foundation")
+        tier = PRICE_TO_TIER.get(price_id, "professional")
 
         engine = get_db_engine()
         with engine.connect() as conn:
