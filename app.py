@@ -1198,7 +1198,22 @@ def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFr
         
         "geographic_hotspots": f"""Based on this geographic intensity data and the relevant headlines below, explain why the TOP-RANKED countries show elevated threat levels.\n\nData (sorted by intensity, highest first): {data_summary}\n\nRelevant headlines from top countries:\n{headline_context}\n\nIMPORTANT: Format each country consistently. Be specific about actual events driving the scores.""",
         
-        "mood_vs_market": f"""Based on this social mood vs market data and the relevant headlines below, explain in 2-3 sentences why there is divergence or alignment between public sentiment and market performance.\n\nData: {data_summary}\n\nHeadlines driving sentiment extremes:\n{headline_context}\n\nIs social sentiment leading or lagging the market? What specific events explain the gap or alignment? Be specific and actionable for investors.""",
+        "mood_vs_market": f"""Based on this social mood vs market data and the relevant headlines below, explain in 2-3 sentences why there is divergence or alignment between public sentiment and market performance.
+
+IMPORTANT - Social Mood Score interpretation:
+- The Social Mood score (0-100) measures EMPATHETIC TONE in discourse, NOT topic positivity
+- Below 35 = Very Cold/Hostile tone
+- 35-50 = Detached/Neutral tone
+- 50-70 = Warm/Supportive tone (people discussing topics with empathy)
+- Above 70 = Highly Empathetic tone
+- A high score (e.g., 68) means people are discussing topics with warmth/nuance, EVEN IF the topics themselves are heavy or negative
+
+Data: {data_summary}
+
+Headlines driving sentiment extremes:
+{headline_context}
+
+Is social sentiment leading or lagging the market? What specific events explain the gap or alignment? Match your tone interpretation to the actual score. Be specific and actionable for investors.""",
         
         "trending_headlines": f"""Based on these trending headlines and their engagement metrics, explain in 2-3 sentences what common themes or events are driving virality.\n\nData: {data_summary}\n\nTop trending headlines:\n{headline_context}\n\nWhat patterns do you see? Why are these resonating with audiences right now?""",
         
@@ -1212,7 +1227,22 @@ def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFr
         
         "scarcity": f"""Based on this scarcity data for topics and the relevant headlines below, explain in 2-3 sentences which topics are underserved and represent first-mover opportunities.\n\nData: {data_summary}\n\nHeadlines showing coverage gaps:\n{headline_context}\n\nWhich topics should brands jump on before competitors? What gaps exist in the conversation?""",
 
-        "polymarket_divergence": f"""Based on this prediction market vs social sentiment data and headlines below, explain in 2-3 sentences why prediction markets and social mood diverge (or align).\n\nData: {data_summary}\n\nHeadlines driving sentiment:\n{headline_context}\n\nWhat does this divergence signal? Is the crowd wrong or are markets ahead? Any opportunity for contrarian positioning? Be specific and actionable."""
+        "polymarket_divergence": f"""Based on this prediction market vs social sentiment data and headlines below, explain in 2-3 sentences why prediction markets and social mood diverge (or align).
+
+IMPORTANT - Social Mood Score interpretation:
+- The Social Mood score (0-100) measures EMPATHETIC TONE in discourse, NOT topic positivity
+- Below 35 = Very Cold/Hostile tone
+- 35-50 = Detached/Neutral tone
+- 50-70 = Warm/Supportive tone (people discussing topics with empathy)
+- Above 70 = Highly Empathetic tone
+- A high score means people are discussing topics with warmth/nuance, EVEN IF the topics themselves are heavy or negative
+
+Data: {data_summary}
+
+Headlines driving sentiment:
+{headline_context}
+
+What does this divergence signal? Is the crowd wrong or are markets ahead? Any opportunity for contrarian positioning? Match your tone interpretation to the actual score. Be specific and actionable."""
     }
     
     prompt = prompts.get(chart_type, "Explain this data pattern in 2-3 sentences.")
