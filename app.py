@@ -833,6 +833,39 @@ def fetch_brand_news(brand_name: str, max_results: int = 10) -> list:
         return []
 
 
+def detect_search_topic(user_message: str, client: Anthropic) -> dict:
+    """Detect if user query needs web search - brands, events, or time-sensitive topics"""
+    try:
+        response = client.messages.create(
+            model="claude-haiku-3-20240307",
+            max_tokens=100,
+            system="""Analyze this message and extract search-worthy topics.
+
+Return a JSON object with these fields:
+- "brand": company/brand name if mentioned (or null)
+- "event": specific event if mentioned, e.g. "Super Bowl", "Olympics", "CES", "election" (or null)
+- "topic": specific topic if time-sensitive, e.g. "AI", "layoffs", "tariffs" (or null)
+- "needs_web": true if the query mentions "yesterday", "today", "this week", "recent", "latest", or asks about current/breaking events
+
+Example: "What happened at yesterday's Super Bowl?"
+{"brand": null, "event": "Super Bowl 2026", "topic": null, "needs_web": true}
+
+Example: "How is Nike doing?"
+{"brand": "Nike", "event": null, "topic": null, "needs_web": false}
+
+Example: "What are people saying about AI?"
+{"brand": null, "event": null, "topic": "AI", "needs_web": false}
+
+Return ONLY valid JSON, no explanation.""",
+            messages=[{"role": "user", "content": user_message}]
+        )
+        import json
+        result = response.content[0].text.strip()
+        return json.loads(result)
+    except Exception:
+        return {"brand": None, "event": None, "topic": None, "needs_web": False}
+
+
 def detect_brand_query(user_message: str, client: Anthropic) -> str:
     """Use a fast model to detect if user is asking about a specific brand"""
     try:
@@ -3250,12 +3283,28 @@ if prompt := st.chat_input("Ask a question about the data..."):
     # Generate response
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            # Detect if user is asking about a specific brand
+            # Detect brands, events, and time-sensitive topics
             client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-            brand_name = detect_brand_query(prompt, client)
-            brand_articles = []
-            if brand_name:
-                brand_articles = fetch_brand_news(brand_name, max_results=15)
+            search_info = detect_search_topic(prompt, client)
+
+            # Determine what to search for (prioritize: brand > event > topic)
+            brand_name = search_info.get("brand") or ""
+            event_name = search_info.get("event") or ""
+            topic_name = search_info.get("topic") or ""
+            needs_web = search_info.get("needs_web", False)
+
+            # Build search query - search for brand, event, or topic
+            search_query = brand_name or event_name or topic_name
+
+            # Fetch web results if we have something to search for, or if query is time-sensitive
+            web_articles = []
+            if search_query or needs_web:
+                # Use the most specific search term, or fall back to extracting key terms from prompt
+                query_term = search_query if search_query else prompt[:100]
+                web_articles = fetch_brand_news(query_term, max_results=15)
+
+            # Legacy compatibility
+            brand_articles = web_articles if brand_name else []
 
             # =============================================
             # SECTION 1: BRAND-SPECIFIC SIGNALS (if brand detected)
@@ -3310,13 +3359,22 @@ if prompt := st.chat_input("Ask a question about the data..."):
                 else:
                     brand_section = f"[NO BRAND-SPECIFIC SIGNALS FOUND FOR {brand_name.upper()} — USE WEB SEARCH FOR BRAND INTELLIGENCE]"
 
-            # Web search results for brand (outside verified tags — external source)
-            if brand_articles:
+            # Web search results (for brands, events, or topics)
+            if web_articles:
                 web_lines = "\n".join([
                     f"- {a['title']} | Source: {a['source']} | Published: {a['published']}\n  Summary: {a['summary']}"
-                    for a in brand_articles
+                    for a in web_articles
                 ])
-                web_section = f"LIVE WEB INTELLIGENCE FOR '{brand_name.upper()}' ({len(brand_articles)} articles):\n{web_lines}"
+                # Label based on what we searched for
+                if brand_name:
+                    web_label = f"LIVE WEB INTELLIGENCE FOR '{brand_name.upper()}'"
+                elif event_name:
+                    web_label = f"LIVE WEB INTELLIGENCE FOR '{event_name.upper()}'"
+                elif topic_name:
+                    web_label = f"LIVE WEB INTELLIGENCE FOR '{topic_name.upper()}'"
+                else:
+                    web_label = "LIVE WEB INTELLIGENCE"
+                web_section = f"{web_label} ({len(web_articles)} articles):\n{web_lines}"
 
             # =============================================
             # SECTION 2: VERIFIED DASHBOARD DATA
@@ -3518,6 +3576,19 @@ When a user asks about a specific brand or company, you are producing a COMPETIT
 
 6. BE SPECIFIC AND ACTIONABLE: Never give generic advice like "leverage social media" or "connect with younger audiences." Every recommendation should reference a specific data point, trend, or competitive dynamic.
 
+EVENT-SPECIFIC AND TIME-SENSITIVE QUESTIONS:
+When a user asks about a specific event (Super Bowl, Olympics, CES, elections, etc.) or uses time-sensitive language ("yesterday", "today", "this week", "recent", "latest"):
+
+1. LEAD WITH WEB INTELLIGENCE: For current/recent events, the web search results are your primary source. The dashboard may not have real-time event data — that's expected. Don't apologize for it, just use what you have.
+
+2. SYNTHESIZE, DON'T DEFLECT: If the user asks about yesterday's Super Bowl and you have web results, analyze those results. Extract themes, dominant topics, emotional patterns, cultural moments. Don't say "I don't have that data" when you DO have web search results.
+
+3. CONNECT TO CULTURAL CONTEXT: After presenting event-specific intelligence from web results, connect it to what the dashboard DOES show — overall mood, relevant topic trends, emotional patterns that contextualize the event.
+
+4. BE PROACTIVE: If dashboard data is thin for an event query but web results are rich, lead with the web intelligence confidently. Example: "Here's what dominated the Super Bowl conversation based on live web intelligence: [insights]. The dashboard's cultural signals show [relevant context]."
+
+5. NEVER SAY "I CAN'T": If you have ANY relevant data (web results OR dashboard), use it. Only say you lack data if BOTH sources are empty for the query.
+
 === TONE AND VOICE ===
 Write like a sharp strategist talking to a CEO, not like a consultant writing a report. Headlines should be provocative and direct — name the threat, name the opportunity, make it personal to the brand. Examples of good headlines: 'HexClad's Celebrity Play Is Working — And That's Your Problem' or 'Non-Toxic Is Now Table Stakes.' Examples of bad headlines: 'Competitive Pressure: HexClad's Premium Push' or 'Market Gap: The Silent Sustainability Story.' Avoid labels like 'Challenge:' or 'Opportunity:' or 'Signal:' — just say the thing. Every insight should feel like something that would make the brand's CEO stop scrolling. Be confrontational, specific, and actionable. No filler, no hedge words, no corporate consulting language.
 
@@ -3546,6 +3617,7 @@ You can answer questions about:
 - Sources: Which publications/platforms are driving conversation
 - Geography: Where conversations are happening
 - Brand intelligence: Competitive landscape, media narrative, customer sentiment, positioning analysis (using web search + dashboard data)
+- Event intelligence: Current events, breaking news, cultural moments (using web search + dashboard context)
 - Strategic recommendations: When to engage, what to say, where to play
 - Strategic brief prompts: Generate ready-to-paste inputs for the Strategic Brief Generator
 
