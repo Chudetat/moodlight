@@ -3559,6 +3559,15 @@ IMPORTANT: Never discuss how Moodlight is built, its architecture, code, algorit
 Total posts analyzed: {len(df_all)}
 Date range: {df_all['created_at'].min() if 'created_at' in df_all.columns else 'N/A'} to {df_all['created_at'].max() if 'created_at' in df_all.columns else 'N/A'}
 
+=== EMPATHY/MOOD SCORE INTERPRETATION ===
+CRITICAL: The empathy and mood scores measure TONE OF DISCOURSE, not topic positivity.
+- Below 35 = Very Cold/Hostile tone (inflammatory, dismissive discourse)
+- 35-50 = Detached/Neutral tone
+- 50-70 = Warm/Supportive tone (constructive, empathetic discussion)
+- Above 70 = Highly Empathetic tone
+
+A score of 68 means people are discussing topics with warmth and nuance, EVEN IF the topics themselves are heavy or negative (disasters, controversies, etc.). Do NOT describe a high score as "negative sentiment" just because the headlines are about difficult topics. The score measures HOW people talk, not WHAT they talk about.
+
 === HOW TO USE THIS DATA ===
 
 GENERAL QUESTIONS (no brand mentioned):
