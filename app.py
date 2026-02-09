@@ -1188,31 +1188,116 @@ def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFr
         headline_context = relevant_headlines
     
     prompts = {
-        "empathy_by_topic": f"""Based on this empathy-by-topic data and the relevant headlines below, explain in 2-3 sentences why certain topics score higher/lower on empathy.\n\nData: {data_summary}\n\nRelevant headlines:\n{headline_context}\n\nBe specific about what is driving the scores. Reference actual events from the headlines. Keep it insightful and actionable.""",
+        "empathy_by_topic": f"""Based on this empathy-by-topic data and the relevant headlines below, explain in 2-3 sentences why certain topics score higher/lower on empathy.
+
+IMPORTANT - Empathy Score interpretation:
+- Empathy scores measure how WARMLY/SUPPORTIVELY people discuss a topic, NOT whether the topic itself is positive
+- Higher scores = people engaging with nuance, compassion, constructive dialogue
+- Lower scores = hostile, dismissive, or inflammatory discourse
+- A tragic topic (e.g., disaster) can have HIGH empathy if people discuss it with compassion
+
+Data: {data_summary}
+
+Relevant headlines:
+{headline_context}
+
+Be specific about what is driving the scores. Reference actual events from the headlines. Keep it insightful and actionable.""",
         
         "emotional_breakdown": f"""Based on this emotional distribution data and the relevant headlines below, explain in 2-3 sentences why certain emotions dominate.\n\nData: {data_summary}\n\nRelevant headlines:\n{headline_context}\n\nReference specific events driving emotions like curiosity, admiration, excitement, fear, sadness, anger, etc. Keep it insightful.""",
         
-        "empathy_distribution": f"""Based on this empathy distribution and the relevant headlines below, explain in 2-3 sentences why the sentiment skews this way.\n\nData: {data_summary}\n\nRelevant headlines:\n{headline_context}\n\nWhat is driving warm vs cold coverage? Be specific.""",
+        "empathy_distribution": f"""Based on this empathy distribution and the relevant headlines below, explain in 2-3 sentences why discourse skews warm or cold.
+
+IMPORTANT - Empathy Score interpretation (0-100 scale):
+- Below 35 = Very Cold/Hostile tone (inflammatory, dismissive discourse)
+- 35-50 = Detached/Neutral tone
+- 50-70 = Warm/Supportive tone (constructive, empathetic discussion)
+- Above 70 = Highly Empathetic tone
+- This measures HOW people discuss topics, not whether topics are positive/negative
+
+Data: {data_summary}
+
+Relevant headlines:
+{headline_context}
+
+What events or dynamics are driving the tone of coverage? Be specific about what's making discourse warm or hostile.""",
         
         "topic_distribution": f"""Based on this topic distribution and the relevant headlines below, explain in 2-3 sentences why certain topics dominate the news cycle.\n\nData: {data_summary}\n\nRelevant headlines:\n{headline_context}\n\nWhat events or trends are driving topic volume? Be specific.""",
         
         "geographic_hotspots": f"""Based on this geographic intensity data and the relevant headlines below, explain why the TOP-RANKED countries show elevated threat levels.\n\nData (sorted by intensity, highest first): {data_summary}\n\nRelevant headlines from top countries:\n{headline_context}\n\nIMPORTANT: Format each country consistently. Be specific about actual events driving the scores.""",
         
-        "mood_vs_market": f"""Based on this social mood vs market data and the relevant headlines below, explain in 2-3 sentences why there is divergence or alignment between public sentiment and market performance.\n\nData: {data_summary}\n\nHeadlines driving sentiment extremes:\n{headline_context}\n\nIs social sentiment leading or lagging the market? What specific events explain the gap or alignment? Be specific and actionable for investors.""",
+        "mood_vs_market": f"""Based on this social mood vs market data and the relevant headlines below, explain in 2-3 sentences why there is divergence or alignment between public sentiment and market performance.
+
+IMPORTANT - Social Mood Score interpretation:
+- The Social Mood score (0-100) measures EMPATHETIC TONE in discourse, NOT topic positivity
+- Below 35 = Very Cold/Hostile tone
+- 35-50 = Detached/Neutral tone
+- 50-70 = Warm/Supportive tone (people discussing topics with empathy)
+- Above 70 = Highly Empathetic tone
+- A high score (e.g., 68) means people are discussing topics with warmth/nuance, EVEN IF the topics themselves are heavy or negative
+
+Data: {data_summary}
+
+Headlines driving sentiment extremes:
+{headline_context}
+
+Is social sentiment leading or lagging the market? What specific events explain the gap or alignment? Match your tone interpretation to the actual score. Be specific and actionable for investors.""",
         
         "trending_headlines": f"""Based on these trending headlines and their engagement metrics, explain in 2-3 sentences what common themes or events are driving virality.\n\nData: {data_summary}\n\nTop trending headlines:\n{headline_context}\n\nWhat patterns do you see? Why are these resonating with audiences right now?""",
         
         "velocity_longevity": f"""Based on this velocity and longevity data for topics and the relevant headlines below, explain in 2-3 sentences which topics are emerging movements vs flash trends.\n\nData: {data_summary}\n\nRecent and persistent headlines:\n{headline_context}\n\nWhich topics should brands invest in long-term vs. capitalize on quickly? Be strategic.""",
         
-        "virality_empathy": f"""Based on this virality vs empathy data and the most viral headlines below, explain in 2-3 sentences what makes certain posts go viral and whether empathetic or hostile content spreads faster.\n\nData: {data_summary}\n\nMost viral headlines:\n{headline_context}\n\nWhat patterns emerge about viral mechanics? Any insights for content strategy?""",
+        "virality_empathy": f"""Based on this virality vs empathy data and the most viral headlines below, explain in 2-3 sentences what makes certain posts go viral and whether empathetic or hostile content spreads faster.
+
+IMPORTANT - Empathy Score context:
+- High empathy = warm, supportive, nuanced tone in how people engage
+- Low empathy = hostile, inflammatory, dismissive tone
+- This measures discourse tone, not topic positivity
+
+Data: {data_summary}
+
+Most viral headlines:
+{headline_context}
+
+What patterns emerge about viral mechanics? Does warmth or hostility drive more engagement? Any insights for content strategy?""",
         
-        "mood_history": f"""Based on this 7-day mood history and headlines from days with significant mood shifts, explain in 2-3 sentences what events caused the changes in public sentiment.\n\nData: {data_summary}\n\nHeadlines from days with mood shifts:\n{headline_context}\n\nIdentify specific events that drove mood spikes or dips. Connect the data to actual news.""",
+        "mood_history": f"""Based on this 7-day mood history and headlines from days with significant mood shifts, explain in 2-3 sentences what events caused the changes in public sentiment.
+
+IMPORTANT - Mood Score interpretation (0-100 scale):
+- Below 35 = Very Cold/Hostile discourse
+- 35-50 = Detached/Neutral
+- 50-70 = Warm/Supportive
+- Above 70 = Highly Empathetic
+- A spike UP means discourse became MORE empathetic/constructive
+- A dip DOWN means discourse became MORE hostile/inflammatory
+- This measures tone, not whether news was good or bad
+
+Data: {data_summary}
+
+Headlines from days with mood shifts:
+{headline_context}
+
+Identify specific events that drove mood spikes or dips. Why did discourse become warmer or colder on those days?""",
         
         "density": f"""Based on this density data for topics and headlines from crowded vs sparse topics, explain in 2-3 sentences which topics are oversaturated vs which have white space opportunity.\n\nData: {data_summary}\n\nHeadlines from high and low density topics:\n{headline_context}\n\nWhich topics are oversaturated and which represent open territory for brands? Be strategic.""",
         
         "scarcity": f"""Based on this scarcity data for topics and the relevant headlines below, explain in 2-3 sentences which topics are underserved and represent first-mover opportunities.\n\nData: {data_summary}\n\nHeadlines showing coverage gaps:\n{headline_context}\n\nWhich topics should brands jump on before competitors? What gaps exist in the conversation?""",
 
-        "polymarket_divergence": f"""Based on this prediction market vs social sentiment data and headlines below, explain in 2-3 sentences why prediction markets and social mood diverge (or align).\n\nData: {data_summary}\n\nHeadlines driving sentiment:\n{headline_context}\n\nWhat does this divergence signal? Is the crowd wrong or are markets ahead? Any opportunity for contrarian positioning? Be specific and actionable."""
+        "polymarket_divergence": f"""Based on this prediction market vs social sentiment data and headlines below, explain in 2-3 sentences why prediction markets and social mood diverge (or align).
+
+IMPORTANT - Social Mood Score interpretation:
+- The Social Mood score (0-100) measures EMPATHETIC TONE in discourse, NOT topic positivity
+- Below 35 = Very Cold/Hostile tone
+- 35-50 = Detached/Neutral tone
+- 50-70 = Warm/Supportive tone (people discussing topics with empathy)
+- Above 70 = Highly Empathetic tone
+- A high score means people are discussing topics with warmth/nuance, EVEN IF the topics themselves are heavy or negative
+
+Data: {data_summary}
+
+Headlines driving sentiment:
+{headline_context}
+
+What does this divergence signal? Is the crowd wrong or are markets ahead? Any opportunity for contrarian positioning? Match your tone interpretation to the actual score. Be specific and actionable."""
     }
     
     prompt = prompts.get(chart_type, "Explain this data pattern in 2-3 sentences.")
