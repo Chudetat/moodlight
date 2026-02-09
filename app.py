@@ -3505,13 +3505,21 @@ if prompt := st.chat_input("Ask a question about the data..."):
             verified_data += "\n\n".join(verified_parts)
             verified_data += "\n\n[END VERIFIED DASHBOARD DATA]"
 
+            # Build context: web intelligence + dashboard data
+            context_parts = []
+
+            # Add brand-specific signals if available
             if brand_name and brand_section:
-                data_context = brand_section
-                if web_section:
-                    data_context += "\n\n" + web_section
-                data_context += "\n\n" + verified_data
-            else:
-                data_context = verified_data
+                context_parts.append(brand_section)
+
+            # ALWAYS include web results if available (brands, events, or topics)
+            if web_section:
+                context_parts.append(web_section)
+
+            # Always include verified dashboard data
+            context_parts.append(verified_data)
+
+            data_context = "\n\n".join(context_parts)
 
             # =============================================
             # SYSTEM PROMPT
