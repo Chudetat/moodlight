@@ -74,7 +74,7 @@ def send_email_brief(brief_text):
     <html>
       <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
         <h2 style="color: #1f77b4;">Daily Intelligence Brief</h2>
-        <pre style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px;">
+        <pre style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; color: #000;">
 {brief_text}
         </pre>
         <hr>
