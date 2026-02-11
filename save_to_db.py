@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -75,7 +75,7 @@ def save_to_db(csv_path: str, table_name: str):
             # Pre-flight: verify we can connect before attempting bulk insert
             print(f"🔌 Testing connection (attempt {attempt}/{MAX_RETRIES})...")
             with engine.connect() as conn:
-                conn.execute(pd.io.sql.text("SELECT 1"))
+                conn.execute(text("SELECT 1"))
             print(f"✅ Connection OK")
 
             print(f"📥 Inserting {len(df_clean)} rows into {table_name}...")
