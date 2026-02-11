@@ -1,12 +1,27 @@
 #!/usr/bin/env python
-"""Save scored CSV data to PostgreSQL"""
+"""Save scored CSV data to PostgreSQL with retry logic"""
 import os
 import sys
+import time
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from dotenv import load_dotenv
 
 load_dotenv()
+
+MAX_RETRIES = 3
+RETRY_DELAY_SECONDS = 5
+
+
+def create_db_engine(db_url: str):
+    """Create SQLAlchemy engine with connection pool settings for reliability"""
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+    return create_engine(
+        db_url,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        connect_args={"connect_timeout": 10},
+    )
 
 
 def save_to_db(csv_path: str, table_name: str):
@@ -21,8 +36,7 @@ def save_to_db(csv_path: str, table_name: str):
         print("❌ DATABASE_URL not set")
         return
 
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
-    engine = create_engine(db_url)
+    engine = create_db_engine(db_url)
     df = pd.read_csv(csv_path)
 
     print(f"📊 Loaded {len(df)} rows from {csv_path}")
@@ -43,15 +57,25 @@ def save_to_db(csv_path: str, table_name: str):
     if len(df_clean) < orig_len:
         print(f"⚠️ Removed {orig_len - len(df_clean)} duplicate IDs")
 
-    try:
-        # Use if_exists="replace" to let pandas handle table creation
-        # This avoids PRIMARY KEY constraint issues entirely
-        print(f"📥 Inserting {len(df_clean)} rows into {table_name}...")
-        df_clean.to_sql(table_name, engine, if_exists="replace", index=False, chunksize=50)
-        print(f"✅ Data saved to PostgreSQL table: {table_name}")
-    except Exception as e:
-        print(f"❌ Error inserting data: {e}")
-        raise
+    # Retry loop for database insertion
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            print(f"📥 Inserting {len(df_clean)} rows into {table_name} (attempt {attempt}/{MAX_RETRIES})...")
+            df_clean.to_sql(table_name, engine, if_exists="replace", index=False, chunksize=50)
+            print(f"✅ Data saved to PostgreSQL table: {table_name}")
+            return
+        except Exception as e:
+            print(f"❌ Attempt {attempt} failed: {e}")
+            if attempt < MAX_RETRIES:
+                wait = RETRY_DELAY_SECONDS * attempt
+                print(f"⏳ Retrying in {wait}s...")
+                time.sleep(wait)
+                # Recreate engine to get a fresh connection
+                engine.dispose()
+                engine = create_db_engine(db_url)
+            else:
+                print(f"❌ All {MAX_RETRIES} attempts failed. Database may be unreachable.")
+                raise
 
 
 if __name__ == "__main__":
