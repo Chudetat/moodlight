@@ -2570,7 +2570,19 @@ st.caption("The stories gaining momentum—what's about to become the conversati
 if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_all) > 0:
     now = datetime.now(timezone.utc)
     three_days_ago = now - timedelta(days=FILTER_DAYS)
-    df_trending = df_all[df_all["created_at"] >= three_days_ago].nlargest(30, "engagement").copy()
+    df_recent = df_all[df_all["created_at"] >= three_days_ago].copy()
+
+    # Give news articles a proxy engagement based on empathy score + recency
+    # so they appear alongside X posts in the bubble chart
+    zero_eng = df_recent["engagement"] == 0
+    if zero_eng.any() and "empathy_score" in df_recent.columns:
+        hours = (now - df_recent.loc[zero_eng, "created_at"]).dt.total_seconds() / 3600
+        recency_boost = (1 - hours / (FILTER_DAYS * 24)).clip(0, 1)
+        df_recent.loc[zero_eng, "engagement"] = (
+            df_recent.loc[zero_eng, "empathy_score"] * recency_boost * 500
+        ).clip(lower=10)
+
+    df_trending = df_recent.nlargest(30, "engagement").copy()
     # Filter out crypto/spam from trending
     df_trending = df_trending[~df_trending["text"].str.lower().str.contains("|".join(SPAM_KEYWORDS), na=False)]
     df_trending["hours_ago"] = (now - df_trending["created_at"]).dt.total_seconds() / 3600
