@@ -365,15 +365,16 @@ def load_data() -> pd.DataFrame:
 
     for path, src in sources:
         try:
+            df = pd.DataFrame()
             # Try database first
             if HAS_DB:
-                table = path.replace(".csv", "").replace("_scored", "_scored")
-                df = load_df_from_db(table)
-                if not df.empty:
+                table = path.replace(".csv", "")
+                df, db_status = load_df_from_db(table)
+                if db_status:
+                    st.warning(f"DB load for {table}: {db_status} — falling back to CSV")
+                elif not df.empty:
                     print(f"Loaded {len(df)} from DB: {table}")
-            else:
-                df = pd.DataFrame()
-            # Fall back to CSV if DB empty
+            # Fall back to CSV if DB empty or unavailable
             if df.empty:
                 df = pd.read_csv(path)
             if df.empty:
@@ -1737,6 +1738,9 @@ df_all = load_data()
 if df_all.empty:
     st.sidebar.caption("Data: 0 rows")
     st.warning("No data available. Click **Refresh** in the sidebar to fetch fresh data.")
+    with st.expander("Diagnostics"):
+        db_url = os.environ.get("DATABASE_URL", "")
+        st.code(f"HAS_DB: {HAS_DB}\nDATABASE_URL set: {bool(db_url)}\nCSV files: social_scored.csv={os.path.exists('social_scored.csv')}, news_scored.csv={os.path.exists('news_scored.csv')}")
     st.stop()
 
 st.sidebar.caption(f"Data: {len(df_all)} rows, latest: {df_all['created_at'].max() if 'created_at' in df_all.columns else 'N/A'}")
