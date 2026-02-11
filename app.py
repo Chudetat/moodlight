@@ -45,11 +45,10 @@ authenticator = stauth.Authenticate(
 )
 
 
-# Hide the "Missing Submit Button" warning
+# Hide the Streamlit deploy button and toolbar clutter
 st.markdown("""
 <style>
-    .stException { display: none !important; }
-    div[data-testid="stException"] { display: none !important; }
+    .stDeployButton { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 # Logo on login page (only show when not logged in)
@@ -1734,6 +1733,12 @@ if is_admin and st.session_state.get("admin_panel_active"):
 
 # Load all data once
 df_all = load_data()
+
+if df_all.empty:
+    st.sidebar.caption("Data: 0 rows")
+    st.warning("No data available. Click **Refresh** in the sidebar to fetch fresh data.")
+    st.stop()
+
 st.sidebar.caption(f"Data: {len(df_all)} rows, latest: {df_all['created_at'].max() if 'created_at' in df_all.columns else 'N/A'}")
 
 if brand_focus and custom_query.strip():
@@ -1747,10 +1752,12 @@ if brand_focus and custom_query.strip():
 # Create filtered dataset
 if "created_at" in df_all.columns:
     cutoff = datetime.now(timezone.utc) - timedelta(days=FILTER_DAYS)
-    # Debug: log timestamp info
-    print(f"DEBUG TIMESTAMPS: cutoff={cutoff}, min={df_all['created_at'].min()}, max={df_all['created_at'].max()}")
-    print(f"DEBUG: Total rows={len(df_all)}, Rows after filter={len(df_all[df_all['created_at'] >= cutoff])}")
     df_48h = df_all[df_all["created_at"] >= cutoff].copy()
+
+    # If date filter removes all data, fall back to all available data with a warning
+    if df_48h.empty and not df_all.empty:
+        st.warning(f"No data found in the last {FILTER_DAYS} days. Showing all available data instead.")
+        df_48h = df_all.copy()
 else:
     df_48h = df_all.copy()
 
