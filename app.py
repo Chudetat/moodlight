@@ -2623,63 +2623,38 @@ st.markdown("---")
 # SECTION 6: VIRALITY × EMPATHY
 # ========================================
 st.markdown("### Virality × Empathy: Posts with Viral Potential")
-st.caption("High engagement meets emotional resonance—these are the moments worth riding. For news: virality is based on empathy and recency.")
+st.caption("High engagement meets emotional resonance—these are the moments worth riding.")
 
 if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_all) > 0:
     cutoff_virality = datetime.now(timezone.utc) - timedelta(days=FILTER_DAYS)
     vdf = df_all[df_all["created_at"] >= cutoff_virality].copy()
-
-
+    
+    
     now = datetime.now(timezone.utc)
     vdf["age_hours"] = (now - vdf["created_at"]).dt.total_seconds() / 3600
     vdf["age_hours"] = vdf["age_hours"].replace(0, 0.1)
+    vdf["virality"] = vdf["engagement"] / vdf["age_hours"]
+    
 
-    # Split into social posts (with engagement) and news posts (without engagement)
-    vdf_social = vdf[(vdf["source"] == "x") & (vdf["engagement"] > 0)].copy()
-    vdf_news = vdf[vdf["source"] != "x"].copy()
-
-    # Calculate virality for social posts: engagement per hour
-    if len(vdf_social) > 0:
-        vdf_social["virality"] = vdf_social["engagement"] / vdf_social["age_hours"]
-
-    # For news posts, calculate proxy virality based on empathy and recency
-    # Higher empathy + newer = higher viral potential
-    if len(vdf_news) > 0:
-        max_age = vdf_news["age_hours"].max() if vdf_news["age_hours"].max() > 0 else 1
-        recency_score = 1 - (vdf_news["age_hours"] / (max_age + 1))  # 0 to 1, newer = higher
-        # Proxy virality: combines empathy and recency (scaled to be visible on log chart)
-        vdf_news["virality"] = (vdf_news["empathy_score"] + 0.1) * (recency_score + 0.5) * 5
-
-    # Combine: prefer social posts, but include news if available
-    if len(vdf_social) > 0 and len(vdf_news) > 0:
-        vdf = pd.concat([vdf_social, vdf_news], ignore_index=True)
-    elif len(vdf_social) > 0:
-        vdf = vdf_social
-    else:
-        vdf = vdf_news
-
+    # Filter to posts with any engagement
+    vdf = vdf[vdf["engagement"] > 0]
+    
     if len(vdf) > 20:
-        # If plenty of data, show top 70% by virality
+        # If plenty of data, show top 70%
         virality_threshold = vdf["virality"].quantile(0.3)
-        # For engagement threshold, only consider posts with actual engagement (social posts)
-        vdf_with_engagement = vdf[vdf["engagement"] > 0]
-        if len(vdf_with_engagement) > 0:
-            engagement_threshold = vdf_with_engagement["engagement"].quantile(0.3)
-            vdf_high = vdf[(vdf["virality"] > virality_threshold) | (vdf["engagement"] > engagement_threshold)]
-        else:
-            # No engagement data (only news), filter by virality only
-            vdf_high = vdf[vdf["virality"] > virality_threshold]
+        engagement_threshold = vdf["engagement"].quantile(0.3)
+        vdf_high = vdf[(vdf["virality"] > virality_threshold) | (vdf["engagement"] > engagement_threshold)]
     else:
-        # If limited data, show all posts
+        # If limited data, show all posts with engagement
         vdf_high = vdf
     if len(vdf_high) > 0:
-        st.caption(f"Showing {len(vdf_high)} high-potential posts (X: {len(vdf_high[vdf_high['source']=='x'])}, News: {len(vdf_high[vdf_high['source']!='x'])})")
+        st.caption(f"Showing {len(vdf_high)} high-potential posts (X: {len(vdf_high[vdf_high['source']=='x'])}, News: {len(vdf_high[vdf_high['source']=='news'])})")
         
         virality_chart = (
             alt.Chart(vdf_high)
             .mark_circle(opacity=0.6)
             .encode(
-                x=alt.X("virality:Q", title="Virality Score", scale=alt.Scale(type='log')),
+                x=alt.X("virality:Q", title="Virality (Engagement/Hour)", scale=alt.Scale(type='log')),
                 y=alt.Y("empathy_score:Q", title="Empathy Score", scale=alt.Scale(domain=[0, 1])),
                 size=alt.Size("engagement:Q", title="Total Engagement", scale=alt.Scale(range=[200, 2000])),
                 color=alt.Color("source_display:N", title="Source"),
