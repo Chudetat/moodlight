@@ -928,7 +928,7 @@ def fetch_newsapi_brands() -> List[Dict[str, Any]]:
         params = {
             "q": query,
             "language": "en",
-            "pageSize": MAX_ARTICLES_PER_BRAND * len(batch),
+            "pageSize": min(MAX_ARTICLES_PER_BRAND * len(batch), 100),
             "sortBy": "publishedAt",
             "from": from_date,
         }
