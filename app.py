@@ -2636,7 +2636,7 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
 
     # Split into social posts (with engagement) and news posts (without engagement)
     vdf_social = vdf[(vdf["source"] == "x") & (vdf["engagement"] > 0)].copy()
-    vdf_news = vdf[vdf["source"] == "news"].copy()
+    vdf_news = vdf[vdf["source"] != "x"].copy()
 
     # Calculate virality for social posts: engagement per hour
     if len(vdf_social) > 0:
@@ -2673,7 +2673,7 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
         # If limited data, show all posts
         vdf_high = vdf
     if len(vdf_high) > 0:
-        st.caption(f"Showing {len(vdf_high)} high-potential posts (X: {len(vdf_high[vdf_high['source']=='x'])}, News: {len(vdf_high[vdf_high['source']=='news'])})")
+        st.caption(f"Showing {len(vdf_high)} high-potential posts (X: {len(vdf_high[vdf_high['source']=='x'])}, News: {len(vdf_high[vdf_high['source']!='x'])})")
         
         virality_chart = (
             alt.Chart(vdf_high)
