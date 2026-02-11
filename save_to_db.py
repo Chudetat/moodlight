@@ -9,18 +9,30 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MAX_RETRIES = 3
-RETRY_DELAY_SECONDS = 5
+MAX_RETRIES = 5
+INITIAL_RETRY_DELAY = 5
 
 
 def create_db_engine(db_url: str):
     """Create SQLAlchemy engine with connection pool settings for reliability"""
     db_url = db_url.replace("postgres://", "postgresql://", 1)
+    # Add sslmode=require if no sslmode is set (Railway typically requires SSL)
+    if "sslmode" not in db_url:
+        separator = "&" if "?" in db_url else "?"
+        db_url = db_url + separator + "sslmode=require"
     return create_engine(
         db_url,
         pool_pre_ping=True,
         pool_recycle=300,
-        connect_args={"connect_timeout": 10},
+        pool_size=1,
+        max_overflow=0,
+        connect_args={
+            "connect_timeout": 30,
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5,
+        },
     )
 
 
@@ -60,14 +72,20 @@ def save_to_db(csv_path: str, table_name: str):
     # Retry loop for database insertion
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            print(f"📥 Inserting {len(df_clean)} rows into {table_name} (attempt {attempt}/{MAX_RETRIES})...")
-            df_clean.to_sql(table_name, engine, if_exists="replace", index=False, chunksize=50)
+            # Pre-flight: verify we can connect before attempting bulk insert
+            print(f"🔌 Testing connection (attempt {attempt}/{MAX_RETRIES})...")
+            with engine.connect() as conn:
+                conn.execute(pd.io.sql.text("SELECT 1"))
+            print(f"✅ Connection OK")
+
+            print(f"📥 Inserting {len(df_clean)} rows into {table_name}...")
+            df_clean.to_sql(table_name, engine, if_exists="replace", index=False, chunksize=25)
             print(f"✅ Data saved to PostgreSQL table: {table_name}")
             return
         except Exception as e:
             print(f"❌ Attempt {attempt} failed: {e}")
             if attempt < MAX_RETRIES:
-                wait = RETRY_DELAY_SECONDS * attempt
+                wait = INITIAL_RETRY_DELAY * (2 ** (attempt - 1))  # exponential: 5, 10, 20, 40
                 print(f"⏳ Retrying in {wait}s...")
                 time.sleep(wait)
                 # Recreate engine to get a fresh connection
