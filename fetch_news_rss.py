@@ -1056,6 +1056,9 @@ def classify_topic(text: str) -> str:
         if topic not in priority_topics:
             if any(kw in t for kw in kws):
                 return topic
+
+    return "other"
+
 # -------------------------------
 # Country detection
 # -------------------------------
