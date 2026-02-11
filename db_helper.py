@@ -26,19 +26,25 @@ def save_df_to_db(df, table_name):
         return False
 
 def load_df_from_db(table_name):
-    """Load data from database, filtered to last 7 days only."""
+    """Load data from database, filtered to last 7 days only.
+
+    Returns (DataFrame, status_message) tuple.
+    status_message is None on success, or a string describing the failure.
+    """
     engine = get_engine()
     if not engine:
-        return pd.DataFrame()
+        return pd.DataFrame(), "DATABASE_URL not set"
     try:
         # Filter to last 7 days to match data retention policy
         cutoff = datetime.now(timezone.utc) - timedelta(days=DATA_RETENTION_DAYS)
         cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
         query = f"SELECT * FROM {table_name} WHERE created_at >= '{cutoff_str}'"
-        return pd.read_sql(query, engine)
+        df = pd.read_sql(query, engine)
+        return df, None
     except Exception as e:
         # Fall back to loading all data if query fails (e.g., column doesn't exist)
         try:
-            return pd.read_sql(f"SELECT * FROM {table_name}", engine)
-        except:
-            return pd.DataFrame()
+            df = pd.read_sql(f"SELECT * FROM {table_name}", engine)
+            return df, None
+        except Exception as e2:
+            return pd.DataFrame(), f"DB query failed: {e2}"
