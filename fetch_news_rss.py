@@ -48,6 +48,8 @@ session.mount("https://", adapter)
 BLOCKED_SOURCES = [
     "pypi.org",
     "pypi",
+    "slickdeals.net",
+    "slickdeals",
 ]
 
 def is_blocked_source(link: str) -> bool:
