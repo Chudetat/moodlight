@@ -207,17 +207,7 @@ st.set_page_config(
 )
 
 
-view_mode = st.sidebar.radio(
-    "📊 View Mode",
-    ["Breaking (48h)", "Strategic (30d)"],
-    index=1,
-    help="Breaking: Real-time focus. Strategic: Broader context for pattern recognition."
-)
-
-if view_mode == "Breaking (48h)":
-    FILTER_DAYS = 2
-else:
-    FILTER_DAYS = 30
+FILTER_DAYS = 7
 
 # -------------------------------
 # Global constants
@@ -2424,7 +2414,7 @@ st.markdown("---")
 # ========================================
 # SECTION 2: DETAILED ANALYSIS
 # ========================================
-st.markdown("## Detailed Analysis (Last 48 Hours)")
+st.markdown("## Detailed Analysis (Last 7 Days)")
 
 df_filtered = df_48h.copy()
 
