@@ -2225,10 +2225,31 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             # Use latest value for the metric display below
             market_value = int(market_line["score"].iloc[0]) if len(market_line) > 0 else 50
 
-        combined = pd.concat([
-            daily_social.rename(columns={'social_mood': 'score'}).assign(metric='Social Mood'),
-            market_line
-        ])
+        # Align both lines to the same date range, filling gaps
+        all_dates = sorted(set(daily_social["date"].tolist()) | set(market_line["date"].tolist()))
+        social_reindexed = (
+            daily_social[["date", "social_mood"]]
+            .set_index("date")
+            .reindex(all_dates)
+            .interpolate(method="linear")
+            .ffill().bfill()
+            .reset_index()
+            .rename(columns={"index": "date", "social_mood": "score"})
+        )
+        social_reindexed["metric"] = "Social Mood"
+
+        market_reindexed = (
+            market_line[["date", "score"]]
+            .set_index("date")
+            .reindex(all_dates)
+            .interpolate(method="linear")
+            .ffill().bfill()
+            .reset_index()
+            .rename(columns={"index": "date"})
+        )
+        market_reindexed["metric"] = market_label_name
+
+        combined = pd.concat([social_reindexed, market_reindexed])
 
         comparison_chart = (
             alt.Chart(combined)
