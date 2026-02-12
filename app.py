@@ -2567,84 +2567,67 @@ if "topic" in df_filtered.columns and len(df_filtered):
 st.markdown("### Trending Headlines")
 st.caption("The stories gaining momentum—what's about to become the conversation.")
 
-if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_all) > 0:
+if "created_at" in df_all.columns and "empathy_score" in df_all.columns and len(df_all) > 0:
     now = datetime.now(timezone.utc)
     three_days_ago = now - timedelta(days=FILTER_DAYS)
-    df_recent = df_all[df_all["created_at"] >= three_days_ago].copy()
+    # News-only: Trending Headlines is for news articles, Virality chart handles X posts
+    df_news = df_all[(df_all["source"] != "x") & (df_all["created_at"] >= three_days_ago)].copy()
 
-    # Give news articles a proxy engagement based on empathy score + recency
-    # so they appear alongside X posts in the bubble chart
-    df_recent["engagement"] = df_recent["engagement"].astype(float)
-    zero_eng = df_recent["engagement"] == 0
-    if zero_eng.any() and "empathy_score" in df_recent.columns:
-        hours = (now - df_recent.loc[zero_eng, "created_at"]).dt.total_seconds() / 3600
-        recency_boost = (1 - hours / (FILTER_DAYS * 24)).clip(0, 1)
-        df_recent.loc[zero_eng, "engagement"] = (
-            df_recent.loc[zero_eng, "empathy_score"] * recency_boost * 500
-        ).clip(lower=10)
+    if not df_news.empty:
+        df_trending = df_news.nlargest(30, "empathy_score").copy()
+        # Filter out crypto/spam from trending
+        df_trending = df_trending[~df_trending["text"].str.lower().str.contains("|".join(SPAM_KEYWORDS), na=False)]
+        df_trending["hours_ago"] = (now - df_trending["created_at"]).dt.total_seconds() / 3600
 
-    # Select top posts from BOTH X and news to ensure a mixed chart
-    df_x = df_recent[df_recent["source"] == "x"]
-    df_news = df_recent[df_recent["source"] != "x"]
-    df_trending = pd.concat([
-        df_x.nlargest(min(10, len(df_x)), "engagement"),
-        df_news.nlargest(min(20, len(df_news)), "engagement"),
-    ]).nlargest(30, "engagement").copy()
-    # Filter out crypto/spam from trending
-    df_trending = df_trending[~df_trending["text"].str.lower().str.contains("|".join(SPAM_KEYWORDS), na=False)]
-    df_trending["hours_ago"] = (now - df_trending["created_at"]).dt.total_seconds() / 3600
-
-    trending_chart = (
-        alt.Chart(df_trending)
-        .mark_circle(size=100, opacity=0.7)
-        .encode(
-            x=alt.X("hours_ago:Q", title="Hours Ago", scale=alt.Scale(reverse=True)),
-            y=alt.Y("empathy_score:Q", title="Empathy Score", scale=alt.Scale(domain=[0, 1])),
-            size=alt.Size("engagement:Q", title="Engagement", scale=alt.Scale(range=[100, 2000])),
-            color=alt.Color("source_display:N", title="Source"),
-            tooltip=[
-                alt.Tooltip("text:N", title="Headline"),
-                alt.Tooltip("source_display:N", title="Source"),
-                alt.Tooltip("engagement:Q", title="Engagement", format=","),
-                alt.Tooltip("empathy_score:Q", title="Empathy", format=".2f"),
-                alt.Tooltip("created_at:T", title="Posted", format="%b %d, %H:%M")
-            ]
+        trending_chart = (
+            alt.Chart(df_trending)
+            .mark_circle(size=100, opacity=0.7)
+            .encode(
+                x=alt.X("hours_ago:Q", title="Hours Ago", scale=alt.Scale(reverse=True)),
+                y=alt.Y("empathy_score:Q", title="Empathy Score", scale=alt.Scale(domain=[0, 1])),
+                size=alt.Size("empathy_score:Q", title="Empathy Score", scale=alt.Scale(range=[100, 2000])),
+                color=alt.Color("source_display:N", title="Source"),
+                tooltip=[
+                    alt.Tooltip("text:N", title="Headline"),
+                    alt.Tooltip("source_display:N", title="Source"),
+                    alt.Tooltip("empathy_score:Q", title="Empathy", format=".2f"),
+                    alt.Tooltip("created_at:T", title="Posted", format="%b %d, %H:%M")
+                ]
+            )
+            .properties(height=400)
+            .interactive()
         )
-        .properties(height=400)
-        .interactive()
-    )
-    st.altair_chart(trending_chart, use_container_width=True)
-    
-    st.markdown("#### Headline Insights")
-    
-    if not df_trending.empty:
+        st.altair_chart(trending_chart, use_container_width=True)
+
+        st.markdown("#### Headline Insights")
+
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
-            st.markdown("**📈 Highest Engagement**")
-            top_post = df_trending.nlargest(1, 'engagement').iloc[0]
-            st.caption(f"**{top_post['source_display']}** ({top_post['engagement']:,.0f} engagements)")
+            st.markdown("**📈 Most Empathetic**")
+            top_post = df_trending.nlargest(1, 'empathy_score').iloc[0]
+            st.caption(f"**{top_post['source_display']}** (Score: {top_post['empathy_score']:.2f})")
             st.caption(f"_{top_post['text'][:100]}..._")
-        
+
         with col2:
-            st.markdown("**❤️ Most Empathetic Viral Post**")
-            top_empathy = df_trending.nlargest(1, 'empathy_score').iloc[0]
-            st.caption(f"**{top_empathy['source_display']}** (Score: {top_empathy['empathy_score']:.2f})")
-            st.caption(f"_{top_empathy['text'][:100]}..._")
-        
+            st.markdown("**🕐 Most Recent**")
+            most_recent = df_trending.nsmallest(1, 'hours_ago').iloc[0]
+            st.caption(f"**{most_recent['source_display']}** ({most_recent['hours_ago']:.1f}h ago)")
+            st.caption(f"_{most_recent['text'][:100]}..._")
+
         with col3:
-            st.markdown("**🥶 Least Empathetic Viral Post**")
+            st.markdown("**🥶 Least Empathetic**")
             bottom_empathy = df_trending.nsmallest(1, 'empathy_score').iloc[0]
             st.caption(f"**{bottom_empathy['source_display']}** (Score: {bottom_empathy['empathy_score']:.2f})")
             st.caption(f"_{bottom_empathy['text'][:100]}..._")
 
         if st.button("🔍 Why are these trending?", key="explain_trending"):
             with st.spinner("Analyzing patterns..."):
-                data_summary = df_trending[["text", "engagement", "empathy_score", "source_display"]].head(10).to_string()
+                data_summary = df_trending[["text", "empathy_score", "source_display", "hours_ago"]].head(10).to_string()
                 explanation = generate_chart_explanation("trending_headlines", data_summary, df_trending)
                 st.info(f"📊 **Insight:**\n\n{explanation}")
     else:
-        st.info("No headline insights available yet.")
+        st.info("No news headlines found in the selected time range.")
 
 
 st.markdown("---")
