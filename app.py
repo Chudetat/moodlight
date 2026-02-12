@@ -1443,6 +1443,29 @@ def render_admin_panel():
         st.error("Database connection not available. Check DATABASE_URL.")
         return
 
+    # Auto-create users table if it doesn't exist
+    try:
+        with engine.connect() as conn:
+            conn.execute(sql_text("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(100) UNIQUE NOT NULL,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    tier VARCHAR(20) DEFAULT 'monthly',
+                    brief_credits INTEGER DEFAULT 0,
+                    stripe_customer_id VARCHAR(100),
+                    stripe_subscription_id VARCHAR(100),
+                    extra_seats INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.commit()
+    except Exception as e:
+        st.error(f"Failed to initialize users table: {e}")
+        return
+
     customers = _load_all_customers(engine)
     customer_emails = [c[0] for c in customers]
 
