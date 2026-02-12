@@ -2418,24 +2418,6 @@ st.markdown("## Detailed Analysis (Last 7 Days)")
 
 df_filtered = df_48h.copy()
 
-if "topic" in df_filtered.columns:
-    topics = sorted(df_filtered["topic"].dropna().unique())
-    sel_topics = st.sidebar.multiselect("Filter by topic", topics, default=topics)
-    if sel_topics:
-        df_filtered = df_filtered[df_filtered["topic"].isin(sel_topics)]
-
-if "emotion_top_1" in df_filtered.columns:
-    emotions = sorted(df_filtered["emotion_top_1"].dropna().unique())
-    sel_emo = st.sidebar.multiselect("Filter by dominant emotion", emotions, default=emotions)
-    if sel_emo:
-        df_filtered = df_filtered[df_filtered["emotion_top_1"].isin(sel_emo)]
-
-search = st.sidebar.text_input("Search in text")
-if search:
-    df_filtered = df_filtered[df_filtered["text"].str.contains(search, case=False, na=False)]
-
-st.markdown(f"**Filtered posts:** {len(df_filtered)}")
-
 if "empathy_score" in df_filtered.columns and len(df_filtered):
     avg = df_filtered["empathy_score"].mean()
     st.metric("Average empathy (filtered)", empathy_label_from_score(avg) or "N/A", f"{avg:.3f}")
