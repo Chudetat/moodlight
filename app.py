@@ -241,9 +241,16 @@ TOPIC_CATEGORIES = [
 FETCH_TIMEOUT = 300  # 5 minutes
 
 # Spam keywords to filter from trending headlines
-SPAM_KEYWORDS = ["crypto", "bitcoin", "btc", "eth", "ethereum", "nft", "airdrop", "presale", 
-    "whitelist", "pump", "moon", "hodl", "doge", "shib", "memecoin", "web3", "defi", 
+SPAM_KEYWORDS = ["crypto", "bitcoin", "btc", "eth", "ethereum", "nft", "airdrop", "presale",
+    "whitelist", "pump", "moon", "hodl", "doge", "shib", "memecoin", "web3", "defi",
     "trading signals", "forex", "binary options", "giveaway", "dm for", "link in bio"]
+
+# Blocked sources — mirrored from fetch_news_rss.py for display-side filtering
+BLOCKED_SOURCES = [
+    "slickdeals", "ozbargain", "bringatrailer", "biztoc", "memeorandum",
+    "freerepublic", "digitaljournal", "digital journal", "lifesciencesworld",
+    "foot-africa", "pypi",
+]
 
 EMOTION_COLORS = {
     "admiration": "#FFD700",
@@ -380,9 +387,11 @@ def load_data() -> pd.DataFrame:
             if df.empty:
                 continue
             
-            # Filter out pypi entries
-            if "source" in df.columns:
-                df = df[~df["source"].str.contains("pypi", case=False, na=False)]
+            # Filter out blocked sources
+            blocked_pattern = "|".join(BLOCKED_SOURCES)
+            for col in ["source", "link"]:
+                if col in df.columns:
+                    df = df[~df[col].str.contains(blocked_pattern, case=False, na=False)]
             
             # Validate required columns
             required_cols = ["empathy_score", "created_at", "text"]
