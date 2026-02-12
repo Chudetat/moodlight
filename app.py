@@ -2574,6 +2574,7 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
 
     # Give news articles a proxy engagement based on empathy score + recency
     # so they appear alongside X posts in the bubble chart
+    df_recent["engagement"] = df_recent["engagement"].astype(float)
     zero_eng = df_recent["engagement"] == 0
     if zero_eng.any() and "empathy_score" in df_recent.columns:
         hours = (now - df_recent.loc[zero_eng, "created_at"]).dt.total_seconds() / 3600
@@ -2582,7 +2583,13 @@ if "created_at" in df_all.columns and "engagement" in df_all.columns and len(df_
             df_recent.loc[zero_eng, "empathy_score"] * recency_boost * 500
         ).clip(lower=10)
 
-    df_trending = df_recent.nlargest(30, "engagement").copy()
+    # Select top posts from BOTH X and news to ensure a mixed chart
+    df_x = df_recent[df_recent["source"] == "x"]
+    df_news = df_recent[df_recent["source"] != "x"]
+    df_trending = pd.concat([
+        df_x.nlargest(min(10, len(df_x)), "engagement"),
+        df_news.nlargest(min(20, len(df_news)), "engagement"),
+    ]).nlargest(30, "engagement").copy()
     # Filter out crypto/spam from trending
     df_trending = df_trending[~df_trending["text"].str.lower().str.contains("|".join(SPAM_KEYWORDS), na=False)]
     df_trending["hours_ago"] = (now - df_trending["created_at"]).dt.total_seconds() / 3600
