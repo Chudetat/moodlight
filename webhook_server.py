@@ -14,11 +14,11 @@ def get_db_engine():
     return create_engine(os.getenv("DATABASE_URL"))
 
 # Map Stripe price IDs to tiers
-# Professional = $899/month subscription (all-access, unlimited briefs)
-# Enterprise = custom pricing subscription
+# Monthly = $899/month subscription (all-access, unlimited briefs). Billed monthly. Cancel anytime.
+# Annually = $8,999/year subscription (all-access, unlimited briefs). Billed annually.
 PRICE_TO_TIER = {
-    "price_1SyI3P1OGs3ZkUZa8IwdSO85": "professional",  # $899/mo
-    "price_1SgsID1OGs3ZkUZazlD10RZN": "enterprise",
+    "price_1SyI3P1OGs3ZkUZa8IwdSO85": "monthly",    # $899/mo
+    "price_1SgsID1OGs3ZkUZazlD10RZN": "annually",    # $8,999/yr
 }
 
 def update_user_tier_by_email(email: str, tier: str, customer_id: str, subscription_id: str):
@@ -89,10 +89,10 @@ async def stripe_webhook(request: Request):
         subscription_id = session.get("subscription")
 
         if subscription_id:
-            # Subscription purchase (Professional or Enterprise)
+            # Subscription purchase (Monthly or Annually)
             subscription = stripe.Subscription.retrieve(subscription_id)
             price_id = subscription["items"]["data"][0]["price"]["id"]
-            tier = PRICE_TO_TIER.get(price_id, "professional")
+            tier = PRICE_TO_TIER.get(price_id, "monthly")
 
             if customer_email:
                 update_user_tier_by_email(customer_email, tier, customer_id, subscription_id)
@@ -103,7 +103,7 @@ async def stripe_webhook(request: Request):
         subscription = event["data"]["object"]
         subscription_id = subscription["id"]
         price_id = subscription["items"]["data"][0]["price"]["id"]
-        tier = PRICE_TO_TIER.get(price_id, "professional")
+        tier = PRICE_TO_TIER.get(price_id, "monthly")
 
         engine = get_db_engine()
         with engine.connect() as conn:

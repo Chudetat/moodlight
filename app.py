@@ -55,34 +55,6 @@ st.markdown("""
 
 if not st.session_state.get("authentication_status"):
     st.image("logo.png", width=300)
-
-    # Pricing section
-    st.markdown("---")
-    col_monthly, col_annual = st.columns(2)
-    with col_monthly:
-        st.markdown(
-            """
-            <div style="border:1px solid #444; border-radius:12px; padding:2rem; text-align:center;">
-                <h3 style="margin:0;">Monthly</h3>
-                <p style="font-size:2rem; font-weight:bold; margin:0.5rem 0;">$899<span style="font-size:1rem; font-weight:normal;">/month</span></p>
-                <p style="color:#888; font-size:0.9rem;">Billed monthly. Cancel anytime.</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with col_annual:
-        st.markdown(
-            """
-            <div style="border:1px solid #444; border-radius:12px; padding:2rem; text-align:center;">
-                <h3 style="margin:0;">Annually</h3>
-                <p style="font-size:2rem; font-weight:bold; margin:0.5rem 0;">$8,999<span style="font-size:1rem; font-weight:normal;">/year</span></p>
-                <p style="color:#888; font-size:0.9rem;">Billed annually.</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    st.markdown("---")
-
 # Login widget
 authenticator.login()
 
