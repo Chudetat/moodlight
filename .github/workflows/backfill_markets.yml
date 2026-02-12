@@ -1,0 +1,28 @@
+name: Backfill Market Data (One-Time)
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pandas requests python-dotenv sqlalchemy psycopg2-binary
+
+      - name: Run market backfill
+        env:
+          ALPHAVANTAGE_API_KEY: ${{ secrets.ALPHAVANTAGE_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python backfill_markets.py
