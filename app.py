@@ -2255,7 +2255,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             daily_market["metric"] = market_label_name
             market_line = daily_market[["date", "score", "metric"]]
             # Use latest value for the metric display below
-            market_value = int(market_line["score"].iloc[0]) if len(market_line) > 0 else 50
+            market_value = int(market_line["score"].iloc[-1]) if len(market_line) > 0 else 50
 
         # Align both lines to the same date range, filling gaps
         all_dates = sorted(set(daily_social["date"].tolist()) | set(market_line["date"].tolist()))
