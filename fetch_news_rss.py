@@ -46,10 +46,28 @@ session.mount("https://", adapter)
 # Source Blocklist
 # -------------------------------
 BLOCKED_SOURCES = [
+    # Package repositories
     "pypi.org",
     "pypi",
+    # Deal/bargain sites
     "slickdeals.net",
     "slickdeals",
+    "ozbargain.com.au",
+    "ozbargain",
+    "bringatrailer.com",
+    "bringatrailer",
+    # News aggregators (duplicate content)
+    "biztoc.com",
+    "biztoc",
+    "memeorandum.com",
+    "memeorandum",
+    "freerepublic.com",
+    "freerepublic",
+    # Low-quality/niche
+    "digitaljournal.com",
+    "digital journal",
+    "lifesciencesworld.com",
+    "foot-africa.com",
 ]
 
 def is_blocked_source(link: str) -> bool:
