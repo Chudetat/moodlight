@@ -3,7 +3,7 @@ Customer management CLI for Moodlight.
 
 Usage:
   Add a customer:
-    python add_customer.py add --email "jane@company.com" --name "Jane Smith" --tier professional
+    python add_customer.py add --email "jane@company.com" --name "Jane Smith" --tier monthly
 
   List all customers:
     python add_customer.py list
@@ -23,7 +23,7 @@ load_dotenv()
 def get_engine():
     return create_engine(os.getenv("DATABASE_URL"))
 
-def add_customer(email, name=None, tier="professional", credits=0):
+def add_customer(email, name=None, tier="monthly", credits=0):
     """Add a new customer to the database"""
     engine = get_engine()
     username = name.lower().replace(" ", "_") if name else email.split("@")[0]
@@ -83,7 +83,7 @@ def list_customers():
     print("-" * 110)
     for row in rows:
         username, email, tier, credits, created_at = row
-        credits_display = "unlimited" if tier in ("professional", "enterprise") else str(credits)
+        credits_display = "unlimited" if tier in ("monthly", "annually", "professional", "enterprise") else str(credits)
         created = str(created_at)[:10] if created_at else "N/A"
         print(f"{username:<20} {email:<35} {tier:<15} {credits_display:<10} {created}")
     print(f"\nTotal: {len(rows)} customers")
@@ -101,7 +101,7 @@ def update_credits(email, add_credits):
             print(f"❌ No user found with email: {email}")
             return
 
-        if user[1] in ("professional", "enterprise"):
+        if user[1] in ("monthly", "annually", "professional", "enterprise"):
             print(f"ℹ️  {email} is on {user[1].title()} tier (unlimited briefs). No credits needed.")
             return
 
@@ -123,7 +123,7 @@ def main():
     add_parser = subparsers.add_parser("add", help="Add a new customer")
     add_parser.add_argument("--email", required=True, help="Customer email")
     add_parser.add_argument("--name", help="Customer name (optional)")
-    add_parser.add_argument("--tier", default="professional", choices=["professional", "enterprise"], help="Tier (default: professional)")
+    add_parser.add_argument("--tier", default="monthly", choices=["monthly", "annually"], help="Tier (default: monthly)")
     add_parser.add_argument("--credits", type=int, default=0, help="Initial brief credits (default: 0)")
 
     # List customers

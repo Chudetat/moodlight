@@ -13,7 +13,7 @@ with engine.connect() as conn:
             username VARCHAR(100) UNIQUE NOT NULL,
             email VARCHAR(255) UNIQUE NOT NULL,
             password_hash VARCHAR(255) NOT NULL,
-            tier VARCHAR(20) DEFAULT 'professional',
+            tier VARCHAR(20) DEFAULT 'monthly',
             brief_credits INTEGER DEFAULT 0,
             stripe_customer_id VARCHAR(100),
             stripe_subscription_id VARCHAR(100),

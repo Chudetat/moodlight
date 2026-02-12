@@ -22,15 +22,15 @@ def get_user_tier(username: str) -> dict:
                 "tier": row[0],
                 "brief_credits": row[1]
             }
-    return {"tier": "professional", "brief_credits": 0}
+    return {"tier": "monthly", "brief_credits": 0}
 
 def can_generate_brief(username: str) -> tuple[bool, str]:
-    """Check if user can generate a brief - Professional and Enterprise have unlimited access"""
+    """Check if user can generate a brief - all active tiers have unlimited access"""
     user = get_user_tier(username)
     tier = user["tier"]
 
-    # Professional and Enterprise users have unlimited briefs
-    if tier in ("professional", "enterprise"):
+    # All active tiers have unlimited briefs
+    if tier in ("monthly", "annually", "professional", "enterprise"):
         return True, ""
 
     # Unknown/invalid tier - deny access
@@ -57,9 +57,9 @@ def add_brief_credits(username: str, credits: int):
         conn.commit()
 
 def get_brief_credits(username: str) -> int:
-    """Get remaining brief credits for a user - Professional and Enterprise have unlimited"""
+    """Get remaining brief credits for a user - all active tiers have unlimited"""
     user = get_user_tier(username)
-    if user["tier"] in ("professional", "enterprise"):
+    if user["tier"] in ("monthly", "annually", "professional", "enterprise"):
         return -1  # unlimited
     return user["brief_credits"]
 
@@ -68,13 +68,10 @@ def has_feature_access(username: str, feature: str) -> bool:
     user = get_user_tier(username)
     tier = user["tier"]
 
-    # Professional gets all standard features
-    # Only enterprise-exclusive features are gated
+    # All active tiers get all features
     features = {
-        "brand_focus": ["professional", "enterprise"],
-        "competitive_tracking": ["professional", "enterprise"],
-        "white_label": ["enterprise"],
-        "advanced_predictive": ["enterprise"],
+        "brand_focus": ["monthly", "annually", "professional", "enterprise"],
+        "competitive_tracking": ["monthly", "annually", "professional", "enterprise"],
     }
 
     allowed_tiers = features.get(feature, [])
