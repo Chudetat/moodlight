@@ -434,17 +434,30 @@ def load_data() -> pd.DataFrame:
 
 @st.cache_data(ttl=10)
 def load_market_data() -> pd.DataFrame:
-    """Load market sentiment data"""
-    try:
-        df = pd.read_csv("markets.csv")
-        if df.empty:
+    """Load market sentiment data from DB (with history) or CSV fallback"""
+    df = pd.DataFrame()
+    # Try database first for historical data
+    if HAS_DB:
+        try:
+            from db_helper import get_engine
+            engine = get_engine()
+            if engine:
+                cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+                df = pd.read_sql(
+                    f"SELECT * FROM markets WHERE latest_trading_day >= '{cutoff}' ORDER BY latest_trading_day DESC",
+                    engine,
+                )
+        except Exception:
+            df = pd.DataFrame()
+    # Fall back to CSV
+    if df.empty:
+        try:
+            df = pd.read_csv("markets.csv")
+        except (FileNotFoundError, Exception):
             return pd.DataFrame()
-        return df
-    except FileNotFoundError:
+    if df.empty:
         return pd.DataFrame()
-    except Exception as e:
-        st.warning(f"Error loading market data: {str(e)[:100]}")
-        return pd.DataFrame()
+    return df
 
 def run_fetch_and_score(custom_query: str | None = None) -> tuple[bool, str]:
     print(">>> REFRESH TRIGGERED <<<", flush=True)
@@ -2104,9 +2117,13 @@ st.caption("Markets respond to mood before they respond to news.")
 df_markets = load_market_data()
 
 if not df_markets.empty and "market_sentiment" in df_markets.columns:
-    market_score = df_markets["market_sentiment"].iloc[0]
+    # Show the most recent trading day's data
+    latest_day = df_markets["latest_trading_day"].max()
+    df_markets_latest = df_markets[df_markets["latest_trading_day"] == latest_day]
+
+    market_score = df_markets_latest["market_sentiment"].iloc[0]
     market_pct = int(round(market_score * 100))
-    
+
     if market_pct < 40:
         market_label = "Bearish 🐻"
         market_color = "#DC143C"
@@ -2116,17 +2133,17 @@ if not df_markets.empty and "market_sentiment" in df_markets.columns:
     else:
         market_label = "Bullish 🐂"
         market_color = "#2E7D32"
-    
+
     col1, col2 = st.columns([1, 2])
     with col1:
         st.metric("Market Sentiment", market_pct)
     with col2:
         st.markdown(f"**{market_label}**")
-        st.caption(f"Based on {len(df_markets)} global indices")
-    
+        st.caption(f"Based on {len(df_markets_latest)} global indices")
+
     st.markdown("#### Global Markets")
     cols = st.columns(4)
-    for idx, (_, row) in enumerate(df_markets.iterrows()):
+    for idx, (_, row) in enumerate(df_markets_latest.iterrows()):
         with cols[idx % 4]:
             change = float(row['change_percent'])
             emoji = "🟢" if change > 0 else "🔴" if change < 0 else "⚪"
@@ -2188,14 +2205,25 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             stock_change = brand_stock_data.get("change_percent", 0)
             market_value = int(50 + (stock_change * 5))  # Scale: 1% change = 5 points
             market_value = max(0, min(100, market_value))  # Clamp to 0-100
+            market_line = pd.DataFrame({
+                "date": daily_social["date"].tolist(),
+                "score": [market_value] * len(daily_social),
+                "metric": [market_label_name] * len(daily_social)
+            })
         else:
-            market_value = int(round(df_markets["market_sentiment"].iloc[0] * 100))
-        
-        market_line = pd.DataFrame({
-            "date": daily_social["date"].tolist(),
-            "score": [market_value] * len(daily_social),
-            "metric": [market_label_name] * len(daily_social)
-        })
+            # Build daily market sentiment from historical data
+            df_mkt = df_markets.copy()
+            df_mkt["date"] = pd.to_datetime(df_mkt["latest_trading_day"]).dt.date
+            daily_market = (
+                df_mkt.groupby("date")["market_sentiment"]
+                .mean()
+                .reset_index()
+            )
+            daily_market["score"] = (daily_market["market_sentiment"] * 100).round().astype(int)
+            daily_market["metric"] = market_label_name
+            market_line = daily_market[["date", "score", "metric"]]
+            # Use latest value for the metric display below
+            market_value = int(market_line["score"].iloc[0]) if len(market_line) > 0 else 50
 
         combined = pd.concat([
             daily_social.rename(columns={'social_mood': 'score'}).assign(metric='Social Mood'),

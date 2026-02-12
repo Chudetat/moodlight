@@ -28,6 +28,7 @@ jobs:
       - name: Fetch markets
         env:
           ALPHAVANTAGE_API_KEY: ${{ secrets.ALPHAVANTAGE_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python fetch_markets.py
 
       - name: Fetch news (NewsAPI + RSS)

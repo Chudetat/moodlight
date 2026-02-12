@@ -10,9 +10,11 @@ import os
 import sys
 import csv
 import requests
+import pandas as pd
 from datetime import datetime, timezone
 from typing import Dict, List
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
 
 load_dotenv()
 
@@ -178,6 +180,40 @@ def main():
     
     print(f"\nSaved {len(rows)} market records to {OUTPUT_CSV}")
     print(f"Overall market sentiment: {sentiment:.3f}")
+
+    # Save to PostgreSQL for historical tracking
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        try:
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+            if "sslmode" not in db_url:
+                separator = "&" if "?" in db_url else "?"
+                db_url = db_url + separator + "sslmode=require"
+            engine = create_engine(db_url, pool_pre_ping=True)
+
+            trading_day = rows[0]["latest_trading_day"]
+
+            # Delete existing rows for this trading day to avoid dupes on re-runs
+            with engine.connect() as conn:
+                conn.execute(
+                    text("DELETE FROM markets WHERE latest_trading_day = :day"),
+                    {"day": trading_day},
+                )
+                conn.commit()
+
+            df = pd.DataFrame(rows)
+            df.to_sql("markets", engine, if_exists="append", index=False)
+            print(f"Saved {len(rows)} rows to PostgreSQL (markets table, trading day {trading_day})")
+        except Exception as e:
+            # Table may not exist yet on first run — use append which auto-creates
+            try:
+                df = pd.DataFrame(rows)
+                df.to_sql("markets", engine, if_exists="append", index=False)
+                print(f"Created markets table and saved {len(rows)} rows to PostgreSQL")
+            except Exception as e2:
+                print(f"Warning: Could not save to database: {e2}")
+    else:
+        print("DATABASE_URL not set — skipping database save")
 
 if __name__ == "__main__":
     try:
