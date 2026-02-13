@@ -6,6 +6,14 @@ try:
     HAS_DB = True
 except:
     HAS_DB = False
+
+# Ensure all tables exist on startup
+if HAS_DB:
+    try:
+        from alert_pipeline import ensure_tables as _ensure_tables
+        _ensure_tables()
+    except Exception:
+        pass
 import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
