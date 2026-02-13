@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MAX_EMAILS_PER_DAY = 3
+MAX_EMAILS_PER_DAY = 5
 
 
 def get_subscriber_emails():
@@ -116,8 +116,9 @@ def send_alert_emails(alerts, engine=None):
         return 0
     print(f"  Active recipients: {len(active_recipients)} ({len(subscriber_map)} from DB, {len(env_recipients)} from env)")
 
-    # Filter to only critical/warning alerts
+    # Filter to only critical/warning alerts, prioritize critical first
     emailable = [a for a in alerts if a.get("severity") in ("critical", "warning")]
+    emailable.sort(key=lambda a: 0 if a.get("severity") == "critical" else 1)
     if not emailable:
         print("  No critical/warning alerts to email")
         return 0

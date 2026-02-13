@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 """
 Anomaly detection engine for Moodlight.
-Part A: 4 global detectors (mood shift, market-mood divergence, intensity cluster, topic emergence)
-Part B: 7 brand-specific detectors per watchlist brand (VLDS + mentions + sentiment)
+Part A: 7 global detectors (mood shift, market-mood divergence, intensity cluster, topic emergence,
+         regulatory/policy spike, breaking signal, geopolitical risk escalation)
+Part B: 8 brand-specific detectors per watchlist brand (VLDS + mentions + sentiment + crisis)
 Part C: 3 competitive detectors (competitor momentum, SOV shift, competitive white space)
 
 All thresholds are configurable via the `thresholds` parameter (loaded from DB).
@@ -196,6 +197,193 @@ def detect_topic_emergence(df_news, thresholds=None):
                     "prior_days_checked": len(prior_dates),
                 },
             ))
+    return alerts
+
+
+def detect_regulatory_policy_spike(df_news, thresholds=None):
+    """Detect high-intensity spikes in regulatory/policy topics."""
+    t = thresholds or {}
+    count_thresh = _t(t, "warning", 5)
+    intensity_thresh = _t(t, "critical", 4.0)
+    alerts = []
+
+    if df_news.empty:
+        return alerts
+    if not all(c in df_news.columns for c in ["topic", "intensity", "created_at"]):
+        return alerts
+
+    regulatory_topics = {"government", "economics", "politics"}
+    cutoff_24h = pd.Timestamp.now(tz="UTC") - pd.Timedelta(hours=24)
+
+    reg_df = df_news[
+        (df_news["topic"].isin(regulatory_topics))
+        & (df_news["created_at"] >= cutoff_24h)
+    ]
+
+    if reg_df.empty or len(reg_df) < count_thresh:
+        return alerts
+
+    avg_intensity = reg_df["intensity"].mean()
+    if avg_intensity >= intensity_thresh:
+        top_topics = reg_df["topic"].value_counts().head(3)
+        alerts.append(_make_alert(
+            alert_type="regulatory_policy_spike",
+            severity="warning",
+            title=f"Regulatory/policy intensity spike: avg {avg_intensity:.1f}",
+            summary=(
+                f"{len(reg_df)} articles in regulatory topics in the last 24h "
+                f"with average intensity {avg_intensity:.1f}/5. "
+                f"Top areas: {', '.join(f'{t} ({c})' for t, c in top_topics.items())}. "
+                f"This may signal significant policy or regulatory developments."
+            ),
+            data={
+                "article_count": len(reg_df),
+                "avg_intensity": round(float(avg_intensity), 2),
+                "topic_breakdown": top_topics.to_dict(),
+            },
+        ))
+    return alerts
+
+
+# Simple stopwords for title overlap detection
+_STOPWORDS = frozenset([
+    "the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to",
+    "for", "of", "and", "or", "but", "with", "by", "from", "as", "it", "its",
+    "this", "that", "has", "have", "had", "be", "been", "will", "not", "no",
+    "up", "out", "over", "after", "new", "says", "said",
+])
+
+
+def _has_story_overlap(titles, min_pairs=2, threshold=0.3):
+    """Check if titles share enough words to indicate same story."""
+    if len(titles) < 2:
+        return False
+    word_sets = []
+    for t in titles[:15]:
+        words = set(t.lower().split()) - _STOPWORDS
+        if words:
+            word_sets.append(words)
+
+    overlap_count = 0
+    for i in range(len(word_sets)):
+        for j in range(i + 1, len(word_sets)):
+            inter = len(word_sets[i] & word_sets[j])
+            union = len(word_sets[i] | word_sets[j])
+            if union > 0 and inter / union > threshold:
+                overlap_count += 1
+                if overlap_count >= min_pairs:
+                    return True
+    return False
+
+
+def detect_breaking_signal(df_news, thresholds=None):
+    """Detect high-intensity stories spreading across multiple sources within 6 hours."""
+    alerts = []
+    if df_news.empty:
+        return alerts
+    if not all(c in df_news.columns for c in ["created_at", "intensity", "source", "topic"]):
+        return alerts
+
+    cutoff_6h = pd.Timestamp.now(tz="UTC") - pd.Timedelta(hours=6)
+    recent = df_news[
+        (df_news["created_at"] >= cutoff_6h)
+        & (df_news["intensity"] >= 4)
+    ]
+
+    if recent.empty:
+        return alerts
+
+    for topic, group in recent.groupby("topic"):
+        source_count = group["source"].nunique()
+        if source_count < 3:
+            continue
+
+        # Verify same story via title overlap
+        if "title" in group.columns:
+            titles = group["title"].dropna().tolist()
+        elif "text" in group.columns:
+            titles = group["text"].dropna().str[:80].tolist()
+        else:
+            continue
+
+        if not _has_story_overlap(titles):
+            continue
+
+        alerts.append(_make_alert(
+            alert_type="breaking_signal",
+            severity="critical",
+            title=f"Breaking: {topic} across {source_count} sources",
+            summary=(
+                f"High-intensity ({topic}) story detected across {source_count} "
+                f"sources in the last 6 hours ({len(group)} articles). "
+                f"Average intensity: {group['intensity'].mean():.1f}/5. "
+                f"This appears to be a breaking development."
+            ),
+            data={
+                "topic": topic,
+                "source_count": source_count,
+                "article_count": len(group),
+                "avg_intensity": round(float(group["intensity"].mean()), 2),
+                "sources": group["source"].unique().tolist()[:10],
+            },
+        ))
+    return alerts
+
+
+def detect_geopolitical_risk_escalation(df_news, engine=None, thresholds=None):
+    """Detect accelerating intensity in geopolitical/conflict topics."""
+    alerts = []
+    if df_news.empty:
+        return alerts
+    if not all(c in df_news.columns for c in ["topic", "intensity", "created_at"]):
+        return alerts
+
+    geopolitical_topics = {"war & foreign policy", "immigration", "crime & safety"}
+
+    geo_df = df_news[df_news["topic"].isin(geopolitical_topics)]
+    if geo_df.empty or len(geo_df) < 5:
+        return alerts
+
+    avg_intensity = geo_df["intensity"].mean()
+    if avg_intensity < 3.5:
+        return alerts
+
+    # Check momentum via predictive_detector if engine available
+    momentum = None
+    if engine:
+        try:
+            from predictive_detector import compute_momentum
+            momentum = compute_momentum(engine, "global", None, "avg_intensity_geopolitical")
+        except Exception:
+            pass
+
+    is_rapid = avg_intensity >= 4.5
+    is_accelerating = momentum and momentum.get("direction") == "accelerating"
+
+    if is_rapid or is_accelerating:
+        severity = "critical" if is_rapid else "warning"
+        direction_note = ""
+        if momentum:
+            direction_note = f" Momentum: {momentum['direction']} ({momentum['magnitude']})."
+
+        topic_breakdown = geo_df["topic"].value_counts()
+        alerts.append(_make_alert(
+            alert_type="geopolitical_risk_escalation",
+            severity=severity,
+            title=f"Geopolitical risk {'surge' if is_rapid else 'escalation'}: intensity {avg_intensity:.1f}",
+            summary=(
+                f"Geopolitical topics show {'rapid escalation' if is_rapid else 'sustained escalation'} "
+                f"with average intensity {avg_intensity:.1f}/5 across {len(geo_df)} articles. "
+                f"Breakdown: {', '.join(f'{t} ({c})' for t, c in topic_breakdown.items())}.{direction_note}"
+            ),
+            data={
+                "avg_intensity": round(float(avg_intensity), 2),
+                "article_count": len(geo_df),
+                "topic_breakdown": topic_breakdown.to_dict(),
+                "momentum": momentum,
+                "rapid_escalation": is_rapid,
+            },
+        ))
     return alerts
 
 
@@ -419,6 +607,69 @@ def detect_brand_sentiment_shift(df_news, df_social, brand_name, username,
     return alerts
 
 
+def detect_brand_crisis(df_news, df_social, brand_name, username, thresholds=None):
+    """Detect PR crisis: high volume + low empathy + negative emotions simultaneously."""
+    alerts = []
+    brand_df = pd.concat([
+        _filter_by_brand(df_news, brand_name),
+        _filter_by_brand(df_social, brand_name),
+    ], ignore_index=True)
+
+    if brand_df.empty or len(brand_df) < 5:
+        return alerts
+
+    if "created_at" not in brand_df.columns or "empathy_score" not in brand_df.columns:
+        return alerts
+
+    # Check volume: need day-over-day baseline
+    brand_df_c = brand_df.copy()
+    brand_df_c["date"] = brand_df_c["created_at"].dt.date
+    daily = brand_df_c.groupby("date").size().sort_index()
+    if len(daily) < 2:
+        return alerts
+
+    today_count = daily.iloc[-1]
+    baseline = daily.iloc[:-1].mean()
+    volume_surge = today_count > max(baseline * 2, 5)
+
+    # Check empathy
+    avg_empathy = brand_df["empathy_score"].mean()
+    low_empathy = avg_empathy < 0.15
+
+    # Check negative emotions
+    negative_emotions = {"anger", "annoyance", "disapproval", "disgust"}
+    negative_ratio = 0
+    if "emotion_top_1" in brand_df.columns:
+        neg_count = brand_df["emotion_top_1"].str.lower().isin(negative_emotions).sum()
+        negative_ratio = neg_count / len(brand_df)
+    negative_dominant = negative_ratio > 0.5
+
+    # All three conditions must be true
+    if volume_surge and low_empathy and negative_dominant:
+        alerts.append(_make_alert(
+            alert_type="brand_crisis",
+            severity="critical",
+            title=f"PR crisis signal for {brand_name}",
+            summary=(
+                f"{brand_name} shows crisis indicators: {today_count} mentions today "
+                f"({today_count / max(baseline, 0.1):.1f}x baseline), "
+                f"avg empathy {avg_empathy:.3f} (very low), "
+                f"and {negative_ratio:.0%} negative emotions dominating. "
+                f"This combination signals a potential PR crisis."
+            ),
+            data={
+                "brand": brand_name,
+                "today_count": int(today_count),
+                "baseline": round(float(baseline), 1),
+                "avg_empathy": round(float(avg_empathy), 3),
+                "negative_ratio": round(float(negative_ratio), 3),
+            },
+            brand=brand_name,
+            username=username,
+        ))
+    return alerts
+
+
 # ---------------------------------------------------------------------------
 # PART C — Competitive Detectors
 # ---------------------------------------------------------------------------
@@ -575,20 +826,24 @@ def run_competitive_detectors(brand_name, username, current_snapshot,
 # Run all detectors
 # ---------------------------------------------------------------------------
 
-def run_global_detectors(df_news, df_social, df_markets, thresholds=None):
-    """Run all 4 global detectors and return a list of alerts."""
+def run_global_detectors(df_news, df_social, df_markets, thresholds=None,
+                         engine=None):
+    """Run all 7 global detectors and return a list of alerts."""
     t = thresholds or {}
     alerts = []
     alerts.extend(detect_mood_shift(df_news, df_social, t.get("mood_shift")))
     alerts.extend(detect_market_mood_divergence(df_social, df_markets, t.get("market_mood_divergence")))
     alerts.extend(detect_intensity_cluster(df_news, df_social, t.get("intensity_cluster")))
     alerts.extend(detect_topic_emergence(df_news, t.get("topic_emergence")))
+    alerts.extend(detect_regulatory_policy_spike(df_news, t.get("regulatory_policy_spike")))
+    alerts.extend(detect_breaking_signal(df_news, t.get("breaking_signal")))
+    alerts.extend(detect_geopolitical_risk_escalation(df_news, engine=engine, thresholds=t.get("geopolitical_risk_escalation")))
     return alerts
 
 
 def run_brand_detectors(df_news, df_social, brand_name, username,
                         prev_vlds=None, thresholds=None):
-    """Run all 7 brand detectors and return alerts + current VLDS."""
+    """Run all 8 brand detectors and return alerts + current VLDS."""
     alerts = []
     vlds_alerts, current_vlds = detect_brand_vlds_alerts(
         df_news, df_social, brand_name, username, prev_vlds, thresholds
@@ -598,6 +853,9 @@ def run_brand_detectors(df_news, df_social, brand_name, username,
         df_news, df_social, brand_name, username, thresholds
     ))
     alerts.extend(detect_brand_sentiment_shift(
+        df_news, df_social, brand_name, username, thresholds
+    ))
+    alerts.extend(detect_brand_crisis(
         df_news, df_social, brand_name, username, thresholds
     ))
     return alerts, current_vlds

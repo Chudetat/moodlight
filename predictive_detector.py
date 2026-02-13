@@ -133,6 +133,32 @@ def capture_metric_snapshots(engine, df_news, df_social, df_markets, watchlist):
         print(f"  Metric snapshot storage failed: {e}")
 
 
+def _store_single_metric(engine, scope, scope_name, metric_name, value, sample_size):
+    """Store a single metric snapshot. Used for ad-hoc metrics like geopolitical intensity."""
+    from sqlalchemy import text
+    today = datetime.now(timezone.utc).date().isoformat()
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO metric_snapshots
+                        (snapshot_date, scope, scope_name, metric_name, metric_value, sample_size)
+                    VALUES (:date, :scope, :scope_name, :metric, :value, :sample)
+                    ON CONFLICT (snapshot_date, scope, scope_name, metric_name)
+                    DO UPDATE SET metric_value = EXCLUDED.metric_value,
+                                  sample_size = EXCLUDED.sample_size,
+                                  created_at = NOW()
+                """),
+                {
+                    "date": today, "scope": scope, "scope_name": scope_name,
+                    "metric": metric_name, "value": value, "sample": sample_size,
+                },
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"  Single metric store failed: {e}")
+
+
 # ---------------------------------------------------------------------------
 # Trend computation
 # ---------------------------------------------------------------------------
@@ -562,5 +588,29 @@ def run_predictive_detectors(engine, df_news, df_social, df_markets,
             alerts.extend(detect_compound_signals(
                 engine, "brand", brand_name, brand_trends, thresholds
             ))
+
+    # Promote high-confidence predictive alerts from info -> warning
+    for alert in alerts:
+        if alert.get("severity") != "info":
+            continue
+        data = alert.get("data", {})
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except (json.JSONDecodeError, TypeError):
+                data = {}
+
+        promote = False
+        # Promote if R-squared > 0.7 (high confidence trend)
+        trend_data = data.get("trend", {})
+        if trend_data.get("r_squared", 0) > 0.7:
+            promote = True
+        # Promote if compound score >= 4
+        if data.get("score", 0) >= 4:
+            promote = True
+
+        if promote:
+            alert["severity"] = "warning"
+            alert["summary"] = "[PROMOTED] " + alert.get("summary", "")
 
     return alerts

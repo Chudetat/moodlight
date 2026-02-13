@@ -34,6 +34,11 @@ DEFAULT_THRESHOLDS = {
     "predictive_brand_white_space": {"warning": None, "critical": None},
     "predictive_market_mood_divergence": {"warning": None, "critical": None},
     "predictive_compound_signal": {"warning": None, "critical": None},
+    # New alert types
+    "brand_crisis": {"warning": None, "critical": None},
+    "regulatory_policy_spike": {"warning": 5, "critical": 4.0},
+    "breaking_signal": {"warning": None, "critical": 4},
+    "geopolitical_risk_escalation": {"warning": 3.5, "critical": 4.5},
 }
 
 

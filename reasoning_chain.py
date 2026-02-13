@@ -55,6 +55,11 @@ CHAIN_CONFIGS = {
     "predictive_brand_white_space": ["situation", "historical", "causal", "strategic", "confidence"],
     "predictive_market_mood_divergence": ["situation", "historical", "causal", "strategic", "confidence"],
     "predictive_compound_signal": ["situation", "historical", "causal", "strategic", "confidence"],
+    # New alert types
+    "brand_crisis": ["situation", "historical", "causal", "strategic", "confidence"],
+    "regulatory_policy_spike": ["situation", "historical", "causal", "strategic", "confidence"],
+    "breaking_signal": ["situation", "causal", "confidence"],
+    "geopolitical_risk_escalation": ["situation", "historical", "causal", "strategic", "confidence"],
 }
 
 DEFAULT_CHAIN = ["situation", "causal", "confidence"]

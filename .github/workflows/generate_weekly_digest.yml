@@ -1,0 +1,34 @@
+name: Generate Weekly Strategic Digest
+
+on:
+  schedule:
+    - cron: '0 15 * * 1'  # Monday 7am PST (15:00 UTC)
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  generate-digest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pandas requests anthropic python-dotenv sqlalchemy psycopg2-binary
+
+      - name: Generate and send weekly digest
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python generate_weekly_digest.py

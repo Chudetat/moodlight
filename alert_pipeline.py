@@ -204,6 +204,11 @@ def _should_use_chain(alert):
     if alert_type in ("competitor_momentum", "share_of_voice_shift", "competitive_white_space"):
         return True
 
+    # Always use chain for new complex alert types
+    if alert_type in ("brand_crisis", "regulatory_policy_spike",
+                       "geopolitical_risk_escalation", "breaking_signal"):
+        return True
+
     # Use chain for critical severity
     if severity == "critical":
         return True
@@ -267,10 +272,23 @@ def main():
     except Exception as e:
         print(f"  Metric snapshot capture failed (non-fatal): {e}")
 
+    # 2c. Capture geopolitical intensity for trend tracking
+    try:
+        geo_topics = {"war & foreign policy", "immigration", "crime & safety"}
+        if not df_news.empty and "topic" in df_news.columns and "intensity" in df_news.columns:
+            geo_df = df_news[df_news["topic"].isin(geo_topics)]
+            if not geo_df.empty:
+                from predictive_detector import _store_single_metric
+                avg_geo = float(geo_df["intensity"].mean())
+                _store_single_metric(engine, "global", None, "avg_intensity_geopolitical", avg_geo, len(geo_df))
+                print(f"  Captured geopolitical intensity metric: {avg_geo:.2f} ({len(geo_df)} articles)")
+    except Exception as e:
+        print(f"  Geopolitical metric capture failed (non-fatal): {e}")
+
     # 3. Run global detectors (with configurable thresholds)
     print("\nRunning global detectors...")
     from alert_detector import run_global_detectors, run_brand_detectors, run_competitive_detectors
-    global_alerts = run_global_detectors(df_news, df_social, df_markets, thresholds)
+    global_alerts = run_global_detectors(df_news, df_social, df_markets, thresholds, engine=engine)
     print(f"  Found {len(global_alerts)} global anomalies")
 
     # 4. Run brand detectors (with configurable thresholds)
