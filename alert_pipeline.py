@@ -2,6 +2,7 @@
 """
 Moodlight Alert Pipeline — Orchestrator.
 Detects anomalies, investigates with AI, stores to DB, sends email alerts.
+Includes competitive analysis and adaptive threshold tuning.
 Runs as a step in fetch_news.yml and fetch_social.yml workflows.
 """
 
@@ -201,6 +202,20 @@ def main():
 
     ensure_tables(engine)
 
+    # 1b. Initialize threshold and feedback tables
+    from alert_thresholds import ensure_threshold_tables, get_thresholds
+    from alert_feedback import ensure_feedback_table
+    from competitor_discovery import ensure_competitor_tables
+
+    ensure_threshold_tables(engine)
+    ensure_feedback_table(engine)
+    ensure_competitor_tables(engine)
+    print("Threshold, feedback, and competitor tables verified")
+
+    # 1c. Load configurable thresholds from DB
+    thresholds = get_thresholds(engine)
+    print(f"Loaded {len(thresholds)} alert thresholds")
+
     # 2. Load data
     print("\nLoading data...")
     df_news, df_social, df_markets = load_data(engine)
@@ -209,36 +224,84 @@ def main():
         print("No news or social data available — nothing to detect")
         sys.exit(0)
 
-    # 3. Run global detectors
+    # 3. Run global detectors (with configurable thresholds)
     print("\nRunning global detectors...")
-    from alert_detector import run_global_detectors, run_brand_detectors
-    global_alerts = run_global_detectors(df_news, df_social, df_markets)
+    from alert_detector import run_global_detectors, run_brand_detectors, run_competitive_detectors
+    global_alerts = run_global_detectors(df_news, df_social, df_markets, thresholds)
     print(f"  Found {len(global_alerts)} global anomalies")
 
-    # 4. Run brand detectors
+    # 4. Run brand detectors (with configurable thresholds)
     print("\nLoading brand watchlist...")
     watchlist = load_watchlist(engine)
     brand_alerts = []
+    competitive_alerts = []
 
     if watchlist:
+        from competitor_discovery import ensure_competitors_cached
+        from competitive_analyzer import (
+            compute_competitive_snapshot,
+            get_previous_snapshot,
+            store_snapshot,
+        )
+
         print(f"  {sum(len(v) for v in watchlist.values())} brands across {len(watchlist)} subscribers")
         for username, brands in watchlist.items():
             for brand_name in brands:
                 print(f"  Scanning brand: {brand_name} (subscriber: {username})")
+
+                # 4a. Brand-specific detectors
                 alerts, _ = run_brand_detectors(
-                    df_news, df_social, brand_name, username
+                    df_news, df_social, brand_name, username,
+                    thresholds=thresholds,
                 )
                 brand_alerts.extend(alerts)
-                print(f"    Found {len(alerts)} alerts for {brand_name}")
+                print(f"    Found {len(alerts)} brand alerts for {brand_name}")
+
+                # 4b. Competitive analysis
+                print(f"    Running competitive analysis for {brand_name}...")
+                competitors = ensure_competitors_cached(engine, brand_name)
+                if competitors:
+                    print(f"    Competitors: {[c['competitor_name'] for c in competitors]}")
+
+                    # Compute snapshot
+                    current_snapshot = compute_competitive_snapshot(
+                        df_news, df_social, brand_name, competitors
+                    )
+
+                    # Load previous snapshot for comparison
+                    previous_snapshot = get_previous_snapshot(engine, brand_name)
+
+                    # Store current snapshot
+                    store_snapshot(engine, brand_name, current_snapshot)
+
+                    # Run competitive detectors
+                    comp_alerts = run_competitive_detectors(
+                        brand_name, username,
+                        current_snapshot, previous_snapshot,
+                        thresholds,
+                    )
+                    competitive_alerts.extend(comp_alerts)
+                    print(f"    Found {len(comp_alerts)} competitive alerts for {brand_name}")
+                else:
+                    print(f"    No competitors found for {brand_name} — skipping competitive analysis")
     else:
         print("  No brands in watchlist — skipping brand detectors")
 
     # 5. Process all alerts
-    all_alerts = global_alerts + brand_alerts
+    all_alerts = global_alerts + brand_alerts + competitive_alerts
     print(f"\nTotal anomalies detected: {len(all_alerts)}")
 
     if not all_alerts:
         print("No anomalies — all signals nominal")
+
+        # Still run adaptive tuning even with no new alerts
+        print("\nRunning adaptive threshold tuning...")
+        try:
+            from adaptive_tuner import run_adaptive_tuning
+            run_adaptive_tuning(engine)
+        except Exception as e:
+            print(f"  Adaptive tuning failed (non-fatal): {e}")
+
         sys.exit(0)
 
     # 6. Investigate and store
@@ -289,13 +352,22 @@ def main():
                     )
             conn.commit()
 
-    # 8. Summary
+    # 8. Adaptive threshold tuning
+    print("\nRunning adaptive threshold tuning...")
+    try:
+        from adaptive_tuner import run_adaptive_tuning
+        run_adaptive_tuning(engine)
+    except Exception as e:
+        print(f"  Adaptive tuning failed (non-fatal): {e}")
+
+    # 9. Summary
     print("\n" + "=" * 60)
     print("PIPELINE SUMMARY")
-    print(f"  Global alerts: {len(global_alerts)}")
-    print(f"  Brand alerts:  {len(brand_alerts)}")
-    print(f"  Stored:        {len(stored_alerts)} (after cooldown filter)")
-    print(f"  Emails sent:   {sent}")
+    print(f"  Global alerts:      {len(global_alerts)}")
+    print(f"  Brand alerts:       {len(brand_alerts)}")
+    print(f"  Competitive alerts: {len(competitive_alerts)}")
+    print(f"  Stored:             {len(stored_alerts)} (after cooldown filter)")
+    print(f"  Emails sent:        {sent}")
     print("=" * 60)
 
 

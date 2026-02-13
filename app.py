@@ -1665,6 +1665,14 @@ with st.sidebar:
                                 {"u": username, "b": _new_brand.strip()},
                             )
                             _add_conn.commit()
+                        # Trigger competitor discovery immediately
+                        try:
+                            from competitor_discovery import ensure_competitor_tables, ensure_competitors_cached
+                            ensure_competitor_tables(_add_engine)
+                            with st.spinner(f"Discovering competitors for {_new_brand.strip()}..."):
+                                ensure_competitors_cached(_add_engine, _new_brand.strip())
+                        except Exception:
+                            pass  # Non-fatal — pipeline will discover later
                     st.rerun()
                 except Exception as _add_err:
                     st.error(f"Could not add: {_add_err}")
@@ -2412,7 +2420,7 @@ if HAS_DB:
                 # Load global alerts + this user's brand alerts
                 _alert_result = _alert_conn.execute(
                     _alert_text("""
-                        SELECT timestamp, alert_type, severity, title, summary,
+                        SELECT id, timestamp, alert_type, severity, title, summary,
                                investigation, brand, username
                         FROM alerts
                         WHERE timestamp > :cutoff
@@ -2431,7 +2439,7 @@ if _alerts_loaded and _alert_rows:
     import json as _alert_json
     _severity_icons = {"critical": "🔴", "warning": "🟡", "info": "🔵"}
     for _ar in _alert_rows:
-        _a_ts, _a_type, _a_sev, _a_title, _a_summary, _a_investigation, _a_brand, _a_user = _ar
+        _a_id, _a_ts, _a_type, _a_sev, _a_title, _a_summary, _a_investigation, _a_brand, _a_user = _ar
         _a_icon = _severity_icons.get(_a_sev, "🔵")
         _a_brand_tag = f" [{_a_brand}]" if _a_brand else ""
         _a_time_str = ""
@@ -2461,10 +2469,172 @@ if _alerts_loaded and _alert_rows:
                         st.markdown(f"**Watch:** {_inv['watch_items']}")
                 except Exception:
                     st.markdown(str(_a_investigation))
+
+            # Feedback buttons
+            if _a_id:
+                _fb_col1, _fb_col2, _fb_spacer = st.columns([1, 1, 4])
+                with _fb_col1:
+                    if st.button("👍", key=f"thumbs_up_{_a_id}", help="This alert was useful"):
+                        try:
+                            from alert_feedback import record_feedback as _rec_fb
+                            from db_helper import get_engine as _get_fb_engine
+                            _fb_eng = _get_fb_engine()
+                            if _fb_eng:
+                                _rec_fb(_fb_eng, _a_id, username, "thumbs_up")
+                                st.toast("Thanks for the feedback!")
+                        except Exception:
+                            pass
+                with _fb_col2:
+                    if st.button("👎", key=f"thumbs_down_{_a_id}", help="This alert was not useful"):
+                        try:
+                            from alert_feedback import record_feedback as _rec_fb2
+                            from db_helper import get_engine as _get_fb_engine2
+                            _fb_eng2 = _get_fb_engine2()
+                            if _fb_eng2:
+                                _rec_fb2(_fb_eng2, _a_id, username, "thumbs_down")
+                                st.toast("Thanks for the feedback!")
+                        except Exception:
+                            pass
 elif _alerts_loaded:
     st.info("All signals nominal — no anomalies detected in the last 7 days.")
 else:
     st.caption("Alert system initializing — alerts will appear after the next data pipeline run.")
+
+st.markdown("---")
+
+# ========================================
+# COMPETITIVE WAR ROOM
+# ========================================
+st.markdown("### Competitive War Room")
+st.caption("Comparative intelligence across your watched brands and their competitors.")
+
+_warroom_rendered = False
+if HAS_DB and _watchlist_brands:
+    try:
+        from db_helper import get_engine as _get_wr_engine
+        _wr_engine = _get_wr_engine()
+        if _wr_engine:
+            from sqlalchemy import text as _wr_text
+            from competitor_discovery import get_cached_competitors
+
+            for _wr_brand in _watchlist_brands:
+                _wr_competitors = get_cached_competitors(_wr_engine, _wr_brand)
+                if not _wr_competitors:
+                    continue
+
+                _warroom_rendered = True
+                with st.expander(f"📊 {_wr_brand} vs {len(_wr_competitors)} competitors", expanded=False):
+                    # Load latest snapshot
+                    _wr_snapshot = None
+                    try:
+                        import json as _wr_json
+                        _wr_snap_result = _wr_engine.connect().execute(
+                            _wr_text("""
+                                SELECT snapshot_data FROM competitive_snapshots
+                                WHERE brand_name = :brand
+                                ORDER BY created_at DESC LIMIT 1
+                            """),
+                            {"brand": _wr_brand},
+                        )
+                        _wr_snap_row = _wr_snap_result.fetchone()
+                        if _wr_snap_row:
+                            _wr_snapshot = _wr_json.loads(_wr_snap_row[0])
+                    except Exception:
+                        pass
+
+                    if _wr_snapshot:
+                        # Share of Voice bar chart
+                        _wr_sov = _wr_snapshot.get("share_of_voice", {})
+                        if _wr_sov:
+                            st.markdown("**Share of Voice**")
+                            _sov_data = pd.DataFrame([
+                                {"Brand": k, "Share of Voice (%)": v}
+                                for k, v in _wr_sov.items()
+                            ])
+                            if not _sov_data.empty:
+                                _sov_chart = (
+                                    alt.Chart(_sov_data)
+                                    .mark_bar()
+                                    .encode(
+                                        x=alt.X("Share of Voice (%):Q", scale=alt.Scale(domain=[0, 100])),
+                                        y=alt.Y("Brand:N", sort="-x"),
+                                        color=alt.condition(
+                                            alt.datum.Brand == _wr_brand,
+                                            alt.value("#4CAF50"),
+                                            alt.value("#78909C"),
+                                        ),
+                                        tooltip=["Brand", "Share of Voice (%)"],
+                                    )
+                                    .properties(height=max(120, len(_sov_data) * 30))
+                                )
+                                st.altair_chart(_sov_chart, use_container_width=True)
+
+                        # VLDS comparison metrics
+                        _wr_brand_data = _wr_snapshot.get(_wr_brand, {})
+                        _wr_brand_vlds = _wr_brand_data.get("vlds") or {}
+                        _wr_gaps = _wr_snapshot.get("competitive_gaps", {})
+
+                        if _wr_brand_vlds:
+                            st.markdown("**VLDS Comparison** (Brand vs Competitor Avg)")
+                            _v_col1, _v_col2, _v_col3, _v_col4 = st.columns(4)
+                            with _v_col1:
+                                _v_val = _wr_brand_vlds.get("velocity", 0)
+                                _v_delta = _wr_gaps.get("velocity_gap")
+                                st.metric("Velocity", f"{_v_val:.2f}",
+                                          f"{_v_delta:+.2f}" if _v_delta is not None else None)
+                            with _v_col2:
+                                _l_val = _wr_brand_vlds.get("longevity", 0)
+                                _l_delta = _wr_gaps.get("longevity_gap")
+                                st.metric("Longevity", f"{_l_val:.2f}",
+                                          f"{_l_delta:+.2f}" if _l_delta is not None else None)
+                            with _v_col3:
+                                _d_val = _wr_brand_vlds.get("density", 0)
+                                _d_delta = _wr_gaps.get("density_gap")
+                                st.metric("Density", f"{_d_val:.2f}",
+                                          f"{_d_delta:+.2f}" if _d_delta is not None else None)
+                            with _v_col4:
+                                _s_val = _wr_brand_vlds.get("scarcity", 0)
+                                _s_delta = _wr_gaps.get("scarcity_gap")
+                                st.metric("Scarcity", f"{_s_val:.2f}",
+                                          f"{_s_delta:+.2f}" if _s_delta is not None else None)
+
+                        # Competitors list with mentions
+                        st.markdown("**Competitors**")
+                        for _wr_comp in _wr_competitors:
+                            _comp_name = _wr_comp["competitor_name"]
+                            _comp_data = _wr_snapshot.get(_comp_name, {})
+                            _comp_mentions = _comp_data.get("mention_count", 0)
+                            _comp_vlds = _comp_data.get("vlds") or {}
+                            _comp_vel = _comp_vlds.get("velocity", "N/A")
+                            _comp_vel_str = f"{_comp_vel:.2f}" if isinstance(_comp_vel, (int, float)) else _comp_vel
+                            st.caption(
+                                f"**{_comp_name}** — {_comp_mentions} mentions, "
+                                f"velocity: {_comp_vel_str}, "
+                                f"confidence: {_wr_comp.get('confidence', 0):.0%}"
+                            )
+
+                        # AI Insight button
+                        if st.button("Generate AI Competitive Insight", key=f"insight_{_wr_brand}"):
+                            with st.spinner("Analyzing competitive positioning..."):
+                                try:
+                                    from competitive_analyzer import generate_competitive_insight
+                                    _insight = generate_competitive_insight(_wr_engine, _wr_snapshot, _wr_brand)
+                                    if _insight:
+                                        st.info(_insight)
+                                    else:
+                                        st.caption("Could not generate insight — check API key.")
+                                except Exception as _insight_err:
+                                    st.caption(f"Insight generation failed: {_insight_err}")
+                    else:
+                        st.caption("Competitive snapshot not yet available — will appear after next pipeline run.")
+    except Exception as _wr_err:
+        print(f"War Room error: {_wr_err}")
+
+if not _warroom_rendered:
+    if _watchlist_brands:
+        st.caption("Competitive data will appear after the next pipeline run discovers competitors for your watched brands.")
+    else:
+        st.info("Add brands to your watchlist to see competitive intelligence.")
 
 st.markdown("---")
 

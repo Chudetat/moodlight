@@ -1,0 +1,145 @@
+#!/usr/bin/env python
+"""
+Configurable alert thresholds with DB persistence.
+Replaces hardcoded values in alert_detector.py with DB-backed thresholds
+that can be adaptively tuned based on user feedback.
+"""
+
+import os
+from datetime import datetime, timezone
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Default thresholds — match the original hardcoded values in alert_detector.py
+DEFAULT_THRESHOLDS = {
+    "mood_shift": {"warning": 15.0, "critical": 25.0},
+    "market_mood_divergence": {"warning": 25.0, "critical": 40.0},
+    "intensity_cluster": {"warning": 0.4, "critical": 0.6},
+    "topic_emergence": {"warning": 0.20, "critical": 0.20},
+    "brand_white_space": {"warning": None, "critical": 0.7},
+    "brand_velocity_spike": {"warning": None, "critical": 0.7},
+    "brand_narrative_fading": {"warning": 0.6, "critical": 0.3},
+    "brand_saturation": {"warning": 0.7, "critical": None},
+    "brand_mention_surge": {"warning": None, "critical": 3.0},
+    "brand_sentiment_shift": {"warning": 0.15, "critical": None},
+    "competitor_momentum": {"warning": None, "critical": 0.5},
+    "share_of_voice_shift": {"warning": None, "critical": 0.0},
+    "competitive_white_space": {"warning": 0.3, "critical": 0.5},
+}
+
+
+def ensure_threshold_tables(engine):
+    """Create threshold and audit tables, seed defaults if empty."""
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS alert_thresholds (
+                id SERIAL PRIMARY KEY,
+                alert_type VARCHAR(50) NOT NULL UNIQUE,
+                warning_value FLOAT,
+                critical_value FLOAT,
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_by VARCHAR(50) DEFAULT 'system'
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS threshold_audit_log (
+                id SERIAL PRIMARY KEY,
+                alert_type VARCHAR(50) NOT NULL,
+                old_warning FLOAT,
+                new_warning FLOAT,
+                old_critical FLOAT,
+                new_critical FLOAT,
+                reason TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
+        conn.commit()
+
+        # Seed defaults if table is empty
+        result = conn.execute(text("SELECT COUNT(*) FROM alert_thresholds"))
+        if result.scalar() == 0:
+            for alert_type, vals in DEFAULT_THRESHOLDS.items():
+                conn.execute(
+                    text("""
+                        INSERT INTO alert_thresholds (alert_type, warning_value, critical_value)
+                        VALUES (:alert_type, :warning, :critical)
+                        ON CONFLICT (alert_type) DO NOTHING
+                    """),
+                    {
+                        "alert_type": alert_type,
+                        "warning": vals.get("warning"),
+                        "critical": vals.get("critical"),
+                    },
+                )
+            conn.commit()
+            print(f"  Seeded {len(DEFAULT_THRESHOLDS)} default thresholds")
+
+
+def get_thresholds(engine) -> dict:
+    """Load all thresholds from DB. Falls back to defaults if DB unavailable."""
+    try:
+        from sqlalchemy import text
+
+        with engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT alert_type, warning_value, critical_value FROM alert_thresholds")
+            )
+            thresholds = {}
+            for row in result.fetchall():
+                thresholds[row[0]] = {"warning": row[1], "critical": row[2]}
+            if thresholds:
+                return thresholds
+    except Exception as e:
+        print(f"  Could not load thresholds from DB: {e}")
+
+    return DEFAULT_THRESHOLDS.copy()
+
+
+def update_threshold(engine, alert_type, new_warning=None, new_critical=None,
+                     reason=""):
+    """Update a threshold and log the change to audit trail."""
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        # Get current values for audit
+        result = conn.execute(
+            text("SELECT warning_value, critical_value FROM alert_thresholds WHERE alert_type = :t"),
+            {"t": alert_type},
+        )
+        row = result.fetchone()
+        old_warning = row[0] if row else None
+        old_critical = row[1] if row else None
+
+        # Update
+        conn.execute(
+            text("""
+                UPDATE alert_thresholds
+                SET warning_value = COALESCE(:warning, warning_value),
+                    critical_value = COALESCE(:critical, critical_value),
+                    updated_at = NOW(),
+                    updated_by = 'adaptive_tuner'
+                WHERE alert_type = :t
+            """),
+            {"t": alert_type, "warning": new_warning, "critical": new_critical},
+        )
+
+        # Audit log
+        conn.execute(
+            text("""
+                INSERT INTO threshold_audit_log
+                    (alert_type, old_warning, new_warning, old_critical, new_critical, reason)
+                VALUES (:t, :ow, :nw, :oc, :nc, :reason)
+            """),
+            {
+                "t": alert_type,
+                "ow": old_warning,
+                "nw": new_warning if new_warning is not None else old_warning,
+                "oc": old_critical,
+                "nc": new_critical if new_critical is not None else old_critical,
+                "reason": reason,
+            },
+        )
+        conn.commit()
