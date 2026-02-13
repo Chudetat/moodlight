@@ -306,34 +306,6 @@ try:
 except Exception:
     pass
 
-st.sidebar.markdown("---")
-with st.sidebar.expander("Contact Support"):
-    _support_msg = st.sidebar.text_area("Describe your issue", key="support_message", height=100,
-        placeholder="Tell us what's happening...")
-    if st.sidebar.button("Send", key="send_support_btn"):
-        if _support_msg and _support_msg.strip():
-            try:
-                import smtplib as _support_smtp
-                from email.mime.text import MIMEText as _SupportMIME
-                _support_sender = os.environ.get("EMAIL_ADDRESS", "")
-                _support_password = os.environ.get("EMAIL_PASSWORD", "")
-                if _support_sender and _support_password:
-                    _support_body = f"Support request from: {username} ({name})\n\n{_support_msg.strip()}"
-                    _support_email = _SupportMIME(_support_body, "plain")
-                    _support_email["Subject"] = f"[Moodlight Support] {username}"
-                    _support_email["From"] = _support_sender
-                    _support_email["To"] = "intel@moodlightintel.com"
-                    with _support_smtp.SMTP_SSL("smtp.gmail.com", 465) as _srv:
-                        _srv.login(_support_sender, _support_password)
-                        _srv.send_message(_support_email)
-                    st.sidebar.success("Sent! We'll get back to you soon.")
-                else:
-                    st.sidebar.error("Email service unavailable. Please email intel@moodlightintel.com directly.")
-            except Exception as _sup_err:
-                st.sidebar.error(f"Could not send: {_sup_err}")
-        else:
-            st.sidebar.warning("Please describe your issue first.")
-
 if authenticator.logout('Logout', 'sidebar'):
     clear_session(username)
 
@@ -2638,6 +2610,35 @@ with st.sidebar:
                     st.session_state['user_need'] = user_need.strip()
                     st.session_state['user_email'] = user_email.strip()
                     st.session_state['brief_spinner_placeholder'] = st.empty()
+
+    # Contact Support
+    st.markdown("---")
+    with st.expander("Contact Support"):
+        _support_msg = st.text_area("Describe your issue", key="support_message", height=100,
+            placeholder="Tell us what's happening...")
+        if st.button("Send", key="send_support_btn"):
+            if _support_msg and _support_msg.strip():
+                try:
+                    import smtplib as _support_smtp
+                    from email.mime.text import MIMEText as _SupportMIME
+                    _support_sender = os.environ.get("EMAIL_ADDRESS", "")
+                    _support_password = os.environ.get("EMAIL_PASSWORD", "")
+                    if _support_sender and _support_password:
+                        _support_body = f"Support request from: {username} ({name})\n\n{_support_msg.strip()}"
+                        _support_email = _SupportMIME(_support_body, "plain")
+                        _support_email["Subject"] = f"[Moodlight Support] {username}"
+                        _support_email["From"] = _support_sender
+                        _support_email["To"] = "intel@moodlightintel.com"
+                        with _support_smtp.SMTP_SSL("smtp.gmail.com", 465) as _srv:
+                            _srv.login(_support_sender, _support_password)
+                            _srv.send_message(_support_email)
+                        st.success("Sent! We'll get back to you soon.")
+                    else:
+                        st.error("Email service unavailable. Please email intel@moodlightintel.com directly.")
+                except Exception as _sup_err:
+                    st.error(f"Could not send: {_sup_err}")
+            else:
+                st.warning("Please describe your issue first.")
 
     # Admin panel toggle (admin users only)
     if is_admin:
