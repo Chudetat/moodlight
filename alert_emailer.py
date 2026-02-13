@@ -97,21 +97,24 @@ def send_alert_emails(alerts, engine=None):
         print("  Email credentials not configured — skipping email alerts")
         return 0
 
-    # Get all recipient emails (from env var list)
-    all_recipients = [r.strip() for r in recipients_str.split(",") if r.strip()]
-    if not all_recipients:
-        print("  No recipients configured — skipping email alerts")
-        return 0
-
-    # Get subscriber mapping for brand-specific routing
+    # Get subscriber mapping from DB (for both global and brand routing)
     subscriber_map = get_subscriber_emails()  # {username: email}
     cancelled = get_cancelled_emails()
 
+    # Build global recipient list: DB subscribers + env var fallback, deduplicated
+    env_recipients = [r.strip() for r in recipients_str.split(",") if r.strip()]
+    all_emails = set(e.lower() for e in env_recipients)
+    all_emails.update(e.lower() for e in subscriber_map.values() if e)
+    if not all_emails:
+        print("  No recipients found (DB or env var) — skipping email alerts")
+        return 0
+
     # Filter out cancelled
-    active_recipients = [r for r in all_recipients if r.lower() not in cancelled]
+    active_recipients = [e for e in all_emails if e not in cancelled]
     if not active_recipients:
         print("  All recipients are cancelled — skipping email alerts")
         return 0
+    print(f"  Active recipients: {len(active_recipients)} ({len(subscriber_map)} from DB, {len(env_recipients)} from env)")
 
     # Filter to only critical/warning alerts
     emailable = [a for a in alerts if a.get("severity") in ("critical", "warning")]
