@@ -308,9 +308,9 @@ except Exception:
 
 st.sidebar.markdown("---")
 with st.sidebar.expander("Contact Support"):
-    _support_msg = st.text_area("Describe your issue", key="support_message", height=100,
+    _support_msg = st.sidebar.text_area("Describe your issue", key="support_message", height=100,
         placeholder="Tell us what's happening...")
-    if st.button("Send", key="send_support_btn"):
+    if st.sidebar.button("Send", key="send_support_btn"):
         if _support_msg and _support_msg.strip():
             try:
                 import smtplib as _support_smtp
@@ -326,13 +326,13 @@ with st.sidebar.expander("Contact Support"):
                     with _support_smtp.SMTP_SSL("smtp.gmail.com", 465) as _srv:
                         _srv.login(_support_sender, _support_password)
                         _srv.send_message(_support_email)
-                    st.success("Sent! We'll get back to you soon.")
+                    st.sidebar.success("Sent! We'll get back to you soon.")
                 else:
-                    st.error("Email service unavailable. Please email intel@moodlightintel.com directly.")
+                    st.sidebar.error("Email service unavailable. Please email intel@moodlightintel.com directly.")
             except Exception as _sup_err:
-                st.error(f"Could not send: {_sup_err}")
+                st.sidebar.error(f"Could not send: {_sup_err}")
         else:
-            st.warning("Please describe your issue first.")
+            st.sidebar.warning("Please describe your issue first.")
 
 if authenticator.logout('Logout', 'sidebar'):
     clear_session(username)
