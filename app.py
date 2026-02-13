@@ -306,6 +306,9 @@ try:
 except Exception:
     pass
 
+st.sidebar.markdown("---")
+st.sidebar.markdown("[Contact Support](mailto:intel@moodlightintel.com)")
+
 if authenticator.logout('Logout', 'sidebar'):
     clear_session(username)
 
