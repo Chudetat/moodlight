@@ -112,6 +112,7 @@ import bcrypt
 import secrets
 from sqlalchemy import create_engine, text as sql_text
 from datetime import datetime, timedelta, timezone
+import json
 
 import pandas as pd
 import altair as alt
@@ -754,7 +755,7 @@ def detect_search_topic(user_message: str, client: Anthropic) -> dict:
     try:
         response = client.messages.create(
             model="claude-haiku-3-20240307",
-            max_tokens=100,
+            max_tokens=150,
             system="""Analyze this message and extract search-worthy topics.
 
 Return a JSON object with these fields:
@@ -762,15 +763,19 @@ Return a JSON object with these fields:
 - "event": specific event if mentioned, e.g. "Super Bowl", "Olympics", "CES", "election" (or null)
 - "topic": specific topic if time-sensitive, e.g. "AI", "layoffs", "tariffs" (or null)
 - "needs_web": true if the query mentions "yesterday", "today", "this week", "recent", "latest", or asks about current/breaking events
+- "needs_report": true if the user asks for a "report", "deep dive", "full analysis", "intelligence report", or "analyze [brand/topic] in depth" (or false)
 
 Example: "What happened at yesterday's Super Bowl?"
-{"brand": null, "event": "Super Bowl 2026", "topic": null, "needs_web": true}
+{"brand": null, "event": "Super Bowl 2026", "topic": null, "needs_web": true, "needs_report": false}
 
 Example: "How is Nike doing?"
-{"brand": "Nike", "event": null, "topic": null, "needs_web": false}
+{"brand": "Nike", "event": null, "topic": null, "needs_web": false, "needs_report": false}
 
-Example: "What are people saying about AI?"
-{"brand": null, "event": null, "topic": "AI", "needs_web": false}
+Example: "Generate a report on Tesla"
+{"brand": "Tesla", "event": null, "topic": null, "needs_web": false, "needs_report": true}
+
+Example: "Deep dive on AI trends for the last 30 days"
+{"brand": null, "event": null, "topic": "AI", "needs_web": false, "needs_report": true}
 
 Return ONLY valid JSON, no explanation.""",
             messages=[{"role": "user", "content": user_message}]
@@ -779,7 +784,7 @@ Return ONLY valid JSON, no explanation.""",
         result = response.content[0].text.strip()
         return json.loads(result)
     except Exception:
-        return {"brand": None, "event": None, "topic": None, "needs_web": False}
+        return {"brand": None, "event": None, "topic": None, "needs_web": False, "needs_report": False}
 
 
 def detect_brand_query(user_message: str, client: Anthropic) -> str:
@@ -798,9 +803,153 @@ def detect_brand_query(user_message: str, client: Anthropic) -> str:
     except Exception:
         return ""
 
+
+def _load_intelligence_context(engine, brand=None, topic=None, days=30):
+    """Load historical alerts, metric trends, and competitive data for Ask Moodlight.
+
+    Returns a formatted context string with intelligence history.
+    """
+    if engine is None:
+        return ""
+
+    from sqlalchemy import text as _sql_text
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+    parts = []
+
+    # --- Historical Alerts ---
+    try:
+        if brand:
+            brand_lower = brand.lower()
+            result = pd.read_sql(
+                f"SELECT alert_type, severity, title, summary, timestamp "
+                f"FROM alerts WHERE timestamp >= '{cutoff}' "
+                f"AND (LOWER(brand) = '{brand_lower}' OR LOWER(title) LIKE '%{brand_lower}%') "
+                f"ORDER BY timestamp DESC LIMIT 10",
+                engine,
+            )
+        elif topic:
+            topic_lower = topic.lower()
+            result = pd.read_sql(
+                f"SELECT alert_type, severity, title, summary, timestamp "
+                f"FROM alerts WHERE timestamp >= '{cutoff}' "
+                f"AND LOWER(title) LIKE '%{topic_lower}%' "
+                f"ORDER BY timestamp DESC LIMIT 10",
+                engine,
+            )
+        else:
+            result = pd.read_sql(
+                f"SELECT alert_type, severity, title, summary, timestamp "
+                f"FROM alerts WHERE timestamp >= '{cutoff}' "
+                f"ORDER BY timestamp DESC LIMIT 10",
+                engine,
+            )
+
+        if not result.empty:
+            alert_lines = [f"Recent Alerts ({len(result)}):"]
+            for _, row in result.iterrows():
+                sev = row.get("severity", "info")
+                title = row.get("title", "Untitled")
+                summary = str(row.get("summary", ""))[:150]
+                ts = str(row.get("timestamp", ""))[:16]
+                alert_lines.append(f"  - [{sev.upper()}] {title} ({ts}): {summary}")
+            parts.append("\n".join(alert_lines))
+    except Exception as e:
+        print(f"  Intelligence context - alerts failed: {e}")
+
+    # --- Metric Trends ---
+    try:
+        if brand:
+            brand_lower = brand.lower()
+            metrics_df = pd.read_sql(
+                f"SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
+                f"WHERE snapshot_date >= '{cutoff_date}' "
+                f"AND scope = 'brand' AND LOWER(scope_name) = '{brand_lower}' "
+                f"ORDER BY snapshot_date",
+                engine,
+            )
+        else:
+            metrics_df = pd.read_sql(
+                f"SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
+                f"WHERE snapshot_date >= '{cutoff_date}' AND scope = 'global' "
+                f"ORDER BY snapshot_date",
+                engine,
+            )
+
+        if not metrics_df.empty:
+            trend_lines = ["Metric Trends:"]
+            for metric_name in metrics_df["metric_name"].unique():
+                m = metrics_df[metrics_df["metric_name"] == metric_name]
+                if len(m) >= 2:
+                    first_val = m.iloc[0]["metric_value"]
+                    last_val = m.iloc[-1]["metric_value"]
+                    change = last_val - first_val
+                    direction = "up" if change > 0 else "down" if change < 0 else "flat"
+                    trend_lines.append(
+                        f"  {metric_name}: {first_val:.3f} -> {last_val:.3f} ({direction})"
+                    )
+            if len(trend_lines) > 1:
+                parts.append("\n".join(trend_lines))
+    except Exception as e:
+        print(f"  Intelligence context - metrics failed: {e}")
+
+    # --- Competitive Intelligence (brand only) ---
+    if brand:
+        try:
+            brand_lower = brand.lower()
+            comp_df = pd.read_sql(
+                f"SELECT snapshot_data FROM competitive_snapshots "
+                f"WHERE LOWER(brand_name) = '{brand_lower}' "
+                f"ORDER BY created_at DESC LIMIT 1",
+                engine,
+            )
+            if not comp_df.empty:
+                snapshot = comp_df.iloc[0]["snapshot_data"]
+                if isinstance(snapshot, str):
+                    try:
+                        snap = json.loads(snapshot)
+                    except (json.JSONDecodeError, TypeError):
+                        snap = {}
+                else:
+                    snap = snapshot or {}
+
+                comp_lines = ["Competitive Intelligence:"]
+                sov = snap.get("share_of_voice", {})
+                if sov:
+                    comp_lines.append("  Share of Voice:")
+                    for name, pct in sorted(sov.items(), key=lambda x: -x[1]):
+                        comp_lines.append(f"    {name}: {pct:.1f}%")
+
+                vlds_comp = snap.get("vlds_comparison", {})
+                if vlds_comp:
+                    comp_lines.append("  VLDS Comparison:")
+                    for comp_name, metrics in vlds_comp.items():
+                        if isinstance(metrics, dict):
+                            metric_parts = [
+                                f"{k}={v:.2f}" for k, v in metrics.items()
+                                if isinstance(v, (int, float))
+                            ]
+                            if metric_parts:
+                                comp_lines.append(f"    {comp_name}: {', '.join(metric_parts)}")
+
+                if len(comp_lines) > 1:
+                    parts.append("\n".join(comp_lines))
+        except Exception as e:
+            print(f"  Intelligence context - competitive failed: {e}")
+
+    if not parts:
+        return ""
+
+    return (
+        "[MOODLIGHT INTELLIGENCE HISTORY]\n\n"
+        + "\n\n".join(parts)
+        + "\n\n[END MOODLIGHT INTELLIGENCE HISTORY]"
+    )
+
+
 def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> str:
     """Generate strategic campaign brief using AI and Moodlight data"""
-    
+
     client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     
     top_topics = df['topic'].value_counts().head(10).to_string() if 'topic' in df.columns else "No topic data"
@@ -1681,6 +1830,92 @@ with st.sidebar:
 
     st.markdown("---")
 
+    # Intelligence Report Generator
+    st.header("Intelligence Reports")
+    st.caption("Generate deep-dive reports on any brand or topic")
+
+    # Build options: watched brands + custom topic
+    _report_options = ["Custom topic..."] + _watchlist_brands
+    _report_selection = st.selectbox(
+        "Subject",
+        _report_options,
+        key="report_subject_select",
+    )
+
+    _report_custom_topic = ""
+    if _report_selection == "Custom topic...":
+        _report_custom_topic = st.text_input(
+            "Enter brand or topic",
+            placeholder="e.g. Tesla, AI regulation, tariffs",
+            key="report_custom_topic",
+        )
+
+    _report_days = st.selectbox(
+        "Time period",
+        [7, 14, 30],
+        format_func=lambda d: f"Last {d} days",
+        key="report_days_select",
+    )
+
+    _report_subject = _report_custom_topic.strip() if _report_selection == "Custom topic..." else _report_selection
+    _report_type = "brand" if _report_selection != "Custom topic..." else "topic"
+
+    # Email option
+    _report_email = st.checkbox("Email report to me", key="report_email_check")
+
+    if st.button("Generate Report", key="generate_report_btn", disabled=not _report_subject):
+        if _report_subject:
+            with st.spinner(f"Generating intelligence report on {_report_subject}..."):
+                try:
+                    from generate_report import generate_intelligence_report, email_report
+                    from db_helper import get_engine as _get_rpt_engine
+                    _rpt_engine = _get_rpt_engine()
+                    _report_text = generate_intelligence_report(
+                        _rpt_engine, _report_subject,
+                        days=_report_days, subject_type=_report_type,
+                    )
+                    st.session_state["last_report"] = _report_text
+                    st.session_state["last_report_subject"] = _report_subject
+                    st.session_state["last_report_days"] = _report_days
+
+                    # Email if requested
+                    if _report_email:
+                        try:
+                            # Get current user's email
+                            from sqlalchemy import text as _rpt_text
+                            with _rpt_engine.connect() as _rpt_conn:
+                                _email_result = _rpt_conn.execute(
+                                    _rpt_text("SELECT email FROM users WHERE username = :u"),
+                                    {"u": username},
+                                )
+                                _user_email_row = _email_result.fetchone()
+                                if _user_email_row and _user_email_row[0]:
+                                    email_report(
+                                        _report_text, _report_subject,
+                                        _user_email_row[0], days=_report_days,
+                                    )
+                                    st.success(f"Report emailed to {_user_email_row[0]}")
+                                else:
+                                    st.warning("No email on file — report displayed below")
+                        except Exception as _email_err:
+                            st.warning(f"Could not email report: {_email_err}")
+
+                    st.rerun()
+                except Exception as _rpt_err:
+                    st.error(f"Report generation failed: {_rpt_err}")
+
+    # Display last generated report
+    if "last_report" in st.session_state and st.session_state.get("last_report"):
+        _rpt_subj = st.session_state.get("last_report_subject", "")
+        _rpt_days = st.session_state.get("last_report_days", 7)
+        with st.expander(f"Report: {_rpt_subj} (last {_rpt_days} days)", expanded=True):
+            st.markdown(st.session_state["last_report"])
+            if st.button("Clear report", key="clear_report_btn"):
+                del st.session_state["last_report"]
+                st.rerun()
+
+    st.markdown("---")
+
     st.header("🎯 Strategic Brief")
     st.caption("The more detail you provide, the better your brief")
     
@@ -2421,7 +2656,7 @@ if HAS_DB:
                 _alert_result = _alert_conn.execute(
                     _alert_text("""
                         SELECT id, timestamp, alert_type, severity, title, summary,
-                               investigation, brand, username
+                               investigation, brand, username, data
                         FROM alerts
                         WHERE timestamp > :cutoff
                           AND (username IS NULL OR username = :user)
@@ -2439,10 +2674,13 @@ if _alerts_loaded and _alert_rows:
     import json as _alert_json
     _severity_icons = {"critical": "🔴", "warning": "🟡", "info": "🔵"}
     for _ar in _alert_rows:
-        _a_id, _a_ts, _a_type, _a_sev, _a_title, _a_summary, _a_investigation, _a_brand, _a_user = _ar
+        _a_id, _a_ts, _a_type, _a_sev, _a_title, _a_summary, _a_investigation, _a_brand, _a_user, _a_data = _ar
         _a_icon = _severity_icons.get(_a_sev, "🔵")
         _a_predictive_tag = ""
-        if _a_type and str(_a_type).startswith("predictive_"):
+        if _a_type and str(_a_type) == "situation_report":
+            _a_icon = "🔗"
+            _a_predictive_tag = " [SITUATION REPORT]"
+        elif _a_type and str(_a_type).startswith("predictive_"):
             _a_icon = "🔮"
             _a_predictive_tag = " [PREDICTIVE]"
         _a_brand_tag = f" [{_a_brand}]" if _a_brand else ""
@@ -2462,6 +2700,25 @@ if _alerts_loaded and _alert_rows:
 
         with st.expander(f"{_a_icon}{_a_brand_tag}{_a_predictive_tag} {_a_title}{_a_time_str}"):
             st.markdown(f"**{_a_summary}**")
+
+            # Situation report: show correlated alerts list from data field
+            if _a_type == "situation_report" and _a_data:
+                try:
+                    _sit_data = _alert_json.loads(_a_data) if isinstance(_a_data, str) else _a_data
+                    _correlated = _sit_data.get("correlated_alerts", [])
+                    if _correlated:
+                        st.markdown("**Correlated Signals:**")
+                        for _ca in _correlated:
+                            _ca_sev = _ca.get("severity", "info")
+                            _ca_icon = _severity_icons.get(_ca_sev, "🔵")
+                            st.markdown(
+                                f"- {_ca_icon} **{_ca.get('alert_type', '').replace('_', ' ').title()}**: "
+                                f"{_ca.get('title', 'Untitled')}"
+                            )
+                        st.markdown("---")
+                except Exception:
+                    pass
+
             if _a_investigation:
                 try:
                     _inv = _alert_json.loads(_a_investigation) if isinstance(_a_investigation, str) else _a_investigation
@@ -3612,6 +3869,37 @@ if prompt := st.chat_input("Ask a question about the data..."):
             event_name = search_info.get("event") or ""
             topic_name = search_info.get("topic") or ""
             needs_web = search_info.get("needs_web", False)
+            needs_report = search_info.get("needs_report", False)
+
+            # Route to on-demand report generator if requested
+            if needs_report and (brand_name or topic_name):
+                report_subject = brand_name or topic_name
+                report_type = "brand" if brand_name else "topic"
+                # Extract days from prompt if specified (default 7)
+                import re as _re_days
+                _days_match = _re_days.search(r'(\d+)\s*days?', prompt.lower())
+                report_days = int(_days_match.group(1)) if _days_match else 7
+                report_days = min(report_days, 30)  # Cap at 30 days
+
+                try:
+                    from generate_report import generate_intelligence_report
+                    from db_helper import get_engine as _get_report_engine
+                    _report_engine = _get_report_engine()
+                    report_text = generate_intelligence_report(
+                        _report_engine, report_subject, days=report_days,
+                        subject_type=report_type,
+                    )
+                    st.markdown(report_text)
+                    st.session_state.chat_messages.append(
+                        {"role": "assistant", "content": report_text}
+                    )
+                except Exception as _report_err:
+                    err_msg = f"Could not generate report: {_report_err}"
+                    st.error(err_msg)
+                    st.session_state.chat_messages.append(
+                        {"role": "assistant", "content": err_msg}
+                    )
+                st.stop()
 
             # Build search query - search for brand, event, or topic
             search_query = brand_name or event_name or topic_name
@@ -3839,6 +4127,22 @@ if prompt := st.chat_input("Ask a question about the data..."):
             # Always include verified dashboard data
             context_parts.append(verified_data)
 
+            # Load intelligence history (alerts, metric trends, competitive data)
+            try:
+                from db_helper import get_engine as _get_intel_engine
+                _intel_engine = _get_intel_engine()
+                if _intel_engine:
+                    _intel_context = _load_intelligence_context(
+                        _intel_engine,
+                        brand=brand_name or None,
+                        topic=topic_name or None,
+                        days=30,
+                    )
+                    if _intel_context:
+                        context_parts.append(_intel_context)
+            except Exception as _intel_err:
+                print(f"Intelligence context load failed (non-fatal): {_intel_err}")
+
             data_context = "\n\n".join(context_parts)
 
             # =============================================
@@ -3945,6 +4249,14 @@ BRAND SAFETY — NON-NEGOTIABLE: Never recommend that a brand reference or assoc
 
 {REGULATORY_GUIDANCE}
 
+=== INTELLIGENCE HISTORY ===
+If a [MOODLIGHT INTELLIGENCE HISTORY] section is present in the data context, it contains:
+- Historical alerts that Moodlight's detection system has previously fired (with severity, type, and summary)
+- Metric trends showing how key indicators have changed over time
+- Competitive intelligence including share of voice and VLDS comparison with competitors
+
+Use this data to enrich your responses. When a user asks about a brand, reference relevant past alerts (e.g., "Moodlight detected a velocity spike for Nike 3 days ago"). When discussing trends, cite metric trajectory data. For competitive questions, reference SOV and VLDS comparisons. This data is verified from the Moodlight database — treat it with the same integrity rules as verified dashboard data.
+
 === YOUR CAPABILITIES ===
 You can answer questions about:
 - VLDS metrics: Velocity (how fast topics are rising), Longevity (staying power), Density (saturation), Scarcity (white space opportunities)
@@ -3955,6 +4267,10 @@ You can answer questions about:
 - Geography: Where conversations are happening
 - Brand intelligence: Competitive landscape, media narrative, customer sentiment, positioning analysis (using web search + dashboard data)
 - Event intelligence: Current events, breaking news, cultural moments (using web search + dashboard context)
+- Alert history: Past anomalies detected by Moodlight, alert patterns, severity trends
+- Metric trends: Historical trajectory of key indicators (velocity, empathy, intensity)
+- Competitive intelligence: Share of voice, competitor VLDS comparison, competitive gaps
+- On-demand reports: Users can ask to "generate a report" or "deep dive" on any brand or topic
 - Strategic recommendations: When to engage, what to say, where to play
 - Strategic brief prompts: Generate ready-to-paste inputs for the Strategic Brief Generator
 

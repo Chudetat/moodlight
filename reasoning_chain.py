@@ -60,6 +60,8 @@ CHAIN_CONFIGS = {
     "regulatory_policy_spike": ["situation", "historical", "causal", "strategic", "confidence"],
     "breaking_signal": ["situation", "causal", "confidence"],
     "geopolitical_risk_escalation": ["situation", "historical", "causal", "strategic", "confidence"],
+    # Situation reports (correlated alert clusters)
+    "situation_report": ["situation", "historical", "causal", "strategic", "confidence"],
 }
 
 DEFAULT_CHAIN = ["situation", "causal", "confidence"]

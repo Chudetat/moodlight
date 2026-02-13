@@ -376,6 +376,25 @@ def main():
 
         sys.exit(0)
 
+    # 5b. Alert correlation — detect related signals and generate situation reports
+    print("\nRunning alert correlation...")
+    situation_reports = []
+    try:
+        from alert_correlator import correlate_alerts, generate_situation_report
+        clusters = correlate_alerts(all_alerts)
+        print(f"  Found {len(clusters)} correlated alert cluster(s)")
+        for i, cluster in enumerate(clusters):
+            print(f"  Cluster {i+1}: {len(cluster)} alerts — "
+                  f"{[a.get('alert_type', '?') for a in cluster]}")
+            sit_report = generate_situation_report(
+                cluster, engine=engine, df_news=df_news, df_social=df_social,
+            )
+            situation_reports.append(sit_report)
+            all_alerts.append(sit_report)
+            print(f"    Generated situation report: {sit_report['title'][:80]}")
+    except Exception as e:
+        print(f"  Alert correlation failed (non-fatal): {e}")
+
     # 6. Investigate and store
     from alert_investigator import investigate_alert
     stored_alerts = []
@@ -400,6 +419,15 @@ def main():
             continue
 
         print(f"\n  Processing: {alert['title']}")
+
+        # Situation reports already have investigation from the correlator
+        if alert.get("alert_type") == "situation_report" and alert.get("investigation"):
+            print(f"    Situation report — using correlator investigation")
+            alert["cooldown_key"] = cooldown_key
+            store_alert(engine, alert)
+            stored_alerts.append(alert)
+            print(f"    Stored to DB")
+            continue
 
         # Investigate — use reasoning chain for complex alerts, single-turn for simple
         investigation = None
@@ -466,6 +494,7 @@ def main():
     print(f"  Brand alerts:       {len(brand_alerts)}")
     print(f"  Competitive alerts: {len(competitive_alerts)}")
     print(f"  Predictive alerts:  {len(predictive_alerts)}")
+    print(f"  Situation reports:  {len(situation_reports)}")
     print(f"  Stored:             {len(stored_alerts)} (after cooldown filter)")
     print(f"  Emails sent:        {sent}")
     print("=" * 60)
