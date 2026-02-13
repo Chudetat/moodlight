@@ -26,6 +26,14 @@ DEFAULT_THRESHOLDS = {
     "competitor_momentum": {"warning": None, "critical": 0.5},
     "share_of_voice_shift": {"warning": None, "critical": 0.0},
     "competitive_white_space": {"warning": 0.3, "critical": 0.5},
+    # Predictive alert entries (None = uses internal scoring, not threshold-based)
+    "predictive_mood_shift": {"warning": None, "critical": None},
+    "predictive_intensity_cluster": {"warning": None, "critical": None},
+    "predictive_brand_velocity_spike": {"warning": None, "critical": None},
+    "predictive_brand_saturation": {"warning": None, "critical": None},
+    "predictive_brand_white_space": {"warning": None, "critical": None},
+    "predictive_market_mood_divergence": {"warning": None, "critical": None},
+    "predictive_compound_signal": {"warning": None, "critical": None},
 }
 
 

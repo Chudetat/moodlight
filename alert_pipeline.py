@@ -185,6 +185,37 @@ def store_alert(engine, alert):
 
 
 # ---------------------------------------------------------------------------
+# Reasoning chain routing
+# ---------------------------------------------------------------------------
+
+def _should_use_chain(alert):
+    """Determine if this alert warrants multi-step reasoning.
+
+    Use chain for complex/strategic alerts. Use single-turn for simple ones.
+    """
+    alert_type = alert.get("alert_type", "")
+    severity = alert.get("severity", "info")
+
+    # Always use chain for predictive alerts
+    if alert_type.startswith("predictive_"):
+        return True
+
+    # Always use chain for competitive alerts
+    if alert_type in ("competitor_momentum", "share_of_voice_shift", "competitive_white_space"):
+        return True
+
+    # Use chain for critical severity
+    if severity == "critical":
+        return True
+
+    # Use chain for strategic brand alerts
+    if alert_type in ("brand_white_space", "brand_narrative_fading"):
+        return True
+
+    return False
+
+
+# ---------------------------------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------------------------------
 
@@ -207,10 +238,13 @@ def main():
     from alert_feedback import ensure_feedback_table
     from competitor_discovery import ensure_competitor_tables
 
+    from predictive_detector import ensure_metric_snapshots_table
+
     ensure_threshold_tables(engine)
     ensure_feedback_table(engine)
     ensure_competitor_tables(engine)
-    print("Threshold, feedback, and competitor tables verified")
+    ensure_metric_snapshots_table(engine)
+    print("Threshold, feedback, competitor, and metric snapshot tables verified")
 
     # 1c. Load configurable thresholds from DB
     thresholds = get_thresholds(engine)
@@ -224,6 +258,15 @@ def main():
         print("No news or social data available — nothing to detect")
         sys.exit(0)
 
+    # 2b. Capture metric snapshots for trend analysis
+    print("\nCapturing metric snapshots...")
+    watchlist = load_watchlist(engine)
+    try:
+        from predictive_detector import capture_metric_snapshots
+        capture_metric_snapshots(engine, df_news, df_social, df_markets, watchlist)
+    except Exception as e:
+        print(f"  Metric snapshot capture failed (non-fatal): {e}")
+
     # 3. Run global detectors (with configurable thresholds)
     print("\nRunning global detectors...")
     from alert_detector import run_global_detectors, run_brand_detectors, run_competitive_detectors
@@ -231,8 +274,7 @@ def main():
     print(f"  Found {len(global_alerts)} global anomalies")
 
     # 4. Run brand detectors (with configurable thresholds)
-    print("\nLoading brand watchlist...")
-    watchlist = load_watchlist(engine)
+    print("\nRunning brand detectors...")
     brand_alerts = []
     competitive_alerts = []
 
@@ -287,8 +329,20 @@ def main():
     else:
         print("  No brands in watchlist — skipping brand detectors")
 
+    # 4c. Run predictive detectors
+    print("\nRunning predictive detectors...")
+    predictive_alerts = []
+    try:
+        from predictive_detector import run_predictive_detectors
+        predictive_alerts = run_predictive_detectors(
+            engine, df_news, df_social, df_markets, watchlist, thresholds
+        )
+        print(f"  Found {len(predictive_alerts)} predictive signals")
+    except Exception as e:
+        print(f"  Predictive detection failed (non-fatal): {e}")
+
     # 5. Process all alerts
-    all_alerts = global_alerts + brand_alerts + competitive_alerts
+    all_alerts = global_alerts + brand_alerts + competitive_alerts + predictive_alerts
     print(f"\nTotal anomalies detected: {len(all_alerts)}")
 
     if not all_alerts:
@@ -308,26 +362,53 @@ def main():
     from alert_investigator import investigate_alert
     stored_alerts = []
 
+    # Import reasoning chain (graceful fallback to single-turn)
+    try:
+        from reasoning_chain import run_reasoning_chain
+        _has_chain = True
+    except ImportError:
+        _has_chain = False
+        print("  Reasoning chain module not available — using single-turn investigation")
+
     for alert in all_alerts:
         cooldown_key = build_cooldown_key(alert)
 
+        # Use longer cooldown for predictive alerts
+        cooldown_hours = 24 if alert.get("alert_type", "").startswith("predictive_") else 6
+
         # Check cooldown
-        if check_cooldown(engine, cooldown_key):
+        if check_cooldown(engine, cooldown_key, hours=cooldown_hours):
             print(f"  SKIP (cooldown): {alert['title']}")
             continue
 
         print(f"\n  Processing: {alert['title']}")
 
-        # Investigate
-        investigation = investigate_alert(
-            alert, df_news=df_news, df_social=df_social, df_markets=df_markets
-        )
-        if investigation:
-            alert["investigation"] = investigation
-            print(f"    Investigation complete")
-        else:
-            alert["investigation"] = None
-            print(f"    No investigation (skipped or failed)")
+        # Investigate — use reasoning chain for complex alerts, single-turn for simple
+        investigation = None
+        use_chain = _has_chain and _should_use_chain(alert)
+
+        if use_chain:
+            print(f"    Using multi-step reasoning chain...")
+            investigation = run_reasoning_chain(
+                alert, engine=engine,
+                df_news=df_news, df_social=df_social, df_markets=df_markets
+            )
+            if investigation:
+                steps = investigation.get("steps", [])
+                print(f"    Reasoning chain complete ({len(steps)} steps, "
+                      f"confidence: {investigation.get('overall_confidence', '?')}/100)")
+
+        if not investigation:
+            # Fallback to single-turn
+            investigation = investigate_alert(
+                alert, df_news=df_news, df_social=df_social, df_markets=df_markets
+            )
+            if investigation:
+                print(f"    Single-turn investigation complete")
+            else:
+                print(f"    No investigation (skipped or failed)")
+
+        alert["investigation"] = investigation
 
         # Store
         alert["cooldown_key"] = cooldown_key
@@ -366,6 +447,7 @@ def main():
     print(f"  Global alerts:      {len(global_alerts)}")
     print(f"  Brand alerts:       {len(brand_alerts)}")
     print(f"  Competitive alerts: {len(competitive_alerts)}")
+    print(f"  Predictive alerts:  {len(predictive_alerts)}")
     print(f"  Stored:             {len(stored_alerts)} (after cooldown filter)")
     print(f"  Emails sent:        {sent}")
     print("=" * 60)

@@ -197,20 +197,50 @@ def _build_email_html(alert):
         else:
             inv = investigation
 
-        sections = []
-        if inv.get("analysis"):
-            sections.append(f"<p><strong>Analysis:</strong> {inv['analysis']}</p>")
-        if inv.get("implications"):
-            sections.append(f"<p><strong>Implications:</strong> {inv['implications']}</p>")
-        if inv.get("watch_items"):
-            sections.append(f"<p><strong>Watch:</strong><br>{inv['watch_items']}</p>")
-
-        if sections:
+        # Check for reasoning chain steps
+        if inv.get("steps"):
+            chain_parts = []
+            oc = inv.get("overall_confidence", "?")
+            rec = inv.get("recommendation", "monitor")
+            rec_labels = {"act_now": "Act Now", "monitor": "Monitor", "investigate_further": "Investigate Further"}
+            chain_parts.append(
+                f'<p style="margin: 0 0 10px 0;"><strong>Confidence:</strong> {oc}/100 '
+                f'| <strong>Recommendation:</strong> {rec_labels.get(rec, rec)}</p>'
+            )
+            for step_data in inv["steps"]:
+                step_title = step_data.get("title", step_data.get("step", ""))
+                step_content = step_data.get("content", "")
+                step_conf = step_data.get("confidence", 0)
+                conf_pct = f"{step_conf:.0%}" if isinstance(step_conf, float) and step_conf <= 1 else str(step_conf)
+                chain_parts.append(
+                    f'<div style="margin: 8px 0; padding: 8px 12px; '
+                    f'border-left: 3px solid #1976D2; background: #fafafa;">'
+                    f'<strong>{step_title}</strong> '
+                    f'<span style="color: #999; font-size: 11px;">({conf_pct})</span>'
+                    f'<p style="margin: 4px 0 0 0; font-size: 13px;">{step_content[:500]}</p>'
+                    f'</div>'
+                )
             investigation_html = (
                 '<div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">'
-                + "".join(sections)
+                + "".join(chain_parts)
                 + "</div>"
             )
+        else:
+            # Legacy single-turn format
+            sections = []
+            if inv.get("analysis"):
+                sections.append(f"<p><strong>Analysis:</strong> {inv['analysis']}</p>")
+            if inv.get("implications"):
+                sections.append(f"<p><strong>Implications:</strong> {inv['implications']}</p>")
+            if inv.get("watch_items"):
+                sections.append(f"<p><strong>Watch:</strong><br>{inv['watch_items']}</p>")
+
+            if sections:
+                investigation_html = (
+                    '<div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">'
+                    + "".join(sections)
+                    + "</div>"
+                )
 
     brand_badge = ""
     if alert.get("brand"):

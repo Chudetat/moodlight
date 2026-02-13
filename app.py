@@ -2426,7 +2426,7 @@ if HAS_DB:
                         WHERE timestamp > :cutoff
                           AND (username IS NULL OR username = :user)
                         ORDER BY timestamp DESC
-                        LIMIT 10
+                        LIMIT 20
                     """),
                     {"cutoff": _alert_cutoff, "user": username},
                 )
@@ -2441,6 +2441,10 @@ if _alerts_loaded and _alert_rows:
     for _ar in _alert_rows:
         _a_id, _a_ts, _a_type, _a_sev, _a_title, _a_summary, _a_investigation, _a_brand, _a_user = _ar
         _a_icon = _severity_icons.get(_a_sev, "🔵")
+        _a_predictive_tag = ""
+        if _a_type and str(_a_type).startswith("predictive_"):
+            _a_icon = "🔮"
+            _a_predictive_tag = " [PREDICTIVE]"
         _a_brand_tag = f" [{_a_brand}]" if _a_brand else ""
         _a_time_str = ""
         if _a_ts:
@@ -2456,17 +2460,40 @@ if _alerts_loaded and _alert_rows:
             except Exception:
                 pass
 
-        with st.expander(f"{_a_icon}{_a_brand_tag} {_a_title}{_a_time_str}"):
+        with st.expander(f"{_a_icon}{_a_brand_tag}{_a_predictive_tag} {_a_title}{_a_time_str}"):
             st.markdown(f"**{_a_summary}**")
             if _a_investigation:
                 try:
                     _inv = _alert_json.loads(_a_investigation) if isinstance(_a_investigation, str) else _a_investigation
-                    if _inv.get("analysis"):
-                        st.markdown(f"**Analysis:** {_inv['analysis']}")
-                    if _inv.get("implications"):
-                        st.markdown(f"**Implications:** {_inv['implications']}")
-                    if _inv.get("watch_items"):
-                        st.markdown(f"**Watch:** {_inv['watch_items']}")
+
+                    if _inv.get("steps"):
+                        # Multi-step reasoning chain display
+                        _oc = _inv.get("overall_confidence", "?")
+                        _rec = _inv.get("recommendation", "monitor")
+                        _rec_labels = {"act_now": "Act Now", "monitor": "Monitor", "investigate_further": "Investigate Further"}
+                        st.markdown(f"**Confidence:** {_oc}/100 | **Recommendation:** {_rec_labels.get(_rec, _rec)}")
+
+                        for _step in _inv["steps"]:
+                            _step_title = _step.get("title", _step.get("step", "?"))
+                            _step_conf = _step.get("confidence", 0)
+                            _conf_pct = f"{_step_conf:.0%}" if isinstance(_step_conf, float) and _step_conf <= 1 else f"{_step_conf}"
+                            with st.expander(f"{_step_title} (confidence: {_conf_pct})", expanded=False):
+                                st.markdown(_step.get("content", ""))
+                                if _step.get("likely_causes"):
+                                    st.markdown("**Likely causes:** " + ", ".join(_step["likely_causes"][:3]))
+                                if _step.get("recommended_actions"):
+                                    for _act in _step["recommended_actions"][:3]:
+                                        st.markdown(f"- {_act}")
+                                if _step.get("frameworks_applied"):
+                                    st.caption("Frameworks: " + ", ".join(_step["frameworks_applied"]))
+                    else:
+                        # Legacy single-turn display
+                        if _inv.get("analysis"):
+                            st.markdown(f"**Analysis:** {_inv['analysis']}")
+                        if _inv.get("implications"):
+                            st.markdown(f"**Implications:** {_inv['implications']}")
+                        if _inv.get("watch_items"):
+                            st.markdown(f"**Watch:** {_inv['watch_items']}")
                 except Exception:
                     st.markdown(str(_a_investigation))
 
