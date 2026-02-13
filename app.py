@@ -122,6 +122,8 @@ _user_tier_info = get_user_tier(username)
 _current_tier = _user_tier_info["tier"]
 if _current_tier in ACTIVE_TIERS:
     st.sidebar.caption(f"Plan: **{_current_tier.title()}**")
+    if STRIPE_PORTAL_LINK and _user_tier_info.get("stripe_customer_id"):
+        st.sidebar.markdown(f"[Manage subscription]({STRIPE_PORTAL_LINK})", unsafe_allow_html=True)
 else:
     st.sidebar.caption("Plan: **No active subscription**")
 with st.sidebar.expander("Email Preferences"):

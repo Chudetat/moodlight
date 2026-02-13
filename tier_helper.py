@@ -35,16 +35,17 @@ def get_user_tier(username: str) -> dict:
     engine = get_db_engine()
     with engine.connect() as conn:
         result = conn.execute(text("""
-            SELECT tier, brief_credits
+            SELECT tier, brief_credits, stripe_customer_id
             FROM users WHERE username = :username
         """), {"username": username})
         row = result.fetchone()
         if row:
             return {
                 "tier": row[0],
-                "brief_credits": row[1]
+                "brief_credits": row[1],
+                "stripe_customer_id": row[2],
             }
-    return {"tier": "monthly", "brief_credits": 0}
+    return {"tier": "monthly", "brief_credits": 0, "stripe_customer_id": None}
 
 def can_generate_brief(username: str) -> tuple[bool, str]:
     """Check if user can generate a brief - all active tiers have unlimited access"""
