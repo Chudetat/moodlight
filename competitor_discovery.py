@@ -68,6 +68,68 @@ def get_cached_competitors(engine, brand_name):
         return []
 
 
+def get_all_cached_competitors(engine, brand_names):
+    """Batch-load competitors for all brands in one query. Returns dict of brand -> competitors list."""
+    from sqlalchemy import text
+
+    if not brand_names:
+        return {}
+
+    try:
+        placeholders = ", ".join(f":b{i}" for i in range(len(brand_names)))
+        params = {f"b{i}": name for i, name in enumerate(brand_names)}
+        with engine.connect() as conn:
+            result = conn.execute(
+                text(f"""
+                    SELECT brand_name, competitor_name, confidence, reasoning
+                    FROM brand_competitors
+                    WHERE brand_name IN ({placeholders})
+                    ORDER BY brand_name, confidence DESC
+                """),
+                params,
+            )
+            by_brand = {}
+            for row in result.fetchall():
+                brand = row[0]
+                if brand not in by_brand:
+                    by_brand[brand] = []
+                by_brand[brand].append({
+                    "competitor_name": row[1],
+                    "confidence": row[2],
+                    "reasoning": row[3],
+                })
+            return by_brand
+    except Exception as e:
+        print(f"  Batch competitor load failed: {e}")
+        return {}
+
+
+def get_all_latest_snapshots(engine, brand_names):
+    """Batch-load latest competitive snapshot for each brand. Returns dict of brand -> snapshot_data."""
+    from sqlalchemy import text
+
+    if not brand_names:
+        return {}
+
+    try:
+        placeholders = ", ".join(f":b{i}" for i in range(len(brand_names)))
+        params = {f"b{i}": name for i, name in enumerate(brand_names)}
+        with engine.connect() as conn:
+            result = conn.execute(
+                text(f"""
+                    SELECT DISTINCT ON (brand_name) brand_name, snapshot_data
+                    FROM competitive_snapshots
+                    WHERE brand_name IN ({placeholders})
+                    ORDER BY brand_name, created_at DESC
+                """),
+                params,
+            )
+            return {row[0]: row[1] for row in result.fetchall()}
+    except Exception as e:
+        print(f"  Batch snapshot load failed: {e}")
+        return {}
+
+
 def discover_competitors(brand_name):
     """Use Claude to identify 3-5 competitors for a brand.
 

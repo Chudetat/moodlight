@@ -47,10 +47,12 @@ def load_weekly_data(engine):
     metrics_df = pd.DataFrame()
     competitive_df = pd.DataFrame()
 
+    from sqlalchemy import text as sql_text
+
     try:
         alerts_df = pd.read_sql(
-            f"SELECT * FROM alerts WHERE timestamp >= '{cutoff}' ORDER BY timestamp DESC",
-            engine,
+            sql_text("SELECT * FROM alerts WHERE timestamp >= :cutoff ORDER BY timestamp DESC"),
+            engine, params={"cutoff": cutoff},
         )
         print(f"  Loaded {len(alerts_df)} alerts from past 7 days")
     except Exception as e:
@@ -58,9 +60,9 @@ def load_weekly_data(engine):
 
     try:
         metrics_df = pd.read_sql(
-            f"SELECT * FROM metric_snapshots WHERE snapshot_date >= '{cutoff[:10]}' "
-            f"ORDER BY snapshot_date, metric_name",
-            engine,
+            sql_text("SELECT * FROM metric_snapshots WHERE snapshot_date >= :cutoff "
+                     "ORDER BY snapshot_date, metric_name"),
+            engine, params={"cutoff": cutoff[:10]},
         )
         print(f"  Loaded {len(metrics_df)} metric snapshots")
     except Exception as e:
@@ -68,9 +70,9 @@ def load_weekly_data(engine):
 
     try:
         competitive_df = pd.read_sql(
-            f"SELECT * FROM competitive_snapshots WHERE created_at >= '{cutoff}' "
-            f"ORDER BY created_at DESC",
-            engine,
+            sql_text("SELECT * FROM competitive_snapshots WHERE created_at >= :cutoff "
+                     "ORDER BY created_at DESC"),
+            engine, params={"cutoff": cutoff},
         )
         print(f"  Loaded {len(competitive_df)} competitive snapshots")
     except Exception as e:

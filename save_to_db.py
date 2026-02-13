@@ -81,6 +81,18 @@ def save_to_db(csv_path: str, table_name: str):
             print(f"📥 Inserting {len(df_clean)} rows into {table_name}...")
             df_clean.to_sql(table_name, engine, if_exists="replace", index=False, chunksize=25)
             print(f"✅ Data saved to PostgreSQL table: {table_name}")
+
+            # Add performance indexes (to_sql with replace drops them each run)
+            try:
+                with engine.connect() as idx_conn:
+                    idx_conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_created_at ON {table_name} (created_at)"))
+                    idx_conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_topic ON {table_name} (topic)"))
+                    idx_conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_source ON {table_name} (source)"))
+                    idx_conn.commit()
+                print(f"📇 Indexes created on {table_name}")
+            except Exception as idx_err:
+                print(f"⚠️ Index creation failed (non-fatal): {idx_err}")
+
             return
         except Exception as e:
             print(f"❌ Attempt {attempt} failed: {e}")

@@ -10,7 +10,7 @@ import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 from session_manager import create_session, validate_session, clear_session
-from tier_helper import get_user_tier, can_generate_brief, decrement_brief_credits, has_feature_access, get_brief_credits
+from tier_helper import get_user_tier, can_generate_brief, decrement_brief_credits, has_feature_access, get_brief_credits, get_tier_limit, ACTIVE_TIERS
 try:
     from polymarket_helper import fetch_polymarket_markets, calculate_sentiment_divergence
     HAS_POLYMARKET = True
@@ -45,10 +45,23 @@ authenticator = stauth.Authenticate(
 )
 
 
-# Hide the Streamlit deploy button and toolbar clutter
+# Hide the Streamlit deploy button and toolbar clutter + dashboard polish CSS
 st.markdown("""
 <style>
     .stDeployButton { display: none !important; }
+    /* Metric value sizing */
+    [data-testid="stMetricValue"] { font-size: 1.4rem; }
+    /* Consistent expander header styling */
+    [data-testid="stExpander"] summary { font-size: 0.95rem; font-weight: 500; }
+    /* Better caption visibility */
+    .stCaption { opacity: 0.85; }
+    /* Consistent section divider spacing */
+    hr { margin: 1.5rem 0 !important; }
+    /* Mobile column stacking */
+    @media (max-width: 768px) {
+        [data-testid="stHorizontalBlock"] { flex-direction: column !important; }
+        [data-testid="stHorizontalBlock"] > div { width: 100% !important; }
+    }
 </style>
 """, unsafe_allow_html=True)
 # Logo on login page (only show when not logged in)
@@ -117,6 +130,18 @@ import json
 import pandas as pd
 import altair as alt
 import requests
+
+# ========================================
+# TIER GATE HELPER
+# ========================================
+def render_upgrade_prompt(feature_name: str):
+    """Show upgrade prompt for inactive/ungated users"""
+    st.info(
+        f"**{feature_name}** is available with an active Moodlight subscription. "
+        "Contact us at **intel@moodlightintel.com** to get started.",
+        icon="\U0001f512"
+    )
+
 
 # ========================================
 # TICKER LOOKUP & STOCK DATA
@@ -353,7 +378,7 @@ def clean_source_name(source: str) -> str:
 # -------------------------------
 # Data loading
 # -------------------------------
-@st.cache_data(ttl=10, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def load_data() -> pd.DataFrame:
     sources = [
         ("social_scored.csv", None),
@@ -432,7 +457,7 @@ def load_data() -> pd.DataFrame:
 
     return df
 
-@st.cache_data(ttl=10)
+@st.cache_data(ttl=60)
 def load_market_data() -> pd.DataFrame:
     """Load market sentiment data from DB (with history) or CSV fallback"""
     df = pd.DataFrame()
@@ -442,10 +467,11 @@ def load_market_data() -> pd.DataFrame:
             from db_helper import get_engine
             engine = get_engine()
             if engine:
+                from sqlalchemy import text as _mkt_text
                 cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
                 df = pd.read_sql(
-                    f"SELECT * FROM markets WHERE latest_trading_day >= '{cutoff}' ORDER BY latest_trading_day DESC",
-                    engine,
+                    _mkt_text("SELECT * FROM markets WHERE latest_trading_day >= :cutoff ORDER BY latest_trading_day DESC"),
+                    engine, params={"cutoff": cutoff},
                 )
         except Exception:
             df = pd.DataFrame()
@@ -822,27 +848,29 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30):
         if brand:
             brand_lower = brand.lower()
             result = pd.read_sql(
-                f"SELECT alert_type, severity, title, summary, timestamp "
-                f"FROM alerts WHERE timestamp >= '{cutoff}' "
-                f"AND (LOWER(brand) = '{brand_lower}' OR LOWER(title) LIKE '%{brand_lower}%') "
-                f"ORDER BY timestamp DESC LIMIT 10",
-                engine,
+                _sql_text("SELECT alert_type, severity, title, summary, timestamp "
+                          "FROM alerts WHERE timestamp >= :cutoff "
+                          "AND (LOWER(brand) = :subject OR LOWER(title) LIKE :pattern) "
+                          "ORDER BY timestamp DESC LIMIT 10"),
+                engine, params={"cutoff": cutoff, "subject": brand_lower,
+                                "pattern": f"%{brand_lower}%"},
             )
         elif topic:
             topic_lower = topic.lower()
             result = pd.read_sql(
-                f"SELECT alert_type, severity, title, summary, timestamp "
-                f"FROM alerts WHERE timestamp >= '{cutoff}' "
-                f"AND (LOWER(topic) = '{topic_lower}' OR LOWER(title) LIKE '%{topic_lower}%') "
-                f"ORDER BY timestamp DESC LIMIT 10",
-                engine,
+                _sql_text("SELECT alert_type, severity, title, summary, timestamp "
+                          "FROM alerts WHERE timestamp >= :cutoff "
+                          "AND (LOWER(topic) = :subject OR LOWER(title) LIKE :pattern) "
+                          "ORDER BY timestamp DESC LIMIT 10"),
+                engine, params={"cutoff": cutoff, "subject": topic_lower,
+                                "pattern": f"%{topic_lower}%"},
             )
         else:
             result = pd.read_sql(
-                f"SELECT alert_type, severity, title, summary, timestamp "
-                f"FROM alerts WHERE timestamp >= '{cutoff}' "
-                f"ORDER BY timestamp DESC LIMIT 10",
-                engine,
+                _sql_text("SELECT alert_type, severity, title, summary, timestamp "
+                          "FROM alerts WHERE timestamp >= :cutoff "
+                          "ORDER BY timestamp DESC LIMIT 10"),
+                engine, params={"cutoff": cutoff},
             )
 
         if not result.empty:
@@ -862,27 +890,27 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30):
         if brand:
             brand_lower = brand.lower()
             metrics_df = pd.read_sql(
-                f"SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
-                f"WHERE snapshot_date >= '{cutoff_date}' "
-                f"AND scope = 'brand' AND LOWER(scope_name) = '{brand_lower}' "
-                f"ORDER BY snapshot_date",
-                engine,
+                _sql_text("SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
+                          "WHERE snapshot_date >= :cutoff "
+                          "AND scope = 'brand' AND LOWER(scope_name) = :subject "
+                          "ORDER BY snapshot_date"),
+                engine, params={"cutoff": cutoff_date, "subject": brand_lower},
             )
         elif topic:
             topic_lower = topic.lower()
             metrics_df = pd.read_sql(
-                f"SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
-                f"WHERE snapshot_date >= '{cutoff_date}' "
-                f"AND scope = 'topic' AND LOWER(scope_name) = '{topic_lower}' "
-                f"ORDER BY snapshot_date",
-                engine,
+                _sql_text("SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
+                          "WHERE snapshot_date >= :cutoff "
+                          "AND scope = 'topic' AND LOWER(scope_name) = :subject "
+                          "ORDER BY snapshot_date"),
+                engine, params={"cutoff": cutoff_date, "subject": topic_lower},
             )
         else:
             metrics_df = pd.read_sql(
-                f"SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
-                f"WHERE snapshot_date >= '{cutoff_date}' AND scope = 'global' "
-                f"ORDER BY snapshot_date",
-                engine,
+                _sql_text("SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
+                          "WHERE snapshot_date >= :cutoff AND scope = 'global' "
+                          "ORDER BY snapshot_date"),
+                engine, params={"cutoff": cutoff_date},
             )
 
         if not metrics_df.empty:
@@ -907,10 +935,10 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30):
         try:
             brand_lower = brand.lower()
             comp_df = pd.read_sql(
-                f"SELECT snapshot_data FROM competitive_snapshots "
-                f"WHERE LOWER(brand_name) = '{brand_lower}' "
-                f"ORDER BY created_at DESC LIMIT 1",
-                engine,
+                _sql_text("SELECT snapshot_data FROM competitive_snapshots "
+                          "WHERE LOWER(brand_name) = :subject "
+                          "ORDER BY created_at DESC LIMIT 1"),
+                engine, params={"subject": brand_lower},
             )
             if not comp_df.empty:
                 snapshot = comp_df.iloc[0]["snapshot_data"]
@@ -1751,11 +1779,7 @@ with st.sidebar:
     
     st.markdown("---")
 
-    # Brand Watchlist
-    st.header("Brand Watchlist")
-    st.caption("Track brands for autonomous VLDS & mention alerts")
-
-    # Load current watchlist
+    # Brand Watchlist — load data first, then display header with count
     _watchlist_brands = []
     if HAS_DB:
         try:
@@ -1783,6 +1807,9 @@ with st.sidebar:
         except Exception as _wl_err:
             print(f"Watchlist load error: {_wl_err}")
 
+    st.header(f"Brand Watchlist ({len(_watchlist_brands)}/5)")
+    st.caption("Track brands for autonomous VLDS & mention alerts")
+
     if _watchlist_brands:
         for _wb in _watchlist_brands:
             _col_brand, _col_remove = st.columns([3, 1])
@@ -1807,7 +1834,9 @@ with st.sidebar:
     else:
         st.caption("No brands tracked yet")
 
-    if len(_watchlist_brands) < 5:
+    if not has_feature_access(username, "brand_watchlist"):
+        render_upgrade_prompt("Brand Watchlist")
+    elif len(_watchlist_brands) < 5:
         with st.form("add_brand_form", clear_on_submit=True):
             _new_brand = st.text_input("Add a brand", placeholder="e.g. Nike")
             _add_submitted = st.form_submit_button("Add")
@@ -1839,10 +1868,7 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Topic Watchlist
-    st.header("Topic Watchlist")
-    st.caption("Monitor topics for VLDS, mention surges & sentiment shifts")
-
+    # Topic Watchlist — data loaded after categories defined
     _TOPIC_CATEGORIES = [
         "politics", "government", "economics", "education", "culture & identity",
         "branding & advertising", "creative & design", "technology & ai",
@@ -1879,6 +1905,9 @@ with st.sidebar:
         except Exception as _tw_err:
             print(f"Topic watchlist load error: {_tw_err}")
 
+    st.header(f"Topic Watchlist ({len(_watchlist_topics)}/10)")
+    st.caption("Monitor topics for VLDS, mention surges & sentiment shifts")
+
     if _watchlist_topics:
         for _wt_name, _wt_is_cat in _watchlist_topics:
             _col_topic, _col_type, _col_rm = st.columns([2, 1, 1])
@@ -1905,7 +1934,9 @@ with st.sidebar:
     else:
         st.caption("No topics tracked yet")
 
-    if len(_watchlist_topics) < 10:
+    if not has_feature_access(username, "topic_watchlist"):
+        render_upgrade_prompt("Topic Watchlist")
+    elif len(_watchlist_topics) < 10:
         _topic_mode = st.radio("Add by", ["Category", "Custom keyword"], horizontal=True, key="topic_add_mode")
         with st.form("add_topic_form", clear_on_submit=True):
             if _topic_mode == "Category":
@@ -1941,157 +1972,163 @@ with st.sidebar:
 
     # Intelligence Report Generator
     st.header("Intelligence Reports")
-    st.caption("Generate deep-dive reports on any brand or topic")
+    if not has_feature_access(username, "intelligence_reports"):
+        render_upgrade_prompt("Intelligence Reports")
+    else:
+        st.caption("Generate deep-dive reports on any brand or topic")
 
-    # Build options: watched brands + custom topic
-    _report_options = ["Custom topic..."] + _watchlist_brands
-    _report_selection = st.selectbox(
-        "Subject",
-        _report_options,
-        key="report_subject_select",
-    )
-
-    _report_custom_topic = ""
-    if _report_selection == "Custom topic...":
-        _report_custom_topic = st.text_input(
-            "Enter brand or topic",
-            placeholder="e.g. Tesla, AI regulation, tariffs",
-            key="report_custom_topic",
+        # Build options: watched brands + custom topic
+        _report_options = ["Custom topic..."] + _watchlist_brands
+        _report_selection = st.selectbox(
+            "Subject",
+            _report_options,
+            key="report_subject_select",
         )
 
-    _report_days = st.selectbox(
-        "Time period",
-        [7, 14, 30],
-        format_func=lambda d: f"Last {d} days",
-        key="report_days_select",
-    )
+        _report_custom_topic = ""
+        if _report_selection == "Custom topic...":
+            _report_custom_topic = st.text_input(
+                "Enter brand or topic",
+                placeholder="e.g. Tesla, AI regulation, tariffs",
+                key="report_custom_topic",
+            )
 
-    _report_subject = _report_custom_topic.strip() if _report_selection == "Custom topic..." else _report_selection
-    _report_type = "brand" if _report_selection != "Custom topic..." else "topic"
+        _report_days = st.selectbox(
+            "Time period",
+            [7, 14, 30],
+            format_func=lambda d: f"Last {d} days",
+            key="report_days_select",
+        )
 
-    # Email option
-    _report_email = st.checkbox("Email report to me", key="report_email_check")
+        _report_subject = _report_custom_topic.strip() if _report_selection == "Custom topic..." else _report_selection
+        _report_type = "brand" if _report_selection != "Custom topic..." else "topic"
 
-    if st.button("Generate Report", key="generate_report_btn", disabled=not _report_subject):
-        if _report_subject:
-            with st.spinner(f"Generating intelligence report on {_report_subject}..."):
-                try:
-                    from generate_report import generate_intelligence_report, email_report
-                    from db_helper import get_engine as _get_rpt_engine
-                    _rpt_engine = _get_rpt_engine()
-                    _report_text = generate_intelligence_report(
-                        _rpt_engine, _report_subject,
-                        days=_report_days, subject_type=_report_type,
-                    )
-                    st.session_state["last_report"] = _report_text
-                    st.session_state["last_report_subject"] = _report_subject
-                    st.session_state["last_report_days"] = _report_days
+        # Email option
+        _report_email = st.checkbox("Email report to me", key="report_email_check")
 
-                    # Email if requested
-                    if _report_email:
-                        try:
-                            # Get current user's email
-                            from sqlalchemy import text as _rpt_text
-                            with _rpt_engine.connect() as _rpt_conn:
-                                _email_result = _rpt_conn.execute(
-                                    _rpt_text("SELECT email FROM users WHERE username = :u"),
-                                    {"u": username},
-                                )
-                                _user_email_row = _email_result.fetchone()
-                                if _user_email_row and _user_email_row[0]:
-                                    email_report(
-                                        _report_text, _report_subject,
-                                        _user_email_row[0], days=_report_days,
+        if st.button("Generate Report", key="generate_report_btn", disabled=not _report_subject):
+            if _report_subject:
+                with st.spinner(f"Generating intelligence report on {_report_subject}..."):
+                    try:
+                        from generate_report import generate_intelligence_report, email_report
+                        from db_helper import get_engine as _get_rpt_engine
+                        _rpt_engine = _get_rpt_engine()
+                        _report_text = generate_intelligence_report(
+                            _rpt_engine, _report_subject,
+                            days=_report_days, subject_type=_report_type,
+                        )
+                        st.session_state["last_report"] = _report_text
+                        st.session_state["last_report_subject"] = _report_subject
+                        st.session_state["last_report_days"] = _report_days
+
+                        # Email if requested
+                        if _report_email:
+                            try:
+                                # Get current user's email
+                                from sqlalchemy import text as _rpt_text
+                                with _rpt_engine.connect() as _rpt_conn:
+                                    _email_result = _rpt_conn.execute(
+                                        _rpt_text("SELECT email FROM users WHERE username = :u"),
+                                        {"u": username},
                                     )
-                                    st.success(f"Report emailed to {_user_email_row[0]}")
-                                else:
-                                    st.warning("No email on file — report displayed below")
-                        except Exception as _email_err:
-                            st.warning(f"Could not email report: {_email_err}")
+                                    _user_email_row = _email_result.fetchone()
+                                    if _user_email_row and _user_email_row[0]:
+                                        email_report(
+                                            _report_text, _report_subject,
+                                            _user_email_row[0], days=_report_days,
+                                        )
+                                        st.success(f"Report emailed to {_user_email_row[0]}")
+                                    else:
+                                        st.warning("No email on file — report displayed below")
+                            except Exception as _email_err:
+                                st.warning(f"Could not email report: {_email_err}")
 
+                        st.rerun()
+                    except Exception as _rpt_err:
+                        st.error(f"Report generation failed: {_rpt_err}")
+
+        # Display last generated report
+        if "last_report" in st.session_state and st.session_state.get("last_report"):
+            _rpt_subj = st.session_state.get("last_report_subject", "")
+            _rpt_days = st.session_state.get("last_report_days", 7)
+            with st.expander(f"Report: {_rpt_subj} (last {_rpt_days} days)", expanded=True):
+                st.markdown(st.session_state["last_report"])
+                if st.button("Clear report", key="clear_report_btn"):
+                    del st.session_state["last_report"]
                     st.rerun()
-                except Exception as _rpt_err:
-                    st.error(f"Report generation failed: {_rpt_err}")
-
-    # Display last generated report
-    if "last_report" in st.session_state and st.session_state.get("last_report"):
-        _rpt_subj = st.session_state.get("last_report_subject", "")
-        _rpt_days = st.session_state.get("last_report_days", 7)
-        with st.expander(f"Report: {_rpt_subj} (last {_rpt_days} days)", expanded=True):
-            st.markdown(st.session_state["last_report"])
-            if st.button("Clear report", key="clear_report_btn"):
-                del st.session_state["last_report"]
-                st.rerun()
 
     st.markdown("---")
 
     st.header("🎯 Strategic Brief")
-    st.caption("The more detail you provide, the better your brief")
-    
-    brief_product = st.text_input(
-        "Product / Service",
-        help='e.g. "premium running shoe for women"'
-    )
+    if not has_feature_access(username, "strategic_brief"):
+        render_upgrade_prompt("Strategic Brief")
+    else:
+        st.caption("The more detail you provide, the better your brief")
 
-    brief_audience = st.text_input(
-        "Target Audience",
-        help='e.g. "women 25-40, urban, health-conscious"'
-    )
-
-    brief_markets = st.text_input(
-        "Markets / Geography",
-        help='e.g. "US, UK, Canada"'
-    )
-
-    brief_challenge = st.text_input(
-        "Key Challenge",
-        help='e.g. "competing against On and Hoka"'
-    )
-
-    brief_timeline = st.text_input(
-        "Timeline / Budget",
-        help='e.g. "Q1 2025, $2M digital"'
-    )
-    
-    # Combine into user_need
-    user_need_parts = []
-    if brief_product.strip():
-        user_need_parts.append(f"launch/promote {brief_product.strip()}")
-    if brief_audience.strip():
-        user_need_parts.append(f"targeting {brief_audience.strip()}")
-    if brief_markets.strip():
-        user_need_parts.append(f"in {brief_markets.strip()}")
-    if brief_challenge.strip():
-        user_need_parts.append(f"with the challenge of {brief_challenge.strip()}")
-    if brief_timeline.strip():
-        user_need_parts.append(f"timeline/budget: {brief_timeline.strip()}")
-    
-    user_need = ", ".join(user_need_parts) if user_need_parts else ""
-
-    
-    if brief_product.strip():
-        # Show remaining brief credits
-        remaining_credits = get_brief_credits(username)
-        if remaining_credits == -1:
-            st.caption("Brief credits: **Unlimited**")
-        else:
-            st.caption(f"Brief credits remaining: **{remaining_credits}**")
-
-        user_email = st.text_input(
-            "Your email (to receive brief)",
-            placeholder="you@company.com"
+        brief_product = st.text_input(
+            "Product / Service",
+            help='e.g. "premium running shoe for women"'
         )
 
-        if user_email.strip() and st.button("Generate Brief"):
-            # Check brief credits
-            can_generate, limit_msg = can_generate_brief(username)
-            if not can_generate:
-                st.error(f"🔒 {limit_msg}")
+        brief_audience = st.text_input(
+            "Target Audience",
+            help='e.g. "women 25-40, urban, health-conscious"'
+        )
+
+        brief_markets = st.text_input(
+            "Markets / Geography",
+            help='e.g. "US, UK, Canada"'
+        )
+
+        brief_challenge = st.text_input(
+            "Key Challenge",
+            help='e.g. "competing against On and Hoka"'
+        )
+
+        brief_timeline = st.text_input(
+            "Timeline / Budget",
+            help='e.g. "Q1 2025, $2M digital"'
+        )
+
+        # Combine into user_need
+        user_need_parts = []
+        if brief_product.strip():
+            user_need_parts.append(f"launch/promote {brief_product.strip()}")
+        if brief_audience.strip():
+            user_need_parts.append(f"targeting {brief_audience.strip()}")
+        if brief_markets.strip():
+            user_need_parts.append(f"in {brief_markets.strip()}")
+        if brief_challenge.strip():
+            user_need_parts.append(f"with the challenge of {brief_challenge.strip()}")
+        if brief_timeline.strip():
+            user_need_parts.append(f"timeline/budget: {brief_timeline.strip()}")
+
+        user_need = ", ".join(user_need_parts) if user_need_parts else ""
+
+
+        if brief_product.strip():
+            # Show remaining brief credits
+            remaining_credits = get_brief_credits(username)
+            if remaining_credits == -1:
+                st.caption("Brief credits: **Unlimited**")
             else:
-                st.session_state['generate_brief'] = True
-                st.session_state['user_need'] = user_need.strip()
-                st.session_state['user_email'] = user_email.strip()
-                st.session_state['brief_spinner_placeholder'] = st.empty()
+                st.caption(f"Brief credits remaining: **{remaining_credits}**")
+
+            user_email = st.text_input(
+                "Your email (to receive brief)",
+                placeholder="you@company.com"
+            )
+
+            if user_email.strip() and st.button("Generate Brief"):
+                # Check brief credits
+                can_generate, limit_msg = can_generate_brief(username)
+                if not can_generate:
+                    st.error(f"🔒 {limit_msg}")
+                else:
+                    st.session_state['generate_brief'] = True
+                    st.session_state['user_need'] = user_need.strip()
+                    st.session_state['user_email'] = user_email.strip()
+                    st.session_state['brief_spinner_placeholder'] = st.empty()
 
     # Admin panel toggle (admin users only)
     if is_admin:
@@ -2360,7 +2397,7 @@ if compare_mode:
         brands_to_compare.append(compare_brand_3.strip())
     
     if len(brands_to_compare) >= 2:
-        st.markdown("## 🆚 Brand Comparison")
+        st.markdown("### Brand Comparison")
         st.caption(f"Comparing VLDS metrics: {' vs '.join(brands_to_compare)}")
         
         df_compare = load_data()
@@ -2515,7 +2552,7 @@ st.markdown("---")
 # ========================================
 # MOOD VS MARKET COMPARISON
 # ========================================
-st.markdown("## Mood vs Market: Leading Indicators")
+st.markdown("### Mood vs Market")
 st.caption("When mood and markets diverge, that's your signal—opportunity or risk is coming.")
 
 # Check if brand focus is active and search for ticker
@@ -2674,76 +2711,79 @@ st.markdown("---")
 # PREDICTION MARKETS (POLYMARKET)
 # ========================================
 if HAS_POLYMARKET:
-    st.markdown("## Prediction Markets")
-    st.caption("What the money says—prediction market odds vs. social sentiment divergence.")
+    st.markdown("### Prediction Markets")
+    if not has_feature_access(username, "prediction_markets"):
+        render_upgrade_prompt("Prediction Markets")
+    else:
+        st.caption("What the money says—prediction market odds vs. social sentiment divergence.")
 
-    @st.cache_data(ttl=180)  # Cache for 3 minutes
-    def load_polymarket_data():
-        return fetch_polymarket_markets(limit=15, min_volume=5000)
+        @st.cache_data(ttl=180)  # Cache for 3 minutes
+        def load_polymarket_data():
+            return fetch_polymarket_markets(limit=15, min_volume=5000)
 
-    try:
-        polymarket_data = load_polymarket_data()
+        try:
+            polymarket_data = load_polymarket_data()
 
-        if polymarket_data:
-            # Calculate average social sentiment for comparison (normalize from 0-1 to 0-100 scale)
-            if "empathy_score" in df_all.columns and len(df_all) > 0:
-                raw_avg = df_all["empathy_score"].mean()
-                if pd.isna(raw_avg):
-                    avg_social_sentiment = 50
+            if polymarket_data:
+                # Calculate average social sentiment for comparison (normalize from 0-1 to 0-100 scale)
+                if "empathy_score" in df_all.columns and len(df_all) > 0:
+                    raw_avg = df_all["empathy_score"].mean()
+                    if pd.isna(raw_avg):
+                        avg_social_sentiment = 50
+                    else:
+                        avg_social_sentiment = normalize_empathy_score(raw_avg)
                 else:
-                    avg_social_sentiment = normalize_empathy_score(raw_avg)
+                    avg_social_sentiment = 50
+
+                # Display top markets
+                col1, col2 = st.columns([2, 1])
+
+                with col1:
+                    st.markdown("### Top Markets by Volume")
+                    markets_to_show = polymarket_data[:8]
+                    for i, market in enumerate(markets_to_show):
+                        with st.container():
+                            odds_color = "🟢" if market["yes_odds"] > 60 else "🔴" if market["yes_odds"] < 40 else "🟡"
+                            st.markdown(f"**{odds_color} {market['question'][:80]}{'...' if len(market['question']) > 80 else ''}**")
+
+                            mcol1, mcol2, mcol3 = st.columns(3)
+                            with mcol1:
+                                st.metric("Yes", f"{market['yes_odds']:.0f}%")
+                            with mcol2:
+                                st.metric("No", f"{market['no_odds']:.0f}%")
+                            with mcol3:
+                                st.metric("Volume", f"${market['volume']:,.0f}")
+
+                            if i < len(markets_to_show) - 1:
+                                st.markdown("---")
+
+                with col2:
+                    st.markdown("### Market vs. Mood")
+                    st.caption("When prediction markets diverge from social sentiment, opportunities emerge.")
+
+                    # Overall divergence
+                    avg_market_confidence = sum(max(m["yes_odds"], m["no_odds"]) for m in polymarket_data[:8]) / min(8, len(polymarket_data))
+                    divergence_info = calculate_sentiment_divergence(avg_market_confidence, avg_social_sentiment)
+
+                    st.metric("Avg Market Confidence", f"{avg_market_confidence:.0f}%")
+                    st.metric("Avg Social Mood", f"{avg_social_sentiment:.0f}")
+                    st.metric("Divergence", f"{divergence_info['divergence']:.0f} pts", delta=divergence_info['status'])
+                    st.caption(divergence_info['interpretation'])
+
+                    # Click-to-reveal AI explanation
+                    if st.button("🔍 Why this divergence?", key="explain_polymarket_divergence"):
+                        with st.spinner("Analyzing patterns..."):
+                            top_markets = "; ".join([f"{m['question']}: {m['yes_odds']:.0f}% Yes" for m in polymarket_data[:5]])
+                            data_summary = f"Avg Market Confidence: {avg_market_confidence:.0f}%, Avg Social Mood: {avg_social_sentiment:.0f}, Divergence: {divergence_info['divergence']:.0f} pts ({divergence_info['status']})\n\nTop Markets: {top_markets}"
+                            explanation = generate_chart_explanation("polymarket_divergence", data_summary, df_all)
+                            st.info(f"📊 **Insight:**\n\n{explanation}")
+
             else:
-                avg_social_sentiment = 50
+                st.info("📊 Prediction market data unavailable. API may be temporarily down.")
 
-            # Display top markets
-            col1, col2 = st.columns([2, 1])
-
-            with col1:
-                st.markdown("### Top Markets by Volume")
-                markets_to_show = polymarket_data[:8]
-                for i, market in enumerate(markets_to_show):
-                    with st.container():
-                        odds_color = "🟢" if market["yes_odds"] > 60 else "🔴" if market["yes_odds"] < 40 else "🟡"
-                        st.markdown(f"**{odds_color} {market['question'][:80]}{'...' if len(market['question']) > 80 else ''}**")
-
-                        mcol1, mcol2, mcol3 = st.columns(3)
-                        with mcol1:
-                            st.metric("Yes", f"{market['yes_odds']:.0f}%")
-                        with mcol2:
-                            st.metric("No", f"{market['no_odds']:.0f}%")
-                        with mcol3:
-                            st.metric("Volume", f"${market['volume']:,.0f}")
-
-                        if i < len(markets_to_show) - 1:
-                            st.markdown("---")
-
-            with col2:
-                st.markdown("### Market vs. Mood")
-                st.caption("When prediction markets diverge from social sentiment, opportunities emerge.")
-
-                # Overall divergence
-                avg_market_confidence = sum(max(m["yes_odds"], m["no_odds"]) for m in polymarket_data[:8]) / min(8, len(polymarket_data))
-                divergence_info = calculate_sentiment_divergence(avg_market_confidence, avg_social_sentiment)
-
-                st.metric("Avg Market Confidence", f"{avg_market_confidence:.0f}%")
-                st.metric("Avg Social Mood", f"{avg_social_sentiment:.0f}")
-                st.metric("Divergence", f"{divergence_info['divergence']:.0f} pts", delta=divergence_info['status'])
-                st.caption(divergence_info['interpretation'])
-
-                # Click-to-reveal AI explanation
-                if st.button("🔍 Why this divergence?", key="explain_polymarket_divergence"):
-                    with st.spinner("Analyzing patterns..."):
-                        top_markets = "; ".join([f"{m['question']}: {m['yes_odds']:.0f}% Yes" for m in polymarket_data[:5]])
-                        data_summary = f"Avg Market Confidence: {avg_market_confidence:.0f}%, Avg Social Mood: {avg_social_sentiment:.0f}, Divergence: {divergence_info['divergence']:.0f} pts ({divergence_info['status']})\n\nTop Markets: {top_markets}"
-                        explanation = generate_chart_explanation("polymarket_divergence", data_summary, df_all)
-                        st.info(f"📊 **Insight:**\n\n{explanation}")
-
-        else:
-            st.info("📊 Prediction market data unavailable. API may be temporarily down.")
-
-    except Exception as e:
-        st.info(f"📊 Prediction markets: Unable to load data")
-        print(f"Polymarket error: {e}")
+        except Exception as e:
+            st.info(f"📊 Prediction markets: Unable to load data")
+            print(f"Polymarket error: {e}")
 
 # ========================================
 # INTELLIGENCE ALERTS
@@ -2900,39 +2940,39 @@ st.markdown("---")
 # COMPETITIVE WAR ROOM
 # ========================================
 st.markdown("### Competitive War Room")
-st.caption("Comparative intelligence across your watched brands and their competitors.")
+_has_warroom_access = has_feature_access(username, "competitive_war_room")
+if not _has_warroom_access:
+    render_upgrade_prompt("Competitive War Room")
+else:
+    st.caption("Comparative intelligence across your watched brands and their competitors.")
 
 _warroom_rendered = False
-if HAS_DB and _watchlist_brands:
+if _has_warroom_access and HAS_DB and _watchlist_brands:
     try:
         from db_helper import get_engine as _get_wr_engine
         _wr_engine = _get_wr_engine()
         if _wr_engine:
             from sqlalchemy import text as _wr_text
-            from competitor_discovery import get_cached_competitors
+            from competitor_discovery import get_all_cached_competitors, get_all_latest_snapshots
+            import json as _wr_json
+
+            # Batch-load all competitors and snapshots (eliminates N+1 queries)
+            _all_competitors = get_all_cached_competitors(_wr_engine, _watchlist_brands)
+            _all_snapshots = get_all_latest_snapshots(_wr_engine, _watchlist_brands)
 
             for _wr_brand in _watchlist_brands:
-                _wr_competitors = get_cached_competitors(_wr_engine, _wr_brand)
+                _wr_competitors = _all_competitors.get(_wr_brand, [])
                 if not _wr_competitors:
                     continue
 
                 _warroom_rendered = True
                 with st.expander(f"📊 {_wr_brand} vs {len(_wr_competitors)} competitors", expanded=False):
-                    # Load latest snapshot
+                    # Use batch-loaded snapshot
                     _wr_snapshot = None
                     try:
-                        import json as _wr_json
-                        _wr_snap_result = _wr_engine.connect().execute(
-                            _wr_text("""
-                                SELECT snapshot_data FROM competitive_snapshots
-                                WHERE brand_name = :brand
-                                ORDER BY created_at DESC LIMIT 1
-                            """),
-                            {"brand": _wr_brand},
-                        )
-                        _wr_snap_row = _wr_snap_result.fetchone()
-                        if _wr_snap_row:
-                            _wr_snapshot = _wr_json.loads(_wr_snap_row[0])
+                        _wr_snap_raw = _all_snapshots.get(_wr_brand)
+                        if _wr_snap_raw:
+                            _wr_snapshot = _wr_json.loads(_wr_snap_raw)
                     except Exception:
                         pass
 
@@ -3024,7 +3064,7 @@ if HAS_DB and _watchlist_brands:
     except Exception as _wr_err:
         print(f"War Room error: {_wr_err}")
 
-if not _warroom_rendered:
+if _has_warroom_access and not _warroom_rendered:
     if _watchlist_brands:
         st.caption("Competitive data will appear after the next pipeline run discovers competitors for your watched brands.")
     else:
@@ -3121,7 +3161,7 @@ st.markdown("---")
 # ========================================
 # SECTION 2: DETAILED ANALYSIS
 # ========================================
-st.markdown("## Detailed Analysis (Last 7 Days)")
+st.markdown("### Detailed Analysis")
 
 df_filtered = df_48h.copy()
 
@@ -3918,9 +3958,10 @@ st.markdown("---")
 # INTELLIGENCE DASHBOARD
 # ========================================
 st.markdown("### 🎯 Intelligence Dashboard")
-st.caption("IC-level threat analysis with geographic hotspots and trend detection")
-
-if 'intensity' in df_all.columns and 'country' in df_all.columns:
+_has_intel_dash_access = has_feature_access(username, "intelligence_dashboard")
+if not _has_intel_dash_access:
+    render_upgrade_prompt("Intelligence Dashboard")
+elif 'intensity' in df_all.columns and 'country' in df_all.columns:
     
     col1, col2 = st.columns([1, 2])
     
@@ -4035,19 +4076,23 @@ if st.session_state.get('generate_brief'):
 # ========================================
 st.markdown("---")
 st.header("💬 Ask Moodlight")
-st.caption("Ask questions about the data, trends, or get strategic recommendations")
+_has_ask_access = has_feature_access(username, "ask_moodlight")
+if not _has_ask_access:
+    render_upgrade_prompt("Ask Moodlight")
 
 # Initialize chat history
 if "chat_messages" not in st.session_state:
     st.session_state.chat_messages = []
 
 # Display chat history
-for message in st.session_state.chat_messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+if _has_ask_access:
+    st.caption("Ask questions about the data, trends, or get strategic recommendations")
+    for message in st.session_state.chat_messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
 # Chat input
-if prompt := st.chat_input("Ask a question about the data..."):
+if _has_ask_access and (prompt := st.chat_input("Ask a question about the data...")):
     # Add user message to history
     st.session_state.chat_messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -4503,7 +4548,7 @@ When users share written content, respond conversationally — provide feedback,
             st.session_state.chat_messages.append({"role": "assistant", "content": assistant_message})
 
 # Clear chat button
-if st.session_state.chat_messages:
+if _has_ask_access and st.session_state.chat_messages:
     if st.button("🗑️ Clear chat"):
         st.session_state.chat_messages = []
         st.rerun()

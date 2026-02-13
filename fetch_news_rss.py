@@ -121,30 +121,7 @@ FEEDS: List[tuple[str, str]] = [
     ("NFL News", "https://www.nfl.com/rss/rsslanding?searchString=home"),
     ("NBA News", "https://www.nba.com/feed.xml"),
 
-    ("TechCrunch", "http://feeds.feedburner.com/TechCrunch/"),
-    ("The Verge", "https://www.theverge.com/rss/index.xml"),
-
-    # REDDIT
-    ("Reddit World News", "https://www.reddit.com/r/worldnews/.rss"),
-    ("Reddit Uplifting News", "https://www.reddit.com/r/UpliftingNews/.rss"),
-    ("Reddit News", "https://www.reddit.com/r/news/.rss"),
-    
-    # Fashion/Luxury Reddit
-    
-    # Marketing/Advertising Reddit
-    ("Reddit Marketing", "https://www.reddit.com/r/marketing/.rss"),
-    ("Reddit Advertising", "https://www.reddit.com/r/advertising/.rss"),
-    ("Reddit PPC", "https://www.reddit.com/r/PPC/.rss"),
-    
-    # Business/Finance Reddit
-    ("Reddit Business", "https://www.reddit.com/r/business/.rss"),
-    ("Reddit Stocks", "https://www.reddit.com/r/stocks/.rss"),
-    ("Reddit Investing", "https://www.reddit.com/r/investing/.rss"),
-    
-    # Tech Reddit
-    ("Reddit Technology", "https://www.reddit.com/r/technology/.rss"),
-    ("Reddit Apple", "https://www.reddit.com/r/apple/.rss"),
-    ("Reddit Android", "https://www.reddit.com/r/Android/.rss"),
+    # (TechCrunch, The Verge, Reddit consolidated in later sections)
     
     # Business/Finance Trade
     ("Business Insider", "https://www.businessinsider.com/rss"),
@@ -153,8 +130,7 @@ FEEDS: List[tuple[str, str]] = [
     ("Entrepreneur", "https://www.entrepreneur.com/latest.rss"),
     ("Forbes", "https://www.forbes.com/innovation/feed/"),
     
-    # Retail/Consumer
-    ("Retail Dive", "https://www.retaildive.com/feeds/news/"),
+    # Retail/Consumer (Retail Dive consolidated in later section)
     ("Modern Retail", "https://www.modernretail.co/feed/"),
     ("Glossy", "https://www.glossy.co/feed/"),
     
@@ -167,8 +143,6 @@ FEEDS: List[tuple[str, str]] = [
     ("Ragan", "https://www.ragan.com/feed/"),
 
     # E-commerce/DTC
-    ("Retail Dive", "https://www.retaildive.com/feeds/news/"),
-    ("Modern Retail", "https://www.modernretail.co/feed/"),
     ("Practical Ecommerce", "https://www.practicalecommerce.com/feed"),
     ("Digital Commerce 360", "https://www.digitalcommerce360.com/feed/"),
     ("2PM", "https://2pml.com/feed/"),
@@ -189,9 +163,7 @@ FEEDS: List[tuple[str, str]] = [
     # Nutrition/Food Industry
     ("Food Dive", "https://www.fooddive.com/feeds/news/"),
     
-    # Sustainability/Climate
-    ("GreenBiz", "https://www.greenbiz.com/rss"),
-    ("CleanTechnica", "https://cleantechnica.com/feed/"),
+    # Sustainability/Climate (GreenBiz, CleanTechnica consolidated in later sections)
     ("Carbon Brief", "https://www.carbonbrief.org/feed"),
 
     # Culture/Lifestyle/Trends
@@ -209,19 +181,15 @@ FEEDS: List[tuple[str, str]] = [
     ("Creative Review", "https://www.creativereview.co.uk/feed/"),
     ("Communication Arts", "https://www.commarts.com/feed"),
     
-    # Music/Entertainment
+    # Music/Entertainment (Variety, Hollywood Reporter, Deadline consolidated later)
     ("Pitchfork", "https://pitchfork.com/feed/feed-news/rss"),
     ("Rolling Stone", "https://www.rollingstone.com/feed/"),
-    ("Variety", "https://variety.com/feed/"),
-    ("The Hollywood Reporter", "https://www.hollywoodreporter.com/feed/"),
-    ("Deadline", "https://deadline.com/feed/"),
     
     
     # Parenting/Family
     ("Fatherly", "https://www.fatherly.com/feed"),
     
-    # Travel/Hospitality
-    ("Skift", "https://skift.com/feed/"),
+    # Travel/Hospitality (Skift consolidated in later section)
     
     # Real Estate/Home
     ("Curbed", "https://www.curbed.com/rss/index.xml"),
@@ -246,14 +214,12 @@ FEEDS: List[tuple[str, str]] = [
     ("Korea Times", "https://www.koreatimes.co.kr/www/rss/rss.xml"),
     ("MindBodyGreen Alt", "https://news.google.com/rss/search?q=mindbodygreen&hl=en-US"),
     ("Triple Pundit", "https://www.triplepundit.com/feed"),
-    ("GreenBiz", "https://www.greenbiz.com/feed"),
     ("Bustle", "https://www.bustle.com/rss"),
     ("Eye on Design Alt", "https://news.google.com/rss/search?q=graphic+design+trends&hl=en-US"),
     ("Condé Nast Traveler", "https://www.cntraveler.com/feed/rss"),
     ("The Points Guy", "https://thepointsguy.com/feed/"),
     ("Domino", "https://www.domino.com/feed"),
     ("Game Informer", "https://www.gameinformer.com/rss.xml"),
-    ("Finextra", "https://www.finextra.com/rss/headlines.aspx"),
     ("The Grio", "https://thegrio.com/feed/"),
 
     # Industry/Trade Publications
@@ -264,7 +230,6 @@ FEEDS: List[tuple[str, str]] = [
     ("Jalopnik", "https://jalopnik.com/rss"),
     ("Engadget", "https://www.engadget.com/rss.xml"),
     ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index"),
-    ("Wired", "https://www.wired.com/feed/rss"),
     ("Wired", "https://www.wired.com/feed/rss"),
 
     # Reddit - Popular Subreddits
@@ -278,6 +243,32 @@ FEEDS: List[tuple[str, str]] = [
     ("Reddit Economics", "https://www.reddit.com/r/economics/.rss"),
     ("Reddit Futurology", "https://www.reddit.com/r/Futurology/.rss"),
     ("Reddit Brands", "https://www.reddit.com/r/brands/.rss"),
+    ("Reddit UpliftingNews", "https://www.reddit.com/r/UpliftingNews/.rss"),
+    ("Reddit PPC", "https://www.reddit.com/r/PPC/.rss"),
+    ("Reddit Investing", "https://www.reddit.com/r/investing/.rss"),
+    ("Reddit Apple", "https://www.reddit.com/r/Apple/.rss"),
+    ("Reddit Android", "https://www.reddit.com/r/Android/.rss"),
+    # Reddit - Consumer Sentiment
+    ("Reddit Personal Finance", "https://www.reddit.com/r/personalfinance/.rss"),
+    ("Reddit Frugal", "https://www.reddit.com/r/Frugal/.rss"),
+    # Reddit - Culture & Entertainment
+    ("Reddit Pop Culture", "https://www.reddit.com/r/popculture/.rss"),
+    ("Reddit Movies", "https://www.reddit.com/r/movies/.rss"),
+    ("Reddit Gaming", "https://www.reddit.com/r/gaming/.rss"),
+    ("Reddit Television", "https://www.reddit.com/r/television/.rss"),
+    # Reddit - Policy & Legal
+    ("Reddit Politics", "https://www.reddit.com/r/politics/.rss"),
+    ("Reddit Law", "https://www.reddit.com/r/law/.rss"),
+    # Reddit - Health & Environment
+    ("Reddit Health", "https://www.reddit.com/r/health/.rss"),
+    ("Reddit Environment", "https://www.reddit.com/r/environment/.rss"),
+    ("Reddit Climate", "https://www.reddit.com/r/climate/.rss"),
+    # Reddit - Housing
+    ("Reddit Real Estate", "https://www.reddit.com/r/RealEstate/.rss"),
+    # Reddit - Labor
+    ("Reddit Antiwork", "https://www.reddit.com/r/antiwork/.rss"),
+    ("Reddit Career Guidance", "https://www.reddit.com/r/careerguidance/.rss"),
+    ("Reddit Jobs", "https://www.reddit.com/r/jobs/.rss"),
 
     # Wire Services & Financial News
     ("PR Newswire", "https://www.prnewswire.com/rss/news-releases-list.rss"),
@@ -290,6 +281,9 @@ FEEDS: List[tuple[str, str]] = [
 
     # Government & Policy
     ("SEC Press Releases", "https://www.sec.gov/news/pressreleases.rss"),
+    ("SEC 8-K Filings", "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&dateb=&owner=include&count=40&search_text=&action=getcurrent&output=atom"),
+    ("SEC 10-K Annual Reports", "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=10-K&dateb=&owner=include&count=20&search_text=&action=getcurrent&output=atom"),
+    ("SEC 10-Q Quarterly Reports", "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=10-Q&dateb=&owner=include&count=20&search_text=&action=getcurrent&output=atom"),
     ("Federal Reserve", "https://www.federalreserve.gov/feeds/press_all.xml"),
     ("FTC News", "https://www.ftc.gov/feeds/press-release-consumer-protection.xml"),
     
@@ -297,8 +291,6 @@ FEEDS: List[tuple[str, str]] = [
     ("Bloomberg Markets", "https://feeds.bloomberg.com/markets/news.rss"),
     ("Financial Times", "https://www.ft.com/rss/home"),
     ("Fortune", "https://fortune.com/feed/"),
-    ("Inc Magazine", "https://www.inc.com/rss/"),
-    ("Fast Company", "https://www.fastcompany.com/latest/rss"),
     
     # PR & Marketing Industry
     ("PRWeek", "https://www.prweek.com/rss"),
@@ -1045,7 +1037,7 @@ TOPIC_KEYWORDS = {
     "media & journalism": ["media", "journalism", "reporter", "press", "headline", "newspaper"],
     "race & ethnicity": ["race", "racism", "ethnicity", "minority", "black", "asian", "discrimination"],
     "gender & sexuality": ["gender", "feminist", "lgbtq", "queer", "trans", "women", "abortion"],
-    "business & corporate": ["business", "company", "ceo", "merger", "earnings", "profit", "revenue", "corporate"],
+    "business & corporate": ["business", "company", "ceo", "merger", "earnings", "profit", "revenue", "corporate", "filing", "8-k", "10-k", "10-q", "sec", "shareholder", "annual report", "quarterly report"],
     "labor & work": ["labor", "union", "strike", "worker", "job", "wage", "employment", "unemployment"],
     "housing": ["housing", "rent", "landlord", "mortgage", "eviction", "real estate", "property"],
     "religion & values": ["religion", "church", "faith", "spiritual", "bible", "religious", "muslim", "christian"],

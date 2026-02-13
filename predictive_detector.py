@@ -38,6 +38,11 @@ def ensure_metric_snapshots_table(engine):
                 UNIQUE(snapshot_date, scope, scope_name, metric_name)
             )
         """))
+        try:
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_metric_snapshots_date ON metric_snapshots (snapshot_date)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_metric_snapshots_scope ON metric_snapshots (scope, scope_name)"))
+        except Exception:
+            pass
         conn.commit()
 
 

@@ -83,6 +83,19 @@ def ensure_tables(engine):
             ))
         except Exception:
             pass  # Column already exists or DB doesn't support IF NOT EXISTS
+        # Performance indexes for persistent tables
+        for idx_sql in [
+            "CREATE INDEX IF NOT EXISTS idx_alerts_timestamp ON alerts (timestamp)",
+            "CREATE INDEX IF NOT EXISTS idx_alerts_brand ON alerts (brand)",
+            "CREATE INDEX IF NOT EXISTS idx_alerts_topic ON alerts (topic)",
+            "CREATE INDEX IF NOT EXISTS idx_alerts_username ON alerts (username)",
+            "CREATE INDEX IF NOT EXISTS idx_brand_watchlist_username ON brand_watchlist (username)",
+            "CREATE INDEX IF NOT EXISTS idx_topic_watchlist_username ON topic_watchlist (username)",
+        ]:
+            try:
+                conn.execute(text(idx_sql))
+            except Exception:
+                pass
         conn.commit()
     print("DB tables verified")
 
@@ -97,7 +110,8 @@ def load_data(engine):
 
     try:
         df_news = pd.read_sql(
-            f"SELECT * FROM news_scored WHERE created_at >= '{cutoff}'", engine
+            text("SELECT * FROM news_scored WHERE created_at >= :cutoff"),
+            engine, params={"cutoff": cutoff},
         )
         if not df_news.empty and "created_at" in df_news.columns:
             df_news["created_at"] = pd.to_datetime(
@@ -109,7 +123,8 @@ def load_data(engine):
 
     try:
         df_social = pd.read_sql(
-            f"SELECT * FROM social_scored WHERE created_at >= '{cutoff}'", engine
+            text("SELECT * FROM social_scored WHERE created_at >= :cutoff"),
+            engine, params={"cutoff": cutoff},
         )
         if not df_social.empty and "created_at" in df_social.columns:
             df_social["created_at"] = pd.to_datetime(
@@ -121,7 +136,8 @@ def load_data(engine):
 
     try:
         df_markets = pd.read_sql(
-            f"SELECT * FROM markets WHERE latest_trading_day >= '{cutoff}'", engine
+            text("SELECT * FROM markets WHERE latest_trading_day >= :cutoff"),
+            engine, params={"cutoff": cutoff},
         )
         print(f"  Loaded {len(df_markets)} market rows")
     except Exception as e:

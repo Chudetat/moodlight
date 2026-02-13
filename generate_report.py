@@ -63,18 +63,20 @@ def prepare_report_context(engine, subject, days=7, subject_type="brand"):
     news_df = pd.DataFrame()
     social_df = pd.DataFrame()
 
+    from sqlalchemy import text as sql_text
+
     try:
         if subject_type == "brand":
             news_df = pd.read_sql(
-                f"SELECT * FROM news_scored WHERE created_at >= '{cutoff_date}' "
-                f"AND LOWER(text) LIKE '%{subject_lower}%'",
-                engine,
+                sql_text("SELECT * FROM news_scored WHERE created_at >= :cutoff "
+                         "AND LOWER(text) LIKE :pattern"),
+                engine, params={"cutoff": cutoff_date, "pattern": f"%{subject_lower}%"},
             )
         else:
             news_df = pd.read_sql(
-                f"SELECT * FROM news_scored WHERE created_at >= '{cutoff_date}' "
-                f"AND LOWER(topic) LIKE '%{subject_lower}%'",
-                engine,
+                sql_text("SELECT * FROM news_scored WHERE created_at >= :cutoff "
+                         "AND LOWER(topic) LIKE :pattern"),
+                engine, params={"cutoff": cutoff_date, "pattern": f"%{subject_lower}%"},
             )
     except Exception as e:
         print(f"  Could not load news data: {e}")
@@ -82,15 +84,15 @@ def prepare_report_context(engine, subject, days=7, subject_type="brand"):
     try:
         if subject_type == "brand":
             social_df = pd.read_sql(
-                f"SELECT * FROM social_scored WHERE created_at >= '{cutoff_date}' "
-                f"AND LOWER(text) LIKE '%{subject_lower}%'",
-                engine,
+                sql_text("SELECT * FROM social_scored WHERE created_at >= :cutoff "
+                         "AND LOWER(text) LIKE :pattern"),
+                engine, params={"cutoff": cutoff_date, "pattern": f"%{subject_lower}%"},
             )
         else:
             social_df = pd.read_sql(
-                f"SELECT * FROM social_scored WHERE created_at >= '{cutoff_date}' "
-                f"AND LOWER(topic) LIKE '%{subject_lower}%'",
-                engine,
+                sql_text("SELECT * FROM social_scored WHERE created_at >= :cutoff "
+                         "AND LOWER(topic) LIKE :pattern"),
+                engine, params={"cutoff": cutoff_date, "pattern": f"%{subject_lower}%"},
             )
     except Exception as e:
         print(f"  Could not load social data: {e}")
@@ -156,19 +158,20 @@ def prepare_report_context(engine, subject, days=7, subject_type="brand"):
     try:
         if subject_type == "brand":
             alerts_df = pd.read_sql(
-                f"SELECT alert_type, severity, title, summary, timestamp "
-                f"FROM alerts WHERE timestamp >= '{cutoff}' "
-                f"AND (LOWER(brand) = '{subject_lower}' OR LOWER(title) LIKE '%{subject_lower}%') "
-                f"ORDER BY timestamp DESC LIMIT 15",
-                engine,
+                sql_text("SELECT alert_type, severity, title, summary, timestamp "
+                         "FROM alerts WHERE timestamp >= :cutoff "
+                         "AND (LOWER(brand) = :subject OR LOWER(title) LIKE :pattern) "
+                         "ORDER BY timestamp DESC LIMIT 15"),
+                engine, params={"cutoff": cutoff, "subject": subject_lower,
+                                "pattern": f"%{subject_lower}%"},
             )
         else:
             alerts_df = pd.read_sql(
-                f"SELECT alert_type, severity, title, summary, timestamp "
-                f"FROM alerts WHERE timestamp >= '{cutoff}' "
-                f"AND LOWER(title) LIKE '%{subject_lower}%' "
-                f"ORDER BY timestamp DESC LIMIT 15",
-                engine,
+                sql_text("SELECT alert_type, severity, title, summary, timestamp "
+                         "FROM alerts WHERE timestamp >= :cutoff "
+                         "AND LOWER(title) LIKE :pattern "
+                         "ORDER BY timestamp DESC LIMIT 15"),
+                engine, params={"cutoff": cutoff, "pattern": f"%{subject_lower}%"},
             )
 
         if not alerts_df.empty:
@@ -197,18 +200,18 @@ def prepare_report_context(engine, subject, days=7, subject_type="brand"):
     try:
         if subject_type == "brand":
             metrics_df = pd.read_sql(
-                f"SELECT * FROM metric_snapshots "
-                f"WHERE snapshot_date >= '{cutoff_date}' "
-                f"AND scope = 'brand' AND LOWER(scope_name) = '{subject_lower}' "
-                f"ORDER BY snapshot_date",
-                engine,
+                sql_text("SELECT * FROM metric_snapshots "
+                         "WHERE snapshot_date >= :cutoff "
+                         "AND scope = 'brand' AND LOWER(scope_name) = :subject "
+                         "ORDER BY snapshot_date"),
+                engine, params={"cutoff": cutoff_date, "subject": subject_lower},
             )
         else:
             metrics_df = pd.read_sql(
-                f"SELECT * FROM metric_snapshots "
-                f"WHERE snapshot_date >= '{cutoff_date}' AND scope = 'global' "
-                f"ORDER BY snapshot_date",
-                engine,
+                sql_text("SELECT * FROM metric_snapshots "
+                         "WHERE snapshot_date >= :cutoff AND scope = 'global' "
+                         "ORDER BY snapshot_date"),
+                engine, params={"cutoff": cutoff_date},
             )
 
         if not metrics_df.empty:
@@ -236,10 +239,10 @@ def prepare_report_context(engine, subject, days=7, subject_type="brand"):
     if subject_type == "brand":
         try:
             competitive_df = pd.read_sql(
-                f"SELECT * FROM competitive_snapshots "
-                f"WHERE LOWER(brand_name) = '{subject_lower}' "
-                f"ORDER BY created_at DESC LIMIT 1",
-                engine,
+                sql_text("SELECT * FROM competitive_snapshots "
+                         "WHERE LOWER(brand_name) = :subject "
+                         "ORDER BY created_at DESC LIMIT 1"),
+                engine, params={"subject": subject_lower},
             )
             if not competitive_df.empty:
                 row = competitive_df.iloc[0]

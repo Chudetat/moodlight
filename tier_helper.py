@@ -5,6 +5,28 @@ from sqlalchemy import create_engine, text
 
 load_dotenv()
 
+# All paid tiers get full access (professional/enterprise no longer offered but existing subscribers kept)
+ACTIVE_TIERS = ("monthly", "annually", "professional", "enterprise")
+
+TIER_FEATURES = {
+    "competitive_war_room": ACTIVE_TIERS,
+    "intelligence_reports": ACTIVE_TIERS,
+    "ask_moodlight": ACTIVE_TIERS,
+    "intelligence_dashboard": ACTIVE_TIERS,
+    "prediction_markets": ACTIVE_TIERS,
+    "strategic_brief": ACTIVE_TIERS,
+    "brand_watchlist": ACTIVE_TIERS,
+    "topic_watchlist": ACTIVE_TIERS,
+    "brand_focus": ACTIVE_TIERS,
+    "competitive_tracking": ACTIVE_TIERS,
+}
+
+TIER_LIMITS = {
+    "brand_watchlist_max": {tier: 5 for tier in ACTIVE_TIERS},
+    "topic_watchlist_max": {tier: 10 for tier in ACTIVE_TIERS},
+}
+
+
 def get_db_engine():
     return create_engine(os.getenv("DATABASE_URL"))
 
@@ -64,18 +86,20 @@ def get_brief_credits(username: str) -> int:
     return user["brief_credits"]
 
 def has_feature_access(username: str, feature: str) -> bool:
-    """Check if user has access to a feature"""
+    """Check if user has access to a feature based on their tier"""
     user = get_user_tier(username)
     tier = user["tier"]
-
-    # All active tiers get all features
-    features = {
-        "brand_focus": ["monthly", "annually", "professional", "enterprise"],
-        "competitive_tracking": ["monthly", "annually", "professional", "enterprise"],
-    }
-
-    allowed_tiers = features.get(feature, [])
+    allowed_tiers = TIER_FEATURES.get(feature, ACTIVE_TIERS)
     return tier in allowed_tiers
+
+
+def get_tier_limit(username: str, limit_name: str) -> int:
+    """Get a numeric limit for a user's tier (e.g. brand_watchlist_max).
+    Returns 0 if user's tier has no access."""
+    user = get_user_tier(username)
+    tier = user["tier"]
+    limits = TIER_LIMITS.get(limit_name, {})
+    return limits.get(tier, 0)
 
 def update_user_tier(username: str, tier: str, stripe_customer_id: str = None, stripe_subscription_id: str = None):
     """Update user tier after Stripe payment"""
