@@ -49,6 +49,15 @@ def save_to_db(csv_path: str, table_name: str):
         return
 
     engine = create_db_engine(db_url)
+
+    # Pipeline run tracking
+    run_id = None
+    try:
+        from alert_pipeline import start_pipeline_run, complete_pipeline_run
+        run_id = start_pipeline_run(engine, f"save_to_db_{table_name}")
+    except Exception:
+        pass
+
     df = pd.read_csv(csv_path)
 
     print(f"📊 Loaded {len(df)} rows from {csv_path}")
@@ -82,6 +91,11 @@ def save_to_db(csv_path: str, table_name: str):
             df_clean.to_sql(table_name, engine, if_exists="replace", index=False, chunksize=25)
             print(f"✅ Data saved to PostgreSQL table: {table_name}")
 
+            try:
+                complete_pipeline_run(engine, run_id, "success", len(df_clean))
+            except Exception:
+                pass
+
             # Add performance indexes (to_sql with replace drops them each run)
             try:
                 with engine.connect() as idx_conn:
@@ -105,6 +119,10 @@ def save_to_db(csv_path: str, table_name: str):
                 engine = create_db_engine(db_url)
             else:
                 print(f"❌ All {MAX_RETRIES} attempts failed. Database may be unreachable.")
+                try:
+                    complete_pipeline_run(engine, run_id, "failed", 0, str(e)[:500])
+                except Exception:
+                    pass
                 raise
 
 

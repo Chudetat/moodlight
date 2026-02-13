@@ -10,7 +10,7 @@ import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 from session_manager import create_session, validate_session, clear_session
-from tier_helper import get_user_tier, can_generate_brief, decrement_brief_credits, has_feature_access, get_brief_credits, get_tier_limit, ACTIVE_TIERS, get_user_preferences, update_user_preferences
+from tier_helper import get_user_tier, can_generate_brief, decrement_brief_credits, has_feature_access, get_brief_credits, get_tier_limit, ACTIVE_TIERS, get_user_preferences, update_user_preferences, log_user_event
 try:
     from polymarket_helper import fetch_polymarket_markets, calculate_sentiment_divergence
     HAS_POLYMARKET = True
@@ -117,6 +117,10 @@ STRIPE_ANNUAL_LINK = os.getenv("STRIPE_ANNUAL_LINK", "")
 STRIPE_PORTAL_LINK = os.getenv("STRIPE_PORTAL_LINK", "")
 
 # Sidebar welcome and logout
+if not st.session_state.get("has_seen_welcome"):
+    st.session_state["has_seen_welcome"] = True
+    st.toast(f"Welcome to Moodlight, {name}!", icon="👋")
+    log_user_event(username, "login")
 st.sidebar.write(f'Welcome *{name}*')
 _user_tier_info = get_user_tier(username)
 _current_tier = _user_tier_info["tier"]
@@ -1575,7 +1579,7 @@ def render_admin_panel():
     customers = _load_all_customers(engine)
     customer_emails = [c[0] for c in customers]
 
-    tab1, tab2, tab3, tab4 = st.tabs(["Customers", "Add Customer", "Add Credits", "Edit / Delete"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Customers", "Add Customer", "Add Credits", "Edit / Delete", "Pipeline Health", "Analytics"])
 
     # --- TAB 1: Customer List ---
     with tab1:
@@ -1767,6 +1771,104 @@ def render_admin_panel():
         else:
             st.info("No customers found.")
 
+    # --- TAB 5: Pipeline Health ---
+    with tab5:
+        st.subheader("Pipeline Runs")
+        try:
+            _ph_df = pd.read_sql(sql_text("""
+                SELECT pipeline_name, status, row_count,
+                       started_at, completed_at,
+                       EXTRACT(EPOCH FROM (completed_at - started_at)) AS duration_sec,
+                       LEFT(error_message, 100) AS error_preview
+                FROM pipeline_runs
+                ORDER BY started_at DESC
+                LIMIT 20
+            """), engine)
+            if not _ph_df.empty:
+                _ph_df["duration"] = _ph_df["duration_sec"].apply(
+                    lambda s: f"{s:.0f}s" if pd.notna(s) else "running..."
+                )
+                st.dataframe(
+                    _ph_df[["pipeline_name", "status", "row_count", "duration", "started_at", "error_preview"]],
+                    use_container_width=True, hide_index=True,
+                )
+            else:
+                st.info("No pipeline runs recorded yet.")
+        except Exception as _ph_err:
+            st.warning(f"Could not load pipeline runs: {_ph_err}")
+
+    # --- TAB 6: Analytics ---
+    with tab6:
+        st.subheader("User Analytics")
+        try:
+            # Active users
+            _au_7d = pd.read_sql(sql_text("""
+                SELECT COUNT(DISTINCT username) FROM user_events
+                WHERE created_at >= NOW() - INTERVAL '7 days'
+            """), engine).iloc[0, 0]
+            _au_30d = pd.read_sql(sql_text("""
+                SELECT COUNT(DISTINCT username) FROM user_events
+                WHERE created_at >= NOW() - INTERVAL '30 days'
+            """), engine).iloc[0, 0]
+            _mc1, _mc2 = st.columns(2)
+            _mc1.metric("Active Users (7d)", int(_au_7d))
+            _mc2.metric("Active Users (30d)", int(_au_30d))
+
+            # Feature usage
+            st.subheader("Feature Usage")
+            _fu_df = pd.read_sql(sql_text("""
+                SELECT event_type, COUNT(*) AS total, COUNT(DISTINCT username) AS unique_users
+                FROM user_events
+                WHERE created_at >= NOW() - INTERVAL '30 days'
+                GROUP BY event_type
+                ORDER BY total DESC
+            """), engine)
+            if not _fu_df.empty:
+                st.dataframe(_fu_df, use_container_width=True, hide_index=True)
+
+            # Last activity per user
+            st.subheader("Last Activity")
+            _la_df = pd.read_sql(sql_text("""
+                SELECT username, MAX(created_at) AS last_active,
+                       COUNT(*) AS total_events
+                FROM user_events
+                GROUP BY username
+                ORDER BY last_active DESC
+            """), engine)
+            if not _la_df.empty:
+                _la_df["status"] = _la_df["last_active"].apply(
+                    lambda d: "At Risk" if (datetime.now(timezone.utc) - d.replace(tzinfo=timezone.utc)).days >= 14 else "Active"
+                )
+                st.dataframe(_la_df, use_container_width=True, hide_index=True)
+
+            # Feature adoption from watchlists
+            st.subheader("Feature Adoption")
+            _fa_data = {}
+            try:
+                _fa_data["Brand Watchlist Users"] = pd.read_sql(sql_text(
+                    "SELECT COUNT(DISTINCT username) FROM brand_watchlist"
+                ), engine).iloc[0, 0]
+            except Exception:
+                pass
+            try:
+                _fa_data["Topic Watchlist Users"] = pd.read_sql(sql_text(
+                    "SELECT COUNT(DISTINCT username) FROM topic_watchlist"
+                ), engine).iloc[0, 0]
+            except Exception:
+                pass
+            try:
+                _fa_data["Alert Feedback Users"] = pd.read_sql(sql_text(
+                    "SELECT COUNT(DISTINCT username) FROM alert_feedback"
+                ), engine).iloc[0, 0]
+            except Exception:
+                pass
+            if _fa_data:
+                _fa_cols = st.columns(len(_fa_data))
+                for _idx, (_k, _v) in enumerate(_fa_data.items()):
+                    _fa_cols[_idx].metric(_k, int(_v))
+        except Exception as _an_err:
+            st.warning(f"Could not load analytics: {_an_err}")
+
 
 with st.sidebar:
     st.header("Controls")
@@ -1792,6 +1894,9 @@ with st.sidebar:
         compare_brand_1 = st.text_input("Brand 1", placeholder="e.g. Nike")
         compare_brand_2 = st.text_input("Brand 2", placeholder="e.g. Adidas")
         compare_brand_3 = st.text_input("Brand 3 (optional)", placeholder="e.g. Puma")
+
+    _time_range = st.selectbox("Time range", [7, 30, 60, 90],
+        format_func=lambda d: f"Last {d} days", key="dashboard_time_range")
 
     if st.button("Refresh"):
         with st.spinner("Fetching & scoring..."):
@@ -1858,7 +1963,7 @@ with st.sidebar:
                     except Exception as _rm_err:
                         st.error(f"Could not remove: {_rm_err}")
     else:
-        st.caption("No brands tracked yet")
+        st.info("Add your first brand below to unlock VLDS tracking, competitor analysis, and personalized alerts.", icon="👇")
 
     if not has_feature_access(username, "brand_watchlist"):
         render_upgrade_prompt("Brand Watchlist")
@@ -1878,6 +1983,7 @@ with st.sidebar:
                                 {"u": username, "b": _new_brand.strip()},
                             )
                             _add_conn.commit()
+                        log_user_event(username, "add_brand", _new_brand.strip())
                         # Trigger competitor discovery immediately
                         try:
                             from competitor_discovery import ensure_competitor_tables, ensure_competitors_cached
@@ -1958,7 +2064,7 @@ with st.sidebar:
                     except Exception as _trm_err:
                         st.error(f"Could not remove: {_trm_err}")
     else:
-        st.caption("No topics tracked yet")
+        st.info("Add a topic to monitor sentiment shifts, mention surges, and trend signals.", icon="👇")
 
     if not has_feature_access(username, "topic_watchlist"):
         render_upgrade_prompt("Topic Watchlist")
@@ -1988,11 +2094,33 @@ with st.sidebar:
                                 {"u": username, "t": _new_topic.strip(), "is_cat": _new_is_category},
                             )
                             _ta_conn.commit()
+                    log_user_event(username, "add_topic", _new_topic.strip())
                     st.rerun()
                 except Exception as _ta_err:
                     st.error(f"Could not add: {_ta_err}")
     else:
         st.caption("Maximum 10 topics reached")
+
+    st.markdown("---")
+
+    # Getting Started checklist
+    if not st.session_state.get("onboarding_dismissed"):
+        _has_brands = len(_watchlist_brands) > 0
+        _has_topics = len(_watchlist_topics) > 0
+        _has_report = bool(st.session_state.get("last_report"))
+        _has_chat = len(st.session_state.get("chat_messages", [])) > 0
+        _done_count = sum([_has_brands, _has_topics, _has_report, _has_chat])
+        if _done_count < 4:
+            with st.expander(f"Getting Started ({_done_count}/4)", expanded=(_done_count == 0)):
+                st.checkbox("Add a brand to your watchlist", value=_has_brands, disabled=True)
+                st.checkbox("Add a topic to your watchlist", value=_has_topics, disabled=True)
+                st.checkbox("Generate an intelligence report", value=_has_report, disabled=True)
+                st.checkbox("Ask Moodlight a question", value=_has_chat, disabled=True)
+                if st.button("Dismiss checklist", key="dismiss_onboarding"):
+                    st.session_state["onboarding_dismissed"] = True
+                    st.rerun()
+        else:
+            st.session_state["onboarding_dismissed"] = True
 
     st.markdown("---")
 
@@ -2034,6 +2162,7 @@ with st.sidebar:
 
         if st.button("Generate Report", key="generate_report_btn", disabled=not _report_subject):
             if _report_subject:
+                log_user_event(username, "generate_report", _report_subject)
                 with st.spinner(f"Generating intelligence report on {_report_subject}..."):
                     try:
                         from generate_report import generate_intelligence_report, email_report
@@ -2160,6 +2289,7 @@ with st.sidebar:
                 if not can_generate:
                     st.error(f"🔒 {limit_msg}")
                 else:
+                    log_user_event(username, "generate_brief", user_need.strip())
                     st.session_state['generate_brief'] = True
                     st.session_state['user_need'] = user_need.strip()
                     st.session_state['user_email'] = user_email.strip()
@@ -2177,6 +2307,40 @@ if is_admin and st.session_state.get("admin_panel_active"):
 
 # Load all data once
 df_all = load_data()
+
+# Stale data warning
+@st.cache_data(ttl=300)
+def _check_pipeline_freshness():
+    """Check if pipeline data is stale."""
+    try:
+        from db_helper import get_engine as _fresh_engine
+        _fe = _fresh_engine()
+        if not _fe:
+            return {}
+        with _fe.connect() as conn:
+            rows = conn.execute(sql_text("""
+                SELECT DISTINCT ON (pipeline_name)
+                    pipeline_name, status, completed_at
+                FROM pipeline_runs
+                WHERE status = 'success'
+                ORDER BY pipeline_name, started_at DESC
+            """)).fetchall()
+            return {r[0]: r[2] for r in rows if r[2]}
+    except Exception:
+        return {}
+
+_freshness = _check_pipeline_freshness()
+if _freshness:
+    _now = datetime.now(timezone.utc)
+    _stale_warnings = []
+    for _pname, _completed in _freshness.items():
+        _age_h = (_now - _completed.replace(tzinfo=timezone.utc)).total_seconds() / 3600
+        if "news" in _pname and _age_h > 2:
+            _stale_warnings.append(f"News data is {_age_h:.0f}h old")
+        elif "social" in _pname and _age_h > 10:
+            _stale_warnings.append(f"Social data is {_age_h:.0f}h old")
+    if _stale_warnings:
+        st.warning(f"Data may be stale: {'; '.join(_stale_warnings)}. Pipelines may be delayed.")
 
 if df_all.empty:
     st.sidebar.caption("Data: 0 rows")
@@ -4125,6 +4289,65 @@ if st.session_state.get('generate_brief'):
     st.session_state['generate_brief'] = False
 
 # ========================================
+# HISTORICAL TRENDS (30/60/90 day views)
+# ========================================
+if _time_range > 7:
+    st.markdown("---")
+    st.header("Historical Trends")
+    st.info("Dashboard charts above show the latest 7 days of live data. Below are longer-range views from daily metric snapshots.")
+    try:
+        from db_helper import load_metric_trends
+
+        # Global mood trend
+        _gmt = load_metric_trends("global", metric_name="avg_empathy_news", days=_time_range)
+        if not _gmt.empty:
+            st.subheader("Global Mood Trend")
+            _gmt["snapshot_date"] = pd.to_datetime(_gmt["snapshot_date"])
+            st.line_chart(_gmt.set_index("snapshot_date")["metric_value"], use_container_width=True)
+
+            # Month-over-month delta
+            if len(_gmt) >= 2:
+                _mid = len(_gmt) // 2
+                _recent_avg = _gmt.iloc[_mid:]["metric_value"].mean()
+                _prior_avg = _gmt.iloc[:_mid]["metric_value"].mean()
+                _delta = _recent_avg - _prior_avg
+                _delta_pct = (_delta / _prior_avg * 100) if _prior_avg else 0
+                st.metric("Mood Trend", f"{_recent_avg:.2f}",
+                          delta=f"{_delta_pct:+.1f}% vs prior period")
+        else:
+            st.caption("No global mood snapshots available yet. Data accumulates daily.")
+
+        # Brand trends
+        if _watchlist_brands:
+            st.subheader("Brand Trends")
+            for _tb in _watchlist_brands:
+                _bt = load_metric_trends("brand", scope_name=_tb, days=_time_range)
+                if not _bt.empty:
+                    with st.expander(f"{_tb}"):
+                        _bt["snapshot_date"] = pd.to_datetime(_bt["snapshot_date"])
+                        _pivoted = _bt.pivot_table(index="snapshot_date", columns="metric_name", values="metric_value")
+                        st.line_chart(_pivoted, use_container_width=True)
+                else:
+                    st.caption(f"No trend data for {_tb} yet")
+
+        # Topic trends
+        if _watchlist_topics:
+            st.subheader("Topic Trends")
+            for _tt_name, _tt_cat in _watchlist_topics:
+                _scope = "topic"
+                _ttt = load_metric_trends(_scope, scope_name=_tt_name, days=_time_range)
+                if not _ttt.empty:
+                    with st.expander(f"{_tt_name}"):
+                        _ttt["snapshot_date"] = pd.to_datetime(_ttt["snapshot_date"])
+                        _pivoted = _ttt.pivot_table(index="snapshot_date", columns="metric_name", values="metric_value")
+                        st.line_chart(_pivoted, use_container_width=True)
+                else:
+                    st.caption(f"No trend data for {_tt_name} yet")
+
+    except Exception as _ht_err:
+        st.caption(f"Historical trends unavailable: {_ht_err}")
+
+# ========================================
 # CHAT WITH YOUR DATA
 # ========================================
 st.markdown("---")
@@ -4140,12 +4363,15 @@ if "chat_messages" not in st.session_state:
 # Display chat history
 if _has_ask_access:
     st.caption("Ask questions about the data, trends, or get strategic recommendations")
+    if not st.session_state.chat_messages:
+        st.info("Try: 'What brands are gaining momentum this week?'", icon="💡")
     for message in st.session_state.chat_messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
 # Chat input
 if _has_ask_access and (prompt := st.chat_input("Ask a question about the data...")):
+    log_user_event(username, "ask_moodlight", prompt[:200])
     # Add user message to history
     st.session_state.chat_messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):

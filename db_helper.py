@@ -38,6 +38,42 @@ def save_df_to_db(df, table_name):
         print(f"DB error: {e}")
         return False
 
+def load_metric_trends(scope: str, scope_name: str = None, metric_name: str = None, days: int = 30):
+    """Load historical metric trends from metric_snapshots.
+
+    Parameters:
+        scope: 'global', 'brand', or 'topic'
+        scope_name: brand/topic name (None for global)
+        metric_name: specific metric or None for all
+        days: lookback window (7, 30, 60, 90)
+
+    Returns DataFrame with snapshot_date, metric_name, metric_value, sample_size.
+    """
+    engine = get_engine()
+    if not engine:
+        return pd.DataFrame()
+    try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+        conditions = ["scope = :scope", "snapshot_date >= :cutoff"]
+        params = {"scope": scope, "cutoff": cutoff}
+        if scope_name:
+            conditions.append("scope_name = :scope_name")
+            params["scope_name"] = scope_name
+        if metric_name:
+            conditions.append("metric_name = :metric_name")
+            params["metric_name"] = metric_name
+        where = " AND ".join(conditions)
+        query = sql_text(f"""
+            SELECT snapshot_date, metric_name, metric_value, sample_size
+            FROM metric_snapshots
+            WHERE {where}
+            ORDER BY snapshot_date ASC
+        """)
+        return pd.read_sql(query, engine, params=params)
+    except Exception:
+        return pd.DataFrame()
+
+
 def load_df_from_db(table_name):
     """Load data from database, filtered to last 7 days only.
 

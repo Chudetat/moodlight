@@ -164,7 +164,36 @@ async def create_portal_session(request: Request):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    from datetime import datetime, timezone
+    result = {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat(), "pipelines": {}}
+    try:
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            rows = conn.execute(text("""
+                SELECT DISTINCT ON (pipeline_name)
+                    pipeline_name, status, row_count, started_at, completed_at
+                FROM pipeline_runs
+                ORDER BY pipeline_name, started_at DESC
+            """)).fetchall()
+            for row in rows:
+                name, status, row_count, started_at, completed_at = row
+                age_hours = None
+                if completed_at:
+                    age_hours = round((datetime.now(timezone.utc) - completed_at.replace(tzinfo=timezone.utc)).total_seconds() / 3600, 1)
+                result["pipelines"][name] = {
+                    "status": status,
+                    "row_count": row_count,
+                    "last_run": started_at.isoformat() if started_at else None,
+                    "age_hours": age_hours,
+                }
+            # Mark degraded if any pipeline failed or is stale
+            for p in result["pipelines"].values():
+                if p["status"] == "failed" or (p["age_hours"] and p["age_hours"] > 25):
+                    result["status"] = "degraded"
+                    break
+    except Exception:
+        pass
+    return result
 
 if __name__ == "__main__":
     import uvicorn

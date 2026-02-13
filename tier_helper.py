@@ -147,6 +147,20 @@ def update_user_preferences(username: str, **kwargs):
         conn.commit()
 
 
+def log_user_event(username: str, event_type: str, event_data: str = None):
+    """Fire-and-forget event logging. Never raises."""
+    try:
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            conn.execute(text("""
+                INSERT INTO user_events (username, event_type, event_data)
+                VALUES (:username, :event_type, :event_data)
+            """), {"username": username, "event_type": event_type, "event_data": event_data})
+            conn.commit()
+    except Exception:
+        pass
+
+
 def update_user_tier(username: str, tier: str, stripe_customer_id: str = None, stripe_subscription_id: str = None):
     """Update user tier after Stripe payment"""
     engine = get_db_engine()
