@@ -1883,6 +1883,32 @@ def render_admin_panel():
                 except Exception as e:
                     st.error(f"Failed to update tier: {e}")
 
+            # Edit extra seats
+            st.markdown("---")
+            st.subheader("Team Seats")
+            try:
+                _current_seats = 0
+                with engine.connect() as _seats_conn:
+                    _seats_row = _seats_conn.execute(sql_text(
+                        "SELECT extra_seats FROM users WHERE email = :email"
+                    ), {"email": edit_email}).fetchone()
+                    if _seats_row:
+                        _current_seats = _seats_row[0] or 0
+                st.caption(f"Current extra seats: **{_current_seats}**")
+                with st.form("admin_edit_seats"):
+                    _new_seats = st.number_input("Extra seats", min_value=0, max_value=50, value=_current_seats)
+                    _seats_submitted = st.form_submit_button("Update Seats")
+                if _seats_submitted:
+                    with engine.connect() as _seats_conn:
+                        _seats_conn.execute(sql_text("""
+                            UPDATE users SET extra_seats = :seats, updated_at = CURRENT_TIMESTAMP
+                            WHERE email = :email
+                        """), {"email": edit_email, "seats": _new_seats})
+                        _seats_conn.commit()
+                    st.success(f"Updated {edit_email} to **{_new_seats}** extra seats.")
+            except Exception as _seats_err:
+                st.warning(f"Could not load/update seats: {_seats_err}")
+
             # Delete customer
             st.markdown("---")
             st.subheader("Delete Customer")
