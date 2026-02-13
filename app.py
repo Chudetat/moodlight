@@ -11,7 +11,10 @@ except:
 if HAS_DB:
     try:
         from alert_pipeline import ensure_tables as _ensure_tables
-        _ensure_tables()
+        from db_helper import get_engine as _get_startup_engine
+        _startup_engine = _get_startup_engine()
+        if _startup_engine:
+            _ensure_tables(_startup_engine)
     except Exception:
         pass
 import streamlit_authenticator as stauth
