@@ -39,6 +39,173 @@ def get_cancelled_subscriber_emails():
         print(f"Could not query subscriber status: {e}")
         return None  # Send to full EMAIL_RECIPIENT list
 
+def _build_brief_html(brief_text):
+    """Convert brief plain text to styled HTML matching alert email format."""
+    import re
+
+    date_str = datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC")
+
+    # Parse sections from the brief text
+    sections_html = []
+    current_section = None
+    current_lines = []
+
+    for line in brief_text.split("\n"):
+        # Detect section headers (ALL CAPS lines, optionally with colons)
+        stripped = line.strip()
+        if (stripped and re.match(r'^[A-Z][A-Z &\-/]+:?\s*$', stripped)
+                and len(stripped) > 3 and stripped not in ("DATA:", "FORMAT:")):
+            # Save previous section
+            if current_section:
+                sections_html.append(_format_brief_section(current_section, current_lines))
+            current_section = stripped.rstrip(":")
+            current_lines = []
+        elif stripped.startswith("DAILY INTELLIGENCE BRIEF"):
+            # Skip the title line — we render our own header
+            continue
+        elif stripped.startswith("===") or stripped.startswith("---"):
+            continue
+        else:
+            current_lines.append(line)
+
+    # Save last section
+    if current_section:
+        sections_html.append(_format_brief_section(current_section, current_lines))
+    elif current_lines:
+        # No sections detected — render as single block
+        content = "\n".join(current_lines).strip()
+        content_html = _markdown_to_html(content)
+        sections_html.append(
+            f'<div style="margin: 15px 0;">'
+            f'<p style="font-size: 15px; color: #333; line-height: 1.6;">{content_html}</p>'
+            f'</div>'
+        )
+
+    body = "\n".join(sections_html)
+
+    return f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
+        <div style="border-left: 4px solid #1976D2; padding-left: 15px; margin-bottom: 20px;">
+          <span style="background: #1976D2; color: white; padding: 2px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+            INTELLIGENCE BRIEF
+          </span>
+          <h2 style="margin: 10px 0 5px 0; color: #333;">Daily Intelligence Brief</h2>
+          <p style="color: #666; margin: 0;">{date_str}</p>
+        </div>
+
+        {body}
+
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px;">
+          Moodlight Intelligence Platform — Executive Brief<br>
+          <a href="https://moodlight.up.railway.app" style="color: #1976D2;">View Dashboard</a>
+        </p>
+      </body>
+    </html>
+    """
+
+
+def _format_brief_section(title, lines):
+    """Format a single section of the brief as styled HTML."""
+    content = "\n".join(lines).strip()
+    if not content:
+        return ""
+
+    # Section color coding
+    section_colors = {
+        "KEY THREATS": "#DC143C",
+        "WATCH LIST": "#FFB300",
+        "EMERGING PATTERNS": "#1976D2",
+        "RECOMMENDED ACTIONS": "#2E7D32",
+    }
+    color = section_colors.get(title, "#1976D2")
+
+    content_html = _markdown_to_html(content)
+
+    return (
+        f'<div style="margin: 20px 0;">'
+        f'<div style="border-left: 3px solid {color}; padding-left: 12px; margin-bottom: 8px;">'
+        f'<h3 style="margin: 0; color: {color}; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">{title}</h3>'
+        f'</div>'
+        f'<div style="background: #fafafa; padding: 12px 15px; border-radius: 8px;">'
+        f'<div style="font-size: 15px; color: #333; line-height: 1.6;">{content_html}</div>'
+        f'</div>'
+        f'</div>'
+    )
+
+
+def _markdown_to_html(text):
+    """Convert basic markdown patterns to HTML for email rendering."""
+    import re
+
+    # Bold: **text**
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+
+    # Numbered list items: "1. text" → styled list
+    text = re.sub(
+        r'^(\d+)\.\s+(.+)$',
+        r'<div style="margin: 6px 0; padding-left: 8px;">'
+        r'<span style="color: #999; font-size: 13px;">\1.</span> \2</div>',
+        text,
+        flags=re.MULTILINE,
+    )
+
+    # Bullet items: "- text" → styled bullets
+    text = re.sub(
+        r'^[-•]\s+(.+)$',
+        r'<div style="margin: 4px 0; padding-left: 12px;">'
+        r'<span style="color: #999;">&#8226;</span> \1</div>',
+        text,
+        flags=re.MULTILINE,
+    )
+
+    # Tags: [NEW], [ONGOING], [HIGH CONFIDENCE], etc.
+    def _style_tag(m):
+        tag = m.group(1)
+        if tag in ("NEW",):
+            return f'<span style="background: #E8F5E9; color: #2E7D32; padding: 1px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">{tag}</span>'
+        elif tag in ("ONGOING",):
+            return f'<span style="background: #FFF3E0; color: #E65100; padding: 1px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">{tag}</span>'
+        elif "CONFIDENCE" in tag:
+            return f'<span style="background: #E3F2FD; color: #1565C0; padding: 1px 6px; border-radius: 3px; font-size: 11px;">{tag}</span>'
+        elif tag in ("IMMEDIATE", "SHORT-TERM", "MONITOR"):
+            return f'<span style="background: #F3E5F5; color: #7B1FA2; padding: 1px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">{tag}</span>'
+        return f'<span style="background: #ECEFF1; color: #546E7A; padding: 1px 6px; border-radius: 3px; font-size: 11px;">{tag}</span>'
+
+    text = re.sub(r'\[([A-Z][A-Z \-]+?)\]', _style_tag, text)
+
+    # Arrows
+    text = text.replace("↑", '<span style="color: #DC143C;">&#8593;</span>')
+    text = text.replace("↓", '<span style="color: #2E7D32;">&#8595;</span>')
+
+    # Preserve paragraph breaks
+    text = re.sub(r'\n\s*\n', '</p><p style="margin: 8px 0;">', text)
+    text = text.replace("\n", "<br>")
+
+    return text
+
+
+def _get_subscriber_emails_for_brief():
+    """Get all subscriber emails from the users table for brief delivery."""
+    db_url = os.getenv("DATABASE_URL", "")
+    if not db_url:
+        return []
+    try:
+        from sqlalchemy import create_engine, text
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT email FROM users
+                WHERE email IS NOT NULL AND email != ''
+            """))
+            return [row[0] for row in result.fetchall()]
+    except Exception as e:
+        print(f"Could not query subscriber emails: {e}")
+        return []
+
+
 def send_email_brief(brief_text):
     """Send intelligence brief via email to each recipient individually.
     Cancelled subscribers are filtered out; everyone else passes through."""
@@ -46,45 +213,34 @@ def send_email_brief(brief_text):
     recipients_str = os.getenv("EMAIL_RECIPIENT", "")
     password = os.getenv("EMAIL_PASSWORD")
 
-    if not all([sender, recipients_str, password]):
+    if not all([sender, password]):
         print("Email credentials not configured. Skipping email.")
         return False
 
-    # Split recipients by comma and clean whitespace
-    recipients = [r.strip() for r in recipients_str.split(",") if r.strip()]
+    # Build recipient list: DB subscribers + env var, deduplicated
+    env_recipients = [r.strip() for r in recipients_str.split(",") if r.strip()]
+    db_subscribers = _get_subscriber_emails_for_brief()
+    all_emails = set(e.lower() for e in env_recipients)
+    all_emails.update(e.lower() for e in db_subscribers if e)
 
-    if not recipients:
-        print("No valid recipients found. Skipping email.")
+    if not all_emails:
+        print("No recipients found (DB or env var). Skipping email.")
         return False
 
-    # Remove cancelled subscribers only — everyone else passes through
+    # Remove cancelled subscribers
     cancelled_emails = get_cancelled_subscriber_emails()
-    if cancelled_emails is not None and cancelled_emails:
-        original_count = len(recipients)
-        recipients = [r for r in recipients if r.lower() not in cancelled_emails]
-        filtered_count = original_count - len(recipients)
-        if filtered_count > 0:
-            print(f"Filtered out {filtered_count} cancelled subscriber(s)")
-        if not recipients:
-            print("All recipients are cancelled. Skipping email.")
-            return False
+    if cancelled_emails:
+        all_emails -= cancelled_emails
 
-    # Create HTML content once (same for all recipients)
-    html = f"""
-    <html>
-      <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
-        <h2 style="color: #1f77b4;">Daily Intelligence Brief</h2>
-        <pre style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; color: #000;">
-{brief_text}
-        </pre>
-        <hr>
-        <p style="color: #666; font-size: 12px;">
-          Generated by Moodlight Intelligence Platform<br>
-          {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}
-        </p>
-      </body>
-    </html>
-    """
+    recipients = list(all_emails)
+    if not recipients:
+        print("All recipients are cancelled. Skipping email.")
+        return False
+
+    print(f"Sending brief to {len(recipients)} active recipient(s)")
+
+    # Convert brief text to styled HTML matching alert email format
+    html = _build_brief_html(brief_text)
 
     success_count = 0
     try:
@@ -94,7 +250,7 @@ def send_email_brief(brief_text):
             for recipient in recipients:
                 # Create fresh message for each recipient
                 msg = MIMEMultipart('alternative')
-                msg['Subject'] = f'Intelligence Brief - {datetime.now(timezone.utc).strftime("%B %d, %Y")}'
+                msg['Subject'] = f'[Moodlight Brief] \U0001f4ca Daily Intelligence Brief — {datetime.now(timezone.utc).strftime("%B %d, %Y")}'
                 msg['From'] = sender
                 msg['To'] = recipient  # Only this recipient visible
                 msg.attach(MIMEText(html, 'html'))
