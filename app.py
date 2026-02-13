@@ -591,105 +591,9 @@ def normalize_empathy_score(avg: float) -> int:
         score = int(round(85 + (avg - 0.30) / 0.70 * 15))
     return min(100, max(0, score))
 # -------------------------------
-# Brand-Specific VLDS Calculation
+# Brand-Specific VLDS Calculation (imported from shared helper)
 # -------------------------------
-def calculate_brand_vlds(df: pd.DataFrame) -> dict:
-    """Calculate VLDS metrics for a filtered brand dataset"""
-    
-    if df.empty or len(df) < 5:
-        return None
-    
-    results = {}
-    total_posts = len(df)
-    
-    if 'created_at' in df.columns:
-        df_copy = df.copy()
-        df_copy['date'] = df_copy['created_at'].dt.date
-        daily_counts = df_copy.groupby('date').size()
-        
-        if len(daily_counts) >= 2:
-            recent = daily_counts.tail(2).mean()
-            older = daily_counts.head(max(1, len(daily_counts) - 2)).mean()
-            velocity = (recent / older) if older > 0 else 1.0
-            velocity_score = min(velocity / 2.0, 1.0)
-        else:
-            velocity_score = 0.5
-        results['velocity'] = round(velocity_score, 2)
-        results['velocity_label'] = 'Rising Fast' if velocity_score > 0.7 else 'Stable' if velocity_score > 0.4 else 'Declining'
-        results['velocity_insight'] = f"Conversation is {'accelerating' if velocity_score > 0.7 else 'steady' if velocity_score > 0.4 else 'slowing down'} compared to earlier periods"
-    
-    if 'created_at' in df.columns:
-        unique_days = df_copy['date'].nunique()
-        longevity_score = min(unique_days / 7.0, 1.0)
-        results['longevity'] = round(longevity_score, 2)
-        results['longevity_label'] = 'Sustained' if longevity_score > 0.7 else 'Moderate' if longevity_score > 0.4 else 'Flash'
-        results['longevity_insight'] = f"Coverage spans {unique_days} day{'s' if unique_days != 1 else ''} — {'a lasting narrative' if longevity_score > 0.7 else 'moderate staying power' if longevity_score > 0.4 else 'likely a short-term spike'}"
-    
-    if 'source' in df.columns:
-        source_count = df['source'].nunique()
-        post_count = len(df)
-        density_score = min(post_count / 100.0, 1.0)
-        results['density'] = round(density_score, 2)
-        results['density_label'] = 'Saturated' if density_score > 0.7 else 'Moderate' if density_score > 0.3 else 'White Space'
-        results['density_insight'] = f"{post_count} posts across {source_count} sources — {'crowded, hard to break through' if density_score > 0.7 else 'room to grow presence' if density_score > 0.3 else 'wide open for thought leadership'}"
-    
-    if 'topic' in df.columns:
-        topic_counts = df['topic'].value_counts()
-        
-        # Top narratives with percentages
-        top_topics_detailed = []
-        for topic, count in topic_counts.head(5).items():
-            pct = (count / total_posts) * 100
-            top_topics_detailed.append({
-                'topic': topic,
-                'count': count,
-                'percentage': round(pct, 1)
-            })
-        results['top_topics_detailed'] = top_topics_detailed
-        
-        # White space: topics with <10% share, filtered for relevance
-        irrelevant_topics = ['other', 'religion & values', 'race & ethnicity', 'gender & sexuality']
-        scarce_topics_detailed = []
-        for topic, count in topic_counts.items():
-            pct = (count / total_posts) * 100
-            if pct < 10 and topic.lower() not in irrelevant_topics:
-                scarce_topics_detailed.append({
-                    'topic': topic,
-                    'count': count,
-                    'percentage': round(pct, 1)
-                })
-        results['scarce_topics_detailed'] = scarce_topics_detailed[:5]
-        
-        results['scarcity'] = round(1.0 - results.get('density', 0.5), 2)
-        results['scarcity_label'] = 'High Opportunity' if results['scarcity'] > 0.7 else 'Some Opportunity' if results['scarcity'] > 0.4 else 'Crowded'
-    
-    # Dominant emotions with percentages
-    if 'emotion_top_1' in df.columns:
-        emotion_counts = df['emotion_top_1'].value_counts()
-        top_emotions_detailed = []
-        for emotion, count in emotion_counts.head(5).items():
-            pct = (count / total_posts) * 100
-            top_emotions_detailed.append({
-                'emotion': emotion,
-                'count': count,
-                'percentage': round(pct, 1)
-            })
-        results['top_emotions_detailed'] = top_emotions_detailed
-        
-        # Emotion insight
-        if top_emotions_detailed:
-            dominant = top_emotions_detailed[0]
-            results['emotion_insight'] = f"The dominant emotional tone is {dominant['emotion']} ({dominant['percentage']}% of coverage)"
-    
-    # Calculate empathy score for brand
-    if "empathy_score" in df.columns:
-        avg_empathy = df["empathy_score"].mean()
-        results["empathy_score"] = round(avg_empathy, 3)
-        results["empathy_label"] = empathy_label_from_score(avg_empathy)
-    
-    results['total_posts'] = total_posts
-    
-    return results
+from vlds_helper import calculate_brand_vlds
 
 # -------------------------------
 # UI
@@ -1688,7 +1592,87 @@ with st.sidebar:
         st.rerun()
     
     st.markdown("---")
-    
+
+    # Brand Watchlist
+    st.header("Brand Watchlist")
+    st.caption("Track brands for autonomous VLDS & mention alerts")
+
+    # Load current watchlist
+    _watchlist_brands = []
+    if HAS_DB:
+        try:
+            from db_helper import get_engine as _get_wl_engine
+            _wl_engine = _get_wl_engine()
+            if _wl_engine:
+                from sqlalchemy import text as _wl_text
+                with _wl_engine.connect() as _wl_conn:
+                    # Ensure table exists
+                    _wl_conn.execute(_wl_text("""
+                        CREATE TABLE IF NOT EXISTS brand_watchlist (
+                            id SERIAL PRIMARY KEY,
+                            username VARCHAR(100) NOT NULL,
+                            brand_name VARCHAR(200) NOT NULL,
+                            created_at TIMESTAMPTZ DEFAULT NOW(),
+                            UNIQUE(username, brand_name)
+                        )
+                    """))
+                    _wl_conn.commit()
+                    _wl_result = _wl_conn.execute(
+                        _wl_text("SELECT brand_name FROM brand_watchlist WHERE username = :u ORDER BY created_at"),
+                        {"u": username},
+                    )
+                    _watchlist_brands = [row[0] for row in _wl_result.fetchall()]
+        except Exception as _wl_err:
+            print(f"Watchlist load error: {_wl_err}")
+
+    if _watchlist_brands:
+        for _wb in _watchlist_brands:
+            _col_brand, _col_remove = st.columns([3, 1])
+            with _col_brand:
+                st.markdown(f"**{_wb}**")
+            with _col_remove:
+                if st.button("✕", key=f"remove_brand_{_wb}"):
+                    try:
+                        from db_helper import get_engine as _get_rm_engine
+                        _rm_engine = _get_rm_engine()
+                        if _rm_engine:
+                            from sqlalchemy import text as _rm_text
+                            with _rm_engine.connect() as _rm_conn:
+                                _rm_conn.execute(
+                                    _rm_text("DELETE FROM brand_watchlist WHERE username = :u AND brand_name = :b"),
+                                    {"u": username, "b": _wb},
+                                )
+                                _rm_conn.commit()
+                        st.rerun()
+                    except Exception as _rm_err:
+                        st.error(f"Could not remove: {_rm_err}")
+    else:
+        st.caption("No brands tracked yet")
+
+    if len(_watchlist_brands) < 5:
+        with st.form("add_brand_form", clear_on_submit=True):
+            _new_brand = st.text_input("Add a brand", placeholder="e.g. Nike")
+            _add_submitted = st.form_submit_button("Add")
+            if _add_submitted and _new_brand.strip():
+                try:
+                    from db_helper import get_engine as _get_add_engine
+                    _add_engine = _get_add_engine()
+                    if _add_engine:
+                        from sqlalchemy import text as _add_text
+                        with _add_engine.connect() as _add_conn:
+                            _add_conn.execute(
+                                _add_text("INSERT INTO brand_watchlist (username, brand_name) VALUES (:u, :b) ON CONFLICT DO NOTHING"),
+                                {"u": username, "b": _new_brand.strip()},
+                            )
+                            _add_conn.commit()
+                    st.rerun()
+                except Exception as _add_err:
+                    st.error(f"Could not add: {_add_err}")
+    else:
+        st.caption("Maximum 5 brands reached")
+
+    st.markdown("---")
+
     st.header("🎯 Strategic Brief")
     st.caption("The more detail you provide, the better your brief")
     
@@ -2408,6 +2392,79 @@ if HAS_POLYMARKET:
     except Exception as e:
         st.info(f"📊 Prediction markets: Unable to load data")
         print(f"Polymarket error: {e}")
+
+# ========================================
+# INTELLIGENCE ALERTS
+# ========================================
+st.markdown("### Intelligence Alerts")
+st.caption("Autonomous anomaly detection — Moodlight watches so you don't have to.")
+
+_alerts_loaded = False
+_alert_rows = []
+if HAS_DB:
+    try:
+        from db_helper import get_engine as _get_alert_engine
+        _alert_engine = _get_alert_engine()
+        if _alert_engine:
+            from sqlalchemy import text as _alert_text
+            _alert_cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+            with _alert_engine.connect() as _alert_conn:
+                # Load global alerts + this user's brand alerts
+                _alert_result = _alert_conn.execute(
+                    _alert_text("""
+                        SELECT timestamp, alert_type, severity, title, summary,
+                               investigation, brand, username
+                        FROM alerts
+                        WHERE timestamp > :cutoff
+                          AND (username IS NULL OR username = :user)
+                        ORDER BY timestamp DESC
+                        LIMIT 10
+                    """),
+                    {"cutoff": _alert_cutoff, "user": username},
+                )
+                _alert_rows = _alert_result.fetchall()
+                _alerts_loaded = True
+    except Exception as _alert_err:
+        print(f"Alert load error: {_alert_err}")
+
+if _alerts_loaded and _alert_rows:
+    import json as _alert_json
+    _severity_icons = {"critical": "🔴", "warning": "🟡", "info": "🔵"}
+    for _ar in _alert_rows:
+        _a_ts, _a_type, _a_sev, _a_title, _a_summary, _a_investigation, _a_brand, _a_user = _ar
+        _a_icon = _severity_icons.get(_a_sev, "🔵")
+        _a_brand_tag = f" [{_a_brand}]" if _a_brand else ""
+        _a_time_str = ""
+        if _a_ts:
+            try:
+                _a_dt = pd.to_datetime(_a_ts, utc=True)
+                _a_ago = datetime.now(timezone.utc) - _a_dt.to_pydatetime()
+                if _a_ago.days > 0:
+                    _a_time_str = f" — {_a_ago.days}d ago"
+                elif _a_ago.seconds > 3600:
+                    _a_time_str = f" — {_a_ago.seconds // 3600}h ago"
+                else:
+                    _a_time_str = f" — {max(1, _a_ago.seconds // 60)}m ago"
+            except Exception:
+                pass
+
+        with st.expander(f"{_a_icon}{_a_brand_tag} {_a_title}{_a_time_str}"):
+            st.markdown(f"**{_a_summary}**")
+            if _a_investigation:
+                try:
+                    _inv = _alert_json.loads(_a_investigation) if isinstance(_a_investigation, str) else _a_investigation
+                    if _inv.get("analysis"):
+                        st.markdown(f"**Analysis:** {_inv['analysis']}")
+                    if _inv.get("implications"):
+                        st.markdown(f"**Implications:** {_inv['implications']}")
+                    if _inv.get("watch_items"):
+                        st.markdown(f"**Watch:** {_inv['watch_items']}")
+                except Exception:
+                    st.markdown(str(_a_investigation))
+elif _alerts_loaded:
+    st.info("All signals nominal — no anomalies detected in the last 7 days.")
+else:
+    st.caption("Alert system initializing — alerts will appear after the next data pipeline run.")
 
 st.markdown("---")
 
