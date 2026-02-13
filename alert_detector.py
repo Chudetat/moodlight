@@ -859,3 +859,246 @@ def run_brand_detectors(df_news, df_social, brand_name, username,
         df_news, df_social, brand_name, username, thresholds
     ))
     return alerts, current_vlds
+
+
+# ---------------------------------------------------------------------------
+# Topic filtering helper
+# ---------------------------------------------------------------------------
+
+def _filter_by_topic(df, topic_name, is_category=False):
+    """Filter a dataframe to rows matching a topic.
+
+    For built-in categories (is_category=True): exact match on topic column.
+    For custom keywords (is_category=False): text search in title/text.
+    """
+    if df.empty:
+        return pd.DataFrame()
+
+    if is_category and "topic" in df.columns:
+        return df[df["topic"].str.lower() == topic_name.lower()]
+
+    # Custom keyword: text search (same pattern as _filter_by_brand)
+    topic_lower = topic_name.lower()
+    mask = pd.Series(False, index=df.index)
+    for col in ["title", "text"]:
+        if col in df.columns:
+            mask = mask | df[col].str.contains(topic_lower, case=False, na=False)
+    return df[mask]
+
+
+# ---------------------------------------------------------------------------
+# PART D — Topic-Specific Detectors
+# ---------------------------------------------------------------------------
+
+def detect_topic_mention_surge(df_news, df_social, topic_name, is_category,
+                                username, thresholds=None):
+    """Detect sudden volume spike for a watched topic."""
+    t_surge = thresholds.get("topic_mention_surge", {}) if thresholds else {}
+    multiplier = t_surge.get("critical", 3.0)
+    alerts = []
+
+    for label, df in [("news", df_news), ("social", df_social)]:
+        topic_df = _filter_by_topic(df, topic_name, is_category)
+        if topic_df.empty or "created_at" not in topic_df.columns:
+            continue
+
+        topic_df = topic_df.copy()
+        topic_df["date"] = topic_df["created_at"].dt.date
+        daily = topic_df.groupby("date").size().sort_index()
+
+        if len(daily) < 2:
+            continue
+
+        today_count = daily.iloc[-1]
+        baseline = daily.iloc[:-1].mean()
+
+        is_surge = (
+            (baseline >= 2 and today_count > baseline * multiplier)
+            or (baseline < 2 and today_count >= 8)
+        )
+        if is_surge:
+            alerts.append(_make_alert(
+                alert_type="topic_mention_surge",
+                severity="critical",
+                title=f"Topic surge: {topic_name} in {label}",
+                summary=(
+                    f'"{topic_name}" appeared in {today_count} {label} items today '
+                    f'vs a baseline of {baseline:.1f}/day. '
+                    f'This is a {today_count / max(baseline, 0.1):.1f}x spike.'
+                ),
+                data={
+                    "topic": topic_name,
+                    "source": label,
+                    "today_count": int(today_count),
+                    "baseline": round(float(baseline), 1),
+                },
+                username=username,
+            ))
+            alerts[-1]["topic"] = topic_name
+    return alerts
+
+
+def detect_topic_sentiment_shift(df_news, df_social, topic_name, is_category,
+                                  username, thresholds=None):
+    """Detect significant empathy score shift for a watched topic."""
+    t_sent = thresholds.get("topic_sentiment_shift", {}) if thresholds else {}
+    shift_threshold = t_sent.get("warning", 0.15)
+    alerts = []
+
+    topic_df = pd.concat([
+        _filter_by_topic(df_news, topic_name, is_category),
+        _filter_by_topic(df_social, topic_name, is_category),
+    ], ignore_index=True)
+
+    if topic_df.empty or "empathy_score" not in topic_df.columns:
+        return alerts
+    if "created_at" not in topic_df.columns:
+        return alerts
+
+    topic_df = topic_df.copy()
+    topic_df["date"] = topic_df["created_at"].dt.date
+    daily_sentiment = topic_df.groupby("date")["empathy_score"].mean().sort_index()
+
+    if len(daily_sentiment) < 3:
+        return alerts
+
+    rolling_avg = daily_sentiment.iloc[:-1].mean()
+    current = daily_sentiment.iloc[-1]
+    shift = current - rolling_avg
+
+    if abs(shift) > shift_threshold:
+        direction = "warmed" if shift > 0 else "cooled"
+        alerts.append(_make_alert(
+            alert_type="topic_sentiment_shift",
+            severity="warning",
+            title=f"Sentiment {direction} for {topic_name}",
+            summary=(
+                f'Sentiment around "{topic_name}" {direction} from '
+                f'{rolling_avg:.3f} (rolling avg) to {current:.3f} '
+                f'(shift: {shift:+.3f}).'
+            ),
+            data={
+                "topic": topic_name,
+                "rolling_avg": round(float(rolling_avg), 3),
+                "current": round(float(current), 3),
+                "shift": round(float(shift), 3),
+            },
+            username=username,
+        ))
+        alerts[-1]["topic"] = topic_name
+    return alerts
+
+
+def detect_topic_intensity_spike(df_news, df_social, topic_name, is_category,
+                                  username, thresholds=None):
+    """Detect rising average intensity for a watched topic."""
+    t_int = thresholds.get("topic_intensity_spike", {}) if thresholds else {}
+    intensity_threshold = t_int.get("warning", 3.5)
+    alerts = []
+
+    topic_df = pd.concat([
+        _filter_by_topic(df_news, topic_name, is_category),
+        _filter_by_topic(df_social, topic_name, is_category),
+    ], ignore_index=True)
+
+    if topic_df.empty or "intensity" not in topic_df.columns:
+        return alerts
+    if len(topic_df) < 5:
+        return alerts
+
+    avg_intensity = topic_df["intensity"].mean()
+    if avg_intensity >= intensity_threshold:
+        alerts.append(_make_alert(
+            alert_type="topic_intensity_spike",
+            severity="warning",
+            title=f"Intensity spike for {topic_name}: {avg_intensity:.1f}",
+            summary=(
+                f'"{topic_name}" shows elevated intensity at {avg_intensity:.1f}/5 '
+                f'across {len(topic_df)} posts.'
+            ),
+            data={
+                "topic": topic_name,
+                "avg_intensity": round(float(avg_intensity), 2),
+                "post_count": len(topic_df),
+            },
+            username=username,
+        ))
+        alerts[-1]["topic"] = topic_name
+    return alerts
+
+
+def detect_topic_vlds_alerts(df_news, df_social, topic_name, is_category,
+                              username, thresholds=None):
+    """Run VLDS on topic-filtered data and detect velocity/saturation thresholds."""
+    alerts = []
+    topic_df = pd.concat([
+        _filter_by_topic(df_news, topic_name, is_category),
+        _filter_by_topic(df_social, topic_name, is_category),
+    ], ignore_index=True)
+
+    if topic_df.empty or len(topic_df) < 5:
+        return alerts, None
+
+    from vlds_helper import calculate_brand_vlds
+    vlds = calculate_brand_vlds(topic_df)
+    if not vlds:
+        return alerts, None
+
+    t_vs = thresholds.get("topic_velocity_spike", {}) if thresholds else {}
+    t_sat = thresholds.get("topic_saturation", {}) if thresholds else {}
+
+    # Velocity spike
+    velocity = vlds.get("velocity", 0.5)
+    vs_threshold = t_vs.get("critical", 0.7)
+    if vs_threshold and velocity > vs_threshold:
+        alerts.append(_make_alert(
+            alert_type="topic_velocity_spike",
+            severity="critical",
+            title=f"Velocity spike for {topic_name}",
+            summary=(
+                f'Conversation about "{topic_name}" is accelerating '
+                f'(velocity: {velocity:.2f}).'
+            ),
+            data={"topic": topic_name, "velocity": velocity},
+            username=username,
+        ))
+        alerts[-1]["topic"] = topic_name
+
+    # Saturation warning
+    density = vlds.get("density", 0)
+    sat_threshold = t_sat.get("warning", 0.7)
+    if sat_threshold and density > sat_threshold:
+        alerts.append(_make_alert(
+            alert_type="topic_saturation",
+            severity="warning",
+            title=f"Topic saturated: {topic_name}",
+            summary=(
+                f'"{topic_name}" has a density score of {density:.2f} — '
+                f'the space is crowded with {vlds.get("total_posts", 0)} posts.'
+            ),
+            data={"topic": topic_name, "density": density},
+            username=username,
+        ))
+        alerts[-1]["topic"] = topic_name
+
+    return alerts, vlds
+
+
+def run_topic_detectors(df_news, df_social, topic_name, is_category, username,
+                         thresholds=None):
+    """Run all topic detectors and return alerts + current VLDS."""
+    alerts = []
+    alerts.extend(detect_topic_mention_surge(
+        df_news, df_social, topic_name, is_category, username, thresholds
+    ))
+    alerts.extend(detect_topic_sentiment_shift(
+        df_news, df_social, topic_name, is_category, username, thresholds
+    ))
+    alerts.extend(detect_topic_intensity_spike(
+        df_news, df_social, topic_name, is_category, username, thresholds
+    ))
+    vlds_alerts, current_vlds = detect_topic_vlds_alerts(
+        df_news, df_social, topic_name, is_category, username, thresholds
+    )
+    alerts.extend(vlds_alerts)
+    return alerts, current_vlds

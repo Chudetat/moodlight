@@ -28,6 +28,12 @@ CAUSAL_PATTERNS = {
     ("topic_emergence", "brand_mention_surge"): 2,
     ("intensity_cluster", "breaking_signal"): 2,
     ("intensity_cluster", "brand_crisis"): 2,
+    # Topic correlations
+    ("topic_mention_surge", "topic_intensity_spike"): 2,
+    ("topic_mention_surge", "breaking_signal"): 2,
+    ("topic_sentiment_shift", "mood_shift"): 2,
+    ("topic_velocity_spike", "topic_mention_surge"): 2,
+    ("topic_intensity_spike", "intensity_cluster"): 2,
 }
 
 # Minimum relatedness score to consider two alerts correlated
@@ -49,6 +55,12 @@ def _compute_relatedness(alert_a, alert_b):
     brand_a = (alert_a.get("brand") or "").lower()
     brand_b = (alert_b.get("brand") or "").lower()
     if brand_a and brand_b and brand_a == brand_b:
+        score += 3
+
+    # Same topic
+    topic_a = (alert_a.get("topic") or "").lower()
+    topic_b = (alert_b.get("topic") or "").lower()
+    if topic_a and topic_b and topic_a == topic_b:
         score += 3
 
     # Known causal pattern

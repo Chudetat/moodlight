@@ -66,6 +66,23 @@ def ensure_tables(engine):
                 UNIQUE(username, brand_name)
             )
         """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS topic_watchlist (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) NOT NULL,
+                topic_name VARCHAR(200) NOT NULL,
+                is_category BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(username, topic_name)
+            )
+        """))
+        # Add topic column to alerts if it doesn't exist
+        try:
+            conn.execute(text(
+                "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS topic VARCHAR(200)"
+            ))
+        except Exception:
+            pass  # Column already exists or DB doesn't support IF NOT EXISTS
         conn.commit()
     print("DB tables verified")
 
@@ -126,6 +143,23 @@ def load_watchlist(engine):
         return {}
 
 
+def load_topic_watchlist(engine):
+    """Load topic watchlist: {username: [(topic_name, is_category), ...]}."""
+    try:
+        df = pd.read_sql(
+            "SELECT username, topic_name, is_category FROM topic_watchlist", engine
+        )
+        watchlist = {}
+        for _, row in df.iterrows():
+            watchlist.setdefault(row["username"], []).append(
+                (row["topic_name"], bool(row["is_category"]))
+            )
+        return watchlist
+    except Exception as e:
+        print(f"  Could not load topic watchlist: {e}")
+        return {}
+
+
 def check_cooldown(engine, cooldown_key, hours=6):
     """Check if an alert with this cooldown_key was created within the last N hours."""
     try:
@@ -146,6 +180,8 @@ def build_cooldown_key(alert):
     parts = [alert.get("alert_type", "")]
     if alert.get("brand"):
         parts.append(alert["brand"])
+    if alert.get("topic"):
+        parts.append(alert["topic"])
     if alert.get("username"):
         parts.append(alert["username"])
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -164,9 +200,9 @@ def store_alert(engine, alert):
         conn.execute(
             text("""
                 INSERT INTO alerts (alert_type, severity, title, summary,
-                    investigation, data, emailed, cooldown_key, username, brand)
+                    investigation, data, emailed, cooldown_key, username, brand, topic)
                 VALUES (:alert_type, :severity, :title, :summary,
-                    :investigation, :data, :emailed, :cooldown_key, :username, :brand)
+                    :investigation, :data, :emailed, :cooldown_key, :username, :brand, :topic)
             """),
             {
                 "alert_type": alert.get("alert_type"),
@@ -179,6 +215,7 @@ def store_alert(engine, alert):
                 "cooldown_key": alert.get("cooldown_key"),
                 "username": alert.get("username"),
                 "brand": alert.get("brand"),
+                "topic": alert.get("topic"),
             },
         )
         conn.commit()
@@ -207,6 +244,10 @@ def _should_use_chain(alert):
     # Always use chain for new complex alert types
     if alert_type in ("brand_crisis", "regulatory_policy_spike",
                        "geopolitical_risk_escalation", "breaking_signal"):
+        return True
+
+    # Always use chain for topic VLDS alerts (strategic)
+    if alert_type in ("topic_velocity_spike", "topic_saturation"):
         return True
 
     # Use chain for critical severity
@@ -266,9 +307,11 @@ def main():
     # 2b. Capture metric snapshots for trend analysis
     print("\nCapturing metric snapshots...")
     watchlist = load_watchlist(engine)
+    _early_topic_watchlist = load_topic_watchlist(engine)
     try:
         from predictive_detector import capture_metric_snapshots
-        capture_metric_snapshots(engine, df_news, df_social, df_markets, watchlist)
+        capture_metric_snapshots(engine, df_news, df_social, df_markets, watchlist,
+                                 topic_watchlist=_early_topic_watchlist)
     except Exception as e:
         print(f"  Metric snapshot capture failed (non-fatal): {e}")
 
@@ -347,20 +390,42 @@ def main():
     else:
         print("  No brands in watchlist — skipping brand detectors")
 
+    # 4b2. Run topic detectors
+    print("\nRunning topic detectors...")
+    topic_alerts = []
+    topic_watchlist = load_topic_watchlist(engine)
+    if topic_watchlist:
+        from alert_detector import run_topic_detectors
+        seen_topics = set()
+        total_topic_count = sum(len(v) for v in topic_watchlist.values())
+        print(f"  {total_topic_count} topics across {len(topic_watchlist)} subscribers")
+        for username, topics in topic_watchlist.items():
+            for topic_name, is_category in topics:
+                print(f"  Scanning topic: {topic_name} (category={is_category}, subscriber: {username})")
+                alerts, _ = run_topic_detectors(
+                    df_news, df_social, topic_name, is_category, username, thresholds,
+                )
+                topic_alerts.extend(alerts)
+                print(f"    Found {len(alerts)} topic alerts for {topic_name}")
+                seen_topics.add(topic_name)
+    else:
+        print("  No topics in watchlist — skipping topic detectors")
+
     # 4c. Run predictive detectors
     print("\nRunning predictive detectors...")
     predictive_alerts = []
     try:
         from predictive_detector import run_predictive_detectors
         predictive_alerts = run_predictive_detectors(
-            engine, df_news, df_social, df_markets, watchlist, thresholds
+            engine, df_news, df_social, df_markets, watchlist, thresholds,
+            topic_watchlist=topic_watchlist,
         )
         print(f"  Found {len(predictive_alerts)} predictive signals")
     except Exception as e:
         print(f"  Predictive detection failed (non-fatal): {e}")
 
     # 5. Process all alerts
-    all_alerts = global_alerts + brand_alerts + competitive_alerts + predictive_alerts
+    all_alerts = global_alerts + brand_alerts + competitive_alerts + topic_alerts + predictive_alerts
     print(f"\nTotal anomalies detected: {len(all_alerts)}")
 
     if not all_alerts:
@@ -493,6 +558,7 @@ def main():
     print(f"  Global alerts:      {len(global_alerts)}")
     print(f"  Brand alerts:       {len(brand_alerts)}")
     print(f"  Competitive alerts: {len(competitive_alerts)}")
+    print(f"  Topic alerts:       {len(topic_alerts)}")
     print(f"  Predictive alerts:  {len(predictive_alerts)}")
     print(f"  Situation reports:  {len(situation_reports)}")
     print(f"  Stored:             {len(stored_alerts)} (after cooldown filter)")

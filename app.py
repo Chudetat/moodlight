@@ -833,7 +833,7 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30):
             result = pd.read_sql(
                 f"SELECT alert_type, severity, title, summary, timestamp "
                 f"FROM alerts WHERE timestamp >= '{cutoff}' "
-                f"AND LOWER(title) LIKE '%{topic_lower}%' "
+                f"AND (LOWER(topic) = '{topic_lower}' OR LOWER(title) LIKE '%{topic_lower}%') "
                 f"ORDER BY timestamp DESC LIMIT 10",
                 engine,
             )
@@ -865,6 +865,15 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30):
                 f"SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
                 f"WHERE snapshot_date >= '{cutoff_date}' "
                 f"AND scope = 'brand' AND LOWER(scope_name) = '{brand_lower}' "
+                f"ORDER BY snapshot_date",
+                engine,
+            )
+        elif topic:
+            topic_lower = topic.lower()
+            metrics_df = pd.read_sql(
+                f"SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
+                f"WHERE snapshot_date >= '{cutoff_date}' "
+                f"AND scope = 'topic' AND LOWER(scope_name) = '{topic_lower}' "
                 f"ORDER BY snapshot_date",
                 engine,
             )
@@ -1830,6 +1839,106 @@ with st.sidebar:
 
     st.markdown("---")
 
+    # Topic Watchlist
+    st.header("Topic Watchlist")
+    st.caption("Monitor topics for VLDS, mention surges & sentiment shifts")
+
+    _TOPIC_CATEGORIES = [
+        "politics", "government", "economics", "education", "culture & identity",
+        "branding & advertising", "creative & design", "technology & ai",
+        "climate & environment", "healthcare & wellbeing", "immigration",
+        "crime & safety", "war & foreign policy", "media & journalism",
+        "race & ethnicity", "gender & sexuality", "business & corporate",
+        "labor & work", "housing", "religion & values", "sports", "entertainment",
+    ]
+
+    _watchlist_topics = []
+    if HAS_DB:
+        try:
+            from db_helper import get_engine as _get_tw_engine
+            _tw_engine = _get_tw_engine()
+            if _tw_engine:
+                from sqlalchemy import text as _tw_text
+                with _tw_engine.connect() as _tw_conn:
+                    _tw_conn.execute(_tw_text("""
+                        CREATE TABLE IF NOT EXISTS topic_watchlist (
+                            id SERIAL PRIMARY KEY,
+                            username VARCHAR(100) NOT NULL,
+                            topic_name VARCHAR(200) NOT NULL,
+                            is_category BOOLEAN DEFAULT FALSE,
+                            created_at TIMESTAMPTZ DEFAULT NOW(),
+                            UNIQUE(username, topic_name)
+                        )
+                    """))
+                    _tw_conn.commit()
+                    _tw_result = _tw_conn.execute(
+                        _tw_text("SELECT topic_name, is_category FROM topic_watchlist WHERE username = :u ORDER BY created_at"),
+                        {"u": username},
+                    )
+                    _watchlist_topics = [(row[0], bool(row[1])) for row in _tw_result.fetchall()]
+        except Exception as _tw_err:
+            print(f"Topic watchlist load error: {_tw_err}")
+
+    if _watchlist_topics:
+        for _wt_name, _wt_is_cat in _watchlist_topics:
+            _col_topic, _col_type, _col_rm = st.columns([2, 1, 1])
+            with _col_topic:
+                st.markdown(f"**{_wt_name}**")
+            with _col_type:
+                st.caption("category" if _wt_is_cat else "keyword")
+            with _col_rm:
+                if st.button("✕", key=f"remove_topic_{_wt_name}"):
+                    try:
+                        from db_helper import get_engine as _get_trm_engine
+                        _trm_engine = _get_trm_engine()
+                        if _trm_engine:
+                            from sqlalchemy import text as _trm_text
+                            with _trm_engine.connect() as _trm_conn:
+                                _trm_conn.execute(
+                                    _trm_text("DELETE FROM topic_watchlist WHERE username = :u AND topic_name = :t"),
+                                    {"u": username, "t": _wt_name},
+                                )
+                                _trm_conn.commit()
+                        st.rerun()
+                    except Exception as _trm_err:
+                        st.error(f"Could not remove: {_trm_err}")
+    else:
+        st.caption("No topics tracked yet")
+
+    if len(_watchlist_topics) < 10:
+        _topic_mode = st.radio("Add by", ["Category", "Custom keyword"], horizontal=True, key="topic_add_mode")
+        with st.form("add_topic_form", clear_on_submit=True):
+            if _topic_mode == "Category":
+                _new_topic = st.selectbox("Select category", _TOPIC_CATEGORIES, key="topic_cat_select")
+                _new_is_category = True
+            else:
+                _new_topic = st.text_input("Keyword", placeholder="e.g. tariffs, supply chain")
+                _new_is_category = False
+            _topic_submitted = st.form_submit_button("Add Topic")
+            if _topic_submitted and _new_topic and _new_topic.strip():
+                try:
+                    from db_helper import get_engine as _get_ta_engine
+                    _ta_engine = _get_ta_engine()
+                    if _ta_engine:
+                        from sqlalchemy import text as _ta_text
+                        with _ta_engine.connect() as _ta_conn:
+                            _ta_conn.execute(
+                                _ta_text("""
+                                    INSERT INTO topic_watchlist (username, topic_name, is_category)
+                                    VALUES (:u, :t, :is_cat)
+                                    ON CONFLICT DO NOTHING
+                                """),
+                                {"u": username, "t": _new_topic.strip(), "is_cat": _new_is_category},
+                            )
+                            _ta_conn.commit()
+                    st.rerun()
+                except Exception as _ta_err:
+                    st.error(f"Could not add: {_ta_err}")
+    else:
+        st.caption("Maximum 10 topics reached")
+
+    st.markdown("---")
+
     # Intelligence Report Generator
     st.header("Intelligence Reports")
     st.caption("Generate deep-dive reports on any brand or topic")
@@ -2656,7 +2765,7 @@ if HAS_DB:
                 _alert_result = _alert_conn.execute(
                     _alert_text("""
                         SELECT id, timestamp, alert_type, severity, title, summary,
-                               investigation, brand, username, data
+                               investigation, brand, username, data, topic
                         FROM alerts
                         WHERE timestamp > :cutoff
                           AND (username IS NULL OR username = :user)
@@ -2674,7 +2783,7 @@ if _alerts_loaded and _alert_rows:
     import json as _alert_json
     _severity_icons = {"critical": "🔴", "warning": "🟡", "info": "🔵"}
     for _ar in _alert_rows:
-        _a_id, _a_ts, _a_type, _a_sev, _a_title, _a_summary, _a_investigation, _a_brand, _a_user, _a_data = _ar
+        _a_id, _a_ts, _a_type, _a_sev, _a_title, _a_summary, _a_investigation, _a_brand, _a_user, _a_data, _a_topic = _ar
         _a_icon = _severity_icons.get(_a_sev, "🔵")
         _a_predictive_tag = ""
         if _a_type and str(_a_type) == "situation_report":
@@ -2684,6 +2793,7 @@ if _alerts_loaded and _alert_rows:
             _a_icon = "🔮"
             _a_predictive_tag = " [PREDICTIVE]"
         _a_brand_tag = f" [{_a_brand}]" if _a_brand else ""
+        _a_topic_tag = f" [{_a_topic}]" if _a_topic and not _a_brand else ""
         _a_time_str = ""
         if _a_ts:
             try:
@@ -2698,7 +2808,7 @@ if _alerts_loaded and _alert_rows:
             except Exception:
                 pass
 
-        with st.expander(f"{_a_icon}{_a_brand_tag}{_a_predictive_tag} {_a_title}{_a_time_str}"):
+        with st.expander(f"{_a_icon}{_a_brand_tag}{_a_topic_tag}{_a_predictive_tag} {_a_title}{_a_time_str}"):
             st.markdown(f"**{_a_summary}**")
 
             # Situation report: show correlated alerts list from data field
@@ -2919,6 +3029,92 @@ if not _warroom_rendered:
         st.caption("Competitive data will appear after the next pipeline run discovers competitors for your watched brands.")
     else:
         st.info("Add brands to your watchlist to see competitive intelligence.")
+
+st.markdown("---")
+
+# ========================================
+# TOPIC INTELLIGENCE
+# ========================================
+st.markdown("### Topic Intelligence")
+st.caption("VLDS metrics and alerts for your watched topics.")
+
+_topic_intel_rendered = False
+if HAS_DB and _watchlist_topics:
+    try:
+        from db_helper import get_engine as _get_ti_engine
+        from alert_detector import _filter_by_topic
+        from vlds_helper import calculate_brand_vlds
+        _ti_engine = _get_ti_engine()
+
+        for _ti_name, _ti_is_cat in _watchlist_topics:
+            # Filter data for this topic
+            _ti_news = _filter_by_topic(df_48h, _ti_name, _ti_is_cat)
+            _ti_social = pd.DataFrame()
+            if "social_df" in dir() and not social_df.empty:
+                _ti_social = _filter_by_topic(social_df, _ti_name, _ti_is_cat)
+
+            _ti_combined = pd.concat([_ti_news, _ti_social], ignore_index=True) if not _ti_social.empty else _ti_news
+            _ti_count = len(_ti_combined)
+
+            if _ti_count < 3:
+                continue
+
+            _topic_intel_rendered = True
+            with st.expander(f"📌 {_ti_name} ({_ti_count} posts)", expanded=False):
+                # VLDS metrics
+                _ti_vlds = calculate_brand_vlds(_ti_combined)
+                if _ti_vlds:
+                    _tc1, _tc2, _tc3, _tc4 = st.columns(4)
+                    with _tc1:
+                        st.metric("Velocity", f"{_ti_vlds.get('velocity', 0):.2f}")
+                    with _tc2:
+                        st.metric("Longevity", f"{_ti_vlds.get('longevity', 0):.2f}")
+                    with _tc3:
+                        st.metric("Density", f"{_ti_vlds.get('density', 0):.2f}")
+                    with _tc4:
+                        st.metric("Scarcity", f"{_ti_vlds.get('scarcity', 0):.2f}")
+
+                # Empathy + top emotion
+                if "empathy_score" in _ti_combined.columns:
+                    _ti_emp = float(_ti_combined["empathy_score"].mean())
+                    _ti_emp_label = empathy_label_from_score(_ti_emp) if "empathy_label_from_score" in dir() else f"{_ti_emp:.2f}"
+                    st.caption(f"Avg empathy: {_ti_emp_label} ({_ti_emp:.3f})")
+
+                if "emotion" in _ti_combined.columns:
+                    _ti_top_emo = _ti_combined["emotion"].value_counts().head(3)
+                    if not _ti_top_emo.empty:
+                        _emo_parts = [f"{e} ({c})" for e, c in _ti_top_emo.items()]
+                        st.caption(f"Top emotions: {', '.join(_emo_parts)}")
+
+                # Recent topic-specific alerts
+                if _ti_engine:
+                    try:
+                        from sqlalchemy import text as _ti_text
+                        _ti_alert_cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+                        _ti_alerts_result = _ti_engine.connect().execute(
+                            _ti_text("""
+                                SELECT severity, title, timestamp FROM alerts
+                                WHERE topic = :topic AND timestamp > :cutoff
+                                ORDER BY timestamp DESC LIMIT 5
+                            """),
+                            {"topic": _ti_name, "cutoff": _ti_alert_cutoff},
+                        )
+                        _ti_alert_rows = _ti_alerts_result.fetchall()
+                        if _ti_alert_rows:
+                            st.markdown("**Recent Alerts**")
+                            for _tia_sev, _tia_title, _tia_ts in _ti_alert_rows:
+                                _tia_icon = {"critical": "🔴", "warning": "🟡"}.get(_tia_sev, "🔵")
+                                st.caption(f"{_tia_icon} {_tia_title}")
+                    except Exception:
+                        pass
+    except Exception as _ti_err:
+        print(f"Topic Intelligence error: {_ti_err}")
+
+if not _topic_intel_rendered:
+    if _watchlist_topics:
+        st.caption("Topic intelligence will appear after enough data accumulates (minimum 3 posts).")
+    else:
+        st.info("Add topics to your watchlist to see topic-level VLDS and alerts.")
 
 st.markdown("---")
 

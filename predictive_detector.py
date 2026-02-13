@@ -12,7 +12,7 @@ import json
 import numpy as np
 import pandas as pd
 from datetime import datetime, timezone, timedelta
-from alert_detector import _make_alert, _filter_by_brand
+from alert_detector import _make_alert, _filter_by_brand, _filter_by_topic
 from vlds_helper import calculate_brand_vlds
 
 
@@ -45,7 +45,8 @@ def ensure_metric_snapshots_table(engine):
 # Metric snapshot capture
 # ---------------------------------------------------------------------------
 
-def capture_metric_snapshots(engine, df_news, df_social, df_markets, watchlist):
+def capture_metric_snapshots(engine, df_news, df_social, df_markets, watchlist,
+                              topic_watchlist=None):
     """Compute and store today's metric values for trend analysis.
 
     Called once per pipeline run, after data is loaded.
@@ -100,6 +101,42 @@ def capture_metric_snapshots(engine, df_news, df_social, df_markets, watchlist):
                         if key in vlds:
                             metrics.append(("brand", brand_name, key,
                                             float(vlds[key]), len(combined)))
+
+    # Per-topic metrics
+    if topic_watchlist:
+        seen_topics = set()
+        for username, topics in topic_watchlist.items():
+            for topic_name, is_category in topics:
+                if topic_name in seen_topics:
+                    continue
+                seen_topics.add(topic_name)
+
+                news_topic = _filter_by_topic(df_news, topic_name, is_category)
+                social_topic = _filter_by_topic(df_social, topic_name, is_category)
+
+                metrics.append(("topic", topic_name, "post_count_news",
+                                float(len(news_topic)), len(news_topic)))
+                metrics.append(("topic", topic_name, "post_count_social",
+                                float(len(social_topic)), len(social_topic)))
+
+                combined = pd.concat([news_topic, social_topic], ignore_index=True)
+                if not combined.empty:
+                    if "empathy_score" in combined.columns:
+                        metrics.append(("topic", topic_name, "avg_empathy",
+                                        float(combined["empathy_score"].mean()),
+                                        len(combined)))
+                    if "intensity" in combined.columns:
+                        metrics.append(("topic", topic_name, "avg_intensity",
+                                        float(combined["intensity"].mean()),
+                                        len(combined)))
+
+                    if len(combined) >= 3:
+                        vlds = calculate_brand_vlds(combined)
+                        if vlds:
+                            for key in ("velocity", "longevity", "density", "scarcity"):
+                                if key in vlds:
+                                    metrics.append(("topic", topic_name, key,
+                                                    float(vlds[key]), len(combined)))
 
     # Store all metrics
     if not metrics:
@@ -463,7 +500,7 @@ BRAND_METRIC_THRESHOLDS = {
 
 
 def run_predictive_detectors(engine, df_news, df_social, df_markets,
-                              watchlist, thresholds):
+                              watchlist, thresholds, topic_watchlist=None):
     """Run all predictive detection logic.
 
     Returns list of alert dicts (severity='info').
@@ -588,6 +625,82 @@ def run_predictive_detectors(engine, df_news, df_social, df_markets,
             alerts.extend(detect_compound_signals(
                 engine, "brand", brand_name, brand_trends, thresholds
             ))
+
+    # 5. Per-topic predictive analysis
+    TOPIC_METRIC_THRESHOLDS = {
+        "velocity": ("topic_velocity_spike", "critical"),
+        "density": ("topic_saturation", "warning"),
+    }
+
+    if topic_watchlist:
+        seen_topics = set()
+        for username, topics in topic_watchlist.items():
+            for topic_name, is_category in topics:
+                if topic_name in seen_topics:
+                    continue
+                seen_topics.add(topic_name)
+
+                topic_trends = {}
+                for metric_name in TOPIC_METRIC_THRESHOLDS:
+                    trend = compute_trend(engine, "topic", topic_name, metric_name)
+                    if trend:
+                        topic_trends[metric_name] = trend
+
+                for extra in ("post_count_news", "post_count_social", "avg_empathy"):
+                    trend = compute_trend(engine, "topic", topic_name, extra)
+                    if trend:
+                        topic_trends[extra] = trend
+
+                for metric_name, (alert_type, level) in TOPIC_METRIC_THRESHOLDS.items():
+                    trend = topic_trends.get(metric_name)
+                    if not trend:
+                        continue
+
+                    t_config = thresholds.get(alert_type, {}) if thresholds else {}
+                    threshold_val = t_config.get(level)
+                    if threshold_val is None:
+                        continue
+
+                    crossing = predict_threshold_crossing(trend, threshold_val)
+                    if crossing and crossing["confidence"] in ("high", "medium"):
+                        momentum = compute_momentum(
+                            engine, "topic", topic_name, metric_name
+                        )
+                        direction_note = ""
+                        if momentum and momentum["direction"] != "steady":
+                            direction_note = f" and {momentum['direction']}"
+
+                        alert = _make_alert(
+                            alert_type=f"predictive_{alert_type}",
+                            severity="info",
+                            title=f"Topic '{topic_name}': trending toward {alert_type.replace('_', ' ')}",
+                            summary=(
+                                f"{metric_name.title()} for topic '{topic_name}' is trending toward "
+                                f"the {level} threshold ({threshold_val}). "
+                                f"Crossing in ~{crossing['days_to_crossing']} days"
+                                f"{direction_note}. "
+                                f"Confidence: {crossing['confidence']}."
+                            ),
+                            data={
+                                "metric": metric_name,
+                                "topic": topic_name,
+                                "trend": {
+                                    "slope": trend["slope"],
+                                    "r_squared": trend["r_squared"],
+                                    "current_value": trend["current_value"],
+                                },
+                                "crossing": crossing,
+                                "momentum": momentum,
+                            },
+                            username=username,
+                        )
+                        alert["topic"] = topic_name
+                        alerts.append(alert)
+
+                # Topic compound signals
+                alerts.extend(detect_compound_signals(
+                    engine, "topic", topic_name, topic_trends, thresholds
+                ))
 
     # Promote high-confidence predictive alerts from info -> warning
     for alert in alerts:

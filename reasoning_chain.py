@@ -62,6 +62,14 @@ CHAIN_CONFIGS = {
     "geopolitical_risk_escalation": ["situation", "historical", "causal", "strategic", "confidence"],
     # Situation reports (correlated alert clusters)
     "situation_report": ["situation", "historical", "causal", "strategic", "confidence"],
+    # Topic watchlist detectors
+    "topic_mention_surge": ["situation", "causal", "confidence"],
+    "topic_sentiment_shift": ["situation", "historical", "confidence"],
+    "topic_intensity_spike": ["situation", "causal", "confidence"],
+    "topic_velocity_spike": ["situation", "historical", "strategic", "confidence"],
+    "topic_saturation": ["situation", "causal", "strategic", "confidence"],
+    "predictive_topic_velocity_spike": ["situation", "historical", "causal", "strategic", "confidence"],
+    "predictive_topic_saturation": ["situation", "historical", "causal", "strategic", "confidence"],
 }
 
 DEFAULT_CHAIN = ["situation", "causal", "confidence"]
