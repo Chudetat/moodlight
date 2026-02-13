@@ -127,3 +127,84 @@ class TestConstants:
         from tier_helper import ACTIVE_TIERS
         assert "cancelled" not in ACTIVE_TIERS
         assert "free" not in ACTIVE_TIERS
+
+
+# ---------------------------------------------------------------------------
+# should_show_alert
+# ---------------------------------------------------------------------------
+
+class TestShouldShowAlert:
+    def test_default_no_prefs_returns_true(self):
+        from tier_helper import should_show_alert
+        assert should_show_alert("testuser", "brand_mention_spike", {}) is True
+
+    def test_disabled_alert_returns_false(self):
+        from tier_helper import should_show_alert
+        prefs = {"brand_mention_spike": {"enabled": False, "sensitivity": "medium"}}
+        assert should_show_alert("testuser", "brand_mention_spike", prefs) is False
+
+    def test_enabled_alert_returns_true(self):
+        from tier_helper import should_show_alert
+        prefs = {"brand_mention_spike": {"enabled": True, "sensitivity": "high"}}
+        assert should_show_alert("testuser", "brand_mention_spike", prefs) is True
+
+    def test_unknown_type_returns_true(self):
+        from tier_helper import should_show_alert
+        prefs = {"brand_mention_spike": {"enabled": True, "sensitivity": "medium"}}
+        assert should_show_alert("testuser", "unknown_type", prefs) is True
+
+
+# ---------------------------------------------------------------------------
+# SENSITIVITY_MULTIPLIERS
+# ---------------------------------------------------------------------------
+
+class TestSensitivityMultipliers:
+    def test_values(self):
+        from tier_helper import SENSITIVITY_MULTIPLIERS
+        assert SENSITIVITY_MULTIPLIERS["low"] == 1.5
+        assert SENSITIVITY_MULTIPLIERS["medium"] == 1.0
+        assert SENSITIVITY_MULTIPLIERS["high"] == 0.7
+
+    def test_all_keys_present(self):
+        from tier_helper import SENSITIVITY_MULTIPLIERS
+        assert set(SENSITIVITY_MULTIPLIERS.keys()) == {"low", "medium", "high"}
+
+
+# ---------------------------------------------------------------------------
+# ALERT_TYPE_CATEGORIES
+# ---------------------------------------------------------------------------
+
+class TestAlertTypeCategories:
+    def test_no_duplicate_types(self):
+        from tier_helper import ALERT_TYPE_CATEGORIES
+        all_types = []
+        for types in ALERT_TYPE_CATEGORIES.values():
+            all_types.extend(types)
+        assert len(all_types) == len(set(all_types)), "Duplicate alert types found"
+
+    def test_expected_categories(self):
+        from tier_helper import ALERT_TYPE_CATEGORIES
+        assert "brand" in ALERT_TYPE_CATEGORIES
+        assert "topic" in ALERT_TYPE_CATEGORIES
+        assert "global" in ALERT_TYPE_CATEGORIES
+
+
+# ---------------------------------------------------------------------------
+# get_unread_alert_count (no DB)
+# ---------------------------------------------------------------------------
+
+class TestGetUnreadAlertCount:
+    def test_returns_int(self):
+        from tier_helper import get_unread_alert_count
+        result = get_unread_alert_count("nonexistent_user")
+        assert isinstance(result, int)
+
+
+# ---------------------------------------------------------------------------
+# mark_alert_read (no DB — should not raise)
+# ---------------------------------------------------------------------------
+
+class TestMarkAlertRead:
+    def test_does_not_raise(self):
+        from tier_helper import mark_alert_read
+        mark_alert_read("testuser", 999)  # should not raise

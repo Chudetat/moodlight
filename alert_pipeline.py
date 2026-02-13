@@ -114,6 +114,60 @@ def ensure_tables(engine):
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )
         """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS user_alert_preferences (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) NOT NULL,
+                alert_type VARCHAR(50) NOT NULL,
+                enabled BOOLEAN DEFAULT TRUE,
+                sensitivity VARCHAR(10) DEFAULT 'medium',
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(username, alert_type)
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS alert_read_status (
+                id SERIAL PRIMARY KEY,
+                alert_id INTEGER NOT NULL,
+                username VARCHAR(100) NOT NULL,
+                read_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(alert_id, username)
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS report_schedules (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) NOT NULL,
+                subject VARCHAR(200) NOT NULL,
+                subject_type VARCHAR(20) NOT NULL DEFAULT 'brand',
+                frequency VARCHAR(10) NOT NULL DEFAULT 'weekly',
+                days_lookback INTEGER NOT NULL DEFAULT 7,
+                enabled BOOLEAN DEFAULT TRUE,
+                last_run TIMESTAMPTZ,
+                next_run TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS teams (
+                id SERIAL PRIMARY KEY,
+                team_name VARCHAR(200) NOT NULL,
+                owner_username VARCHAR(100) NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS team_members (
+                id SERIAL PRIMARY KEY,
+                team_id INTEGER NOT NULL,
+                username VARCHAR(100) NOT NULL,
+                role VARCHAR(20) NOT NULL DEFAULT 'member',
+                joined_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(team_id, username)
+            )
+        """))
         # Performance indexes for persistent tables
         for idx_sql in [
             "CREATE INDEX IF NOT EXISTS idx_alerts_timestamp ON alerts (timestamp)",
@@ -127,6 +181,14 @@ def ensure_tables(engine):
             "CREATE INDEX IF NOT EXISTS idx_user_events_username ON user_events (username)",
             "CREATE INDEX IF NOT EXISTS idx_user_events_type ON user_events (event_type)",
             "CREATE INDEX IF NOT EXISTS idx_user_events_created ON user_events (created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_user_alert_prefs_username ON user_alert_preferences (username)",
+            "CREATE INDEX IF NOT EXISTS idx_alert_read_status_user ON alert_read_status (username)",
+            "CREATE INDEX IF NOT EXISTS idx_alert_read_status_alert ON alert_read_status (alert_id)",
+            "CREATE INDEX IF NOT EXISTS idx_report_schedules_username ON report_schedules (username)",
+            "CREATE INDEX IF NOT EXISTS idx_report_schedules_next_run ON report_schedules (next_run)",
+            "CREATE INDEX IF NOT EXISTS idx_teams_owner ON teams (owner_username)",
+            "CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members (team_id)",
+            "CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members (username)",
         ]:
             try:
                 conn.execute(text(idx_sql))

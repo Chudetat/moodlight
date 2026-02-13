@@ -10,7 +10,14 @@ import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 from session_manager import create_session, validate_session, clear_session
-from tier_helper import get_user_tier, can_generate_brief, decrement_brief_credits, has_feature_access, get_brief_credits, get_tier_limit, ACTIVE_TIERS, get_user_preferences, update_user_preferences, log_user_event
+from tier_helper import (get_user_tier, can_generate_brief, decrement_brief_credits, has_feature_access,
+    get_brief_credits, get_tier_limit, ACTIVE_TIERS, get_user_preferences, update_user_preferences,
+    log_user_event, get_user_alert_preferences, update_user_alert_preferences,
+    bulk_update_alert_sensitivity, should_show_alert, ALERT_TYPE_CATEGORIES, SENSITIVITY_MULTIPLIERS,
+    get_unread_alert_count, mark_alert_read, mark_all_alerts_read,
+    get_report_schedules, create_report_schedule, delete_report_schedule, toggle_report_schedule,
+    get_user_team, get_team_members, get_team_capacity, create_team, add_team_member,
+    remove_team_member, get_team_watchlist_brands, get_team_watchlist_topics, invite_team_member)
 try:
     from polymarket_helper import fetch_polymarket_markets, calculate_sentiment_divergence
     HAS_POLYMARKET = True
@@ -138,6 +145,156 @@ with st.sidebar.expander("Email Preferences"):
     if st.button("Save preferences", key="save_prefs"):
         update_user_preferences(username, digest_daily=_pref_daily, digest_weekly=_pref_weekly, alert_emails=_pref_alerts)
         st.success("Preferences saved")
+
+from datetime import datetime, timedelta, timezone
+from sqlalchemy import text as sql_text
+
+# Notification bell with unread count
+try:
+    _unread_count = get_unread_alert_count(username)
+    _bell_label = f"Alerts ({_unread_count})" if _unread_count > 0 else "Alerts"
+    with st.sidebar.expander(_bell_label, expanded=False):
+        _notif_severity = st.selectbox("Severity", ["all", "critical", "warning", "info"], key="notif_severity_filter")
+        _notif_type = st.selectbox("Type", ["all", "brand", "topic", "global", "predictive", "competitive"], key="notif_type_filter")
+        if _unread_count > 0:
+            if st.button("Mark all as read", key="mark_all_read_btn"):
+                mark_all_alerts_read(username)
+                st.rerun()
+        if HAS_DB:
+            try:
+                from db_helper import get_engine as _get_notif_engine
+                _notif_engine = _get_notif_engine()
+                if _notif_engine:
+                    _notif_cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+                    _notif_q = """
+                        SELECT a.id, a.timestamp, a.alert_type, a.severity, a.title, a.summary,
+                               CASE WHEN rs.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_read
+                        FROM alerts a
+                        LEFT JOIN alert_read_status rs ON rs.alert_id = a.id AND rs.username = :user
+                        WHERE a.timestamp > :cutoff
+                          AND (a.username IS NULL OR a.username = :user)
+                    """
+                    _notif_params = {"cutoff": _notif_cutoff, "user": username}
+                    if _notif_severity != "all":
+                        _notif_q += " AND a.severity = :severity"
+                        _notif_params["severity"] = _notif_severity
+                    if _notif_type != "all":
+                        _type_list = ALERT_TYPE_CATEGORIES.get(_notif_type, [])
+                        if _type_list:
+                            _type_placeholders = ",".join(f"'{t}'" for t in _type_list)
+                            _notif_q += f" AND a.alert_type IN ({_type_placeholders})"
+                    _notif_q += " ORDER BY a.timestamp DESC LIMIT 15"
+                    with _notif_engine.connect() as _notif_conn:
+                        _notif_rows = _notif_conn.execute(sql_text(_notif_q), _notif_params).fetchall()
+                    _sev_icons = {"critical": "🔴", "warning": "🟡", "info": "🔵"}
+                    for _nr in _notif_rows:
+                        _n_id, _n_ts, _n_type, _n_sev, _n_title, _n_summary, _n_is_read = _nr
+                        _n_icon = _sev_icons.get(_n_sev, "🔵")
+                        _n_prefix = "" if _n_is_read else "**NEW** "
+                        st.markdown(f"{_n_icon} {_n_prefix}{_n_title}")
+                        if _n_summary:
+                            st.caption(str(_n_summary)[:120])
+                        if not _n_is_read:
+                            mark_alert_read(username, _n_id)
+            except Exception as _notif_err:
+                st.caption(f"Could not load notifications: {_notif_err}")
+except Exception:
+    pass
+
+# Alert settings
+with st.sidebar.expander("Alert Settings"):
+    _alert_prefs = get_user_alert_preferences(username)
+    _sens_options = list(SENSITIVITY_MULTIPLIERS.keys())
+    _current_sens = "medium"
+    if _alert_prefs:
+        _sens_vals = [p.get("sensitivity", "medium") for p in _alert_prefs.values()]
+        if _sens_vals:
+            _current_sens = max(set(_sens_vals), key=_sens_vals.count)
+    _new_sens = st.select_slider("Alert sensitivity", options=_sens_options,
+        value=_current_sens, help="Low = fewer alerts, High = more alerts", key="alert_sensitivity_slider")
+    st.caption("Alert types to receive:")
+    _alert_changes = {}
+    for _cat_name, _cat_types in ALERT_TYPE_CATEGORIES.items():
+        st.markdown(f"**{_cat_name.title()}**")
+        for _at in _cat_types:
+            _at_label = _at.replace("_", " ").title()
+            _at_enabled = _alert_prefs.get(_at, {}).get("enabled", True)
+            _new_enabled = st.checkbox(_at_label, value=_at_enabled, key=f"alert_pref_{_at}")
+            if _new_enabled != _at_enabled:
+                _alert_changes[_at] = _new_enabled
+    if st.button("Save alert settings", key="save_alert_prefs"):
+        if _new_sens != _current_sens:
+            bulk_update_alert_sensitivity(username, _new_sens)
+        for _at, _enabled in _alert_changes.items():
+            update_user_alert_preferences(username, _at, enabled=_enabled, sensitivity=_new_sens)
+        st.success("Alert settings saved")
+
+# Team section
+try:
+    _user_team = get_user_team(username)
+    if _user_team:
+        with st.sidebar.expander(f"Team: {_user_team['team_name']}"):
+            _team_members = get_team_members(_user_team['id'])
+            for _tm in _team_members:
+                _tm_user, _tm_role, _tm_joined, _tm_email = _tm
+                _role_badge = " (owner)" if _tm_role == "owner" else ""
+                st.markdown(f"- **{_tm_user}**{_role_badge}")
+            if _user_team['role'] == 'owner':
+                _remaining = get_team_capacity(username)
+                st.caption(f"Seats remaining: {_remaining}")
+                if _remaining > 0:
+                    with st.form("invite_member_form", clear_on_submit=True):
+                        _inv_email = st.text_input("Email", placeholder="jane@company.com", key="invite_email")
+                        _inv_name = st.text_input("Name", placeholder="Jane Smith", key="invite_name")
+                        _inv_submitted = st.form_submit_button("Invite")
+                    if _inv_submitted and _inv_email.strip():
+                        _inv_ok, _inv_msg = invite_team_member(
+                            _user_team['id'], _inv_email, _inv_name, username
+                        )
+                        if _inv_ok:
+                            st.success(_inv_msg)
+                            st.rerun()
+                        else:
+                            st.error(_inv_msg)
+            _team_brands = get_team_watchlist_brands(_user_team['id'])
+            _team_topics = get_team_watchlist_topics(_user_team['id'])
+            if _team_brands and _user_team['role'] != 'owner':
+                st.caption("Shared brands:")
+                for _tb in _team_brands:
+                    st.markdown(f"  - {_tb}")
+            if _team_topics and _user_team['role'] != 'owner':
+                st.caption("Shared topics:")
+                for _tt_name, _tt_cat in _team_topics:
+                    st.markdown(f"  - {_tt_name}")
+    else:
+        try:
+            if HAS_DB:
+                from db_helper import get_engine as _get_seats_engine
+                _seats_engine = _get_seats_engine()
+                if _seats_engine:
+                    with _seats_engine.connect() as _seats_conn:
+                        _extra_seats_result = _seats_conn.execute(
+                            sql_text("SELECT extra_seats FROM users WHERE username = :u"),
+                            {"u": username},
+                        ).fetchone()
+                    if _extra_seats_result and (_extra_seats_result[0] or 0) > 0:
+                        with st.sidebar.expander("Create a Team"):
+                            st.caption(f"You have {_extra_seats_result[0]} extra seats available")
+                            with st.form("create_team_form", clear_on_submit=True):
+                                _ct_name = st.text_input("Team name", key="create_team_name")
+                                _ct_submitted = st.form_submit_button("Create Team")
+                            if _ct_submitted and _ct_name.strip():
+                                _ct_id = create_team(username, _ct_name.strip())
+                                if _ct_id:
+                                    st.success(f"Team '{_ct_name}' created!")
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to create team")
+        except Exception:
+            pass
+except Exception:
+    pass
+
 if authenticator.logout('Logout', 'sidebar'):
     clear_session(username)
 
@@ -1579,7 +1736,7 @@ def render_admin_panel():
     customers = _load_all_customers(engine)
     customer_emails = [c[0] for c in customers]
 
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Customers", "Add Customer", "Add Credits", "Edit / Delete", "Pipeline Health", "Analytics"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Customers", "Add Customer", "Add Credits", "Edit / Delete", "Pipeline Health", "Analytics", "Teams"])
 
     # --- TAB 1: Customer List ---
     with tab1:
@@ -1869,6 +2026,39 @@ def render_admin_panel():
         except Exception as _an_err:
             st.warning(f"Could not load analytics: {_an_err}")
 
+    # --- TAB 7: Teams ---
+    with tab7:
+        st.subheader("Teams")
+        try:
+            _teams_df = pd.read_sql(sql_text("""
+                SELECT t.id, t.team_name, t.owner_username,
+                       COUNT(tm.id) AS member_count,
+                       t.created_at
+                FROM teams t
+                LEFT JOIN team_members tm ON t.id = tm.team_id
+                GROUP BY t.id, t.team_name, t.owner_username, t.created_at
+                ORDER BY t.created_at DESC
+            """), engine)
+            if not _teams_df.empty:
+                st.dataframe(_teams_df, use_container_width=True, hide_index=True)
+            else:
+                st.info("No teams created yet.")
+        except Exception as _teams_err:
+            st.warning(f"Could not load teams: {_teams_err}")
+
+        with st.expander("Create Team"):
+            with st.form("admin_create_team_form", clear_on_submit=True):
+                _act_owner = st.text_input("Owner username")
+                _act_name = st.text_input("Team name")
+                _act_submitted = st.form_submit_button("Create")
+                if _act_submitted and _act_owner.strip() and _act_name.strip():
+                    _act_id = create_team(_act_owner.strip(), _act_name.strip())
+                    if _act_id:
+                        st.success(f"Team '{_act_name.strip()}' created (ID: {_act_id})")
+                        st.rerun()
+                    else:
+                        st.error("Could not create team (user may already own a team)")
+
 
 with st.sidebar:
     st.header("Controls")
@@ -1937,6 +2127,17 @@ with st.sidebar:
                     _watchlist_brands = [row[0] for row in _wl_result.fetchall()]
         except Exception as _wl_err:
             print(f"Watchlist load error: {_wl_err}")
+
+    # Merge team owner's brands for non-owner team members
+    try:
+        _user_team_info = get_user_team(username)
+        if _user_team_info and _user_team_info.get('role') != 'owner':
+            _team_shared_brands = get_team_watchlist_brands(_user_team_info['id'])
+            for _tsb in _team_shared_brands:
+                if _tsb not in _watchlist_brands:
+                    _watchlist_brands.append(_tsb)
+    except Exception:
+        pass
 
     st.header(f"Brand Watchlist ({len(_watchlist_brands)}/5)")
     st.caption("Track brands for autonomous VLDS & mention alerts")
@@ -2036,6 +2237,18 @@ with st.sidebar:
                     _watchlist_topics = [(row[0], bool(row[1])) for row in _tw_result.fetchall()]
         except Exception as _tw_err:
             print(f"Topic watchlist load error: {_tw_err}")
+
+    # Merge team owner's topics for non-owner team members
+    try:
+        _user_team_info_t = get_user_team(username)
+        if _user_team_info_t and _user_team_info_t.get('role') != 'owner':
+            _team_shared_topics = get_team_watchlist_topics(_user_team_info_t['id'])
+            _existing_topic_names = {t[0] for t in _watchlist_topics}
+            for _tst_name, _tst_cat in _team_shared_topics:
+                if _tst_name not in _existing_topic_names:
+                    _watchlist_topics.append((_tst_name, _tst_cat))
+    except Exception:
+        pass
 
     st.header(f"Topic Watchlist ({len(_watchlist_topics)}/10)")
     st.caption("Monitor topics for VLDS, mention surges & sentiment shifts")
@@ -2208,7 +2421,7 @@ with st.sidebar:
             _rpt_days = st.session_state.get("last_report_days", 7)
             with st.expander(f"Report: {_rpt_subj} (last {_rpt_days} days)", expanded=True):
                 st.markdown(st.session_state["last_report"])
-                _dl_col, _clr_col = st.columns(2)
+                _dl_col, _pdf_col, _clr_col = st.columns(3)
                 with _dl_col:
                     st.download_button(
                         "Download Report (Markdown)",
@@ -2216,10 +2429,76 @@ with st.sidebar:
                         file_name=f"moodlight_report_{_rpt_subj.replace(' ', '_')[:50]}.md",
                         mime="text/markdown",
                     )
+                with _pdf_col:
+                    try:
+                        from pdf_export import generate_report_pdf
+                        _pdf_bytes = generate_report_pdf(
+                            st.session_state["last_report"], _rpt_subj, days=_rpt_days
+                        )
+                        st.download_button(
+                            "Download PDF",
+                            _pdf_bytes,
+                            file_name=f"moodlight_report_{_rpt_subj.replace(' ', '_')[:50]}.pdf",
+                            mime="application/pdf",
+                            key="pdf_report_download",
+                        )
+                    except Exception as _pdf_err:
+                        st.caption(f"PDF unavailable: {_pdf_err}")
                 with _clr_col:
                     if st.button("Clear report", key="clear_report_btn"):
                         del st.session_state["last_report"]
                         st.rerun()
+
+    # Scheduled Reports
+    st.subheader("Scheduled Reports")
+    st.caption("Auto-generate and email intelligence reports on a schedule")
+    try:
+        _schedules = get_report_schedules(username)
+        if _schedules:
+            for _sched in _schedules:
+                _sched_id, _sched_subj, _sched_freq, _sched_days, _sched_enabled, _sched_last, _sched_next = (
+                    _sched[0], _sched[1], _sched[3], _sched[4], _sched[5], _sched[6], _sched[7]
+                )
+                _sched_col1, _sched_col2, _sched_col3 = st.columns([3, 1, 1])
+                with _sched_col1:
+                    _status_icon = "✅" if _sched_enabled else "⏸️"
+                    st.markdown(f"{_status_icon} **{_sched_subj}** — {_sched_freq}, last {_sched_days} days")
+                with _sched_col2:
+                    _toggle_label = "Pause" if _sched_enabled else "Resume"
+                    if st.button(_toggle_label, key=f"toggle_sched_{_sched_id}"):
+                        toggle_report_schedule(_sched_id, not _sched_enabled)
+                        st.rerun()
+                with _sched_col3:
+                    if st.button("Delete", key=f"del_sched_{_sched_id}"):
+                        delete_report_schedule(_sched_id)
+                        st.rerun()
+        else:
+            st.caption("No scheduled reports yet.")
+
+        # Create new schedule form
+        with st.expander("Create a scheduled report"):
+            _sched_options = ["Custom topic..."] + _watchlist_brands
+            _sched_selection = st.selectbox("Subject", _sched_options, key="sched_subject_select")
+            _sched_custom = ""
+            if _sched_selection == "Custom topic...":
+                _sched_custom = st.text_input("Enter brand or topic", key="sched_custom_topic")
+            _sched_freq = st.selectbox("Frequency", ["daily", "weekly"], key="sched_freq_select")
+            _sched_lookback = st.selectbox("Lookback period", [7, 14, 30],
+                format_func=lambda d: f"Last {d} days", key="sched_lookback_select")
+            _sched_final_subject = _sched_custom.strip() if _sched_selection == "Custom topic..." else _sched_selection
+            _sched_type = "brand" if _sched_selection != "Custom topic..." else "topic"
+            if st.button("Create Schedule", key="create_schedule_btn", disabled=not _sched_final_subject):
+                if _sched_final_subject:
+                    _sched_ok = create_report_schedule(
+                        username, _sched_final_subject, _sched_type, _sched_freq, _sched_lookback
+                    )
+                    if _sched_ok:
+                        st.success(f"Scheduled {_sched_freq} report for '{_sched_final_subject}'")
+                        st.rerun()
+                    else:
+                        st.error("Could not create schedule")
+    except Exception as _sched_err:
+        st.caption(f"Scheduled reports unavailable: {_sched_err}")
 
     st.markdown("---")
 
@@ -2999,24 +3278,58 @@ if HAS_DB:
         if _alert_engine:
             from sqlalchemy import text as _alert_text
             _alert_cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+            # Check if user is a team member to also load team owner's alerts
+            _alert_team_owner = None
+            try:
+                _alert_team_info = get_user_team(username)
+                if _alert_team_info and _alert_team_info.get('role') != 'owner':
+                    _alert_team_owner = _alert_team_info.get('owner_username')
+            except Exception:
+                pass
             with _alert_engine.connect() as _alert_conn:
-                # Load global alerts + this user's brand alerts
-                _alert_result = _alert_conn.execute(
-                    _alert_text("""
-                        SELECT id, timestamp, alert_type, severity, title, summary,
-                               investigation, brand, username, data, topic
-                        FROM alerts
-                        WHERE timestamp > :cutoff
-                          AND (username IS NULL OR username = :user)
-                        ORDER BY timestamp DESC
-                        LIMIT 20
-                    """),
-                    {"cutoff": _alert_cutoff, "user": username},
-                )
+                # Load global alerts + this user's brand alerts + team owner's alerts
+                if _alert_team_owner:
+                    _alert_result = _alert_conn.execute(
+                        _alert_text("""
+                            SELECT id, timestamp, alert_type, severity, title, summary,
+                                   investigation, brand, username, data, topic
+                            FROM alerts
+                            WHERE timestamp > :cutoff
+                              AND (username IS NULL OR username = :user OR username = :team_owner)
+                            ORDER BY timestamp DESC
+                            LIMIT 20
+                        """),
+                        {"cutoff": _alert_cutoff, "user": username, "team_owner": _alert_team_owner},
+                    )
+                else:
+                    _alert_result = _alert_conn.execute(
+                        _alert_text("""
+                            SELECT id, timestamp, alert_type, severity, title, summary,
+                                   investigation, brand, username, data, topic
+                            FROM alerts
+                            WHERE timestamp > :cutoff
+                              AND (username IS NULL OR username = :user)
+                            ORDER BY timestamp DESC
+                            LIMIT 20
+                        """),
+                        {"cutoff": _alert_cutoff, "user": username},
+                    )
                 _alert_rows = _alert_result.fetchall()
                 _alerts_loaded = True
     except Exception as _alert_err:
         print(f"Alert load error: {_alert_err}")
+
+# Filter alerts based on user alert preferences
+if _alerts_loaded and _alert_rows:
+    try:
+        _user_alert_prefs = get_user_alert_preferences(username)
+        if _user_alert_prefs:
+            _alert_rows = [
+                _ar for _ar in _alert_rows
+                if should_show_alert(username, str(_ar[2]) if _ar[2] else "info", _user_alert_prefs)
+            ]
+    except Exception:
+        pass
 
 if _alerts_loaded and _alert_rows:
     import json as _alert_json
@@ -4286,7 +4599,39 @@ if st.session_state.get('generate_brief'):
         st.warning("⚠️ Couldn't send email. Here's your brief:")
         st.markdown(brief)
 
+    st.session_state['generate_brief'] = True  # Keep flag for download buttons below
+    st.session_state['last_brief'] = brief
+    st.session_state['last_brief_product'] = user_need
+
+if st.session_state.get('generate_brief'):
     st.session_state['generate_brief'] = False
+
+if st.session_state.get("last_brief"):
+    _brief_dl_col, _brief_pdf_col = st.columns(2)
+    with _brief_dl_col:
+        st.download_button(
+            "Download Brief (Markdown)",
+            st.session_state["last_brief"],
+            file_name="moodlight_strategic_brief.md",
+            mime="text/markdown",
+            key="brief_md_download",
+        )
+    with _brief_pdf_col:
+        try:
+            from pdf_export import generate_brief_pdf
+            _brief_pdf = generate_brief_pdf(
+                st.session_state["last_brief"],
+                st.session_state.get("last_brief_product", "Brief"),
+            )
+            st.download_button(
+                "Download PDF",
+                _brief_pdf,
+                file_name="moodlight_strategic_brief.pdf",
+                mime="application/pdf",
+                key="brief_pdf_download",
+            )
+        except Exception:
+            pass
 
 # ========================================
 # HISTORICAL TRENDS (30/60/90 day views)

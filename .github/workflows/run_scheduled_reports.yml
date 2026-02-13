@@ -1,0 +1,33 @@
+name: Run Scheduled Reports
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Daily at 8am UTC
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  run-scheduled-reports:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pandas requests anthropic python-dotenv sqlalchemy psycopg2-binary
+
+      - name: Run scheduled reports
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python run_scheduled_reports.py

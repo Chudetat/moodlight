@@ -17,3 +17,4 @@ fastapi
 uvicorn
 stripe
 pytest
+fpdf2>=2.7.0
