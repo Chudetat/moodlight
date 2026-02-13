@@ -2611,7 +2611,12 @@ with st.sidebar:
                     st.session_state['user_email'] = user_email.strip()
                     st.session_state['brief_spinner_placeholder'] = st.empty()
 
-    # Contact Support
+    # Admin panel toggle (admin users only)
+    if is_admin:
+        st.markdown("---")
+        st.checkbox("Admin Panel", key="admin_panel_active")
+
+    # Contact Support — last item in sidebar
     st.markdown("---")
     with st.expander("Contact Support"):
         _support_msg = st.text_area("Describe your issue", key="support_message", height=100,
@@ -2639,11 +2644,6 @@ with st.sidebar:
                     st.error(f"Could not send: {_sup_err}")
             else:
                 st.warning("Please describe your issue first.")
-
-    # Admin panel toggle (admin users only)
-    if is_admin:
-        st.markdown("---")
-        st.checkbox("Admin Panel", key="admin_panel_active")
 
 # Render admin panel if active (before loading dashboard data)
 if is_admin and st.session_state.get("admin_panel_active"):
