@@ -112,6 +112,10 @@ if not session_just_created and not validate_session(username, st.session_state[
     st.session_state["authentication_status"] = None
     st.session_state.pop("session_id", None)
     st.rerun()
+STRIPE_MONTHLY_LINK = os.getenv("STRIPE_MONTHLY_LINK", "")
+STRIPE_ANNUAL_LINK = os.getenv("STRIPE_ANNUAL_LINK", "")
+STRIPE_PORTAL_LINK = os.getenv("STRIPE_PORTAL_LINK", "")
+
 # Sidebar welcome and logout
 st.sidebar.write(f'Welcome *{name}*')
 _user_tier_info = get_user_tier(username)
@@ -150,9 +154,6 @@ import requests
 # ========================================
 # TIER GATE HELPER
 # ========================================
-STRIPE_MONTHLY_LINK = os.getenv("STRIPE_MONTHLY_LINK", "")
-STRIPE_ANNUAL_LINK = os.getenv("STRIPE_ANNUAL_LINK", "")
-STRIPE_PORTAL_LINK = os.getenv("STRIPE_PORTAL_LINK", "")
 
 def render_upgrade_prompt(feature_name: str):
     """Show upgrade prompt for inactive/ungated users with pricing links."""
