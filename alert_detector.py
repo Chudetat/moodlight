@@ -11,6 +11,7 @@ Falls back to hardcoded defaults if not provided.
 """
 
 import json
+import numpy as np
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 from vlds_helper import calculate_brand_vlds
@@ -20,6 +21,18 @@ from vlds_helper import calculate_brand_vlds
 # Helpers
 # ---------------------------------------------------------------------------
 
+class _NumpyEncoder(json.JSONEncoder):
+    """Handle numpy types that aren't natively JSON serializable."""
+    def default(self, obj):
+        if isinstance(obj, (np.bool_, np.integer)):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
+
 def _make_alert(alert_type, severity, title, summary, data,
                 brand=None, username=None):
     """Standard alert dict."""
@@ -28,7 +41,7 @@ def _make_alert(alert_type, severity, title, summary, data,
         "severity": severity,
         "title": title,
         "summary": summary,
-        "data": json.dumps(data) if isinstance(data, dict) else str(data),
+        "data": json.dumps(data, cls=_NumpyEncoder) if isinstance(data, dict) else str(data),
         "brand": brand,
         "username": username,
     }
