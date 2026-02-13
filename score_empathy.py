@@ -244,6 +244,17 @@ def score_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     df["emotion_top_2"] = emotion_top_2
     df["emotion_top_3"] = emotion_top_3
 
+    # Engagement-weighted scoring: small boost (max 10%) for high-engagement content
+    if "engagement" in df.columns:
+        import numpy as np
+        eng = pd.to_numeric(df["engagement"], errors="coerce").fillna(0).clip(lower=0)
+        eng_max = eng.max()
+        if eng_max > 0:
+            eng_boost = np.log1p(eng) / np.log1p(eng_max) * 0.1
+            df["empathy_score"] = (df["empathy_score"] + eng_boost).clip(upper=1.0)
+            # Recalculate labels after boost
+            df["empathy_label"] = df["empathy_score"].apply(empathy_label)
+
     return df
 
 # -------------------------------

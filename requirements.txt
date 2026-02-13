@@ -16,3 +16,4 @@ anthropic
 fastapi
 uvicorn
 stripe
+pytest

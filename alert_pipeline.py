@@ -76,6 +76,17 @@ def ensure_tables(engine):
                 UNIQUE(username, topic_name)
             )
         """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) UNIQUE NOT NULL,
+                digest_daily BOOLEAN DEFAULT TRUE,
+                digest_weekly BOOLEAN DEFAULT TRUE,
+                alert_emails BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
         # Add topic column to alerts if it doesn't exist
         try:
             conn.execute(text(

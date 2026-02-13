@@ -1,13 +1,13 @@
-name: Fetch News (Hourly)
+name: Fetch Social - Brand Watchlist (Daily)
 
 on:
   schedule:
-    # Hourly runs for near real-time news freshness
-    - cron: '0 * * * *'  # Every hour on the hour
+    # Once daily at 2pm PST — brand-specific tweets
+    - cron: '0 22 * * *'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
-  fetch-news:
+  fetch-social-brands:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,31 +23,24 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pandas requests feedparser transformers torch anthropic python-dotenv sqlalchemy psycopg2-binary pytest
+          pip install pandas requests feedparser transformers torch anthropic python-dotenv sqlalchemy psycopg2-binary
 
-      - name: Run tests
-        run: python -m pytest tests/ -v --tb=short
-
-      - name: Fetch markets
+      - name: Fetch brand-specific X posts
         env:
-          ALPHAVANTAGE_API_KEY: ${{ secrets.ALPHAVANTAGE_API_KEY }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python fetch_markets.py
-
-      - name: Fetch news (NewsAPI + RSS)
-        env:
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
-        run: python fetch_news_rss.py
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python fetch_posts.py --brand-queries
 
-      - name: Score news
+      - name: Score social
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python score_empathy.py news.csv news_scored.csv
+        run: python score_empathy.py social.csv social_scored.csv
 
-      - name: Save news to PostgreSQL
+      - name: Save social to PostgreSQL
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python save_to_db.py news_scored.csv news_scored
+        run: python save_to_db.py social_scored.csv social_scored
 
       - name: Run alert detection
         env:

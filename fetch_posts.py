@@ -66,11 +66,48 @@ parser.add_argument(
     default="",
     help="Custom search query (e.g. 'student loans'). Leave empty for default broad query."
 )
+parser.add_argument(
+    "--brand-queries",
+    action="store_true",
+    help="Fetch brand-specific tweets for watchlist brands from DB."
+)
 args = parser.parse_args()
 
 custom_query = args.query.strip()
-x_query = f"({custom_query}) lang:en -is:retweet " if custom_query else X_DEFAULT_QUERY 
-news_query = custom_query or NEWS_DEFAULT_QUERY
+
+# Brand-specific mode: load watchlist brands and build targeted query
+if args.brand_queries:
+    TOTAL_MAX_TWEETS = 500  # Smaller budget for brand run
+    _brand_names = []
+    try:
+        from sqlalchemy import create_engine, text as sql_text
+        _db_url = os.getenv("DATABASE_URL", "")
+        if _db_url:
+            _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+            _engine = create_engine(_db_url)
+            with _engine.connect() as _conn:
+                _result = _conn.execute(sql_text(
+                    "SELECT DISTINCT brand_name FROM brand_watchlist"
+                ))
+                _brand_names = [row[0] for row in _result.fetchall()]
+            print(f"Loaded {len(_brand_names)} watchlist brands from DB")
+    except Exception as e:
+        print(f"Could not load watchlist brands: {e}")
+
+    if _brand_names:
+        _brand_or = " OR ".join(f'"{b}"' for b in _brand_names[:15])
+        x_query = f"({_brand_or}) lang:en -is:retweet"
+        news_query = " OR ".join(f'"{b}"' for b in _brand_names[:15])
+    else:
+        print("No watchlist brands found, falling back to default query")
+        x_query = X_DEFAULT_QUERY
+        news_query = NEWS_DEFAULT_QUERY
+elif custom_query:
+    x_query = f"({custom_query}) lang:en -is:retweet "
+    news_query = custom_query
+else:
+    x_query = X_DEFAULT_QUERY
+    news_query = NEWS_DEFAULT_QUERY
 
 # -------------------------------
 # Headers
@@ -458,8 +495,8 @@ def main():
     # --- Fetch X (might hit quota) ---
     tweets, users, hit_cap = search_tweets_paged(x_query, TOTAL_MAX_TWEETS)
     
-    # --- Fetch trending/viral tweets ---
-    if not hit_cap:
+    # --- Fetch trending/viral tweets (skip in brand mode to save budget) ---
+    if not hit_cap and not args.brand_queries:
         trending_tweets, trending_users, hit_cap = search_tweets_paged(X_TRENDING_QUERY, 100)
         tweets.extend(trending_tweets)
         users.update(trending_users)

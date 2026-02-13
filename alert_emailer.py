@@ -33,8 +33,10 @@ def get_subscriber_emails():
         engine = create_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text("""
-                SELECT username, email FROM users
-                WHERE email IS NOT NULL AND email != ''
+                SELECT u.username, u.email FROM users u
+                LEFT JOIN user_preferences p ON u.username = p.username
+                WHERE u.email IS NOT NULL AND u.email != ''
+                  AND COALESCE(p.alert_emails, TRUE) = TRUE
             """))
             return {row[0]: row[1] for row in result.fetchall()}
     except Exception as e:

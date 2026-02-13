@@ -10,7 +10,7 @@ import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 from session_manager import create_session, validate_session, clear_session
-from tier_helper import get_user_tier, can_generate_brief, decrement_brief_credits, has_feature_access, get_brief_credits, get_tier_limit, ACTIVE_TIERS
+from tier_helper import get_user_tier, can_generate_brief, decrement_brief_credits, has_feature_access, get_brief_credits, get_tier_limit, ACTIVE_TIERS, get_user_preferences, update_user_preferences
 try:
     from polymarket_helper import fetch_polymarket_markets, calculate_sentiment_divergence
     HAS_POLYMARKET = True
@@ -114,6 +114,22 @@ if not session_just_created and not validate_session(username, st.session_state[
     st.rerun()
 # Sidebar welcome and logout
 st.sidebar.write(f'Welcome *{name}*')
+_user_tier_info = get_user_tier(username)
+_current_tier = _user_tier_info["tier"]
+if _current_tier in ACTIVE_TIERS:
+    st.sidebar.caption(f"Plan: **{_current_tier.title()}**")
+    if STRIPE_PORTAL_LINK:
+        st.sidebar.markdown(f"[Manage subscription]({STRIPE_PORTAL_LINK})", unsafe_allow_html=True)
+else:
+    st.sidebar.caption("Plan: **No active subscription**")
+with st.sidebar.expander("Email Preferences"):
+    _prefs = get_user_preferences(username)
+    _pref_daily = st.checkbox("Daily intelligence brief", value=_prefs["digest_daily"], key="pref_daily")
+    _pref_weekly = st.checkbox("Weekly strategic digest", value=_prefs["digest_weekly"], key="pref_weekly")
+    _pref_alerts = st.checkbox("Real-time alert emails", value=_prefs["alert_emails"], key="pref_alerts")
+    if st.button("Save preferences", key="save_prefs"):
+        update_user_preferences(username, digest_daily=_pref_daily, digest_weekly=_pref_weekly, alert_emails=_pref_alerts)
+        st.success("Preferences saved")
 if authenticator.logout('Logout', 'sidebar'):
     clear_session(username)
 
@@ -134,13 +150,22 @@ import requests
 # ========================================
 # TIER GATE HELPER
 # ========================================
+STRIPE_MONTHLY_LINK = os.getenv("STRIPE_MONTHLY_LINK", "")
+STRIPE_ANNUAL_LINK = os.getenv("STRIPE_ANNUAL_LINK", "")
+STRIPE_PORTAL_LINK = os.getenv("STRIPE_PORTAL_LINK", "")
+
 def render_upgrade_prompt(feature_name: str):
-    """Show upgrade prompt for inactive/ungated users"""
-    st.info(
-        f"**{feature_name}** is available with an active Moodlight subscription. "
-        "Contact us at **intel@moodlightintel.com** to get started.",
-        icon="\U0001f512"
-    )
+    """Show upgrade prompt for inactive/ungated users with pricing links."""
+    st.info(f"**{feature_name}** requires an active Moodlight subscription.", icon="\U0001f512")
+    col1, col2 = st.columns(2)
+    with col1:
+        if STRIPE_MONTHLY_LINK:
+            st.link_button("Subscribe Monthly — $899/mo", STRIPE_MONTHLY_LINK)
+    with col2:
+        if STRIPE_ANNUAL_LINK:
+            st.link_button("Subscribe Annually — $8,999/yr", STRIPE_ANNUAL_LINK)
+    if not STRIPE_MONTHLY_LINK and not STRIPE_ANNUAL_LINK:
+        st.caption("Contact **intel@moodlightintel.com** to subscribe.")
 
 
 # ========================================
@@ -2053,9 +2078,18 @@ with st.sidebar:
             _rpt_days = st.session_state.get("last_report_days", 7)
             with st.expander(f"Report: {_rpt_subj} (last {_rpt_days} days)", expanded=True):
                 st.markdown(st.session_state["last_report"])
-                if st.button("Clear report", key="clear_report_btn"):
-                    del st.session_state["last_report"]
-                    st.rerun()
+                _dl_col, _clr_col = st.columns(2)
+                with _dl_col:
+                    st.download_button(
+                        "Download Report (Markdown)",
+                        st.session_state["last_report"],
+                        file_name=f"moodlight_report_{_rpt_subj.replace(' ', '_')[:50]}.md",
+                        mime="text/markdown",
+                    )
+                with _clr_col:
+                    if st.button("Clear report", key="clear_report_btn"):
+                        del st.session_state["last_report"]
+                        st.rerun()
 
     st.markdown("---")
 
@@ -2933,6 +2967,18 @@ elif _alerts_loaded:
     st.info("All signals nominal — no anomalies detected in the last 7 days.")
 else:
     st.caption("Alert system initializing — alerts will appear after the next data pipeline run.")
+
+if _alerts_loaded and _alert_rows:
+    _alert_export_df = pd.DataFrame(_alert_rows, columns=[
+        "id", "timestamp", "type", "severity", "title", "summary",
+        "investigation", "brand", "username", "data", "topic"
+    ])
+    st.download_button(
+        "Export alerts (CSV)",
+        _alert_export_df.to_csv(index=False),
+        file_name="moodlight_alerts.csv",
+        mime="text/csv",
+    )
 
 st.markdown("---")
 
@@ -3948,6 +3994,12 @@ if len(df_world_view):
             "created_at": st.column_config.TextColumn("Posted")
         },
         height=600
+    )
+    st.download_button(
+        "Export data (CSV)",
+        display_df.to_csv(index=False),
+        file_name="moodlight_data.csv",
+        mime="text/csv",
     )
 else:
     st.info("No posts match your filters.")

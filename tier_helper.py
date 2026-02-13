@@ -101,6 +101,51 @@ def get_tier_limit(username: str, limit_name: str) -> int:
     limits = TIER_LIMITS.get(limit_name, {})
     return limits.get(tier, 0)
 
+def get_user_preferences(username: str) -> dict:
+    """Get email preferences for a user. Defaults all to True if no row exists."""
+    engine = get_db_engine()
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT digest_daily, digest_weekly, alert_emails
+                FROM user_preferences WHERE username = :username
+            """), {"username": username})
+            row = result.fetchone()
+            if row:
+                return {
+                    "digest_daily": row[0],
+                    "digest_weekly": row[1],
+                    "alert_emails": row[2],
+                }
+    except Exception:
+        pass
+    return {"digest_daily": True, "digest_weekly": True, "alert_emails": True}
+
+
+def update_user_preferences(username: str, **kwargs):
+    """Upsert email preferences for a user."""
+    engine = get_db_engine()
+    digest_daily = kwargs.get("digest_daily", True)
+    digest_weekly = kwargs.get("digest_weekly", True)
+    alert_emails = kwargs.get("alert_emails", True)
+    with engine.connect() as conn:
+        conn.execute(text("""
+            INSERT INTO user_preferences (username, digest_daily, digest_weekly, alert_emails, updated_at)
+            VALUES (:username, :daily, :weekly, :alerts, NOW())
+            ON CONFLICT (username) DO UPDATE SET
+                digest_daily = :daily,
+                digest_weekly = :weekly,
+                alert_emails = :alerts,
+                updated_at = NOW()
+        """), {
+            "username": username,
+            "daily": digest_daily,
+            "weekly": digest_weekly,
+            "alerts": alert_emails,
+        })
+        conn.commit()
+
+
 def update_user_tier(username: str, tier: str, stripe_customer_id: str = None, stripe_subscription_id: str = None):
     """Update user tier after Stripe payment"""
     engine = get_db_engine()

@@ -124,6 +124,44 @@ async def stripe_webhook(request: Request):
 
     return {"status": "success"}
 
+@app.post("/create-checkout-session")
+async def create_checkout_session(request: Request):
+    """Create a Stripe Checkout session for new subscriptions."""
+    data = await request.json()
+    price_id = data.get("price_id")
+    username = data.get("username")
+    email = data.get("email")
+
+    if not price_id or not email:
+        raise HTTPException(status_code=400, detail="price_id and email are required")
+
+    session = stripe.checkout.Session.create(
+        mode="subscription",
+        line_items=[{"price": price_id, "quantity": 1}],
+        customer_email=email,
+        success_url=data.get("success_url", "https://moodlight.streamlit.app/?checkout=success"),
+        cancel_url=data.get("cancel_url", "https://moodlight.streamlit.app/?checkout=cancel"),
+        metadata={"username": username or ""},
+    )
+    return {"url": session.url}
+
+
+@app.post("/create-portal-session")
+async def create_portal_session(request: Request):
+    """Create a Stripe Customer Portal session for managing subscriptions."""
+    data = await request.json()
+    customer_id = data.get("customer_id")
+
+    if not customer_id:
+        raise HTTPException(status_code=400, detail="customer_id is required")
+
+    session = stripe.billing_portal.Session.create(
+        customer=customer_id,
+        return_url=data.get("return_url", "https://moodlight.streamlit.app/"),
+    )
+    return {"url": session.url}
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
