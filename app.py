@@ -85,23 +85,16 @@ st.markdown("""
 # Login page with full-bleed hero background
 if not st.session_state.get("authentication_status"):
     import base64
-    with open("Moodlight_Hero.JPG", "rb") as _hero_f:
+    with open("Moodlight_Hero.png", "rb") as _hero_f:
         _hero_b64 = base64.b64encode(_hero_f.read()).decode()
     st.markdown(f"""
     <style>
         .stApp {{
-            background-image: url("data:image/jpeg;base64,{_hero_b64}");
+            background-image: url("data:image/png;base64,{_hero_b64}");
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
             background-attachment: fixed;
-        }}
-        .stApp::before {{
-            content: "";
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.55);
-            z-index: 0;
         }}
         .stMainBlockContainer {{
             position: relative;
