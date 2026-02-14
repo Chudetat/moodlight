@@ -82,10 +82,43 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-# Logo on login page (only show when not logged in)
-
+# Login page with full-bleed hero background
 if not st.session_state.get("authentication_status"):
+    import base64
+    with open("Moodlight_Hero.JPG", "rb") as _hero_f:
+        _hero_b64 = base64.b64encode(_hero_f.read()).decode()
+    st.markdown(f"""
+    <style>
+        .stApp {{
+            background-image: url("data:image/jpeg;base64,{_hero_b64}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }}
+        .stApp::before {{
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 0;
+        }}
+        .stMainBlockContainer {{
+            position: relative;
+            z-index: 1;
+        }}
+        /* Style the login form */
+        [data-testid="stForm"] {{
+            background: rgba(14, 17, 23, 0.85);
+            border: 1px solid rgba(107, 70, 193, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+        }}
+    </style>
+    """, unsafe_allow_html=True)
     st.image("logo.png", width=300)
+
 # Login widget
 authenticator.login()
 
@@ -96,7 +129,7 @@ if not st.session_state.get("authentication_status"):
 if st.session_state.get("authentication_status") == False:
     st.error('Username/password is incorrect')
     st.stop()
-    
+
 if st.session_state.get("authentication_status") == None:
     st.warning('Please enter your username and password')
     st.stop()
