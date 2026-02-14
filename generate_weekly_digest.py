@@ -295,8 +295,7 @@ def _get_cancelled_emails():
         with engine.connect() as conn:
             result = conn.execute(text("""
                 SELECT email FROM users
-                WHERE stripe_subscription_id IS NULL
-                  AND tier != 'enterprise'
+                WHERE tier NOT IN ('monthly', 'annually', 'professional', 'enterprise')
                   AND username != 'admin'
             """))
             return {row[0].lower() for row in result.fetchall()}

@@ -16,8 +16,7 @@ from email.mime.multipart import MIMEMultipart
 def get_cancelled_subscriber_emails():
     """Get emails of users who cancelled their subscription.
     Only these emails will be excluded from the daily brief.
-    Anyone in EMAIL_RECIPIENT who is NOT in this list passes through,
-    including the admin (who may not have a Stripe subscription at all)."""
+    Active tiers (monthly, annually) always pass through regardless of Stripe status."""
     db_url = os.getenv("DATABASE_URL", "")
     if not db_url:
         return None  # No database — send to full EMAIL_RECIPIENT list
@@ -28,8 +27,7 @@ def get_cancelled_subscriber_emails():
         with engine.connect() as conn:
             result = conn.execute(text("""
                 SELECT email FROM users
-                WHERE stripe_subscription_id IS NULL
-                  AND tier != 'enterprise'
+                WHERE tier NOT IN ('monthly', 'annually', 'professional', 'enterprise')
                   AND username != 'admin'
             """))
             emails = {row[0].lower() for row in result.fetchall()}
