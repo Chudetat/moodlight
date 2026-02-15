@@ -68,6 +68,7 @@ def load_metric_trends(scope: str, scope_name: str = None, metric_name: str = No
             FROM metric_snapshots
             WHERE {where}
             ORDER BY snapshot_date ASC
+            LIMIT 1000
         """)
         return pd.read_sql(query, engine, params=params)
     except Exception:
@@ -95,7 +96,7 @@ def load_df_from_db(table_name):
     except Exception as e:
         # Fall back to loading all data if query fails (e.g., column doesn't exist)
         try:
-            df = pd.read_sql(f"SELECT * FROM {table_name}", engine)
+            df = pd.read_sql(f"SELECT * FROM {table_name} LIMIT 5000", engine)
             return df, None
         except Exception as e2:
             return pd.DataFrame(), f"DB query failed: {e2}"

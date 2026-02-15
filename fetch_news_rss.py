@@ -982,7 +982,8 @@ def fetch_newsapi_brands() -> List[Dict[str, Any]]:
                     try:
                         dt = datetime.fromisoformat(pub_date.replace('Z', '+00:00'))
                         created_at = dt.isoformat()
-                    except:
+                    except Exception as e:
+                        print(f"WARNING: parsing article date failed: {e}")
                         created_at = now.isoformat()
                 else:
                     created_at = now.isoformat()
@@ -1246,8 +1247,8 @@ def parse_pubdate(date_str: str) -> str | None:
         if parsed:
             dt = datetime(*parsed[:6], tzinfo=timezone.utc)
             return dt.isoformat()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: feedparser date parsing failed: {e}")
 
     # Try common date formats
     formats = [
@@ -1263,7 +1264,8 @@ def parse_pubdate(date_str: str) -> str | None:
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             return dt.isoformat()
-        except Exception:
+        except Exception as e:
+            print(f"WARNING: date format '{fmt}' parsing failed: {e}")
             continue
 
     return None

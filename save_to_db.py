@@ -11,6 +11,7 @@ load_dotenv()
 
 MAX_RETRIES = 5
 INITIAL_RETRY_DELAY = 5
+ALLOWED_TABLES = {"news_scored", "social_scored"}
 
 
 def create_db_engine(db_url: str):
@@ -39,6 +40,10 @@ def create_db_engine(db_url: str):
 def save_to_db(csv_path: str, table_name: str):
     """Save scored CSV to PostgreSQL table"""
 
+    if table_name not in ALLOWED_TABLES:
+        print(f"❌ Invalid table name: {table_name}. Allowed: {ALLOWED_TABLES}")
+        return
+
     if not os.path.exists(csv_path):
         print(f"❌ {csv_path} not found")
         return
@@ -55,8 +60,8 @@ def save_to_db(csv_path: str, table_name: str):
     try:
         from alert_pipeline import start_pipeline_run, complete_pipeline_run
         run_id = start_pipeline_run(engine, f"save_to_db_{table_name}")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: start_pipeline_run tracking failed: {e}")
 
     df = pd.read_csv(csv_path)
 
@@ -93,8 +98,8 @@ def save_to_db(csv_path: str, table_name: str):
 
             try:
                 complete_pipeline_run(engine, run_id, "success", len(df_clean))
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"WARNING: complete_pipeline_run success tracking failed: {e}")
 
             # Add performance indexes (to_sql with replace drops them each run)
             try:
@@ -121,8 +126,8 @@ def save_to_db(csv_path: str, table_name: str):
                 print(f"❌ All {MAX_RETRIES} attempts failed. Database may be unreachable.")
                 try:
                     complete_pipeline_run(engine, run_id, "failed", 0, str(e)[:500])
-                except Exception:
-                    pass
+                except Exception as e2:
+                    print(f"WARNING: complete_pipeline_run failure tracking failed: {e2}")
                 raise
 
 

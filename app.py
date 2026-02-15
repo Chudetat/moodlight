@@ -1341,7 +1341,7 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30):
                 _sql_text("SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
                           "WHERE snapshot_date >= :cutoff "
                           "AND scope = 'brand' AND LOWER(scope_name) = :subject "
-                          "ORDER BY snapshot_date"),
+                          "ORDER BY snapshot_date LIMIT 500"),
                 engine, params={"cutoff": cutoff_date, "subject": brand_lower},
             )
         elif topic:
@@ -1350,14 +1350,14 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30):
                 _sql_text("SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
                           "WHERE snapshot_date >= :cutoff "
                           "AND scope = 'topic' AND LOWER(scope_name) = :subject "
-                          "ORDER BY snapshot_date"),
+                          "ORDER BY snapshot_date LIMIT 500"),
                 engine, params={"cutoff": cutoff_date, "subject": topic_lower},
             )
         else:
             metrics_df = pd.read_sql(
                 _sql_text("SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
                           "WHERE snapshot_date >= :cutoff AND scope = 'global' "
-                          "ORDER BY snapshot_date"),
+                          "ORDER BY snapshot_date LIMIT 500"),
                 engine, params={"cutoff": cutoff_date},
             )
 

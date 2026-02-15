@@ -15,7 +15,8 @@ def load_sessions() -> dict:
         try:
             with open(SESSION_FILE, 'r') as f:
                 return json.load(f)
-        except:
+        except Exception as e:
+            print(f"WARNING: load_sessions failed: {e}")
             return {}
     return {}
 

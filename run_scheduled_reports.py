@@ -33,8 +33,8 @@ def main():
     try:
         from alert_pipeline import start_pipeline_run, complete_pipeline_run
         run_id = start_pipeline_run(engine, "scheduled_reports")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: start_pipeline_run tracking failed: {e}")
 
     processed = 0
     errors = 0
@@ -104,8 +104,8 @@ def main():
         if run_id:
             try:
                 complete_pipeline_run(engine, run_id, "success", processed)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"WARNING: complete_pipeline_run success tracking failed: {e}")
 
     except Exception as e:
         print(f"Fatal error: {e}")
@@ -113,8 +113,8 @@ def main():
             try:
                 from alert_pipeline import complete_pipeline_run
                 complete_pipeline_run(engine, run_id, "failed", processed, str(e)[:500])
-            except Exception:
-                pass
+            except Exception as e2:
+                print(f"WARNING: complete_pipeline_run failure tracking failed: {e2}")
         sys.exit(1)
 
 

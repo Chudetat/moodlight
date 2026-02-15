@@ -118,8 +118,8 @@ def get_user_preferences(username: str) -> dict:
                     "digest_weekly": row[1],
                     "alert_emails": row[2],
                 }
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: get_user_preferences failed: {e}")
     return {"digest_daily": True, "digest_weekly": True, "alert_emails": True}
 
 
@@ -157,8 +157,8 @@ def log_user_event(username: str, event_type: str, event_data: str = None):
                 VALUES (:username, :event_type, :event_data)
             """), {"username": username, "event_type": event_type, "event_data": event_data})
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: log_user_event failed: {e}")
 
 
 def update_user_tier(username: str, tier: str, stripe_customer_id: str = None, stripe_subscription_id: str = None):
@@ -230,7 +230,8 @@ def get_user_alert_preferences(username: str) -> dict:
             for row in result.fetchall():
                 prefs[row[0]] = {"enabled": row[1], "sensitivity": row[2]}
             return prefs
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: get_user_alert_preferences failed: {e}")
         return {}
 
 
@@ -297,7 +298,8 @@ def get_unread_alert_count(username: str) -> int:
                   )
             """), {"user": username})
             return result.scalar() or 0
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: get_unread_alert_count failed: {e}")
         return 0
 
 
@@ -312,8 +314,8 @@ def mark_alert_read(username: str, alert_id: int):
                 ON CONFLICT (alert_id, username) DO NOTHING
             """), {"alert_id": alert_id, "username": username})
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: mark_alert_read failed: {e}")
 
 
 def mark_all_alerts_read(username: str):
@@ -332,8 +334,8 @@ def mark_all_alerts_read(username: str):
                   )
             """), {"user": username})
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: mark_all_alerts_read failed: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -351,7 +353,8 @@ def get_report_schedules(username: str) -> list:
                 FROM report_schedules WHERE username = :username ORDER BY created_at
             """), {"username": username})
             return result.fetchall()
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: get_report_schedules failed: {e}")
         return []
 
 
@@ -381,7 +384,8 @@ def create_report_schedule(username: str, subject: str, subject_type: str,
             })
             conn.commit()
         return True
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: create_report_schedule failed: {e}")
         return False
 
 
@@ -393,8 +397,8 @@ def delete_report_schedule(schedule_id: int):
             conn.execute(text("DELETE FROM report_schedules WHERE id = :id"),
                          {"id": schedule_id})
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: delete_report_schedule failed: {e}")
 
 
 def toggle_report_schedule(schedule_id: int, enabled: bool):
@@ -407,8 +411,8 @@ def toggle_report_schedule(schedule_id: int, enabled: bool):
                 WHERE id = :id
             """), {"id": schedule_id, "enabled": enabled})
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: toggle_report_schedule failed: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -429,8 +433,8 @@ def get_user_team(username: str) -> dict | None:
             row = result.fetchone()
             if row:
                 return {"id": row[0], "team_name": row[1], "owner_username": row[2], "role": row[3]}
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: get_user_team failed: {e}")
     return None
 
 
@@ -447,7 +451,8 @@ def get_team_members(team_id: int) -> list:
                 ORDER BY tm.role DESC, tm.joined_at
             """), {"team_id": team_id})
             return result.fetchall()
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: get_team_members failed: {e}")
         return []
 
 
@@ -467,8 +472,8 @@ def get_team_capacity(owner_username: str) -> int:
             row = result.fetchone()
             if row:
                 return max(0, (row[0] or 0) - (row[1] or 0))
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: get_team_capacity failed: {e}")
     return 0
 
 
@@ -500,7 +505,8 @@ def create_team(owner_username: str, team_name: str) -> int | None:
             """), {"team_id": team_id, "username": owner_username})
             conn.commit()
             return team_id
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: create_team failed: {e}")
         return None
 
 
@@ -521,7 +527,8 @@ def add_team_member(team_id: int, username: str, role: str = "member") -> bool:
             """), {"team_id": team_id, "username": username, "role": role})
             conn.commit()
         return True
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: add_team_member failed: {e}")
         return False
 
 
@@ -535,7 +542,8 @@ def remove_team_member(team_id: int, username: str) -> bool:
             ), {"tid": team_id, "u": username})
             conn.commit()
             return result.rowcount > 0
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: remove_team_member failed: {e}")
         return False
 
 
@@ -553,7 +561,8 @@ def get_team_watchlist_brands(team_id: int) -> list:
                 "SELECT brand_name FROM brand_watchlist WHERE username = :u ORDER BY created_at"
             ), {"u": owner_row[0]})
             return [row[0] for row in result.fetchall()]
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: get_team_watchlist_brands failed: {e}")
         return []
 
 
@@ -571,7 +580,8 @@ def get_team_watchlist_topics(team_id: int) -> list:
                 "SELECT topic_name, is_category FROM topic_watchlist WHERE username = :u ORDER BY created_at"
             ), {"u": owner_row[0]})
             return [(row[0], bool(row[1])) for row in result.fetchall()]
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: get_team_watchlist_topics failed: {e}")
         return []
 
 

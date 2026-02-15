@@ -41,8 +41,8 @@ def ensure_metric_snapshots_table(engine):
         try:
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_metric_snapshots_date ON metric_snapshots (snapshot_date)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_metric_snapshots_scope ON metric_snapshots (scope, scope_name)"))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"WARNING: metric_snapshots index creation failed: {e}")
         conn.commit()
 
 

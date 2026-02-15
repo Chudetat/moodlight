@@ -301,19 +301,34 @@ def load_recent_data():
 
 def load_social_data():
     """Load social media data for sentiment analysis"""
-    # Try social_scored.csv, fallback to backup
-    for csv_path in ["social_scored.csv", "social_scored_backup.csv"]:
-        if os.path.exists(csv_path):
-            try:
-                df = pd.read_csv(csv_path)
+    cutoff = datetime.now(timezone.utc) - pd.Timedelta(days=7)
+    # Try PostgreSQL first
+    db_url = os.getenv("DATABASE_URL", "")
+    if db_url:
+        try:
+            from sqlalchemy import create_engine
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+            engine = create_engine(db_url)
+            df = pd.read_sql("SELECT * FROM social_scored", engine)
+            if not df.empty:
                 df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
-                cutoff = datetime.now(timezone.utc) - pd.Timedelta(days=7)
                 recent = df[df['created_at'] >= cutoff]
                 if not recent.empty:
-                    print(f"✅ Loaded {len(recent)} social posts from {csv_path}")
+                    print(f"✅ Loaded {len(recent)} social posts from PostgreSQL")
                     return recent
-            except Exception as e:
-                print(f"Social data error ({csv_path}): {e}")
+        except Exception as e:
+            print(f"Social DB error: {e}")
+    # Fallback to CSV
+    if os.path.exists("social_scored.csv"):
+        try:
+            df = pd.read_csv("social_scored.csv")
+            df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
+            recent = df[df['created_at'] >= cutoff]
+            if not recent.empty:
+                print(f"✅ Loaded {len(recent)} social posts from CSV")
+                return recent
+        except Exception as e:
+            print(f"Social CSV error: {e}")
     print("⚠️ No social data available")
     return pd.DataFrame()
 

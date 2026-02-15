@@ -167,7 +167,8 @@ def _load_historical_alerts(engine, alert_type, brand=None, days=30):
                 {"timestamp": str(r[0]), "title": r[1], "summary": r[2]}
                 for r in rows
             ]
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: _load_historical_alerts failed: {e}")
         return []
 
 
@@ -202,7 +203,8 @@ def _load_metric_history(engine, scope, scope_name, metric_name, days=30):
                     {"scope": scope, "metric": metric_name, "cutoff": cutoff},
                 )
             return [(str(r[0]), float(r[1])) for r in result.fetchall()]
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: _load_metric_history failed: {e}")
         return []
 
 
@@ -406,7 +408,8 @@ def _step_strategic(client, alert, context, prior_steps=None, **kwargs):
         user_need = alert.get("summary", "") + " " + alert.get("alert_type", "")
         frameworks = select_frameworks(user_need)
         framework_prompt = get_framework_prompt(frameworks)
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: loading strategic frameworks failed: {e}")
         framework_prompt = "Apply relevant strategic frameworks to your analysis."
 
     prompt = f"""You are Moodlight's intelligence analyst. Provide STRATEGIC IMPLICATIONS.
@@ -442,8 +445,8 @@ End with: Confidence: [0.0-1.0]"""
     frameworks_applied = []
     try:
         frameworks_applied = frameworks[:3] if frameworks else []
-    except NameError:
-        pass
+    except NameError as e:
+        print(f"WARNING: extracting framework names failed: {e}")
 
     return {
         "step": "strategic",

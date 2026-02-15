@@ -190,8 +190,8 @@ def _save_token(token: str, queries: int, session_id: str = ""):
                 "ON CONFLICT (token) DO UPDATE SET queries_remaining = :queries"
             ), {"token": token, "queries": queries, "session_id": session_id})
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: _save_token failed: {e}")
 
 
 def _get_token_queries(token: str) -> int:
@@ -212,8 +212,8 @@ def _get_token_queries(token: str) -> int:
             if row:
                 _token_cache[token] = row[0]
                 return row[0]
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: _get_token_queries failed: {e}")
     return 0
 
 
@@ -287,8 +287,8 @@ def _load_dashboard_data() -> pd.DataFrame:
                 )
                 if not df.empty:
                     frames.append(df)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"WARNING: loading {table} failed: {e}")
         result = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
         _cache_set("dashboard_data", result)
         return result
@@ -311,30 +311,30 @@ def _load_vlds_maps():
         if engine:
             try:
                 _dens_df = pd.read_sql("SELECT topic, density_score FROM topic_density", engine)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"WARNING: loading topic_density from DB failed: {e}")
         if _dens_df.empty:
             _dens_df = pd.read_csv("topic_density.csv")
         if "topic" in _dens_df.columns and "density_score" in _dens_df.columns:
             density_map = dict(zip(_dens_df["topic"], _dens_df["density_score"]))
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: loading density map failed: {e}")
 
     try:
         _long_df = pd.DataFrame()
         if engine:
             try:
                 _long_df = pd.read_sql("SELECT topic, velocity_score, longevity_score FROM topic_longevity", engine)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"WARNING: loading topic_longevity from DB failed: {e}")
         if _long_df.empty:
             _long_df = pd.read_csv("topic_longevity.csv")
         if "topic" in _long_df.columns and "velocity_score" in _long_df.columns:
             velocity_map = dict(zip(_long_df["topic"], _long_df["velocity_score"]))
         if "topic" in _long_df.columns and "longevity_score" in _long_df.columns:
             longevity_map = dict(zip(_long_df["topic"], _long_df["longevity_score"]))
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: loading velocity/longevity maps failed: {e}")
 
     result = (density_map, velocity_map, longevity_map)
     _cache_set("vlds_maps", result)
@@ -353,12 +353,12 @@ def _load_scarcity_data():
         if engine:
             try:
                 df = pd.read_sql("SELECT * FROM topic_scarcity", engine)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"WARNING: loading topic_scarcity from DB failed: {e}")
         if df.empty:
             df = pd.read_csv("topic_scarcity.csv")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: loading scarcity data failed: {e}")
 
     _cache_set("scarcity_data", df)
     return df
@@ -861,8 +861,8 @@ async def ask_moodlight(req: AskRequest, request: Request):
             intel_context = load_intelligence_context(
                 engine, brand=brand_name or None, topic=topic_name or None, days=30,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"WARNING: loading intelligence context failed: {e}")
 
     # 8. Assemble context
     context_parts = []
@@ -890,16 +890,25 @@ async def ask_moodlight(req: AskRequest, request: Request):
                 messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": question})
 
-    # 9. Call Claude
-    try:
-        response = client.messages.create(
-            model="claude-opus-4-20250514",
-            max_tokens=4096,
-            system=system_prompt,
-            messages=messages,
-        )
-        answer = response.content[0].text
-    except Exception as e:
+    # 9. Call Claude (with retry for transient failures)
+    answer = None
+    last_err = None
+    for _attempt in range(3):
+        try:
+            response = client.messages.create(
+                model="claude-opus-4-20250514",
+                max_tokens=4096,
+                system=system_prompt,
+                messages=messages,
+            )
+            answer = response.content[0].text
+            break
+        except Exception as e:
+            last_err = e
+            if _attempt < 2:
+                time.sleep(1 * (_attempt + 1))  # 1s, 2s backoff
+    if answer is None:
+        print(f"WARNING: Claude API failed after 3 attempts: {last_err}")
         raise HTTPException(status_code=503, detail="Intelligence engine temporarily unavailable.")
 
     # Record successful request

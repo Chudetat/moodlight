@@ -92,8 +92,8 @@ def ensure_tables(engine):
             conn.execute(text(
                 "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS topic VARCHAR(200)"
             ))
-        except Exception:
-            pass  # Column already exists or DB doesn't support IF NOT EXISTS
+        except Exception as e:
+            print(f"WARNING: adding topic column to alerts failed: {e}")
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS pipeline_runs (
                 id SERIAL PRIMARY KEY,
@@ -192,8 +192,8 @@ def ensure_tables(engine):
         ]:
             try:
                 conn.execute(text(idx_sql))
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"WARNING: index creation failed: {e}")
         conn.commit()
     print("DB tables verified")
 
@@ -285,7 +285,8 @@ def check_cooldown(engine, cooldown_key, hours=6):
                 {"key": cooldown_key, "cutoff": cutoff},
             )
             return result.scalar() > 0
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: check_cooldown failed: {e}")
         return False
 
 
@@ -315,7 +316,8 @@ def start_pipeline_run(engine, pipeline_name):
             run_id = result.scalar()
             conn.commit()
             return run_id
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: start_pipeline_run failed: {e}")
         return None
 
 
@@ -336,8 +338,8 @@ def complete_pipeline_run(engine, run_id, status="success", row_count=0, error_m
                 {"id": run_id, "status": status, "row_count": row_count, "error_message": error_message},
             )
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: complete_pipeline_run failed: {e}")
 
 
 def store_alert(engine, alert):

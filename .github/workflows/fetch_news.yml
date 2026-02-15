@@ -73,6 +73,11 @@ jobs:
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: python alert_pipeline.py
 
+      - name: Cleanup old data
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python cleanup_old_data.py
+
       - name: Notify on failure
         if: failure()
         env:

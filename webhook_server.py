@@ -239,8 +239,8 @@ def health():
                 if p["status"] == "failed" or (p["age_hours"] and p["age_hours"] > 25):
                     result["status"] = "degraded"
                     break
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"WARNING: health check pipeline query failed: {e}")
     return result
 
 if __name__ == "__main__":

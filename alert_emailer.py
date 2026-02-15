@@ -63,7 +63,8 @@ def get_cancelled_emails():
                   AND username != 'admin'
             """))
             return {row[0].lower() for row in result.fetchall()}
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: get_cancelled_emails failed: {e}")
         return set()
 
 
@@ -79,7 +80,8 @@ def check_email_rate_limit(engine, email, cutoff_hours=24):
             )
             count = result.scalar()
             return count >= MAX_EMAILS_PER_DAY
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: check_email_rate_limit failed: {e}")
         return False
 
 
@@ -103,7 +105,8 @@ def _get_user_disabled_alert_types():
             for row in result.fetchall():
                 disabled.setdefault(row[0], set()).add(row[1])
             return disabled
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: _get_user_disabled_alert_types failed: {e}")
         return {}
 
 

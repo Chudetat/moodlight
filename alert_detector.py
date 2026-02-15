@@ -367,8 +367,8 @@ def detect_geopolitical_risk_escalation(df_news, engine=None, thresholds=None):
         try:
             from predictive_detector import compute_momentum
             momentum = compute_momentum(engine, "global", None, "avg_intensity_geopolitical")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"WARNING: compute_momentum for geopolitical risk failed: {e}")
 
     is_rapid = avg_intensity >= 4.5
     is_accelerating = momentum and momentum.get("direction") == "accelerating"

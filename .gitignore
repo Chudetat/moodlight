@@ -8,6 +8,8 @@ env/
 venv/
 ENV/
 .env
+.env.*
+.env.backup
 
 # Streamlit
 .streamlit/secrets.toml
@@ -29,3 +31,12 @@ Thumbs.db
 leads.csv
 active_sessions.json
 news_scored.csv
+social_scored.csv
+news.csv
+social.csv
+
+# Stale/backup CSVs
+combined.csv
+*_corrupted.csv
+*_backup.csv
+test_news.csv
