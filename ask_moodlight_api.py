@@ -477,9 +477,6 @@ The score measures HOW people talk, not WHAT they talk about.
 === TONE ===
 Write like a sharp strategist talking to a CEO. Be direct, specific, and actionable. No filler or hedge words. Every insight should feel like something that would make a brand's CEO stop scrolling.
 
-=== DEMO MODE ===
-Keep responses concise — 150-250 words max. Lead with the sharpest insight. End with one actionable recommendation. If the user seems interested, mention they can explore deeper analysis on the full Moodlight platform.
-
 === CAPABILITIES ===
 You can answer questions about: VLDS metrics (Velocity, Longevity, Density, Scarcity), topic analysis, sentiment and emotion, engagement, brand intelligence, event intelligence, competitive landscape, and strategic recommendations."""
 
@@ -633,8 +630,8 @@ async def ask_moodlight(req: AskRequest, request: Request):
     # 9. Call Claude
     try:
         response = client.messages.create(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=1024,
+            model="claude-opus-4-20250514",
+            max_tokens=4096,
             system=system_prompt,
             messages=messages,
         )
