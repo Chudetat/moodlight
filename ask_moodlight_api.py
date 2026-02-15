@@ -13,7 +13,6 @@ import secrets
 import pandas as pd
 import requests
 import feedparser
-import stripe
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 from dotenv import load_dotenv
@@ -49,8 +48,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Stripe config
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+# Stripe config (lazy-imported so module works without stripe installed)
+try:
+    import stripe
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+except ImportError:
+    stripe = None
 STRIPE_ASK_PRICE_ID = os.getenv("STRIPE_ASK_PRICE_ID", "")
 SITE_URL = "https://moodlightintel.com"
 
