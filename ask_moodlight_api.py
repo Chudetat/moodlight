@@ -506,22 +506,37 @@ def build_verified_data(df_all: pd.DataFrame) -> str:
                  else "Warm" if avg_empathy < 70 else "Highly Empathetic")
         verified_parts.append(f"Global Mood Score: {avg_empathy:.0f}/100 ({label})")
 
-    # Topic breakdown with VLDS metrics
+    # Topic breakdown with VLDS metrics (DB-first, CSV fallback)
     topic_density_map = {}
     topic_velocity_map = {}
     topic_longevity_map = {}
+    _vlds_engine = _get_engine()
     try:
-        density_csv = pd.read_csv("topic_density.csv")
-        if "topic" in density_csv.columns and "density_score" in density_csv.columns:
-            topic_density_map = dict(zip(density_csv["topic"], density_csv["density_score"]))
+        _dens_df = pd.DataFrame()
+        if _vlds_engine:
+            try:
+                _dens_df = pd.read_sql("SELECT topic, density_score FROM topic_density", _vlds_engine)
+            except Exception:
+                pass
+        if _dens_df.empty:
+            _dens_df = pd.read_csv("topic_density.csv")
+        if "topic" in _dens_df.columns and "density_score" in _dens_df.columns:
+            topic_density_map = dict(zip(_dens_df["topic"], _dens_df["density_score"]))
     except Exception:
         pass
     try:
-        velocity_csv = pd.read_csv("topic_longevity.csv")
-        if "topic" in velocity_csv.columns and "velocity_score" in velocity_csv.columns:
-            topic_velocity_map = dict(zip(velocity_csv["topic"], velocity_csv["velocity_score"]))
-        if "topic" in velocity_csv.columns and "longevity_score" in velocity_csv.columns:
-            topic_longevity_map = dict(zip(velocity_csv["topic"], velocity_csv["longevity_score"]))
+        _long_df = pd.DataFrame()
+        if _vlds_engine:
+            try:
+                _long_df = pd.read_sql("SELECT topic, velocity_score, longevity_score FROM topic_longevity", _vlds_engine)
+            except Exception:
+                pass
+        if _long_df.empty:
+            _long_df = pd.read_csv("topic_longevity.csv")
+        if "topic" in _long_df.columns and "velocity_score" in _long_df.columns:
+            topic_velocity_map = dict(zip(_long_df["topic"], _long_df["velocity_score"]))
+        if "topic" in _long_df.columns and "longevity_score" in _long_df.columns:
+            topic_longevity_map = dict(zip(_long_df["topic"], _long_df["longevity_score"]))
     except Exception:
         pass
 
@@ -539,16 +554,23 @@ def build_verified_data(df_all: pd.DataFrame) -> str:
             topic_lines.append(line)
         verified_parts.append("Topic Breakdown:\n" + "\n".join(topic_lines))
 
-    # Scarcity
+    # Scarcity (DB-first, CSV fallback)
     try:
-        scarcity_csv = pd.read_csv("topic_scarcity.csv")
-        if "topic" in scarcity_csv.columns and "scarcity_score" in scarcity_csv.columns:
+        _scar_df = pd.DataFrame()
+        if _vlds_engine:
+            try:
+                _scar_df = pd.read_sql("SELECT * FROM topic_scarcity", _vlds_engine)
+            except Exception:
+                pass
+        if _scar_df.empty:
+            _scar_df = pd.read_csv("topic_scarcity.csv")
+        if "topic" in _scar_df.columns and "scarcity_score" in _scar_df.columns:
             scarcity_lines = []
-            for _, row in scarcity_csv.head(10).iterrows():
+            for _, row in _scar_df.head(10).iterrows():
                 line = f"- {row['topic']}: scarcity {row['scarcity_score']}"
-                if "mention_count" in scarcity_csv.columns:
+                if "mention_count" in _scar_df.columns:
                     line += f", mentions {row['mention_count']}"
-                if "opportunity" in scarcity_csv.columns:
+                if "opportunity" in _scar_df.columns:
                     line += f", opportunity: {row['opportunity']}"
                 scarcity_lines.append(line)
             verified_parts.append("Scarcity (White Space Opportunities):\n" + "\n".join(scarcity_lines))
