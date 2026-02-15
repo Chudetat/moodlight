@@ -468,11 +468,14 @@ with st.sidebar.expander("Alert Settings"):
             if _new_enabled != _at_enabled:
                 _alert_changes[_at] = _new_enabled
     if st.button("Save alert settings", key="save_alert_prefs"):
-        if _new_sens != _current_sens:
-            bulk_update_alert_sensitivity(username, _new_sens)
-        for _at, _enabled in _alert_changes.items():
-            update_user_alert_preferences(username, _at, enabled=_enabled, sensitivity=_new_sens)
-        st.success("Alert settings saved")
+        try:
+            if _new_sens != _current_sens:
+                bulk_update_alert_sensitivity(username, _new_sens)
+            for _at, _enabled in _alert_changes.items():
+                update_user_alert_preferences(username, _at, enabled=_enabled, sensitivity=_new_sens)
+            st.success("Alert settings saved")
+        except Exception as _save_err:
+            st.error(f"Could not save alert settings: {_save_err}")
 
 # Team section
 try:
@@ -2445,6 +2448,7 @@ with st.sidebar:
             print(f"Watchlist load error: {_wl_err}")
 
     # Merge team owner's brands for non-owner team members
+    _shared_brands = set()
     try:
         _user_team_info = get_user_team(username)
         if _user_team_info and _user_team_info.get('role') != 'owner':
@@ -2452,6 +2456,7 @@ with st.sidebar:
             for _tsb in _team_shared_brands:
                 if _tsb not in _watchlist_brands:
                     _watchlist_brands.append(_tsb)
+                    _shared_brands.add(_tsb)
     except Exception:
         pass
 
@@ -2462,9 +2467,12 @@ with st.sidebar:
         for _wb in _watchlist_brands:
             _col_brand, _col_remove = st.columns([3, 1])
             with _col_brand:
-                st.markdown(f"**{_wb}**")
+                _shared_tag = " *(shared)*" if _wb in _shared_brands else ""
+                st.markdown(f"**{_wb}**{_shared_tag}")
             with _col_remove:
-                if st.button("✕", key=f"remove_brand_{_wb}"):
+                if _wb in _shared_brands:
+                    pass  # Don't show remove button for team-shared brands
+                elif st.button("✕", key=f"remove_brand_{_wb}"):
                     try:
                         from db_helper import get_engine as _get_rm_engine
                         _rm_engine = _get_rm_engine()
@@ -2555,6 +2563,7 @@ with st.sidebar:
             print(f"Topic watchlist load error: {_tw_err}")
 
     # Merge team owner's topics for non-owner team members
+    _shared_topics = set()
     try:
         _user_team_info_t = get_user_team(username)
         if _user_team_info_t and _user_team_info_t.get('role') != 'owner':
@@ -2563,6 +2572,7 @@ with st.sidebar:
             for _tst_name, _tst_cat in _team_shared_topics:
                 if _tst_name not in _existing_topic_names:
                     _watchlist_topics.append((_tst_name, _tst_cat))
+                    _shared_topics.add(_tst_name)
     except Exception:
         pass
 
@@ -2573,11 +2583,14 @@ with st.sidebar:
         for _wt_name, _wt_is_cat in _watchlist_topics:
             _col_topic, _col_type, _col_rm = st.columns([2, 1, 1])
             with _col_topic:
-                st.markdown(f"**{_wt_name}**")
+                _shared_tag_t = " *(shared)*" if _wt_name in _shared_topics else ""
+                st.markdown(f"**{_wt_name}**{_shared_tag_t}")
             with _col_type:
                 st.caption("category" if _wt_is_cat else "keyword")
             with _col_rm:
-                if st.button("✕", key=f"remove_topic_{_wt_name}"):
+                if _wt_name in _shared_topics:
+                    pass  # Don't show remove button for team-shared topics
+                elif st.button("✕", key=f"remove_topic_{_wt_name}"):
                     try:
                         from db_helper import get_engine as _get_trm_engine
                         _trm_engine = _get_trm_engine()
@@ -2765,56 +2778,59 @@ with st.sidebar:
                         del st.session_state["last_report"]
                         st.rerun()
 
-    # Scheduled Reports
+    # Scheduled Reports (same access as Intelligence Reports)
     st.subheader("Scheduled Reports")
-    st.caption("Auto-generate and email intelligence reports on a schedule")
-    try:
-        _schedules = get_report_schedules(username)
-        if _schedules:
-            for _sched in _schedules:
-                _sched_id, _sched_subj, _sched_freq, _sched_days, _sched_enabled, _sched_last, _sched_next = (
-                    _sched[0], _sched[1], _sched[3], _sched[4], _sched[5], _sched[6], _sched[7]
-                )
-                _sched_col1, _sched_col2, _sched_col3 = st.columns([3, 1, 1])
-                with _sched_col1:
-                    _status_icon = "✅" if _sched_enabled else "⏸️"
-                    st.markdown(f"{_status_icon} **{_sched_subj}** — {_sched_freq}, last {_sched_days} days")
-                with _sched_col2:
-                    _toggle_label = "Pause" if _sched_enabled else "Resume"
-                    if st.button(_toggle_label, key=f"toggle_sched_{_sched_id}"):
-                        toggle_report_schedule(_sched_id, not _sched_enabled)
-                        st.rerun()
-                with _sched_col3:
-                    if st.button("Delete", key=f"del_sched_{_sched_id}"):
-                        delete_report_schedule(_sched_id)
-                        st.rerun()
-        else:
-            st.caption("No scheduled reports yet.")
-
-        # Create new schedule form
-        with st.expander("Create a scheduled report"):
-            _sched_options = ["Custom topic..."] + _watchlist_brands
-            _sched_selection = st.selectbox("Subject", _sched_options, key="sched_subject_select")
-            _sched_custom = ""
-            if _sched_selection == "Custom topic...":
-                _sched_custom = st.text_input("Enter brand or topic", key="sched_custom_topic")
-            _sched_freq = st.selectbox("Frequency", ["daily", "weekly"], key="sched_freq_select")
-            _sched_lookback = st.selectbox("Lookback period", [7, 14, 30],
-                format_func=lambda d: f"Last {d} days", key="sched_lookback_select")
-            _sched_final_subject = _sched_custom.strip() if _sched_selection == "Custom topic..." else _sched_selection
-            _sched_type = "brand" if _sched_selection != "Custom topic..." else "topic"
-            if st.button("Create Schedule", key="create_schedule_btn", disabled=not _sched_final_subject):
-                if _sched_final_subject:
-                    _sched_ok = create_report_schedule(
-                        username, _sched_final_subject, _sched_type, _sched_freq, _sched_lookback
+    if not has_feature_access(username, "intelligence_reports"):
+        st.caption("Upgrade your plan to access scheduled reports.")
+    else:
+        st.caption("Auto-generate and email intelligence reports on a schedule")
+        try:
+            _schedules = get_report_schedules(username)
+            if _schedules:
+                for _sched in _schedules:
+                    _sched_id, _sched_subj, _sched_freq, _sched_days, _sched_enabled, _sched_last, _sched_next = (
+                        _sched[0], _sched[1], _sched[3], _sched[4], _sched[5], _sched[6], _sched[7]
                     )
-                    if _sched_ok:
-                        st.success(f"Scheduled {_sched_freq} report for '{_sched_final_subject}'")
-                        st.rerun()
-                    else:
-                        st.error("Could not create schedule")
-    except Exception as _sched_err:
-        st.caption(f"Scheduled reports unavailable: {_sched_err}")
+                    _sched_col1, _sched_col2, _sched_col3 = st.columns([3, 1, 1])
+                    with _sched_col1:
+                        _status_icon = "✅" if _sched_enabled else "⏸️"
+                        st.markdown(f"{_status_icon} **{_sched_subj}** — {_sched_freq}, last {_sched_days} days")
+                    with _sched_col2:
+                        _toggle_label = "Pause" if _sched_enabled else "Resume"
+                        if st.button(_toggle_label, key=f"toggle_sched_{_sched_id}"):
+                            toggle_report_schedule(_sched_id, not _sched_enabled)
+                            st.rerun()
+                    with _sched_col3:
+                        if st.button("Delete", key=f"del_sched_{_sched_id}"):
+                            delete_report_schedule(_sched_id)
+                            st.rerun()
+            else:
+                st.caption("No scheduled reports yet.")
+
+            # Create new schedule form
+            with st.expander("Create a scheduled report"):
+                _sched_options = ["Custom topic..."] + _watchlist_brands
+                _sched_selection = st.selectbox("Subject", _sched_options, key="sched_subject_select")
+                _sched_custom = ""
+                if _sched_selection == "Custom topic...":
+                    _sched_custom = st.text_input("Enter brand or topic", key="sched_custom_topic")
+                _sched_freq = st.selectbox("Frequency", ["daily", "weekly"], key="sched_freq_select")
+                _sched_lookback = st.selectbox("Lookback period", [7, 14, 30],
+                    format_func=lambda d: f"Last {d} days", key="sched_lookback_select")
+                _sched_final_subject = _sched_custom.strip() if _sched_selection == "Custom topic..." else _sched_selection
+                _sched_type = "brand" if _sched_selection != "Custom topic..." else "topic"
+                if st.button("Create Schedule", key="create_schedule_btn", disabled=not _sched_final_subject):
+                    if _sched_final_subject:
+                        _sched_ok = create_report_schedule(
+                            username, _sched_final_subject, _sched_type, _sched_freq, _sched_lookback
+                        )
+                        if _sched_ok:
+                            st.success(f"Scheduled {_sched_freq} report for '{_sched_final_subject}'")
+                            st.rerun()
+                        else:
+                            st.error("Could not create schedule")
+        except Exception as _sched_err:
+            st.caption(f"Scheduled reports unavailable: {_sched_err}")
 
     st.markdown("---")
 
