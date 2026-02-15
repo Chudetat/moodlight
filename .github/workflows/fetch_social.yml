@@ -69,3 +69,24 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: python alert_pipeline.py
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+        run: |
+          python -c "
+          import smtplib, os
+          from email.mime.text import MIMEText
+          body = 'The Fetch Social (3x Daily) pipeline failed.\n\nCheck: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          msg = MIMEText(body)
+          msg['Subject'] = '[Moodlight] Pipeline Failed: Fetch Social'
+          msg['From'] = os.environ['EMAIL_ADDRESS']
+          msg['To'] = os.environ['EMAIL_RECIPIENT']
+          with smtplib.SMTP_SSL('smtp.gmail.com', 465) as s:
+              s.login(os.environ['EMAIL_ADDRESS'], os.environ['EMAIL_PASSWORD'])
+              s.send_message(msg)
+          print('Failure notification sent')
+          "

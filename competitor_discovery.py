@@ -36,6 +36,8 @@ def ensure_competitor_tables(engine):
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )
         """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_comp_snapshots_brand ON competitive_snapshots (brand_name, created_at DESC)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_brand_competitors_brand ON brand_competitors (brand_name)"))
         conn.commit()
 
 

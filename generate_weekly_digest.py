@@ -78,10 +78,28 @@ def load_weekly_data(engine):
     except Exception as e:
         print(f"  Could not load competitive snapshots: {e}")
 
-    return alerts_df, metrics_df, competitive_df
+    # Topic-level VLDS scores
+    vlds_df = pd.DataFrame()
+    try:
+        from sqlalchemy import text as sql_text2
+        frames = []
+        for table in ("topic_longevity", "topic_density", "topic_scarcity"):
+            try:
+                df = pd.read_sql(sql_text2(f"SELECT * FROM {table}"), engine)
+                if not df.empty:
+                    frames.append((table, df))
+            except Exception:
+                pass
+        if frames:
+            print(f"  Loaded topic VLDS data: {', '.join(t for t, _ in frames)}")
+    except Exception as e:
+        print(f"  Could not load topic VLDS: {e}")
+        frames = []
+
+    return alerts_df, metrics_df, competitive_df, frames
 
 
-def prepare_weekly_context(alerts_df, metrics_df, competitive_df):
+def prepare_weekly_context(alerts_df, metrics_df, competitive_df, vlds_frames=None):
     """Format weekly data as context for Claude."""
     week_start = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%B %d")
     week_end = datetime.now(timezone.utc).strftime("%B %d, %Y")
@@ -191,6 +209,29 @@ def prepare_weekly_context(alerts_df, metrics_df, competitive_df):
     else:
         context += "COMPETITIVE: No competitive snapshots available.\n"
 
+    context += "\n"
+
+    # Topic-level VLDS scores
+    if vlds_frames:
+        context += "TOPIC-LEVEL VLDS SCORES:\n"
+        for table_name, df in vlds_frames:
+            if table_name == "topic_longevity" and not df.empty:
+                top = df.nlargest(5, "longevity_score")
+                context += "\nTop Topics by Longevity (staying power):\n"
+                for _, row in top.iterrows():
+                    context += f"  {row['topic']}: longevity={row['longevity_score']:.2f}, velocity={row.get('velocity_score', 0):.2f}\n"
+            elif table_name == "topic_density" and not df.empty:
+                top = df.nlargest(5, "density_score")
+                context += "\nMost Saturated Topics (density):\n"
+                for _, row in top.iterrows():
+                    context += f"  {row['topic']}: density={row['density_score']:.2f}, region={row.get('primary_region', 'N/A')}\n"
+            elif table_name == "topic_scarcity" and not df.empty:
+                high_opp = df[df.get("opportunity", pd.Series()) == "HIGH"] if "opportunity" in df.columns else df.nlargest(5, "scarcity_score")
+                if not high_opp.empty:
+                    context += "\nWhite Space Opportunities (high scarcity):\n"
+                    for _, row in high_opp.head(5).iterrows():
+                        context += f"  {row['topic']}: scarcity={row['scarcity_score']:.2f}, mentions={row.get('mention_count', 'N/A')}\n"
+
     return context
 
 
@@ -247,18 +288,22 @@ DATA:
 {context}
 """
 
-    response = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
-        max_tokens=2500,
-        system=(
-            "You are a senior strategic intelligence analyst. You synthesize weekly signals "
-            "into actionable strategic insights. You focus on patterns, not noise, and always "
-            "explain why something matters for business decision-making."
-        ),
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    return response.content[0].text
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=2500,
+            system=(
+                "You are a senior strategic intelligence analyst. You synthesize weekly signals "
+                "into actionable strategic insights. You focus on patterns, not noise, and always "
+                "explain why something matters for business decision-making."
+            ),
+            messages=[{"role": "user", "content": prompt}],
+        )
+        if not response.content:
+            return "Error: AI returned empty response. Please try again."
+        return response.content[0].text
+    except Exception as e:
+        return f"Error generating digest: {e}"
 
 
 def _get_subscriber_emails():
@@ -399,13 +444,13 @@ def main():
         sys.exit(0)
 
     print("\nLoading weekly data...")
-    alerts_df, metrics_df, competitive_df = load_weekly_data(engine)
+    alerts_df, metrics_df, competitive_df, vlds_frames = load_weekly_data(engine)
 
     if alerts_df.empty and metrics_df.empty:
         print("No data available for weekly digest.")
         sys.exit(0)
 
-    context = prepare_weekly_context(alerts_df, metrics_df, competitive_df)
+    context = prepare_weekly_context(alerts_df, metrics_df, competitive_df, vlds_frames)
 
     print("\nGenerating digest with Claude...")
     digest = generate_weekly_digest(context)
