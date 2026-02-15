@@ -84,7 +84,12 @@
       flex-direction: column;
       align-items: center;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      padding: 12px 20px;
+      padding: 32px 20px;
+      background: rgba(14, 17, 23, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 16px;
+      border: 1px solid rgba(107, 70, 193, 0.15);
     }
 
     /* ── Logo area ── */
@@ -124,8 +129,8 @@
     }
     .ml-search-bar {
       width: 100%;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(107, 70, 193, 0.25);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(107, 70, 193, 0.3);
       border-radius: 28px;
       padding: 16px 56px 16px 24px;
       color: #FAFAFA;
@@ -142,7 +147,7 @@
     .ml-search-bar:focus {
       border-color: rgba(107, 70, 193, 0.5);
       box-shadow: 0 4px 24px rgba(107, 70, 193, 0.15);
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.12);
     }
     .ml-search-bar:disabled { opacity: 0.5; }
 
@@ -176,8 +181,8 @@
       max-width: 580px;
     }
     .ml-prompt-chip {
-      background: rgba(107, 70, 193, 0.1);
-      border: 1px solid rgba(107, 70, 193, 0.2);
+      background: rgba(107, 70, 193, 0.15);
+      border: 1px solid rgba(107, 70, 193, 0.3);
       border-radius: 20px;
       padding: 8px 16px;
       font-size: 13px;
@@ -229,8 +234,8 @@
     }
 
     .ml-result-card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(107, 70, 193, 0.12);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(107, 70, 193, 0.18);
       border-radius: 12px;
       padding: 16px 20px;
       color: #E0E0E0;
@@ -246,8 +251,8 @@
       display: flex;
       gap: 5px;
       padding: 20px 24px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(107, 70, 193, 0.12);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(107, 70, 193, 0.18);
       border-radius: 12px;
     }
     .ml-typing-dot {
