@@ -323,14 +323,14 @@ def mark_all_alerts_read(username: str):
         with engine.connect() as conn:
             conn.execute(text("""
                 INSERT INTO alert_read_status (alert_id, username)
-                SELECT a.id, :username FROM alerts a
+                SELECT a.id, :user FROM alerts a
                 WHERE a.timestamp > NOW() - INTERVAL '7 days'
                   AND (a.username IS NULL OR a.username = :user)
                   AND NOT EXISTS (
                       SELECT 1 FROM alert_read_status rs
                       WHERE rs.alert_id = a.id AND rs.username = :user
                   )
-            """), {"user": username, "username": username})
+            """), {"user": username})
             conn.commit()
     except Exception:
         pass
@@ -505,10 +505,15 @@ def create_team(owner_username: str, team_name: str) -> int | None:
 
 
 def add_team_member(team_id: int, username: str, role: str = "member") -> bool:
-    """Add a user to a team."""
+    """Add a user to a team. Validates user exists."""
     engine = get_db_engine()
     try:
         with engine.connect() as conn:
+            user_exists = conn.execute(text(
+                "SELECT 1 FROM users WHERE username = :u"
+            ), {"u": username}).fetchone()
+            if not user_exists:
+                return False
             conn.execute(text("""
                 INSERT INTO team_members (team_id, username, role)
                 VALUES (:team_id, :username, :role)

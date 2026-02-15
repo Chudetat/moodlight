@@ -83,12 +83,37 @@ def check_email_rate_limit(engine, email, cutoff_hours=24):
         return False
 
 
+def _get_user_disabled_alert_types():
+    """Get alert types each user has disabled. Returns {username: set(alert_type)}."""
+    db_url = os.getenv("DATABASE_URL", "")
+    if not db_url:
+        return {}
+    try:
+        from sqlalchemy import create_engine, text
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+        if "sslmode" not in db_url:
+            sep = "&" if "?" in db_url else "?"
+            db_url = db_url + sep + "sslmode=require"
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                "SELECT username, alert_type FROM user_alert_preferences WHERE enabled = FALSE"
+            ))
+            disabled = {}
+            for row in result.fetchall():
+                disabled.setdefault(row[0], set()).add(row[1])
+            return disabled
+    except Exception:
+        return {}
+
+
 def send_alert_emails(alerts, engine=None):
     """Send email alerts to appropriate subscribers.
 
     Global alerts (brand=None) → all active subscribers
     Brand alerts (brand set) → only the subscriber who watches that brand
     Only sends for critical and warning severity.
+    Respects user alert type preferences.
     """
     sender = os.getenv("EMAIL_ADDRESS")
     password = os.getenv("EMAIL_PASSWORD")
@@ -116,6 +141,11 @@ def send_alert_emails(alerts, engine=None):
         print("  All recipients are cancelled — skipping email alerts")
         return 0
     print(f"  Active recipients: {len(active_recipients)} ({len(subscriber_map)} from DB, {len(env_recipients)} from env)")
+
+    # Load user alert preferences (disabled alert types)
+    disabled_types = _get_user_disabled_alert_types()
+    # Reverse subscriber map: email → username for preference lookup
+    email_to_user = {email.lower(): uname for uname, email in subscriber_map.items()}
 
     # Filter to only critical/warning alerts, prioritize critical first
     emailable = [a for a in alerts if a.get("severity") in ("critical", "warning")]
@@ -149,7 +179,12 @@ def send_alert_emails(alerts, engine=None):
                 html = _build_email_html(alert)
                 subject = _build_subject(alert)
 
+                alert_type = alert.get("alert_type", "")
                 for recipient in targets:
+                    # Check if this user has disabled this alert type
+                    _rcpt_user = email_to_user.get(recipient.lower())
+                    if _rcpt_user and alert_type and alert_type in disabled_types.get(_rcpt_user, set()):
+                        continue
                     msg = MIMEMultipart("alternative")
                     msg["Subject"] = subject
                     msg["From"] = sender

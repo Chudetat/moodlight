@@ -426,8 +426,10 @@ try:
                     if _notif_type != "all":
                         _type_list = ALERT_TYPE_CATEGORIES.get(_notif_type, [])
                         if _type_list:
-                            _type_placeholders = ",".join(f"'{t}'" for t in _type_list)
+                            _type_params = {f"_tp{i}": t for i, t in enumerate(_type_list)}
+                            _type_placeholders = ",".join(f":_tp{i}" for i in range(len(_type_list)))
                             _notif_q += f" AND a.alert_type IN ({_type_placeholders})"
+                            _notif_params.update(_type_params)
                     _notif_q += " ORDER BY a.timestamp DESC LIMIT 15"
                     with _notif_engine.connect() as _notif_conn:
                         _notif_rows = _notif_conn.execute(sql_text(_notif_q), _notif_params).fetchall()
@@ -2505,32 +2507,37 @@ with st.sidebar:
         render_upgrade_prompt("Brand Watchlist")
     elif len(_watchlist_brands) < 5:
         with st.form("add_brand_form", clear_on_submit=True):
-            _new_brand = st.text_input("Add a brand", placeholder="e.g. Nike")
+            _new_brand = st.text_input("Add a brand", placeholder="e.g. Nike", max_chars=100)
             _add_submitted = st.form_submit_button("Add")
             if _add_submitted and _new_brand.strip():
-                try:
-                    from db_helper import get_engine as _get_add_engine
-                    _add_engine = _get_add_engine()
-                    if _add_engine:
-                        from sqlalchemy import text as _add_text
-                        with _add_engine.connect() as _add_conn:
-                            _add_conn.execute(
-                                _add_text("INSERT INTO brand_watchlist (username, brand_name) VALUES (:u, :b) ON CONFLICT DO NOTHING"),
-                                {"u": username, "b": _new_brand.strip()},
-                            )
-                            _add_conn.commit()
-                        log_user_event(username, "add_brand", _new_brand.strip())
-                        # Trigger competitor discovery immediately
-                        try:
-                            from competitor_discovery import ensure_competitor_tables, ensure_competitors_cached
-                            ensure_competitor_tables(_add_engine)
-                            with st.spinner(f"Discovering competitors for {_new_brand.strip()}..."):
-                                ensure_competitors_cached(_add_engine, _new_brand.strip())
-                        except Exception:
-                            pass  # Non-fatal — pipeline will discover later
-                    st.rerun()
-                except Exception as _add_err:
-                    st.error(f"Could not add: {_add_err}")
+                if len(_new_brand.strip()) > 100:
+                    st.error("Brand name too long (max 100 characters)")
+                elif _new_brand.strip() in _watchlist_brands:
+                    st.warning("Brand already in your watchlist")
+                else:
+                    try:
+                        from db_helper import get_engine as _get_add_engine
+                        _add_engine = _get_add_engine()
+                        if _add_engine:
+                            from sqlalchemy import text as _add_text
+                            with _add_engine.connect() as _add_conn:
+                                _add_conn.execute(
+                                    _add_text("INSERT INTO brand_watchlist (username, brand_name) VALUES (:u, :b) ON CONFLICT DO NOTHING"),
+                                    {"u": username, "b": _new_brand.strip()},
+                                )
+                                _add_conn.commit()
+                            log_user_event(username, "add_brand", _new_brand.strip())
+                            # Trigger competitor discovery immediately
+                            try:
+                                from competitor_discovery import ensure_competitor_tables, ensure_competitors_cached
+                                ensure_competitor_tables(_add_engine)
+                                with st.spinner(f"Discovering competitors for {_new_brand.strip()}..."):
+                                    ensure_competitors_cached(_add_engine, _new_brand.strip())
+                            except Exception:
+                                pass  # Non-fatal — pipeline will discover later
+                        st.rerun()
+                    except Exception as _add_err:
+                        st.error(f"Could not add: {_add_err}")
     else:
         st.caption("Maximum 5 brands reached")
 
@@ -2628,29 +2635,32 @@ with st.sidebar:
                 _new_topic = st.selectbox("Select category", _TOPIC_CATEGORIES, key="topic_cat_select")
                 _new_is_category = True
             else:
-                _new_topic = st.text_input("Keyword", placeholder="e.g. tariffs, supply chain")
+                _new_topic = st.text_input("Keyword", placeholder="e.g. tariffs, supply chain", max_chars=100)
                 _new_is_category = False
             _topic_submitted = st.form_submit_button("Add Topic")
             if _topic_submitted and _new_topic and _new_topic.strip():
-                try:
-                    from db_helper import get_engine as _get_ta_engine
-                    _ta_engine = _get_ta_engine()
-                    if _ta_engine:
-                        from sqlalchemy import text as _ta_text
-                        with _ta_engine.connect() as _ta_conn:
-                            _ta_conn.execute(
-                                _ta_text("""
-                                    INSERT INTO topic_watchlist (username, topic_name, is_category)
-                                    VALUES (:u, :t, :is_cat)
-                                    ON CONFLICT DO NOTHING
-                                """),
-                                {"u": username, "t": _new_topic.strip(), "is_cat": _new_is_category},
-                            )
-                            _ta_conn.commit()
-                    log_user_event(username, "add_topic", _new_topic.strip())
-                    st.rerun()
-                except Exception as _ta_err:
-                    st.error(f"Could not add: {_ta_err}")
+                if len(_new_topic.strip()) > 100:
+                    st.error("Topic name too long (max 100 characters)")
+                else:
+                    try:
+                        from db_helper import get_engine as _get_ta_engine
+                        _ta_engine = _get_ta_engine()
+                        if _ta_engine:
+                            from sqlalchemy import text as _ta_text
+                            with _ta_engine.connect() as _ta_conn:
+                                _ta_conn.execute(
+                                    _ta_text("""
+                                        INSERT INTO topic_watchlist (username, topic_name, is_category)
+                                        VALUES (:u, :t, :is_cat)
+                                        ON CONFLICT DO NOTHING
+                                    """),
+                                    {"u": username, "t": _new_topic.strip(), "is_cat": _new_is_category},
+                                )
+                                _ta_conn.commit()
+                        log_user_event(username, "add_topic", _new_topic.strip())
+                        st.rerun()
+                    except Exception as _ta_err:
+                        st.error(f"Could not add: {_ta_err}")
     else:
         st.caption("Maximum 10 topics reached")
 

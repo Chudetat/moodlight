@@ -47,7 +47,7 @@ def main():
                 FROM report_schedules rs
                 JOIN users u ON rs.username = u.username
                 WHERE rs.enabled = TRUE
-                  AND (rs.next_run IS NULL OR rs.next_run <= NOW())
+                  AND (rs.next_run IS NULL OR rs.next_run <= NOW() AT TIME ZONE 'UTC')
             """)).fetchall()
 
             if not due:
@@ -66,11 +66,19 @@ def main():
                         engine, subject, days=days_lookback, subject_type=subject_type
                     )
 
+                    email_ok = True
                     if email:
-                        email_report(report_text, subject, email, days=days_lookback)
-                        print(f"  Emailed to {email}")
+                        email_ok = email_report(report_text, subject, email, days=days_lookback)
+                        if email_ok:
+                            print(f"  Emailed to {email}")
+                        else:
+                            print(f"  Email failed for {email}, will retry next run")
                     else:
                         print(f"  No email on file for {uname}, skipping email")
+
+                    if not email_ok:
+                        errors += 1
+                        continue
 
                     # Update schedule timestamps
                     now = datetime.now(timezone.utc)

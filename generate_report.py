@@ -358,18 +358,22 @@ DATA:
 {context}
 """
 
-    response = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
-        max_tokens=3000,
-        system=(
-            "You are a senior strategic intelligence analyst. You produce comprehensive, "
-            "data-driven intelligence reports that synthesize multiple signal types into "
-            "actionable strategic insights. You always support claims with specific data."
-        ),
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    return response.content[0].text
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=3000,
+            system=(
+                "You are a senior strategic intelligence analyst. You produce comprehensive, "
+                "data-driven intelligence reports that synthesize multiple signal types into "
+                "actionable strategic insights. You always support claims with specific data."
+            ),
+            messages=[{"role": "user", "content": prompt}],
+        )
+        if not response.content:
+            return "Error: AI returned empty response. Please try again."
+        return response.content[0].text
+    except Exception as e:
+        return f"Error generating report: {e}"
 
 
 def _build_report_html(report_text, subject, days):
