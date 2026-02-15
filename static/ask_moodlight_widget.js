@@ -26,6 +26,36 @@
   let isOpen = false;
   let queriesRemaining = 3;
   let hasSearched = false;
+  let paidToken = localStorage.getItem("ml_paid_token") || null;
+  let isPaid = false;
+
+  // Check for Stripe redirect (ml_session in URL)
+  const urlParams = new URLSearchParams(window.location.search);
+  const mlSession = urlParams.get("ml_session");
+  if (mlSession) {
+    // Activate the token
+    fetch(API_BASE + "/api/activate?session_id=" + encodeURIComponent(mlSession))
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.token) {
+          paidToken = data.token;
+          isPaid = true;
+          queriesRemaining = data.queries_remaining;
+          localStorage.setItem("ml_paid_token", data.token);
+          // Clean URL
+          const clean = window.location.href.split("?")[0];
+          window.history.replaceState({}, "", clean);
+          updateBadge();
+        }
+      })
+      .catch(() => {});
+  }
+
+  // If we have a stored token, validate it
+  if (paidToken && !mlSession) {
+    isPaid = true;
+    queriesRemaining = 10; // Will be corrected on first API response
+  }
 
   // ── Styles ──
   const STYLES = `
@@ -274,6 +304,35 @@
       margin-top: 12px;
     }
 
+    /* ── Unlock button ── */
+    .ml-unlock-btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #6B46C1, #1976D2);
+      color: white;
+      border: none;
+      border-radius: 24px;
+      padding: 12px 28px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s;
+      margin-top: 8px;
+    }
+    .ml-unlock-btn:hover {
+      opacity: 0.9;
+      transform: scale(1.02);
+    }
+    .ml-unlock-cta {
+      text-align: center;
+      margin-top: 16px;
+    }
+    .ml-unlock-cta p {
+      color: rgba(250, 250, 250, 0.5);
+      font-size: 13px;
+      margin: 0 0 8px 0;
+    }
+
     /* ── Footer ── */
     .ml-footer-inline {
       margin-top: 16px;
@@ -444,8 +503,13 @@
 
     const question = input.value.trim();
     if (!question) return;
-    if (queriesRemaining <= 0) {
-      addResult(messages, "assistant", "You've used your 3 free questions for today. Sign up for unlimited access to Ask Moodlight and the full intelligence platform.");
+    if (queriesRemaining <= 0 && !isPaid) {
+      showUnlockPrompt(messages);
+      return;
+    }
+    if (queriesRemaining <= 0 && isPaid) {
+      addResult(messages, "assistant", "You've used all your purchased questions. Grab another pack to keep going.");
+      showUnlockPrompt(messages);
       return;
     }
 
@@ -473,7 +537,7 @@
       const res = await fetch(API_BASE + "/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, conversation }),
+        body: JSON.stringify({ question, conversation, token: paidToken }),
       });
 
       typing.remove();
@@ -481,7 +545,7 @@
       if (res.status === 429) {
         queriesRemaining = 0;
         updateBadge();
-        addResult(messages, "assistant", "You've used your 3 free questions for today. Sign up for unlimited access to the full intelligence platform.");
+        showUnlockPrompt(messages);
         return;
       }
 
@@ -494,6 +558,7 @@
       conversation.push({ role: "user", content: question });
       conversation.push({ role: "assistant", content: data.answer });
       queriesRemaining = data.queries_remaining;
+      if (data.is_paid) isPaid = true;
       updateBadge();
 
       addResult(messages, "assistant", data.answer);
@@ -504,6 +569,31 @@
       input.disabled = false;
       sendBtn.disabled = false;
       input.focus();
+    }
+  };
+
+  function showUnlockPrompt(container) {
+    const existing = container.querySelector(".ml-unlock-cta");
+    if (existing) return; // Don't show twice
+    const el = document.createElement("div");
+    el.className = "ml-unlock-cta";
+    el.innerHTML = `
+      <p>You've used your free questions for today.</p>
+      <button class="ml-unlock-btn" onclick="window._mlUnlock()">Unlock 10 more questions — $10</button>
+    `;
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  window._mlUnlock = async function () {
+    try {
+      const res = await fetch(API_BASE + "/api/checkout", { method: "POST" });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
     }
   };
 
@@ -539,10 +629,12 @@
   function updateBadge() {
     const badge = document.getElementById("ml-queries-badge");
     if (badge) {
-      badge.textContent =
-        queriesRemaining > 0
-          ? `${queriesRemaining} free question${queriesRemaining !== 1 ? "s" : ""} remaining`
-          : "Sign up for unlimited access";
+      if (queriesRemaining > 0) {
+        const label = isPaid ? "question" : "free question";
+        badge.textContent = `${queriesRemaining} ${label}${queriesRemaining !== 1 ? "s" : ""} remaining`;
+      } else {
+        badge.textContent = "";
+      }
     }
   }
 

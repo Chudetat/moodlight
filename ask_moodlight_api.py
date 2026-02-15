@@ -9,15 +9,17 @@ import os
 import json
 import time
 import hashlib
+import secrets
 import pandas as pd
 import requests
 import feedparser
+import stripe
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from anthropic import Anthropic
@@ -47,9 +49,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Stripe config
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_ASK_PRICE_ID = os.getenv("STRIPE_ASK_PRICE_ID", "")
+SITE_URL = "https://moodlightintel.com"
+
 # Rate limiting: {ip_hash: [(timestamp, count)]}
-RATE_LIMIT = 3  # queries per visitor per day
+RATE_LIMIT = 3  # free queries per visitor per day
+PAID_QUERIES = 10  # queries per purchase
 _rate_store: dict[str, list[float]] = defaultdict(list)
+
+# Paid token storage: {token: queries_remaining}
+# Persisted in DB, cached in memory
+_token_cache: dict[str, int] = {}
 
 
 def _hash_ip(ip: str) -> str:
@@ -76,6 +88,76 @@ def _cleanup_rate_store():
     stale = [k for k, v in _rate_store.items() if all(t < cutoff for t in v)]
     for k in stale:
         del _rate_store[k]
+
+
+def _ensure_ask_tokens_table():
+    """Create ask_tokens table if it doesn't exist."""
+    engine = _get_engine()
+    if not engine:
+        return
+    try:
+        from sqlalchemy import text as sql_text
+        with engine.connect() as conn:
+            conn.execute(sql_text("""
+                CREATE TABLE IF NOT EXISTS ask_tokens (
+                    token VARCHAR(64) PRIMARY KEY,
+                    queries_remaining INTEGER NOT NULL DEFAULT 10,
+                    stripe_session_id VARCHAR(200),
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """))
+            conn.commit()
+    except Exception as e:
+        print(f"Could not create ask_tokens table: {e}")
+
+
+def _save_token(token: str, queries: int, session_id: str = ""):
+    """Save a paid token to DB and cache."""
+    _token_cache[token] = queries
+    engine = _get_engine()
+    if not engine:
+        return
+    try:
+        from sqlalchemy import text as sql_text
+        with engine.connect() as conn:
+            conn.execute(sql_text(
+                "INSERT INTO ask_tokens (token, queries_remaining, stripe_session_id) "
+                "VALUES (:token, :queries, :session_id) "
+                "ON CONFLICT (token) DO UPDATE SET queries_remaining = :queries"
+            ), {"token": token, "queries": queries, "session_id": session_id})
+            conn.commit()
+    except Exception:
+        pass
+
+
+def _get_token_queries(token: str) -> int:
+    """Get remaining queries for a token. Returns 0 if invalid."""
+    if token in _token_cache:
+        return _token_cache[token]
+    engine = _get_engine()
+    if not engine:
+        return 0
+    try:
+        from sqlalchemy import text as sql_text
+        with engine.connect() as conn:
+            result = conn.execute(
+                sql_text("SELECT queries_remaining FROM ask_tokens WHERE token = :token"),
+                {"token": token},
+            )
+            row = result.fetchone()
+            if row:
+                _token_cache[token] = row[0]
+                return row[0]
+    except Exception:
+        pass
+    return 0
+
+
+def _decrement_token(token: str):
+    """Decrement queries remaining for a token."""
+    remaining = _get_token_queries(token)
+    if remaining > 0:
+        _save_token(token, remaining - 1)
 
 
 # ──────────────────────────────────────────────
@@ -488,11 +570,13 @@ You can answer questions about: VLDS metrics (Velocity, Longevity, Density, Scar
 class AskRequest(BaseModel):
     question: str
     conversation: list[dict] | None = None  # optional history
+    token: str | None = None  # paid access token
 
 
 class AskResponse(BaseModel):
     answer: str
     queries_remaining: int
+    is_paid: bool = False
 
 
 # ──────────────────────────────────────────────
@@ -504,12 +588,23 @@ async def ask_moodlight(req: AskRequest, request: Request):
     # Periodic cleanup
     _cleanup_rate_store()
 
-    # Rate limit check
+    # Check for paid token first
+    is_paid = False
+    paid_remaining = 0
+    if req.token:
+        paid_remaining = _get_token_queries(req.token)
+        if paid_remaining > 0:
+            is_paid = True
+        else:
+            # Token expired/invalid — fall through to free tier
+            pass
+
+    # Rate limit check (skip if paid)
     client_ip = request.headers.get("x-forwarded-for", request.client.host)
-    if not _check_rate_limit(client_ip):
+    if not is_paid and not _check_rate_limit(client_ip):
         raise HTTPException(
             status_code=429,
-            detail="You've used your 3 free questions for today. Sign up at moodlightintel.com for unlimited access.",
+            detail="You've used your 3 free questions for today.",
         )
 
     question = req.question.strip()
@@ -640,14 +735,62 @@ async def ask_moodlight(req: AskRequest, request: Request):
         raise HTTPException(status_code=503, detail="Intelligence engine temporarily unavailable.")
 
     # Record successful request
-    _record_request(client_ip)
-    ip_hash = _hash_ip(client_ip)
-    now = time.time()
-    cutoff = now - 86400
-    recent = [t for t in _rate_store[ip_hash] if t > cutoff]
-    queries_remaining = max(0, RATE_LIMIT - len(recent))
+    if is_paid:
+        _decrement_token(req.token)
+        queries_remaining = max(0, paid_remaining - 1)
+    else:
+        _record_request(client_ip)
+        ip_hash = _hash_ip(client_ip)
+        now = time.time()
+        cutoff = now - 86400
+        recent = [t for t in _rate_store[ip_hash] if t > cutoff]
+        queries_remaining = max(0, RATE_LIMIT - len(recent))
 
-    return AskResponse(answer=answer, queries_remaining=queries_remaining)
+    return AskResponse(answer=answer, queries_remaining=queries_remaining, is_paid=is_paid)
+
+
+# ──────────────────────────────────────────────
+# Stripe payment flow
+# ──────────────────────────────────────────────
+
+@app.post("/api/checkout")
+async def create_checkout():
+    """Create a Stripe Checkout Session for 10 questions ($10)."""
+    if not stripe.api_key or not STRIPE_ASK_PRICE_ID:
+        raise HTTPException(status_code=503, detail="Payments not configured.")
+
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            line_items=[{"price": STRIPE_ASK_PRICE_ID, "quantity": 1}],
+            success_url=f"{SITE_URL}?ml_session={{CHECKOUT_SESSION_ID}}",
+            cancel_url=SITE_URL,
+        )
+        return {"url": session.url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not create checkout session.")
+
+
+@app.get("/api/activate")
+async def activate_token(session_id: str):
+    """Verify Stripe payment and return an access token."""
+    if not stripe.api_key:
+        raise HTTPException(status_code=503, detail="Payments not configured.")
+
+    try:
+        session = stripe.checkout.Session.retrieve(session_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid session.")
+
+    if session.payment_status != "paid":
+        raise HTTPException(status_code=402, detail="Payment not completed.")
+
+    # Generate token and store
+    _ensure_ask_tokens_table()
+    token = secrets.token_urlsafe(32)
+    _save_token(token, PAID_QUERIES, session_id)
+
+    return {"token": token, "queries_remaining": PAID_QUERIES}
 
 
 @app.get("/api/health")
