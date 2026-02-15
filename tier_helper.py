@@ -477,6 +477,18 @@ def create_team(owner_username: str, team_name: str) -> int | None:
     engine = get_db_engine()
     try:
         with engine.connect() as conn:
+            # Validate owner exists in users table
+            owner_exists = conn.execute(text(
+                "SELECT 1 FROM users WHERE username = :u"
+            ), {"u": owner_username}).fetchone()
+            if not owner_exists:
+                return None
+            # Check owner doesn't already own a team
+            existing_team = conn.execute(text(
+                "SELECT 1 FROM teams WHERE owner_username = :u"
+            ), {"u": owner_username}).fetchone()
+            if existing_team:
+                return None
             result = conn.execute(text("""
                 INSERT INTO teams (team_name, owner_username)
                 VALUES (:name, :owner) RETURNING id
@@ -508,17 +520,18 @@ def add_team_member(team_id: int, username: str, role: str = "member") -> bool:
         return False
 
 
-def remove_team_member(team_id: int, username: str):
-    """Remove a user from a team (cannot remove owner)."""
+def remove_team_member(team_id: int, username: str) -> bool:
+    """Remove a user from a team (cannot remove owner). Returns True if removed."""
     try:
         engine = get_db_engine()
         with engine.connect() as conn:
-            conn.execute(text(
+            result = conn.execute(text(
                 "DELETE FROM team_members WHERE team_id = :tid AND username = :u AND role != 'owner'"
             ), {"tid": team_id, "u": username})
             conn.commit()
+            return result.rowcount > 0
     except Exception:
-        pass
+        return False
 
 
 def get_team_watchlist_brands(team_id: int) -> list:
@@ -561,6 +574,7 @@ def invite_team_member(team_id: int, email: str, name: str, owner_username: str)
     """Invite a new user to a team. Creates user account if needed. Checks capacity."""
     import secrets as _secrets
     import bcrypt as _bcrypt
+    import re as _re
 
     remaining = get_team_capacity(owner_username)
     if remaining <= 0:
@@ -569,7 +583,8 @@ def invite_team_member(team_id: int, email: str, name: str, owner_username: str)
     engine = get_db_engine()
     clean_email = email.strip().lower()
     clean_name = name.strip() if name.strip() else clean_email.split("@")[0]
-    new_username = clean_name.lower().replace(" ", "_")
+    # Sanitize username: only keep alphanumeric, underscores, hyphens
+    new_username = _re.sub(r'[^a-z0-9_-]', '_', clean_name.lower().replace(" ", "_"))[:50]
 
     try:
         with engine.connect() as conn:
@@ -578,7 +593,18 @@ def invite_team_member(team_id: int, email: str, name: str, owner_username: str)
             ), {"email": clean_email}).fetchone()
 
             if existing:
-                add_team_member(team_id, existing[0], "member")
+                # Check if already a team member
+                already_member = conn.execute(text(
+                    "SELECT 1 FROM team_members WHERE team_id = :tid AND username = :u"
+                ), {"tid": team_id, "u": existing[0]}).fetchone()
+                if already_member:
+                    return False, f"{existing[0]} is already a member of this team"
+                conn.execute(text("""
+                    INSERT INTO team_members (team_id, username, role)
+                    VALUES (:team_id, :username, 'member')
+                    ON CONFLICT (team_id, username) DO NOTHING
+                """), {"team_id": team_id, "username": existing[0]})
+                conn.commit()
                 return True, f"Added existing user {existing[0]} to team"
 
             temp_password = _secrets.token_urlsafe(12)
@@ -600,6 +626,7 @@ def invite_team_member(team_id: int, email: str, name: str, owner_username: str)
             ), {"u": owner_username}).fetchone()
             tier = owner_tier[0] if owner_tier else "monthly"
 
+            # Create user and add to team in same transaction
             conn.execute(text("""
                 INSERT INTO users (username, email, password_hash, tier)
                 VALUES (:username, :email, :hash, :tier)
@@ -607,10 +634,13 @@ def invite_team_member(team_id: int, email: str, name: str, owner_username: str)
                 "username": new_username, "email": clean_email,
                 "hash": password_hash, "tier": tier,
             })
+            conn.execute(text("""
+                INSERT INTO team_members (team_id, username, role)
+                VALUES (:team_id, :username, 'member')
+            """), {"team_id": team_id, "username": new_username})
             conn.commit()
 
-        add_team_member(team_id, new_username, "member")
-        return True, f"Created user {new_username} (password: {temp_password}) and added to team"
+        return True, f"Created user **{new_username}** with temporary password: `{temp_password}` — share this securely with the user"
 
     except Exception as e:
         return False, f"Failed to invite: {e}"

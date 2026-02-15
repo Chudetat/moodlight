@@ -486,7 +486,18 @@ try:
             for _tm in _team_members:
                 _tm_user, _tm_role, _tm_joined, _tm_email = _tm
                 _role_badge = " (owner)" if _tm_role == "owner" else ""
-                st.markdown(f"- **{_tm_user}**{_role_badge}")
+                if _tm_role != "owner" and _user_team['role'] == 'owner':
+                    _rm_col, _name_col = st.columns([1, 5])
+                    with _rm_col:
+                        if st.button("x", key=f"rm_member_{_tm_user}", help=f"Remove {_tm_user}"):
+                            if remove_team_member(_user_team['id'], _tm_user):
+                                st.rerun()
+                            else:
+                                st.error("Could not remove member")
+                    with _name_col:
+                        st.markdown(f"**{_tm_user}**")
+                else:
+                    st.markdown(f"- **{_tm_user}**{_role_badge}")
             if _user_team['role'] == 'owner':
                 _remaining = get_team_capacity(username)
                 st.caption(f"Seats remaining: {_remaining}")
@@ -2331,7 +2342,7 @@ def render_admin_panel():
                         st.success(f"Team '{_act_name.strip()}' created (ID: {_act_id})")
                         st.rerun()
                     else:
-                        st.error("Could not create team (user may already own a team)")
+                        st.error("Could not create team — username may not exist or already owns a team")
 
     # --- TAB 8: Ask Queries ---
     with tab8:

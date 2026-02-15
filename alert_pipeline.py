@@ -154,7 +154,7 @@ def ensure_tables(engine):
             CREATE TABLE IF NOT EXISTS teams (
                 id SERIAL PRIMARY KEY,
                 team_name VARCHAR(200) NOT NULL,
-                owner_username VARCHAR(100) NOT NULL,
+                owner_username VARCHAR(100) NOT NULL UNIQUE,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )
         """))
