@@ -84,6 +84,7 @@
       box-shadow: 0 6px 28px rgba(107, 70, 193, 0.5);
     }
     #ml-widget-btn svg { width: 28px; height: 28px; }
+    #ml-widget-btn img { width: 36px; height: 36px; }
 
     /* ── Floating panel ── */
     #ml-widget-panel.floating-mode {
@@ -418,7 +419,7 @@
   function renderFloating() {
     const btn = document.createElement("button");
     btn.id = "ml-widget-btn";
-    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 12h2l3-8 4 16 3-10 2 4h4" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    btn.innerHTML = '<img src="' + API_BASE + '/static/logo_white.png" alt="Moodlight">';
     btn.title = "Ask Moodlight";
     btn.onclick = togglePanel;
     document.body.appendChild(btn);
@@ -433,7 +434,7 @@
       </div>
       <div style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column;">
         <div class="ml-logo" style="padding: 8px 0 16px 0;">
-          <div class="ml-logo-text" style="font-size: 28px;">Moodlight</div>
+          <div class="ml-logo-text" style="font-size: 28px;"><img src="${API_BASE}/static/logo_black.png" alt="Moodlight" style="width:32px;height:32px;vertical-align:middle;margin-right:8px;">Moodlight</div>
         </div>
         <div class="ml-search-container">
           <input class="ml-search-bar" id="ml-input" type="text"
@@ -467,7 +468,7 @@
 
     panel.innerHTML = `
       <div class="ml-logo">
-        <div class="ml-logo-text"><span class="ml-logo-icon"><svg viewBox="0 0 32 32" width="48" height="48" style="vertical-align:middle"><path d="M2 16h4l4-10 5 20 4-14 3 6h6" fill="none" stroke="url(#mlPulseGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="mlPulseGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#6B46C1"/><stop offset="100%" stop-color="#1976D2"/></linearGradient></defs></svg></span> Ask Moodlight</div>
+        <div class="ml-logo-text"><span class="ml-logo-icon"><img src="${API_BASE}/static/logo_black.png" alt="Moodlight" style="width:48px;height:48px;vertical-align:middle"></span> Ask Moodlight</div>
       </div>
 
       <div class="ml-search-container">
