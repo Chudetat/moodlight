@@ -1773,7 +1773,7 @@ def render_admin_panel():
     customers = _load_all_customers(engine)
     customer_emails = [c[0] for c in customers]
 
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Customers", "Add Customer", "Add Credits", "Edit / Delete", "Pipeline Health", "Analytics", "Teams"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Customers", "Add Customer", "Add Credits", "Edit / Delete", "Pipeline Health", "Analytics", "Teams", "Ask Queries"])
 
     # --- TAB 1: Customer List ---
     with tab1:
@@ -2121,6 +2121,51 @@ def render_admin_panel():
                         st.rerun()
                     else:
                         st.error("Could not create team (user may already own a team)")
+
+    # --- TAB 8: Ask Queries ---
+    with tab8:
+        st.subheader("Ask Moodlight — Widget Queries")
+        st.caption("Questions asked through the sales site embed")
+        try:
+            _aq_df = pd.read_sql(sql_text("""
+                SELECT id, question, detected_brand, detected_topic,
+                       is_paid, ip_hash, created_at
+                FROM ask_queries
+                ORDER BY created_at DESC
+                LIMIT 200
+            """), engine)
+            if not _aq_df.empty:
+                _aq_total = len(_aq_df)
+                _aq_paid = _aq_df["is_paid"].sum()
+                _aq_free = _aq_total - _aq_paid
+                _aq_unique = _aq_df["ip_hash"].nunique()
+                _aq_c1, _aq_c2, _aq_c3, _aq_c4 = st.columns(4)
+                _aq_c1.metric("Total Queries", _aq_total)
+                _aq_c2.metric("Free", int(_aq_free))
+                _aq_c3.metric("Paid", int(_aq_paid))
+                _aq_c4.metric("Unique Visitors", _aq_unique)
+
+                # Top brands asked about
+                _aq_brands = _aq_df["detected_brand"].dropna()
+                if not _aq_brands.empty:
+                    st.markdown(f"**Top brands asked about:** {', '.join(_aq_brands.value_counts().head(10).index.tolist())}")
+
+                st.dataframe(
+                    _aq_df[["created_at", "question", "detected_brand", "detected_topic", "is_paid"]],
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "created_at": st.column_config.DatetimeColumn("Time", format="MMM D, h:mm a"),
+                        "question": st.column_config.TextColumn("Question", width="large"),
+                        "detected_brand": "Brand",
+                        "detected_topic": "Topic",
+                        "is_paid": "Paid",
+                    },
+                )
+            else:
+                st.info("No queries yet. Once visitors use Ask Moodlight on your site, their questions will appear here.")
+        except Exception as _aq_err:
+            st.info("Ask Queries table not yet created — it will appear after the first widget query.")
 
 
 with st.sidebar:
