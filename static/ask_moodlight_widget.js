@@ -94,7 +94,7 @@
     }
     .ml-logo-text {
       font-size: 56px;
-      font-weight: 500;
+      font-weight: 400;
       color: #FAFAFA;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       letter-spacing: -0.5px;
