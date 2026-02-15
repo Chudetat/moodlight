@@ -94,13 +94,18 @@
     }
     .ml-logo-text {
       font-size: 56px;
-      font-weight: 700;
-      background: linear-gradient(135deg, #6B46C1 0%, #1976D2 50%, #6B46C1 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      letter-spacing: -1.5px;
+      font-weight: 500;
+      color: #FAFAFA;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      letter-spacing: -0.5px;
       line-height: 1.1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+    .ml-logo-icon {
+      font-size: 48px;
     }
     .ml-logo-sub {
       font-size: 15px;
@@ -380,7 +385,7 @@
 
     panel.innerHTML = `
       <div class="ml-logo">
-        <div class="ml-logo-text">Ask Moodlight</div>
+        <div class="ml-logo-text"><span class="ml-logo-icon">💬</span> Ask Moodlight</div>
         <div class="ml-logo-sub">Real-time cultural intelligence</div>
       </div>
 
