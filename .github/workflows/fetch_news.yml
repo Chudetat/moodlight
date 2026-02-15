@@ -54,6 +54,16 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python calculate_longevity.py
 
+      - name: Calculate topic density
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python calculate_density.py
+
+      - name: Calculate topic scarcity
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python calculate_scarcity.py
+
       - name: Run alert detection
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

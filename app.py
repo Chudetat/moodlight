@@ -4533,8 +4533,18 @@ st.markdown("### Density: Where Conversations Are Concentrated")
 st.caption("How crowded is the conversation? High density = be louder or smarter.")
 
 try:
-    density_df = pd.read_csv('topic_density.csv')
-    
+    density_df = pd.DataFrame()
+    if HAS_DB:
+        try:
+            from db_helper import get_engine as _get_dens_engine
+            _dens_engine = _get_dens_engine()
+            if _dens_engine:
+                density_df = pd.read_sql("SELECT * FROM topic_density", _dens_engine)
+        except Exception:
+            pass
+    if density_df.empty:
+        density_df = pd.read_csv('topic_density.csv')
+
     density_chart = (
         alt.Chart(density_df)
         .mark_bar()
@@ -4597,8 +4607,18 @@ st.markdown("### Scarcity: Topic Opportunity Gaps")
 st.caption("White space—underserved topics where you can own the narrative.")
 
 try:
-    scarcity_df = pd.read_csv('topic_scarcity.csv')
-    
+    scarcity_df = pd.DataFrame()
+    if HAS_DB:
+        try:
+            from db_helper import get_engine as _get_scar_engine
+            _scar_engine = _get_scar_engine()
+            if _scar_engine:
+                scarcity_df = pd.read_sql("SELECT * FROM topic_scarcity", _scar_engine)
+        except Exception:
+            pass
+    if scarcity_df.empty:
+        scarcity_df = pd.read_csv('topic_scarcity.csv')
+
     scarcity_chart = (
         alt.Chart(scarcity_df)
         .mark_bar()
