@@ -85,7 +85,7 @@
       align-items: center;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       padding: 32px 20px;
-      background: rgba(14, 17, 23, 0.88);
+      background: rgba(14, 17, 23, 0.55);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border-radius: 16px;
