@@ -114,6 +114,63 @@ def _ensure_ask_tokens_table():
         print(f"Could not create ask_tokens table: {e}")
 
 
+def _ensure_ask_queries_table():
+    """Create ask_queries table if it doesn't exist."""
+    engine = _get_engine()
+    if not engine:
+        return
+    try:
+        from sqlalchemy import text as sql_text
+        with engine.connect() as conn:
+            conn.execute(sql_text("""
+                CREATE TABLE IF NOT EXISTS ask_queries (
+                    id SERIAL PRIMARY KEY,
+                    question TEXT NOT NULL,
+                    ip_hash VARCHAR(16),
+                    is_paid BOOLEAN DEFAULT FALSE,
+                    detected_brand VARCHAR(200),
+                    detected_topic VARCHAR(200),
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """))
+            conn.execute(sql_text(
+                "CREATE INDEX IF NOT EXISTS idx_ask_queries_created ON ask_queries (created_at DESC)"
+            ))
+            conn.commit()
+    except Exception as e:
+        print(f"Could not create ask_queries table: {e}")
+
+
+_ask_queries_table_ready = False
+
+
+def _log_query(question: str, ip: str, is_paid: bool, brand: str = "", topic: str = ""):
+    """Log a query to the ask_queries table (fire-and-forget)."""
+    global _ask_queries_table_ready
+    engine = _get_engine()
+    if not engine:
+        return
+    try:
+        if not _ask_queries_table_ready:
+            _ensure_ask_queries_table()
+            _ask_queries_table_ready = True
+        from sqlalchemy import text as sql_text
+        with engine.connect() as conn:
+            conn.execute(sql_text(
+                "INSERT INTO ask_queries (question, ip_hash, is_paid, detected_brand, detected_topic) "
+                "VALUES (:question, :ip_hash, :is_paid, :brand, :topic)"
+            ), {
+                "question": question,
+                "ip_hash": _hash_ip(ip),
+                "is_paid": is_paid,
+                "brand": brand or None,
+                "topic": topic or None,
+            })
+            conn.commit()
+    except Exception as e:
+        print(f"Query log failed: {e}")
+
+
 def _save_token(token: str, queries: int, session_id: str = ""):
     """Save a paid token to DB and cache."""
     _token_cache[token] = queries
@@ -772,6 +829,9 @@ async def ask_moodlight(req: AskRequest, request: Request):
         cutoff = now - 86400
         recent = [t for t in _rate_store[ip_hash] if t > cutoff]
         queries_remaining = max(0, RATE_LIMIT - len(recent))
+
+    # Log the query for analytics
+    _log_query(question, client_ip, is_paid, brand_name, topic_name)
 
     return AskResponse(answer=answer, queries_remaining=queries_remaining, is_paid=is_paid)
 
