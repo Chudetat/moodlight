@@ -83,7 +83,7 @@
       transform: scale(1.08);
       box-shadow: 0 6px 28px rgba(107, 70, 193, 0.5);
     }
-    #ml-widget-btn svg { width: 28px; height: 28px; fill: white; }
+    #ml-widget-btn svg { width: 28px; height: 28px; }
 
     /* ── Floating panel ── */
     #ml-widget-panel.floating-mode {
@@ -418,7 +418,7 @@
   function renderFloating() {
     const btn = document.createElement("button");
     btn.id = "ml-widget-btn";
-    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>';
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 12h2l3-8 4 16 3-10 2 4h4" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     btn.title = "Ask Moodlight";
     btn.onclick = togglePanel;
     document.body.appendChild(btn);
@@ -467,7 +467,7 @@
 
     panel.innerHTML = `
       <div class="ml-logo">
-        <div class="ml-logo-text"><span class="ml-logo-icon">💬</span> Ask Moodlight</div>
+        <div class="ml-logo-text"><span class="ml-logo-icon"><svg viewBox="0 0 32 32" width="48" height="48" style="vertical-align:middle"><path d="M2 16h4l4-10 5 20 4-14 3 6h6" fill="none" stroke="url(#mlPulseGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="mlPulseGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#6B46C1"/><stop offset="100%" stop-color="#1976D2"/></linearGradient></defs></svg></span> Ask Moodlight</div>
       </div>
 
       <div class="ml-search-container">
