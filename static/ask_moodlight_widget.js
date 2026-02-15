@@ -136,8 +136,8 @@
       box-sizing: border-box;
     }
     .ml-search-bar::placeholder {
-      color: rgba(250, 250, 250, 0.3);
-      font-weight: 300;
+      color: rgba(250, 250, 250, 0.7);
+      font-weight: 400;
     }
     .ml-search-bar:focus {
       border-color: rgba(107, 70, 193, 0.5);
@@ -386,7 +386,6 @@
     panel.innerHTML = `
       <div class="ml-logo">
         <div class="ml-logo-text"><span class="ml-logo-icon">💬</span> Ask Moodlight</div>
-        <div class="ml-logo-sub">Real-time intelligence for brands that move at the speed of culture</div>
       </div>
 
       <div class="ml-search-container">
