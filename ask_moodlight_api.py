@@ -268,7 +268,7 @@ def _get_engine():
 
 
 def _load_dashboard_data() -> pd.DataFrame:
-    """Load recent news data from DB (last 7 days). Cached for 10 minutes."""
+    """Load recent news + social data from DB (last 7 days). Cached for 10 minutes."""
     cached = _cache_get("dashboard_data")
     if cached is not None:
         return cached
@@ -278,12 +278,20 @@ def _load_dashboard_data() -> pd.DataFrame:
     try:
         from sqlalchemy import text as sql_text
         cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
-        df = pd.read_sql(
-            sql_text("SELECT * FROM news_scored WHERE created_at >= :cutoff"),
-            engine, params={"cutoff": cutoff},
-        )
-        _cache_set("dashboard_data", df)
-        return df
+        frames = []
+        for table in ("news_scored", "social_scored"):
+            try:
+                df = pd.read_sql(
+                    sql_text(f"SELECT * FROM {table} WHERE created_at >= :cutoff"),
+                    engine, params={"cutoff": cutoff},
+                )
+                if not df.empty:
+                    frames.append(df)
+            except Exception:
+                pass
+        result = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+        _cache_set("dashboard_data", result)
+        return result
     except Exception as e:
         print(f"Dashboard data load failed: {e}")
         return pd.DataFrame()
