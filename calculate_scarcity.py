@@ -144,7 +144,7 @@ def _load_data(engine=None):
 
 def check_topic_coverage(df_all):
     """Check which expected topics are underrepresented using continuous scoring."""
-    all_text = ' '.join(df_all['text'].astype(str).str.lower())
+    all_text = ' '.join(df_all['text'].dropna().astype(str).str.lower())
 
     # Count mentions for each expected topic
     raw_counts = {}
