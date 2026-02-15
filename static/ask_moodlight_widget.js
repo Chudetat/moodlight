@@ -460,7 +460,7 @@
       </div>
 
       <div class="ml-prompts" id="ml-prompts">
-        ${suggestedPrompts.map((p) => `<div class="ml-prompt-chip" onclick="window._mlAsk('${p}')">${p}</div>`).join("")}
+        ${suggestedPrompts.map((p) => `<div class="ml-prompt-chip" onclick="window._mlAsk(this.dataset.prompt)" data-prompt="${p.replace(/"/g, '&quot;')}">${p}</div>`).join("")}
       </div>
 
       <div class="ml-results" id="ml-messages"></div>
@@ -487,10 +487,10 @@
   }
 
   // ── Chat logic ──
-  window._mlAsk = function (prompt) {
+  window._mlAsk = function (promptOrEl) {
     const input = document.getElementById("ml-input");
     if (input) {
-      input.value = prompt;
+      input.value = typeof promptOrEl === "string" ? promptOrEl : promptOrEl;
       window._mlSend();
     }
   };
