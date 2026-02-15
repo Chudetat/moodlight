@@ -378,9 +378,9 @@
     panel.classList.add("inline-mode");
 
     const suggestedPrompts = [
-      "What brands are gaining momentum?",
-      "Where's the white space right now?",
-      "What should Nike be watching?",
+      "What should Nike be watching right now?",
+      "Which cultural signals are brands missing?",
+      "Give me a competitive read on Oatly",
     ];
 
     panel.innerHTML = `
