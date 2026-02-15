@@ -21,6 +21,49 @@ PRICE_TO_TIER = {
     "price_1Szgi81OGs3ZkUZaZlFrKOAw": "annually",     # $8,999/yr
 }
 
+def _activate_pending_signup(signup_token: str, customer_id: str = None, subscription_id: str = None):
+    """Activate a self-service signup: create user in DB from pending_signups."""
+    engine = get_db_engine()
+    with engine.connect() as conn:
+        row = conn.execute(text(
+            "SELECT name, email, username, password_hash, tier FROM pending_signups "
+            "WHERE signup_token = :token AND status = 'pending'"
+        ), {"token": signup_token}).fetchone()
+        if not row:
+            print(f"⚠️ No pending signup found for token {signup_token[:8]}...")
+            return
+
+        name, email, username, password_hash, tier = row
+
+        # Check user doesn't already exist (safety)
+        existing = conn.execute(text(
+            "SELECT id FROM users WHERE email = :email OR username = :username"
+        ), {"email": email, "username": username}).fetchone()
+        if existing:
+            print(f"⚠️ User {email} already exists, skipping creation")
+            conn.execute(text(
+                "UPDATE pending_signups SET status = 'completed' WHERE signup_token = :token"
+            ), {"token": signup_token})
+            conn.commit()
+            return
+
+        # Create the user
+        conn.execute(text("""
+            INSERT INTO users (username, email, password_hash, tier, stripe_customer_id, stripe_subscription_id)
+            VALUES (:username, :email, :password_hash, :tier, :customer_id, :subscription_id)
+        """), {
+            "username": username, "email": email, "password_hash": password_hash,
+            "tier": tier, "customer_id": customer_id, "subscription_id": subscription_id,
+        })
+
+        # Mark signup as completed (Streamlit will sync to config.yaml)
+        conn.execute(text(
+            "UPDATE pending_signups SET status = 'completed' WHERE signup_token = :token"
+        ), {"token": signup_token})
+        conn.commit()
+        print(f"✅ Self-service signup activated: {email} ({tier})")
+
+
 def update_user_tier_by_email(email: str, tier: str, customer_id: str, subscription_id: str):
     """Update user tier in database"""
     engine = get_db_engine()
@@ -84,9 +127,14 @@ async def stripe_webhook(request: Request):
     # Handle checkout.session.completed (new subscription or one-time purchase)
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        customer_email = session.get("customer_email")
+        customer_email = session.get("customer_email") or session.get("customer_details", {}).get("email")
         customer_id = session.get("customer")
         subscription_id = session.get("subscription")
+        client_ref = session.get("client_reference_id")
+
+        # Check for self-service signup via client_reference_id
+        if client_ref:
+            _activate_pending_signup(client_ref, customer_id, subscription_id)
 
         if subscription_id:
             # Subscription purchase (Monthly or Annually)

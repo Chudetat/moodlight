@@ -50,6 +50,55 @@ if not os.path.exists(".cleanup_done"):
 # AUTHENTICATION
 # ========================================
 
+# Sync any completed signups to config.yaml BEFORE loading it
+# This ensures new self-service signups can log in immediately
+def _sync_completed_signups():
+    """Check for webhook-activated signups and add them to config.yaml."""
+    db_url = os.getenv("DATABASE_URL", "")
+    if not db_url:
+        return
+    try:
+        from sqlalchemy import create_engine as _sc_ce, text as _sc_text
+        _sc_url = db_url.replace("postgres://", "postgresql://", 1)
+        if "sslmode" not in _sc_url:
+            sep = "&" if "?" in _sc_url else "?"
+            _sc_url = _sc_url + sep + "sslmode=require"
+        _sc_engine = _sc_ce(_sc_url, pool_pre_ping=True)
+        with _sc_engine.connect() as conn:
+            rows = conn.execute(_sc_text(
+                "SELECT signup_token, name, email, username, password_hash, tier "
+                "FROM pending_signups WHERE status = 'completed'"
+            )).fetchall()
+            if not rows:
+                return
+            # Load current config
+            with open('config.yaml') as f:
+                _cfg = yaml.load(f, Loader=SafeLoader)
+            changed = False
+            for row in rows:
+                token, uname, email, username, pw_hash, tier = row
+                if username not in _cfg['credentials']['usernames']:
+                    _cfg['credentials']['usernames'][username] = {
+                        'email': email,
+                        'name': uname,
+                        'password': pw_hash,
+                        'failed_login_attempts': 0,
+                        'logged_in': False,
+                    }
+                    changed = True
+                # Mark as synced regardless
+                conn.execute(_sc_text(
+                    "UPDATE pending_signups SET status = 'synced' WHERE signup_token = :token"
+                ), {"token": token})
+            conn.commit()
+            if changed:
+                with open('config.yaml', 'w') as f:
+                    yaml.dump(_cfg, f, default_flow_style=False)
+    except Exception as e:
+        pass  # Table may not exist yet — that's fine
+
+_sync_completed_signups()
+
 # Load config
 with open('config.yaml') as file:
     config = yaml.load(file, Loader=SafeLoader)
@@ -117,14 +166,167 @@ authenticator.login()
 
 # Stop here if not authenticated yet
 if not st.session_state.get("authentication_status"):
-    st.stop()
+    # Show error for failed login attempts
+    if st.session_state.get("authentication_status") is False:
+        st.error("Username/password is incorrect")
 
-if st.session_state.get("authentication_status") == False:
-    st.error('Username/password is incorrect')
-    st.stop()
+    # ── Self-service signup ──
+    import bcrypt, secrets, re as _re
+    from urllib.parse import quote as _url_quote
 
-if st.session_state.get("authentication_status") == None:
-    st.warning('Please enter your username and password')
+    st.markdown("---")
+    st.markdown("**New to Moodlight? Sign up for access or log in above.**")
+
+    _SIGNUP_MONTHLY_LINK = os.getenv("STRIPE_MONTHLY_LINK", "")
+    _SIGNUP_ANNUAL_LINK = os.getenv("STRIPE_ANNUAL_LINK", "")
+
+    # Check if user is returning after payment (activate flow)
+    if st.session_state.get("_signup_token"):
+        _act_token = st.session_state["_signup_token"]
+        st.info("Complete your payment in the Stripe tab, then click below to activate.")
+        if st.button("Activate My Account"):
+            try:
+                from sqlalchemy import create_engine as _act_ce, text as _act_text
+                _act_db = os.getenv("DATABASE_URL", "").replace("postgres://", "postgresql://", 1)
+                if "sslmode" not in _act_db:
+                    sep = "&" if "?" in _act_db else "?"
+                    _act_db = _act_db + sep + "sslmode=require"
+                _act_engine = _act_ce(_act_db, pool_pre_ping=True)
+                with _act_engine.connect() as conn:
+                    _act_row = conn.execute(_act_text(
+                        "SELECT status, name, email, username FROM pending_signups WHERE signup_token = :token"
+                    ), {"token": _act_token}).fetchone()
+                if _act_row and _act_row[0] == 'completed':
+                    # Webhook confirmed payment — sync to config.yaml
+                    _sync_completed_signups()
+                    st.session_state.pop("_signup_token", None)
+                    st.success("Your account is ready! Please log in with the credentials you chose.")
+                    st.rerun()
+                elif _act_row and _act_row[0] == 'synced':
+                    st.session_state.pop("_signup_token", None)
+                    st.success("Your account is already active! Please log in above.")
+                    st.rerun()
+                else:
+                    st.warning("Payment not confirmed yet. Please complete checkout in the Stripe tab, then try again.")
+            except Exception as _act_err:
+                st.error(f"Could not check signup status: {_act_err}")
+        if st.button("Cancel signup", type="secondary"):
+            st.session_state.pop("_signup_token", None)
+            st.rerun()
+    else:
+        with st.expander("Sign up for access"):
+            with st.form("signup_form"):
+                _su_name = st.text_input("Full name", placeholder="Jane Smith")
+                _su_email = st.text_input("Email", placeholder="jane@company.com")
+                _su_password = st.text_input("Choose a password", type="password")
+                _su_plan = st.radio("Plan", ["Monthly — $899/mo", "Annual — $8,999/yr (save 17%)"], horizontal=True)
+                st.caption("Both plans include a 7-day free trial.")
+                _su_submitted = st.form_submit_button("Continue to payment")
+
+            if _su_submitted:
+                # Validate
+                _su_name = _su_name.strip()
+                _su_email = _su_email.strip().lower()
+                _su_password = _su_password.strip()
+                _su_errors = []
+                if not _su_name:
+                    _su_errors.append("Name is required.")
+                if not _su_email or "@" not in _su_email:
+                    _su_errors.append("Valid email is required.")
+                if len(_su_password) < 8:
+                    _su_errors.append("Password must be at least 8 characters.")
+
+                if _su_errors:
+                    for e in _su_errors:
+                        st.error(e)
+                else:
+                    # Check email not already taken
+                    _su_taken = False
+                    try:
+                        from sqlalchemy import create_engine as _su_ce, text as _su_text
+                        _su_db = os.getenv("DATABASE_URL", "").replace("postgres://", "postgresql://", 1)
+                        if "sslmode" not in _su_db:
+                            sep = "&" if "?" in _su_db else "?"
+                            _su_db = _su_db + sep + "sslmode=require"
+                        _su_engine = _su_ce(_su_db, pool_pre_ping=True)
+                        with _su_engine.connect() as conn:
+                            # Ensure pending_signups table exists
+                            conn.execute(_su_text("""
+                                CREATE TABLE IF NOT EXISTS pending_signups (
+                                    id SERIAL PRIMARY KEY,
+                                    signup_token VARCHAR(64) UNIQUE NOT NULL,
+                                    name VARCHAR(200) NOT NULL,
+                                    email VARCHAR(255) NOT NULL,
+                                    username VARCHAR(100) NOT NULL,
+                                    password_hash VARCHAR(255) NOT NULL,
+                                    tier VARCHAR(20) NOT NULL,
+                                    status VARCHAR(20) DEFAULT 'pending',
+                                    created_at TIMESTAMPTZ DEFAULT NOW()
+                                )
+                            """))
+                            conn.commit()
+                            # Check existing users
+                            _existing = conn.execute(_su_text(
+                                "SELECT id FROM users WHERE email = :email"
+                            ), {"email": _su_email}).fetchone()
+                            if _existing:
+                                _su_taken = True
+                    except Exception:
+                        pass
+
+                    if _su_taken:
+                        st.error("An account with this email already exists. Please log in above.")
+                    else:
+                        # Generate username and hash password
+                        _su_username = _re.sub(r'[^a-z0-9_]', '', _su_name.lower().replace(" ", "_"))
+                        if not _su_username:
+                            _su_username = _su_email.split("@")[0]
+                        # Ensure unique username
+                        try:
+                            with _su_engine.connect() as conn:
+                                _ex_user = conn.execute(_su_text(
+                                    "SELECT id FROM users WHERE username = :u"
+                                ), {"u": _su_username}).fetchone()
+                                if _ex_user:
+                                    _su_username = f"{_su_username}_{secrets.randbelow(999)}"
+                        except Exception:
+                            pass
+
+                        _su_hash = bcrypt.hashpw(_su_password.encode(), bcrypt.gensalt()).decode()
+                        _su_tier = "monthly" if "Monthly" in _su_plan else "annually"
+                        _su_token = secrets.token_urlsafe(32)
+
+                        # Store pending signup
+                        try:
+                            with _su_engine.connect() as conn:
+                                conn.execute(_su_text(
+                                    "INSERT INTO pending_signups (signup_token, name, email, username, password_hash, tier) "
+                                    "VALUES (:token, :name, :email, :username, :hash, :tier)"
+                                ), {
+                                    "token": _su_token, "name": _su_name, "email": _su_email,
+                                    "username": _su_username, "hash": _su_hash, "tier": _su_tier,
+                                })
+                                conn.commit()
+                        except Exception as _su_err:
+                            st.error(f"Signup failed: {_su_err}")
+                            st.stop()
+
+                        # Build Stripe Payment Link with prefilled email
+                        _su_link = _SIGNUP_MONTHLY_LINK if _su_tier == "monthly" else _SIGNUP_ANNUAL_LINK
+                        if _su_link:
+                            _su_link += f"?prefilled_email={_url_quote(_su_email)}&client_reference_id={_su_token}"
+                            st.session_state["_signup_token"] = _su_token
+                            st.markdown(
+                                f'<a href="{_su_link}" target="_blank" rel="noopener noreferrer"'
+                                f' style="display:inline-block;padding:0.75rem 2rem;background:linear-gradient(135deg,#6B46C1,#3B82F6);'
+                                f'color:white;border-radius:8px;text-decoration:none;font-weight:600;font-size:1.1rem;">'
+                                f'Complete Payment on Stripe →</a>',
+                                unsafe_allow_html=True,
+                            )
+                            st.caption("After completing payment, return here and click **Activate My Account**.")
+                            st.rerun()
+                        else:
+                            st.error("Payment links not configured. Please contact intel@moodlightintel.com.")
     st.stop()
 
 # If we get here, user is authenticated
