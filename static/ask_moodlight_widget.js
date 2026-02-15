@@ -386,7 +386,7 @@
     panel.innerHTML = `
       <div class="ml-logo">
         <div class="ml-logo-text"><span class="ml-logo-icon">💬</span> Ask Moodlight</div>
-        <div class="ml-logo-sub">Real-time cultural intelligence</div>
+        <div class="ml-logo-sub">Real-time intelligence for brands that move at the speed of culture</div>
       </div>
 
       <div class="ml-search-container">
