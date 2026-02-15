@@ -187,8 +187,8 @@ async def create_checkout_session(request: Request):
         mode="subscription",
         line_items=[{"price": price_id, "quantity": 1}],
         customer_email=email,
-        success_url=data.get("success_url", "https://moodlight.streamlit.app/?checkout=success"),
-        cancel_url=data.get("cancel_url", "https://moodlight.streamlit.app/?checkout=cancel"),
+        success_url=data.get("success_url", "https://moodlight.up.railway.app/?checkout=success"),
+        cancel_url=data.get("cancel_url", "https://moodlight.up.railway.app/?checkout=cancel"),
         metadata={"username": username or ""},
     )
     return {"url": session.url}
@@ -205,7 +205,7 @@ async def create_portal_session(request: Request):
 
     session = stripe.billing_portal.Session.create(
         customer=customer_id,
-        return_url=data.get("return_url", "https://moodlight.streamlit.app/"),
+        return_url=data.get("return_url", "https://moodlight.up.railway.app/"),
     )
     return {"url": session.url}
 
