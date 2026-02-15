@@ -4442,7 +4442,17 @@ st.markdown("### Velocity × Longevity: Topic Strategic Value")
 st.caption("Is it a flash or a movement? Know before you commit resources.")
 
 try:
-    longevity_df = pd.read_csv('topic_longevity.csv')
+    longevity_df = pd.DataFrame()
+    if HAS_DB:
+        try:
+            from db_helper import get_engine as _get_long_engine
+            _long_engine = _get_long_engine()
+            if _long_engine:
+                longevity_df = pd.read_sql("SELECT * FROM topic_longevity", _long_engine)
+        except Exception:
+            pass
+    if longevity_df.empty:
+        longevity_df = pd.read_csv('topic_longevity.csv')
     
     max_velocity = longevity_df['velocity_score'].max()
     max_longevity = longevity_df['longevity_score'].max()

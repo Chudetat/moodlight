@@ -49,6 +49,11 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python save_to_db.py news_scored.csv news_scored
 
+      - name: Calculate topic velocity & longevity
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python calculate_longevity.py
+
       - name: Run alert detection
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
