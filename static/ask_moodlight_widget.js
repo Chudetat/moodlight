@@ -304,6 +304,27 @@
       margin-top: 12px;
     }
 
+    /* ── New question button ── */
+    .ml-new-question {
+      text-align: center;
+      margin-top: 12px;
+    }
+    .ml-new-question-btn {
+      background: none;
+      border: 1px solid rgba(107, 70, 193, 0.25);
+      border-radius: 20px;
+      padding: 8px 20px;
+      font-size: 13px;
+      color: rgba(250, 250, 250, 0.5);
+      cursor: pointer;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      transition: all 0.2s;
+    }
+    .ml-new-question-btn:hover {
+      border-color: rgba(107, 70, 193, 0.4);
+      color: #FAFAFA;
+    }
+
     /* ── Unlock button ── */
     .ml-unlock-btn {
       display: inline-block;
@@ -562,12 +583,33 @@
       updateBadge();
 
       addResult(messages, "assistant", data.answer);
+      showNewQuestionBtn(messages);
     } catch (err) {
       typing.remove();
       addResult(messages, "assistant", "Connection error. Please try again.");
     } finally {
       input.disabled = false;
       sendBtn.disabled = false;
+      input.focus();
+    }
+  };
+
+  function showNewQuestionBtn(container) {
+    const existing = container.querySelector(".ml-new-question");
+    if (existing) existing.remove();
+    const el = document.createElement("div");
+    el.className = "ml-new-question";
+    el.innerHTML = '<button class="ml-new-question-btn" onclick="window._mlClear()">Ask a new question</button>';
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  window._mlClear = function () {
+    const messages = document.getElementById("ml-messages");
+    if (messages) messages.innerHTML = "";
+    const input = document.getElementById("ml-input");
+    if (input) {
+      input.value = "";
       input.focus();
     }
   };
