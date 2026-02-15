@@ -183,7 +183,17 @@ if not st.session_state.get("authentication_status"):
     # Check if user is returning after payment (activate flow)
     if st.session_state.get("_signup_token"):
         _act_token = st.session_state["_signup_token"]
-        st.info("Complete your payment in the Stripe tab, then click below to activate.")
+        # Show the Stripe payment link so user can still access it
+        _act_link = st.session_state.get("_signup_stripe_link", "")
+        if _act_link:
+            st.markdown(
+                f'<a href="{_act_link}" target="_blank" rel="noopener noreferrer"'
+                f' style="display:inline-block;padding:0.75rem 2rem;background:linear-gradient(135deg,#6B46C1,#3B82F6);'
+                f'color:white;border-radius:8px;text-decoration:none;font-weight:600;font-size:1.1rem;margin-bottom:1rem;">'
+                f'Complete Payment on Stripe →</a>',
+                unsafe_allow_html=True,
+            )
+        st.info("After completing payment in Stripe, click below to activate your account.")
         if st.button("Activate My Account"):
             try:
                 from sqlalchemy import create_engine as _act_ce, text as _act_text
@@ -200,10 +210,12 @@ if not st.session_state.get("authentication_status"):
                     # Webhook confirmed payment — sync to config.yaml
                     _sync_completed_signups()
                     st.session_state.pop("_signup_token", None)
+                    st.session_state.pop("_signup_stripe_link", None)
                     st.success("Your account is ready! Please log in with the credentials you chose.")
                     st.rerun()
                 elif _act_row and _act_row[0] == 'synced':
                     st.session_state.pop("_signup_token", None)
+                    st.session_state.pop("_signup_stripe_link", None)
                     st.success("Your account is already active! Please log in above.")
                     st.rerun()
                 else:
@@ -212,6 +224,7 @@ if not st.session_state.get("authentication_status"):
                 st.error(f"Could not check signup status: {_act_err}")
         if st.button("Cancel signup", type="secondary"):
             st.session_state.pop("_signup_token", None)
+            st.session_state.pop("_signup_stripe_link", None)
             st.rerun()
     else:
         with st.expander("Sign up for access"):
@@ -316,14 +329,7 @@ if not st.session_state.get("authentication_status"):
                         if _su_link:
                             _su_link += f"?prefilled_email={_url_quote(_su_email)}&client_reference_id={_su_token}"
                             st.session_state["_signup_token"] = _su_token
-                            st.markdown(
-                                f'<a href="{_su_link}" target="_blank" rel="noopener noreferrer"'
-                                f' style="display:inline-block;padding:0.75rem 2rem;background:linear-gradient(135deg,#6B46C1,#3B82F6);'
-                                f'color:white;border-radius:8px;text-decoration:none;font-weight:600;font-size:1.1rem;">'
-                                f'Complete Payment on Stripe →</a>',
-                                unsafe_allow_html=True,
-                            )
-                            st.caption("After completing payment, return here and click **Activate My Account**.")
+                            st.session_state["_signup_stripe_link"] = _su_link
                             st.rerun()
                         else:
                             st.error("Payment links not configured. Please contact intel@moodlightintel.com.")
