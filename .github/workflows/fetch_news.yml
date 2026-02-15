@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pandas requests feedparser transformers torch anthropic python-dotenv sqlalchemy psycopg2-binary pytest fpdf2 fastapi httpx uvicorn
+          pip install pandas requests feedparser transformers torch anthropic python-dotenv sqlalchemy psycopg2-binary pytest fpdf2 fastapi httpx uvicorn stripe
 
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short
