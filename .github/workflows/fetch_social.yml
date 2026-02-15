@@ -25,7 +25,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pandas requests feedparser transformers torch anthropic python-dotenv tweepy sqlalchemy psycopg2-binary
+          pip install pandas requests feedparser transformers torch anthropic python-dotenv tweepy sqlalchemy psycopg2-binary pytest fpdf2 fastapi httpx uvicorn
+
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short
 
       - name: Fetch X posts
         env:
@@ -42,6 +45,21 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python save_to_db.py social_scored.csv social_scored
+
+      - name: Calculate topic velocity & longevity
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python calculate_longevity.py
+
+      - name: Calculate topic density
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python calculate_density.py
+
+      - name: Calculate topic scarcity
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python calculate_scarcity.py
 
       - name: Run alert detection
         env:

@@ -238,7 +238,8 @@ def compute_trend(engine, scope, scope_name, metric_name, lookback_days=7):
                     {"scope": scope, "metric": metric_name, "cutoff": cutoff},
                 )
             rows = result.fetchall()
-    except Exception:
+    except Exception as e:
+        print(f"  compute_trend DB error ({scope}/{metric_name}): {e}")
         return None
 
     if len(rows) < 3:

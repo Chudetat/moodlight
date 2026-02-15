@@ -85,8 +85,12 @@ def _record_request(ip: str):
     _rate_store[h].append(time.time())
 
 
-# Periodic cleanup of old entries (runs inline, fast enough)
+# Periodic cleanup of old entries (runs ~1 in 20 requests to avoid per-request overhead)
+import random as _random
+
 def _cleanup_rate_store():
+    if _random.random() > 0.05:  # 5% chance per request
+        return
     cutoff = time.time() - 86400
     stale = [k for k, v in _rate_store.items() if all(t < cutoff for t in v)]
     for k in stale:
@@ -226,6 +230,23 @@ def _decrement_token(token: str):
 
 _engine_instance = None
 
+# TTL cache for dashboard data and VLDS metrics
+_cache = {}
+_CACHE_TTL = 600  # 10 minutes
+
+
+def _cache_get(key):
+    """Get a cached value if it exists and hasn't expired."""
+    entry = _cache.get(key)
+    if entry and time.time() - entry["ts"] < _CACHE_TTL:
+        return entry["data"]
+    return None
+
+
+def _cache_set(key, data):
+    """Store a value in the TTL cache."""
+    _cache[key] = {"data": data, "ts": time.time()}
+
 
 def _get_engine():
     global _engine_instance
@@ -239,12 +260,18 @@ def _get_engine():
     if "sslmode" not in db_url:
         sep = "&" if "?" in db_url else "?"
         db_url = db_url + sep + "sslmode=require"
-    _engine_instance = create_engine(db_url, pool_pre_ping=True, pool_recycle=300)
+    _engine_instance = create_engine(
+        db_url, pool_pre_ping=True, pool_recycle=300,
+        pool_size=10, max_overflow=5,
+    )
     return _engine_instance
 
 
 def _load_dashboard_data() -> pd.DataFrame:
-    """Load recent news data from DB (last 7 days)."""
+    """Load recent news data from DB (last 7 days). Cached for 10 minutes."""
+    cached = _cache_get("dashboard_data")
+    if cached is not None:
+        return cached
     engine = _get_engine()
     if engine is None:
         return pd.DataFrame()
@@ -255,10 +282,78 @@ def _load_dashboard_data() -> pd.DataFrame:
             sql_text("SELECT * FROM news_scored WHERE created_at >= :cutoff"),
             engine, params={"cutoff": cutoff},
         )
+        _cache_set("dashboard_data", df)
         return df
     except Exception as e:
         print(f"Dashboard data load failed: {e}")
         return pd.DataFrame()
+
+
+def _load_vlds_maps():
+    """Load VLDS metric maps from DB (cached 10 min, CSV fallback)."""
+    cached = _cache_get("vlds_maps")
+    if cached is not None:
+        return cached
+
+    density_map, velocity_map, longevity_map = {}, {}, {}
+    engine = _get_engine()
+
+    try:
+        _dens_df = pd.DataFrame()
+        if engine:
+            try:
+                _dens_df = pd.read_sql("SELECT topic, density_score FROM topic_density", engine)
+            except Exception:
+                pass
+        if _dens_df.empty:
+            _dens_df = pd.read_csv("topic_density.csv")
+        if "topic" in _dens_df.columns and "density_score" in _dens_df.columns:
+            density_map = dict(zip(_dens_df["topic"], _dens_df["density_score"]))
+    except Exception:
+        pass
+
+    try:
+        _long_df = pd.DataFrame()
+        if engine:
+            try:
+                _long_df = pd.read_sql("SELECT topic, velocity_score, longevity_score FROM topic_longevity", engine)
+            except Exception:
+                pass
+        if _long_df.empty:
+            _long_df = pd.read_csv("topic_longevity.csv")
+        if "topic" in _long_df.columns and "velocity_score" in _long_df.columns:
+            velocity_map = dict(zip(_long_df["topic"], _long_df["velocity_score"]))
+        if "topic" in _long_df.columns and "longevity_score" in _long_df.columns:
+            longevity_map = dict(zip(_long_df["topic"], _long_df["longevity_score"]))
+    except Exception:
+        pass
+
+    result = (density_map, velocity_map, longevity_map)
+    _cache_set("vlds_maps", result)
+    return result
+
+
+def _load_scarcity_data():
+    """Load scarcity data from DB (cached 10 min, CSV fallback)."""
+    cached = _cache_get("scarcity_data")
+    if cached is not None:
+        return cached
+
+    engine = _get_engine()
+    df = pd.DataFrame()
+    try:
+        if engine:
+            try:
+                df = pd.read_sql("SELECT * FROM topic_scarcity", engine)
+            except Exception:
+                pass
+        if df.empty:
+            df = pd.read_csv("topic_scarcity.csv")
+    except Exception:
+        pass
+
+    _cache_set("scarcity_data", df)
+    return df
 
 
 # ──────────────────────────────────────────────
@@ -506,39 +601,8 @@ def build_verified_data(df_all: pd.DataFrame) -> str:
                  else "Warm" if avg_empathy < 70 else "Highly Empathetic")
         verified_parts.append(f"Global Mood Score: {avg_empathy:.0f}/100 ({label})")
 
-    # Topic breakdown with VLDS metrics (DB-first, CSV fallback)
-    topic_density_map = {}
-    topic_velocity_map = {}
-    topic_longevity_map = {}
-    _vlds_engine = _get_engine()
-    try:
-        _dens_df = pd.DataFrame()
-        if _vlds_engine:
-            try:
-                _dens_df = pd.read_sql("SELECT topic, density_score FROM topic_density", _vlds_engine)
-            except Exception:
-                pass
-        if _dens_df.empty:
-            _dens_df = pd.read_csv("topic_density.csv")
-        if "topic" in _dens_df.columns and "density_score" in _dens_df.columns:
-            topic_density_map = dict(zip(_dens_df["topic"], _dens_df["density_score"]))
-    except Exception:
-        pass
-    try:
-        _long_df = pd.DataFrame()
-        if _vlds_engine:
-            try:
-                _long_df = pd.read_sql("SELECT topic, velocity_score, longevity_score FROM topic_longevity", _vlds_engine)
-            except Exception:
-                pass
-        if _long_df.empty:
-            _long_df = pd.read_csv("topic_longevity.csv")
-        if "topic" in _long_df.columns and "velocity_score" in _long_df.columns:
-            topic_velocity_map = dict(zip(_long_df["topic"], _long_df["velocity_score"]))
-        if "topic" in _long_df.columns and "longevity_score" in _long_df.columns:
-            topic_longevity_map = dict(zip(_long_df["topic"], _long_df["longevity_score"]))
-    except Exception:
-        pass
+    # Topic breakdown with VLDS metrics (cached, DB-first, CSV fallback)
+    topic_density_map, topic_velocity_map, topic_longevity_map = _load_vlds_maps()
 
     if "topic" in df_all.columns:
         topic_counts = df_all["topic"].value_counts().head(10)
@@ -554,28 +618,18 @@ def build_verified_data(df_all: pd.DataFrame) -> str:
             topic_lines.append(line)
         verified_parts.append("Topic Breakdown:\n" + "\n".join(topic_lines))
 
-    # Scarcity (DB-first, CSV fallback)
-    try:
-        _scar_df = pd.DataFrame()
-        if _vlds_engine:
-            try:
-                _scar_df = pd.read_sql("SELECT * FROM topic_scarcity", _vlds_engine)
-            except Exception:
-                pass
-        if _scar_df.empty:
-            _scar_df = pd.read_csv("topic_scarcity.csv")
-        if "topic" in _scar_df.columns and "scarcity_score" in _scar_df.columns:
-            scarcity_lines = []
-            for _, row in _scar_df.head(10).iterrows():
-                line = f"- {row['topic']}: scarcity {row['scarcity_score']}"
-                if "mention_count" in _scar_df.columns:
-                    line += f", mentions {row['mention_count']}"
-                if "opportunity" in _scar_df.columns:
-                    line += f", opportunity: {row['opportunity']}"
-                scarcity_lines.append(line)
-            verified_parts.append("Scarcity (White Space Opportunities):\n" + "\n".join(scarcity_lines))
-    except Exception:
-        pass
+    # Scarcity (cached, DB-first, CSV fallback)
+    _scar_df = _load_scarcity_data()
+    if not _scar_df.empty and "topic" in _scar_df.columns and "scarcity_score" in _scar_df.columns:
+        scarcity_lines = []
+        for _, row in _scar_df.head(10).iterrows():
+            line = f"- {row['topic']}: scarcity {row['scarcity_score']}"
+            if "mention_count" in _scar_df.columns:
+                line += f", mentions {row['mention_count']}"
+            if "opportunity" in _scar_df.columns:
+                line += f", opportunity: {row['opportunity']}"
+            scarcity_lines.append(line)
+        verified_parts.append("Scarcity (White Space Opportunities):\n" + "\n".join(scarcity_lines))
 
     # Recent headlines
     if "text" in df_all.columns and "created_at" in df_all.columns:

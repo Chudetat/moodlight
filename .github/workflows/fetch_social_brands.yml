@@ -2,8 +2,8 @@ name: Fetch Social - Brand Watchlist (Daily)
 
 on:
   schedule:
-    # Once daily at 2pm PST — brand-specific tweets
-    - cron: '0 22 * * *'
+    # Once daily at 4pm PST — brand-specific tweets (staggered from main social fetch at 2pm)
+    - cron: '0 0 * * *'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
@@ -23,7 +23,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pandas requests feedparser transformers torch anthropic python-dotenv sqlalchemy psycopg2-binary
+          pip install pandas requests feedparser transformers torch anthropic python-dotenv sqlalchemy psycopg2-binary pytest fpdf2 fastapi httpx uvicorn
+
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short
 
       - name: Fetch brand-specific X posts
         env:
@@ -41,6 +44,21 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python save_to_db.py social_scored.csv social_scored
+
+      - name: Calculate topic velocity & longevity
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python calculate_longevity.py
+
+      - name: Calculate topic density
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python calculate_density.py
+
+      - name: Calculate topic scarcity
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python calculate_scarcity.py
 
       - name: Run alert detection
         env:

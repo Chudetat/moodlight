@@ -48,7 +48,7 @@ def compute_competitive_snapshot(df_news, df_social, brand_name, competitors):
         total_mentions += mention_count
 
         vlds = None
-        if not brand_df.empty and len(brand_df) >= 3:
+        if not brand_df.empty and len(brand_df) >= 5:
             vlds = calculate_brand_vlds(brand_df)
 
         snapshot[name] = {
