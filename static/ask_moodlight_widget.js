@@ -169,26 +169,28 @@
     /* ── Suggested prompts ── */
     .ml-prompts {
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
+      flex-direction: column;
       gap: 8px;
-      margin-top: 14px;
+      margin-top: 16px;
+      width: 100%;
       max-width: 580px;
     }
     .ml-prompt-chip {
-      background: rgba(107, 70, 193, 0.15);
-      border: 1px solid rgba(107, 70, 193, 0.3);
-      border-radius: 20px;
-      padding: 8px 16px;
+      background: rgba(107, 70, 193, 0.1);
+      border: 1px solid rgba(107, 70, 193, 0.2);
+      border-radius: 12px;
+      padding: 10px 16px;
       font-size: 13px;
-      color: rgba(250, 250, 250, 0.6);
+      line-height: 1.4;
+      color: rgba(250, 250, 250, 0.55);
       cursor: pointer;
       transition: all 0.2s;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      text-align: left;
     }
     .ml-prompt-chip:hover {
-      background: rgba(107, 70, 193, 0.2);
-      border-color: rgba(107, 70, 193, 0.4);
+      background: rgba(107, 70, 193, 0.18);
+      border-color: rgba(107, 70, 193, 0.35);
       color: #FAFAFA;
     }
 
@@ -378,9 +380,9 @@
     panel.classList.add("inline-mode");
 
     const suggestedPrompts = [
-      "What should Nike be watching right now?",
-      "Which cultural signals are brands missing?",
-      "Give me a competitive read on Oatly",
+      "What's the conversation around Nike right now, and where is the white space their competitors are missing?",
+      "Is alcohol a topic where markets and public sentiment are telling different stories?",
+      "If Netflix wanted to own a cultural moment right now, which rising topic has momentum but isn't crowded yet?",
     ];
 
     panel.innerHTML = `
