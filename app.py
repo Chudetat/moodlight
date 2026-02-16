@@ -2012,7 +2012,7 @@ def render_admin_panel():
                     "Credits": "Unlimited" if tier in ("monthly", "annually", "professional", "enterprise") else str(credits),
                     "Created": str(created)[:10] if created else "N/A"
                 })
-            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
             st.caption(f"Total: {len(customers)} customers")
         else:
             st.info("No customers found.")
@@ -2234,7 +2234,7 @@ def render_admin_panel():
                 )
                 st.dataframe(
                     _ph_df[["pipeline_name", "status", "row_count", "duration", "started_at", "error_preview"]],
-                    use_container_width=True, hide_index=True,
+                    width="stretch", hide_index=True,
                 )
             else:
                 st.info("No pipeline runs recorded yet.")
@@ -2268,7 +2268,7 @@ def render_admin_panel():
                 ORDER BY total DESC
             """), engine)
             if not _fu_df.empty:
-                st.dataframe(_fu_df, use_container_width=True, hide_index=True)
+                st.dataframe(_fu_df, width="stretch", hide_index=True)
 
             # Last activity per user
             st.subheader("Last Activity")
@@ -2283,7 +2283,7 @@ def render_admin_panel():
                 _la_df["status"] = _la_df["last_active"].apply(
                     lambda d: "At Risk" if (datetime.now(timezone.utc) - d.replace(tzinfo=timezone.utc)).days >= 14 else "Active"
                 )
-                st.dataframe(_la_df, use_container_width=True, hide_index=True)
+                st.dataframe(_la_df, width="stretch", hide_index=True)
 
             # Feature adoption from watchlists
             st.subheader("Feature Adoption")
@@ -2327,7 +2327,7 @@ def render_admin_panel():
                 ORDER BY t.created_at DESC
             """), engine)
             if not _teams_df.empty:
-                st.dataframe(_teams_df, use_container_width=True, hide_index=True)
+                st.dataframe(_teams_df, width="stretch", hide_index=True)
             else:
                 st.info("No teams created yet.")
         except Exception as _teams_err:
@@ -2376,7 +2376,7 @@ def render_admin_panel():
 
                 st.dataframe(
                     _aq_df[["created_at", "question", "detected_brand", "detected_topic", "is_paid"]],
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                     column_config={
                         "created_at": st.column_config.DatetimeColumn("Time", format="MMM D, h:mm a"),
@@ -3526,7 +3526,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and not 
             .interactive()
         )
         
-        st.altair_chart(comparison_chart, use_container_width=True)
+        st.altair_chart(comparison_chart, width="stretch")
         
         col1, col2, col3 = st.columns(3)
         
@@ -3907,7 +3907,7 @@ if _has_warroom_access and HAS_DB and _watchlist_brands:
                                     )
                                     .properties(height=max(120, len(_sov_data) * 30))
                                 )
-                                st.altair_chart(_sov_chart, use_container_width=True)
+                                st.altair_chart(_sov_chart, width="stretch")
 
                         # VLDS comparison metrics
                         _wr_brand_data = _wr_snapshot.get(_wr_brand, {})
@@ -4113,7 +4113,7 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
                 ]
             )
         )
-        st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, width="stretch")
         
     st.markdown("#### Topic Insights")
     col1, col2 = st.columns(2)
@@ -4166,7 +4166,7 @@ if "emotion_top_1" in df_filtered.columns and len(df_filtered):
                 tooltip=["emotion", "posts"]
             )
         )
-        st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, width="stretch")
         
         col1, col2, col3 = st.columns(3)
         total = emotion_counts.sum()
@@ -4205,7 +4205,7 @@ if "empathy_label" in df_filtered.columns and len(df_filtered):
             color=alt.Color("label:N", scale=alt.Scale(domain=EMPATHY_LEVELS), legend=None)
         )
     )
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width="stretch")
 
     col1, col2, col3 = st.columns(3)
     total = counts.sum()
@@ -4245,7 +4245,7 @@ if "topic" in df_filtered.columns and len(df_filtered):
             color=alt.value("#1f77b4")
         )
     )
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width="stretch")
     
     if len(counts) > 0:
         st.markdown("#### Top Discussed Topics")
@@ -4303,7 +4303,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns and len(
             .properties(height=400)
             .interactive()
         )
-        st.altair_chart(trending_chart, use_container_width=True)
+        st.altair_chart(trending_chart, width="stretch")
 
         st.markdown("#### Headline Insights")
 
@@ -4389,7 +4389,7 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
             .properties(height=400)
             .interactive()
         )
-        st.altair_chart(virality_chart, use_container_width=True)
+        st.altair_chart(virality_chart, width="stretch")
         
         st.markdown("#### Virality Insights")
         col1, col2, col3 = st.columns(3)
@@ -4500,7 +4500,7 @@ try:
         .interactive()
     )
     
-    st.altair_chart(quad_chart, use_container_width=True)
+    st.altair_chart(quad_chart, width="stretch")
     
     st.markdown("#### Strategic Breakdown:")
     cols = st.columns(4)
@@ -4566,7 +4566,7 @@ try:
         .properties(height=500)
     )
     
-    st.altair_chart(density_chart, use_container_width=True)
+    st.altair_chart(density_chart, width="stretch")
     
     col1, col2, col3 = st.columns(3)
     
@@ -4641,7 +4641,7 @@ try:
         .properties(height=500)
     )
     
-    st.altair_chart(scarcity_chart, use_container_width=True)
+    st.altair_chart(scarcity_chart, width="stretch")
     
     st.markdown("#### Strategic Opportunities")
     
@@ -4844,7 +4844,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns:
             )
             .properties(height=250)
         )
-        st.altair_chart(mood_chart, use_container_width=True)
+        st.altair_chart(mood_chart, width="stretch")
 
         if st.button("🔍 What caused mood shifts?", key="explain_mood_history"):
             with st.spinner("Analyzing patterns..."):
@@ -4875,7 +4875,7 @@ if len(df_world_view):
 
     st.dataframe(
         display_df.head(3000),
-        use_container_width=True,
+        width="stretch",
         column_config={
             "text": st.column_config.TextColumn("Post", width="large"),
             "source": st.column_config.TextColumn("Source", width="small"),
@@ -4911,15 +4911,15 @@ elif 'intensity' in df_all.columns and 'country' in df_all.columns:
         avg_int = df_all['intensity'].mean()
         chart = create_intensity_gauge(df_all, avg_int)
         if chart is not None:
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(chart, width="stretch")
     
     with col2:
-        st.altair_chart(create_ic_topic_breakdown(df_all), use_container_width=True)
+        st.altair_chart(create_ic_topic_breakdown(df_all), width="stretch")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.altair_chart(create_geographic_hotspot_map(df_all), use_container_width=True)
+        st.altair_chart(create_geographic_hotspot_map(df_all), width="stretch")
         
         # Click-to-reveal AI explanation
         if st.button("🔍 Why these hotspots?", key="explain_geo_hotspots"):
@@ -4943,7 +4943,7 @@ elif 'intensity' in df_all.columns and 'country' in df_all.columns:
                 st.info(f"📊 **Insight:**\n\n{explanation}")
     
     with col2:
-        st.altair_chart(create_trend_indicators(df_all), use_container_width=True)
+        st.altair_chart(create_trend_indicators(df_all), width="stretch")
 
         st.markdown("#### 📈 Quick Trends (24h)")
 
@@ -5060,7 +5060,7 @@ if _time_range > 7:
         if not _gmt.empty:
             st.subheader("Global Mood Trend")
             _gmt["snapshot_date"] = pd.to_datetime(_gmt["snapshot_date"])
-            st.line_chart(_gmt.set_index("snapshot_date")["metric_value"], use_container_width=True)
+            st.line_chart(_gmt.set_index("snapshot_date")["metric_value"], width="stretch")
 
             # Month-over-month delta
             if len(_gmt) >= 2:
@@ -5083,7 +5083,7 @@ if _time_range > 7:
                     with st.expander(f"{_tb}"):
                         _bt["snapshot_date"] = pd.to_datetime(_bt["snapshot_date"])
                         _pivoted = _bt.pivot_table(index="snapshot_date", columns="metric_name", values="metric_value")
-                        st.line_chart(_pivoted, use_container_width=True)
+                        st.line_chart(_pivoted, width="stretch")
                 else:
                     st.caption(f"No trend data for {_tb} yet")
 
@@ -5097,7 +5097,7 @@ if _time_range > 7:
                     with st.expander(f"{_tt_name}"):
                         _ttt["snapshot_date"] = pd.to_datetime(_ttt["snapshot_date"])
                         _pivoted = _ttt.pivot_table(index="snapshot_date", columns="metric_name", values="metric_value")
-                        st.line_chart(_pivoted, use_container_width=True)
+                        st.line_chart(_pivoted, width="stretch")
                 else:
                     st.caption(f"No trend data for {_tt_name} yet")
 
