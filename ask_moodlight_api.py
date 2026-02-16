@@ -590,7 +590,7 @@ def load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
     if not parts:
         return ""
 
-    return ("[MOODLIGHT INTELLIGENCE HISTORY]\n\n"
+    return ("[MOODLIGHT INTELLIGENCE HISTORY — These are GLOBAL signals unless explicitly labeled for a specific brand or topic. Do NOT cite these numbers as specific to any brand or category unless the alert explicitly names that brand/category.]\n\n"
             + "\n\n".join(parts)
             + "\n\n[END MOODLIGHT INTELLIGENCE HISTORY]")
 
