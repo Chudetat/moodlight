@@ -1,7 +1,3 @@
-[server]
-enableCORS = false
-enableXsrfProtection = false
-
 [client]
 toolbarMode = "minimal"
 

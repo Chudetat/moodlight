@@ -7,15 +7,14 @@ try:
 except:
     HAS_DB = False
 
-# Ensure all tables exist on startup (once per session)
-if HAS_DB and "tables_verified" not in st.session_state:
+# Ensure all tables exist on startup
+if HAS_DB:
     try:
         from alert_pipeline import ensure_tables as _ensure_tables
         from db_helper import get_engine as _get_startup_engine
         _startup_engine = _get_startup_engine()
         if _startup_engine:
             _ensure_tables(_startup_engine)
-            st.session_state["tables_verified"] = True
     except Exception:
         pass
 import streamlit_authenticator as stauth
@@ -98,9 +97,7 @@ def _sync_completed_signups():
     except Exception as e:
         pass  # Table may not exist yet — that's fine
 
-if "signups_synced" not in st.session_state:
-    _sync_completed_signups()
-    st.session_state["signups_synced"] = True
+_sync_completed_signups()
 
 # Load config
 with open('config.yaml') as file:
@@ -114,17 +111,6 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
-st.set_page_config(
-    page_icon="favicon.png",
-    page_title="Moodlight",
-    layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'Get Help': None,
-        'Report a bug': None,
-        'About': None
-    }
-)
 
 # Hide the Streamlit deploy button and toolbar clutter + dashboard polish CSS
 st.markdown("""
@@ -681,6 +667,18 @@ def fetch_stock_data(ticker: str) -> dict | None:
     except Exception as e:
         print(f"Stock fetch error: {e}")
         return None
+
+st.set_page_config(
+    page_icon="favicon.png",
+    page_title="Moodlight",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
+)
 
 
 FILTER_DAYS = 7
