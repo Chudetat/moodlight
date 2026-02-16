@@ -2629,38 +2629,50 @@ with st.sidebar:
     if not has_feature_access(username, "topic_watchlist"):
         render_upgrade_prompt("Topic Watchlist")
     elif len(_watchlist_topics) < 10:
-        with st.form("add_topic_form", clear_on_submit=True):
-            _topic_mode = st.radio("Add by", ["Category", "Custom keyword"], horizontal=True, key="topic_add_mode")
-            if _topic_mode == "Category":
-                _new_topic = st.selectbox("Select category", _TOPIC_CATEGORIES, key="topic_cat_select")
-                _new_is_category = True
+        _topic_tab_cat, _topic_tab_kw = st.tabs(["Category", "Custom keyword"])
+        with _topic_tab_cat:
+            with st.form("add_topic_cat_form", clear_on_submit=True):
+                _new_topic_cat = st.selectbox("Select category", _TOPIC_CATEGORIES, key="topic_cat_select")
+                _topic_cat_submitted = st.form_submit_button("Add Category")
+        with _topic_tab_kw:
+            with st.form("add_topic_kw_form", clear_on_submit=True):
+                _new_topic_kw = st.text_input("Keyword", placeholder="e.g. tariffs, supply chain", max_chars=100)
+                _topic_kw_submitted = st.form_submit_button("Add Keyword")
+        _topic_submitted = False
+        if _topic_cat_submitted and _new_topic_cat:
+            _new_topic = _new_topic_cat.strip()
+            _new_is_category = True
+            _topic_submitted = True
+        elif _topic_kw_submitted and _new_topic_kw and _new_topic_kw.strip():
+            _new_topic = _new_topic_kw.strip()
+            _new_is_category = False
+            _topic_submitted = True
+        else:
+            _new_topic = ""
+            _new_is_category = False
+        if _topic_submitted and _new_topic:
+            if len(_new_topic) > 100:
+                st.error("Topic name too long (max 100 characters)")
             else:
-                _new_topic = st.text_input("Keyword", placeholder="e.g. tariffs, supply chain", max_chars=100)
-                _new_is_category = False
-            _topic_submitted = st.form_submit_button("Add Topic")
-            if _topic_submitted and _new_topic and _new_topic.strip():
-                if len(_new_topic.strip()) > 100:
-                    st.error("Topic name too long (max 100 characters)")
-                else:
-                    try:
-                        from db_helper import get_engine as _get_ta_engine
-                        _ta_engine = _get_ta_engine()
-                        if _ta_engine:
-                            from sqlalchemy import text as _ta_text
-                            with _ta_engine.connect() as _ta_conn:
-                                _ta_conn.execute(
-                                    _ta_text("""
-                                        INSERT INTO topic_watchlist (username, topic_name, is_category)
-                                        VALUES (:u, :t, :is_cat)
-                                        ON CONFLICT DO NOTHING
-                                    """),
-                                    {"u": username, "t": _new_topic.strip(), "is_cat": _new_is_category},
-                                )
-                                _ta_conn.commit()
-                        log_user_event(username, "add_topic", _new_topic.strip())
-                        st.rerun()
-                    except Exception as _ta_err:
-                        st.error(f"Could not add: {_ta_err}")
+                try:
+                    from db_helper import get_engine as _get_ta_engine
+                    _ta_engine = _get_ta_engine()
+                    if _ta_engine:
+                        from sqlalchemy import text as _ta_text
+                        with _ta_engine.connect() as _ta_conn:
+                            _ta_conn.execute(
+                                _ta_text("""
+                                    INSERT INTO topic_watchlist (username, topic_name, is_category)
+                                    VALUES (:u, :t, :is_cat)
+                                    ON CONFLICT DO NOTHING
+                                """),
+                                {"u": username, "t": _new_topic, "is_cat": _new_is_category},
+                            )
+                            _ta_conn.commit()
+                    log_user_event(username, "add_topic", _new_topic)
+                    st.rerun()
+                except Exception as _ta_err:
+                    st.error(f"Could not add: {_ta_err}")
     else:
         st.caption("Maximum 10 topics reached")
 
