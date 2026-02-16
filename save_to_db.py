@@ -92,16 +92,51 @@ def save_to_db(csv_path: str, table_name: str):
                 conn.execute(text("SELECT 1"))
             print(f"✅ Connection OK")
 
-            print(f"📥 Inserting {len(df_clean)} rows into {table_name}...")
-            df_clean.to_sql(table_name, engine, if_exists="replace", index=False, chunksize=25)
-            print(f"✅ Data saved to PostgreSQL table: {table_name}")
+            # Upsert: delete existing rows with matching IDs, then append new data.
+            # This preserves historical data from previous runs while updating
+            # any posts that appear in the new batch.
+            print(f"📥 Upserting {len(df_clean)} rows into {table_name}...")
+
+            # Ensure table exists (create if first run)
+            with engine.connect() as setup_conn:
+                table_exists = setup_conn.execute(
+                    text("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :t)"),
+                    {"t": table_name},
+                ).scalar()
+
+            if not table_exists:
+                # First run — create the table
+                df_clean.to_sql(table_name, engine, if_exists="replace", index=False, chunksize=25)
+                print(f"✅ Created new table: {table_name}")
+            else:
+                # Delete rows with matching IDs, then append
+                if "id" in df_clean.columns and len(df_clean) > 0:
+                    new_ids = df_clean["id"].dropna().tolist()
+                    if new_ids:
+                        # Batch delete in chunks to avoid query size limits
+                        chunk_size = 500
+                        with engine.connect() as del_conn:
+                            for i in range(0, len(new_ids), chunk_size):
+                                chunk = new_ids[i:i + chunk_size]
+                                placeholders = ",".join([f":id_{j}" for j in range(len(chunk))])
+                                params = {f"id_{j}": str(v) for j, v in enumerate(chunk)}
+                                del_conn.execute(
+                                    text(f"DELETE FROM {table_name} WHERE id IN ({placeholders})"),
+                                    params,
+                                )
+                            del_conn.commit()
+                        print(f"🔄 Removed {len(new_ids)} existing rows for upsert")
+
+                # Append new data
+                df_clean.to_sql(table_name, engine, if_exists="append", index=False, chunksize=25)
+                print(f"✅ Appended {len(df_clean)} rows to {table_name}")
 
             try:
                 complete_pipeline_run(engine, run_id, "success", len(df_clean))
             except Exception as e:
                 print(f"WARNING: complete_pipeline_run success tracking failed: {e}")
 
-            # Add performance indexes (to_sql with replace drops them each run)
+            # Add performance indexes
             try:
                 with engine.connect() as idx_conn:
                     idx_conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_created_at ON {table_name} (created_at)"))
