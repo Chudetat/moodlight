@@ -607,7 +607,7 @@ def build_verified_data(df_all: pd.DataFrame) -> str:
         avg_empathy = df_all["empathy_score"].mean()
         label = ("Very Cold" if avg_empathy < 35 else "Detached" if avg_empathy < 50
                  else "Warm" if avg_empathy < 70 else "Highly Empathetic")
-        verified_parts.append(f"Global Mood Score: {avg_empathy:.0f}/100 ({label})")
+        verified_parts.append(f"Global Mood Score (ACROSS ALL TOPICS — NOT specific to any brand or category): {avg_empathy:.0f}/100 ({label})")
 
     # Topic breakdown with VLDS metrics (cached, DB-first, CSV fallback)
     topic_density_map, topic_velocity_map, topic_longevity_map = _load_vlds_maps()
@@ -674,10 +674,10 @@ def build_verified_data(df_all: pd.DataFrame) -> str:
     # Empathy
     if "empathy_score" in df_all.columns:
         avg_empathy_detail = df_all["empathy_score"].mean()
-        verified_parts.append(f"Empathy Score (Global Average): {avg_empathy_detail:.2f}/100")
+        verified_parts.append(f"Empathy Score (GLOBAL AVERAGE across all topics — NOT specific to any brand or category): {avg_empathy_detail:.2f}/100")
     if "empathy_label" in df_all.columns:
         empathy_dist = df_all["empathy_label"].value_counts().to_dict()
-        verified_parts.append(f"Empathy Distribution: {empathy_dist}")
+        verified_parts.append(f"Empathy Distribution (ALL topics combined): {empathy_dist}")
 
     # Emotion distribution
     if "emotion_top_1" in df_all.columns:

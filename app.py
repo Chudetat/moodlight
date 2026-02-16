@@ -5268,7 +5268,7 @@ if _has_ask_access and (prompt := st.chat_input("Ask a question about the data..
 
             # Global mood score
             if world_score:
-                verified_parts.append(f"Global Mood Score: {world_score}/100 ({world_label})")
+                verified_parts.append(f"Global Mood Score (ACROSS ALL TOPICS — NOT specific to any brand or category): {world_score}/100 ({world_label})")
 
             # Topic breakdown with density/velocity if available
             topic_density_map = {}
@@ -5357,10 +5357,10 @@ if _has_ask_access and (prompt := st.chat_input("Ask a question about the data..
             # Empathy
             if "empathy_score" in df_all.columns:
                 avg_empathy = df_all["empathy_score"].mean()
-                verified_parts.append(f"Empathy Score (Global Average): {avg_empathy:.2f}/100")
+                verified_parts.append(f"Empathy Score (GLOBAL AVERAGE across all topics — NOT specific to any brand or category): {avg_empathy:.2f}/100")
             if "empathy_label" in df_all.columns:
                 empathy_dist = df_all["empathy_label"].value_counts().to_dict()
-                verified_parts.append(f"Empathy Distribution: {empathy_dist}")
+                verified_parts.append(f"Empathy Distribution (ALL topics combined): {empathy_dist}")
 
             # Emotion distribution
             if "emotion_top_1" in df_all.columns:
