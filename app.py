@@ -1,6 +1,17 @@
 from dotenv import load_dotenv
 load_dotenv()
 import streamlit as st
+st.set_page_config(
+    page_icon="favicon.png",
+    page_title="Moodlight",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
+)
 try:
     from db_helper import load_df_from_db
     HAS_DB = True
@@ -667,19 +678,6 @@ def fetch_stock_data(ticker: str) -> dict | None:
     except Exception as e:
         print(f"Stock fetch error: {e}")
         return None
-
-st.set_page_config(
-    page_icon="favicon.png",
-    page_title="Moodlight",
-    layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'Get Help': None,
-        'Report a bug': None,
-        'About': None
-    }
-)
-
 
 FILTER_DAYS = 7
 
