@@ -262,7 +262,7 @@ def _get_engine():
         db_url = db_url + sep + "sslmode=require"
     _engine_instance = create_engine(
         db_url, pool_pre_ping=True, pool_recycle=300,
-        pool_size=10, max_overflow=5,
+        pool_size=2, max_overflow=3, pool_timeout=30,
     )
     return _engine_instance
 

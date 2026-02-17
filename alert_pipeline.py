@@ -11,6 +11,7 @@ import sys
 import json
 import pandas as pd
 from datetime import datetime, timezone, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -31,7 +32,10 @@ def get_engine():
         if "sslmode" not in db_url:
             sep = "&" if "?" in db_url else "?"
             db_url = db_url + sep + "sslmode=require"
-        return create_engine(db_url, pool_pre_ping=True)
+        return create_engine(
+            db_url, pool_pre_ping=True, pool_recycle=300,
+            pool_size=2, max_overflow=3, pool_timeout=30,
+        )
     except Exception as e:
         print(f"ERROR: Could not create DB engine: {e}")
         return None
@@ -504,47 +508,54 @@ def main():
                 get_previous_snapshot,
                 store_snapshot,
             )
+            def _process_brand(brand_name, username, engine, df_news, df_social, thresholds):
+                """Process a single brand — detectors + competitive analysis. Thread-safe."""
+                print(f"  Scanning brand: {brand_name} (subscriber: {username})")
+                b_alerts, _ = run_brand_detectors(
+                    df_news, df_social, brand_name, username,
+                    thresholds=thresholds,
+                )
+                print(f"    Found {len(b_alerts)} brand alerts for {brand_name}")
 
-            print(f"  {sum(len(v) for v in watchlist.values())} brands across {len(watchlist)} subscribers")
-            for username, brands in watchlist.items():
-                for brand_name in brands:
-                    print(f"  Scanning brand: {brand_name} (subscriber: {username})")
-
-                    # 4a. Brand-specific detectors
-                    alerts, _ = run_brand_detectors(
-                        df_news, df_social, brand_name, username,
-                        thresholds=thresholds,
+                comp_alerts = []
+                print(f"    Running competitive analysis for {brand_name}...")
+                competitors = ensure_competitors_cached(engine, brand_name)
+                if competitors:
+                    print(f"    Competitors: {[c['competitor_name'] for c in competitors]}")
+                    current_snapshot = compute_competitive_snapshot(
+                        df_news, df_social, brand_name, competitors
                     )
-                    brand_alerts.extend(alerts)
-                    print(f"    Found {len(alerts)} brand alerts for {brand_name}")
+                    previous_snapshot = get_previous_snapshot(engine, brand_name)
+                    store_snapshot(engine, brand_name, current_snapshot)
+                    comp_alerts = run_competitive_detectors(
+                        brand_name, username,
+                        current_snapshot, previous_snapshot,
+                        thresholds,
+                    )
+                    print(f"    Found {len(comp_alerts)} competitive alerts for {brand_name}")
+                else:
+                    print(f"    No competitors found for {brand_name} — skipping competitive analysis")
+                return b_alerts, comp_alerts
 
-                    # 4b. Competitive analysis
-                    print(f"    Running competitive analysis for {brand_name}...")
-                    competitors = ensure_competitors_cached(engine, brand_name)
-                    if competitors:
-                        print(f"    Competitors: {[c['competitor_name'] for c in competitors]}")
-
-                        # Compute snapshot
-                        current_snapshot = compute_competitive_snapshot(
-                            df_news, df_social, brand_name, competitors
+            total_brands = sum(len(v) for v in watchlist.values())
+            print(f"  {total_brands} brands across {len(watchlist)} subscribers (parallel processing)")
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                futures = {}
+                for username, brands in watchlist.items():
+                    for brand_name in brands:
+                        future = executor.submit(
+                            _process_brand, brand_name, username,
+                            engine, df_news, df_social, thresholds,
                         )
-
-                        # Load previous snapshot for comparison
-                        previous_snapshot = get_previous_snapshot(engine, brand_name)
-
-                        # Store current snapshot
-                        store_snapshot(engine, brand_name, current_snapshot)
-
-                        # Run competitive detectors
-                        comp_alerts = run_competitive_detectors(
-                            brand_name, username,
-                            current_snapshot, previous_snapshot,
-                            thresholds,
-                        )
+                        futures[future] = brand_name
+                for future in as_completed(futures):
+                    brand_name = futures[future]
+                    try:
+                        b_alerts, comp_alerts = future.result(timeout=120)
+                        brand_alerts.extend(b_alerts)
                         competitive_alerts.extend(comp_alerts)
-                        print(f"    Found {len(comp_alerts)} competitive alerts for {brand_name}")
-                    else:
-                        print(f"    No competitors found for {brand_name} — skipping competitive analysis")
+                    except Exception as e:
+                        print(f"    ERROR processing {brand_name}: {e}")
         else:
             print("  No brands in watchlist — skipping brand detectors")
 
@@ -620,7 +631,7 @@ def main():
         except Exception as e:
             print(f"  Alert correlation failed (non-fatal): {e}")
 
-        # 6. Investigate and store
+        # 6. Investigate and store (parallel)
         from alert_investigator import investigate_alert
         stored_alerts = []
 
@@ -632,16 +643,14 @@ def main():
             _has_chain = False
             print("  Reasoning chain module not available — using single-turn investigation")
 
-        for alert in all_alerts:
+        def _investigate_and_store(alert, engine, df_news, df_social, df_markets, _has_chain):
+            """Investigate a single alert and store results. Thread-safe."""
             cooldown_key = build_cooldown_key(alert)
-
-            # Use longer cooldown for predictive alerts
             cooldown_hours = 24 if alert.get("alert_type", "").startswith("predictive_") else 6
 
-            # Check cooldown
             if check_cooldown(engine, cooldown_key, hours=cooldown_hours):
                 print(f"  SKIP (cooldown): {alert['title']}")
-                continue
+                return None
 
             print(f"\n  Processing: {alert['title']}")
 
@@ -650,9 +659,7 @@ def main():
                 print(f"    Situation report — using correlator investigation")
                 alert["cooldown_key"] = cooldown_key
                 store_alert(engine, alert)
-                stored_alerts.append(alert)
-                print(f"    Stored to DB")
-                continue
+                return alert
 
             # Investigate — use reasoning chain for complex alerts, single-turn for simple
             investigation = None
@@ -680,11 +687,28 @@ def main():
                     print(f"    No investigation (skipped or failed)")
 
             alert["investigation"] = investigation
-
-            # Store
             alert["cooldown_key"] = cooldown_key
             store_alert(engine, alert)
-            stored_alerts.append(alert)
+            return alert
+
+        print(f"\n  Investigating {len(all_alerts)} alerts (parallel, max 5 concurrent)...")
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {}
+            for alert in all_alerts:
+                future = executor.submit(
+                    _investigate_and_store, alert, engine,
+                    df_news, df_social, df_markets, _has_chain,
+                )
+                futures[future] = alert.get("title", "unknown")
+            for future in as_completed(futures):
+                title = futures[future]
+                try:
+                    result = future.result(timeout=180)
+                    if result:
+                        stored_alerts.append(result)
+                        print(f"    Stored to DB: {title[:60]}")
+                except Exception as e:
+                    print(f"    ERROR investigating '{title[:60]}': {e}")
             print(f"    Stored to DB")
 
         # 7. Send emails

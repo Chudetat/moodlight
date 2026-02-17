@@ -24,7 +24,13 @@ def get_engine():
     if not DATABASE_URL:
         return None
     url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    _engine_instance = create_engine(url, pool_pre_ping=True, pool_recycle=300)
+    if "sslmode" not in url:
+        sep = "&" if "?" in url else "?"
+        url = url + sep + "sslmode=require"
+    _engine_instance = create_engine(
+        url, pool_pre_ping=True, pool_recycle=300,
+        pool_size=3, max_overflow=2, pool_timeout=30,
+    )
     return _engine_instance
 
 def save_df_to_db(df, table_name):

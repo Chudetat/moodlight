@@ -7,15 +7,14 @@ try:
 except:
     HAS_DB = False
 
-# Ensure all tables exist on startup (once per session)
-if HAS_DB and "_tables_ensured" not in st.session_state:
+# Ensure all tables exist on startup
+if HAS_DB:
     try:
         from alert_pipeline import ensure_tables as _ensure_tables
         from db_helper import get_engine as _get_startup_engine
         _startup_engine = _get_startup_engine()
         if _startup_engine:
             _ensure_tables(_startup_engine)
-            st.session_state["_tables_ensured"] = True
     except Exception:
         pass
 import streamlit_authenticator as stauth
@@ -55,16 +54,12 @@ if not os.path.exists(".cleanup_done"):
 # This ensures new self-service signups can log in immediately
 def _sync_completed_signups():
     """Check for webhook-activated signups and add them to config.yaml."""
-    db_url = os.getenv("DATABASE_URL", "")
-    if not db_url:
-        return
     try:
-        from sqlalchemy import create_engine as _sc_ce, text as _sc_text
-        _sc_url = db_url.replace("postgres://", "postgresql://", 1)
-        if "sslmode" not in _sc_url:
-            sep = "&" if "?" in _sc_url else "?"
-            _sc_url = _sc_url + sep + "sslmode=require"
-        _sc_engine = _sc_ce(_sc_url, pool_pre_ping=True)
+        from db_helper import get_engine as _get_sync_engine
+        from sqlalchemy import text as _sc_text
+        _sc_engine = _get_sync_engine()
+        if not _sc_engine:
+            return
         with _sc_engine.connect() as conn:
             rows = conn.execute(_sc_text(
                 "SELECT signup_token, name, email, username, password_hash, tier "
@@ -98,10 +93,7 @@ def _sync_completed_signups():
     except Exception as e:
         pass  # Table may not exist yet — that's fine
 
-# Sync completed signups (once per session)
-if "_signups_synced" not in st.session_state:
-    _sync_completed_signups()
-    st.session_state["_signups_synced"] = True
+_sync_completed_signups()
 
 # Load config
 with open('config.yaml') as file:
@@ -1958,10 +1950,8 @@ def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str,
 # ADMIN PANEL
 # =============================================
 def _get_admin_engine():
-    url = os.getenv("DATABASE_URL", "")
-    if url:
-        url = url.replace("postgres://", "postgresql://", 1)
-    return create_engine(url) if url else None
+    from db_helper import get_engine
+    return get_engine()
 
 def _load_all_customers(engine):
     """Load all customers from database"""
@@ -4047,15 +4037,16 @@ if HAS_DB and _watchlist_topics:
                     try:
                         from sqlalchemy import text as _ti_text
                         _ti_alert_cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-                        _ti_alerts_result = _ti_engine.connect().execute(
-                            _ti_text("""
-                                SELECT severity, title, timestamp FROM alerts
-                                WHERE topic = :topic AND timestamp > :cutoff
-                                ORDER BY timestamp DESC LIMIT 5
-                            """),
-                            {"topic": _ti_name, "cutoff": _ti_alert_cutoff},
-                        )
-                        _ti_alert_rows = _ti_alerts_result.fetchall()
+                        with _ti_engine.connect() as _ti_conn:
+                            _ti_alerts_result = _ti_conn.execute(
+                                _ti_text("""
+                                    SELECT severity, title, timestamp FROM alerts
+                                    WHERE topic = :topic AND timestamp > :cutoff
+                                    ORDER BY timestamp DESC LIMIT 5
+                                """),
+                                {"topic": _ti_name, "cutoff": _ti_alert_cutoff},
+                            )
+                            _ti_alert_rows = _ti_alerts_result.fetchall()
                         if _ti_alert_rows:
                             st.markdown("**Recent Alerts**")
                             for _tia_sev, _tia_title, _tia_ts in _ti_alert_rows:
