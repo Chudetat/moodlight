@@ -350,7 +350,15 @@ if not st.session_state.get("authentication_status"):
                             st.error("Payment links not configured. Please contact intel@moodlightintel.com.")
     st.stop()
 
-# If we get here, user is authenticated
+# If we get here, user is authenticated — clear the login hero background
+st.markdown("""
+<style>
+    .stApp {
+        background-image: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 username = st.session_state.get("username")
 name = st.session_state.get("name")
 
