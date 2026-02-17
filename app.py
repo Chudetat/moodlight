@@ -2631,8 +2631,8 @@ with st.sidebar:
     if not has_feature_access(username, "topic_watchlist"):
         render_upgrade_prompt("Topic Watchlist")
     elif len(_watchlist_topics) < 10:
-        _topic_mode = st.radio("Add by", ["Category", "Custom keyword"], horizontal=True, key="topic_add_mode")
         with st.form("add_topic_form", clear_on_submit=True):
+            _topic_mode = st.radio("Add by", ["Category", "Custom keyword"], horizontal=True, key="topic_add_mode")
             if _topic_mode == "Category":
                 _new_topic = st.selectbox("Select category", _TOPIC_CATEGORIES, key="topic_cat_select")
                 _new_is_category = True
