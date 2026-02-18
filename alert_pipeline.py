@@ -492,7 +492,7 @@ def main():
 
         # 3. Run global detectors (with configurable thresholds)
         print("\nRunning global detectors...")
-        from alert_detector import run_global_detectors, run_brand_detectors, run_competitive_detectors, run_economic_detectors
+        from alert_detector import run_global_detectors, run_brand_detectors, run_competitive_detectors, run_economic_detectors, detect_brand_stock_divergence
         global_alerts = run_global_detectors(df_news, df_social, df_markets, thresholds, engine=engine)
         print(f"  Found {len(global_alerts)} global anomalies")
 
@@ -524,6 +524,13 @@ def main():
                     df_news, df_social, brand_name, username,
                     thresholds=thresholds,
                 )
+                # Brand stock divergence detector
+                try:
+                    b_alerts.extend(detect_brand_stock_divergence(
+                        engine, brand_name, username, thresholds
+                    ))
+                except Exception as e:
+                    print(f"    Brand stock divergence failed for {brand_name} (non-fatal): {e}")
                 print(f"    Found {len(b_alerts)} brand alerts for {brand_name}")
 
                 comp_alerts = []

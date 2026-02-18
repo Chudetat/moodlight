@@ -55,6 +55,8 @@ DEFAULT_THRESHOLDS = {
     "economic_threshold_crossing": {"warning": None, "critical": None},
     # Commodity detector
     "commodity_spike": {"warning": 3.0, "critical": 5.0},
+    # Brand stock detector
+    "brand_stock_divergence": {"warning": 2.0, "critical": 3.0},
 }
 
 

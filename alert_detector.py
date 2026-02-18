@@ -1349,6 +1349,75 @@ def detect_commodity_spike(engine, thresholds=None):
     return alerts
 
 
+def detect_brand_stock_divergence(engine, brand_name, username, thresholds=None):
+    """Fire when a brand's stock movement diverges from its sentiment.
+
+    Critical: stock < -3% AND empathy < 0.3 (compound negative)
+    Warning: stock < -2% AND empathy < 0.4
+    """
+    from sqlalchemy import text as sql_text
+
+    alerts = []
+    if not engine:
+        return alerts
+
+    t_conf = (thresholds or {}).get("brand_stock_divergence", {})
+
+    try:
+        with engine.connect() as conn:
+            # Get latest stock change
+            stock_result = conn.execute(sql_text("""
+                SELECT metric_value FROM metric_snapshots
+                WHERE scope = 'brand' AND scope_name = :brand
+                  AND metric_name = 'stock_change_pct'
+                ORDER BY snapshot_date DESC LIMIT 1
+            """), {"brand": brand_name})
+            stock_row = stock_result.fetchone()
+
+            # Get latest empathy from metric snapshots
+            empathy_result = conn.execute(sql_text("""
+                SELECT metric_value FROM metric_snapshots
+                WHERE scope = 'brand' AND scope_name = :brand
+                  AND metric_name = 'avg_empathy'
+                ORDER BY snapshot_date DESC LIMIT 1
+            """), {"brand": brand_name})
+            empathy_row = empathy_result.fetchone()
+
+        if not stock_row or not empathy_row:
+            return alerts
+
+        stock_change = stock_row[0]
+        avg_empathy = empathy_row[0]
+
+        if stock_change < -3 and avg_empathy < 0.3:
+            severity = "critical"
+        elif stock_change < -2 and avg_empathy < 0.4:
+            severity = "warning"
+        else:
+            return alerts
+
+        alerts.append(_make_alert(
+            alert_type="brand_stock_divergence",
+            severity=severity,
+            title=f"{brand_name}: stock down {stock_change:.1f}% with low sentiment",
+            summary=(
+                f"{brand_name}'s stock dropped {stock_change:+.1f}% while brand sentiment "
+                f"is at {avg_empathy:.2f} — both signaling negative pressure."
+            ),
+            data={
+                "brand": brand_name,
+                "stock_change_pct": stock_change,
+                "avg_empathy": avg_empathy,
+            },
+            brand=brand_name,
+            username=username,
+        ))
+    except Exception as e:
+        print(f"  Brand stock divergence check failed for {brand_name}: {e}")
+
+    return alerts
+
+
 def run_economic_detectors(engine, thresholds=None):
     """Run all economic and commodity detectors. Returns list of alerts."""
     alerts = []

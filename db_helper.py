@@ -13,6 +13,7 @@ ALLOWED_TABLES = {
     "news_scored", "social_scored", "markets", "alerts",
     "metric_snapshots", "competitive_snapshots",
     "brand_watchlist", "topic_watchlist", "users",
+    "brand_stocks",
 }
 
 _engine_instance = None
@@ -89,6 +90,24 @@ def load_economic_data(days=30):
 def load_commodity_data(days=7):
     """Load commodity price data from metric_snapshots."""
     return load_metric_trends(scope="commodity", days=days)
+
+
+def load_brand_stock_data(ticker, days=2):
+    """Load intraday brand stock bars from brand_stocks table."""
+    engine = get_engine()
+    if not engine:
+        return pd.DataFrame()
+    try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+        query = sql_text("""
+            SELECT bar_datetime, open_price, high_price, low_price, close_price, volume
+            FROM brand_stocks
+            WHERE ticker = :ticker AND bar_datetime >= :cutoff
+            ORDER BY bar_datetime ASC
+        """)
+        return pd.read_sql(query, engine, params={"ticker": ticker, "cutoff": cutoff})
+    except Exception:
+        return pd.DataFrame()
 
 
 def load_df_from_db(table_name):

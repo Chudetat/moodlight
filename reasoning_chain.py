@@ -75,6 +75,8 @@ CHAIN_CONFIGS = {
     "economic_threshold_crossing": ["situation", "historical", "causal", "confidence"],
     # Commodity detector
     "commodity_spike": ["situation", "causal", "strategic", "confidence"],
+    # Brand stock detector
+    "brand_stock_divergence": ["situation", "historical", "causal", "strategic", "confidence"],
 }
 
 DEFAULT_CHAIN = ["situation", "causal", "confidence"]

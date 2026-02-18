@@ -27,6 +27,7 @@ def cleanup(engine):
         ("social_scored", "created_at", 30),
         ("metric_snapshots", "snapshot_date", 90),
         ("pipeline_runs", "started_at", 30),
+        ("brand_stocks", "bar_datetime", 7),
     ]
 
     total_deleted = 0
