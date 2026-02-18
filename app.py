@@ -1884,6 +1884,27 @@ Relevant headlines:
 
 Connect the numbers to real-world events. What story do these indicators tell together? What should someone monitoring brands and markets watch for next? Be specific and actionable.""",
 
+        "topic_intelligence": f"""Based on this topic's VLDS metrics, empathy data, and relevant headlines, give 2-3 sentences of specific, actionable strategic advice.
+
+VLDS Framework:
+- Velocity (0-1): How fast the topic is growing. High = spiking now
+- Longevity (0-1): Will it last? High = sustained interest, not a flash trend
+- Density (0-1): How crowded is the conversation? High = many competing voices
+- Scarcity (0-1): How underserved is the topic? High = gaps in quality coverage
+
+Strategic interpretation:
+- High V + High L + Low D + High S = First mover opportunity (get in now)
+- High V + Low L = Flash trend (act fast or skip)
+- High D + Low S = Red ocean (hard to differentiate)
+- High D + High S = Niche opportunity (quality can break through)
+
+Data: {data_summary}
+
+Relevant headlines:
+{headline_context}
+
+Give SPECIFIC advice: Should a brand invest in this topic? What angle should they take? What's the window of opportunity? What risks exist? Reference actual headlines driving the numbers.""",
+
         "commodity_prices": f"""Based on these commodity price movements and the relevant headlines below, explain in 2-3 sentences what's driving prices and the implications for businesses.
 
 Brand relevance mapping (which watchlist brands are affected):
@@ -4147,15 +4168,44 @@ if HAS_DB and _watchlist_topics:
                 # VLDS metrics
                 _ti_vlds = calculate_brand_vlds(_ti_combined)
                 if _ti_vlds:
+                    _v = _ti_vlds.get('velocity', 0)
+                    _l = _ti_vlds.get('longevity', 0)
+                    _d = _ti_vlds.get('density', 0)
+                    _s = _ti_vlds.get('scarcity', 0)
+
+                    # Strategic label based on VLDS combination
+                    if _v >= 0.7 and _l >= 0.7 and _d < 0.5 and _s >= 0.5:
+                        _ti_strategy = "🟢 **First Mover Opportunity** — Growing fast, lasting, uncrowded, underserved"
+                    elif _v >= 0.7 and _l >= 0.7 and _d >= 0.7 and _s < 0.3:
+                        _ti_strategy = "🔴 **Red Ocean** — Hot and lasting but saturated and well-covered"
+                    elif _v >= 0.7 and _l < 0.5:
+                        _ti_strategy = "🟡 **Flash Trend** — Spiking but may not last. Act fast or skip"
+                    elif _v < 0.3 and _l >= 0.7:
+                        _ti_strategy = "🔵 **Steady Presence** — Stable long-term topic, low urgency"
+                    elif _d >= 0.7 and _s >= 0.7:
+                        _ti_strategy = "🟠 **Niche Opportunity** — Crowded but underserved. Quality content can break through"
+                    elif _v >= 0.5 and _s >= 0.5:
+                        _ti_strategy = "🟢 **White Space** — Growing with room to lead. Good entry point"
+                    elif _d >= 0.7 and _s < 0.3:
+                        _ti_strategy = "🔴 **Oversaturated** — Crowded and well-covered. Hard to differentiate"
+                    else:
+                        _ti_strategy = "⚪ **Monitor** — No strong signal yet. Watch for changes"
+
+                    st.markdown(_ti_strategy)
+
                     _tc1, _tc2, _tc3, _tc4 = st.columns(4)
                     with _tc1:
-                        st.metric("Velocity", f"{_ti_vlds.get('velocity', 0):.2f}")
+                        _v_label = "Surging" if _v >= 0.7 else "Growing" if _v >= 0.4 else "Quiet"
+                        st.metric("Velocity", f"{_v:.2f}", help=_v_label)
                     with _tc2:
-                        st.metric("Longevity", f"{_ti_vlds.get('longevity', 0):.2f}")
+                        _l_label = "Enduring" if _l >= 0.7 else "Moderate" if _l >= 0.4 else "Fading"
+                        st.metric("Longevity", f"{_l:.2f}", help=_l_label)
                     with _tc3:
-                        st.metric("Density", f"{_ti_vlds.get('density', 0):.2f}")
+                        _d_label = "Saturated" if _d >= 0.7 else "Competitive" if _d >= 0.4 else "Open"
+                        st.metric("Density", f"{_d:.2f}", help=_d_label)
                     with _tc4:
-                        st.metric("Scarcity", f"{_ti_vlds.get('scarcity', 0):.2f}")
+                        _s_label = "Underserved" if _s >= 0.7 else "Moderate" if _s >= 0.4 else "Well-covered"
+                        st.metric("Scarcity", f"{_s:.2f}", help=_s_label)
 
                 # Empathy + top emotion
                 if "empathy_score" in _ti_combined.columns:
@@ -4169,7 +4219,7 @@ if HAS_DB and _watchlist_topics:
                         _emo_parts = [f"{e} ({c})" for e, c in _ti_top_emo.items()]
                         st.caption(f"Top emotions: {', '.join(_emo_parts)}")
 
-                # Recent topic-specific alerts
+                # Recent topic-specific alerts (deduplicated by title)
                 if _ti_engine:
                     try:
                         from sqlalchemy import text as _ti_text
@@ -4177,8 +4227,9 @@ if HAS_DB and _watchlist_topics:
                         with _ti_engine.connect() as _ti_conn:
                             _ti_alerts_result = _ti_conn.execute(
                                 _ti_text("""
-                                    SELECT severity, title, timestamp FROM alerts
+                                    SELECT severity, title, MAX(timestamp) as timestamp FROM alerts
                                     WHERE topic = :topic AND timestamp > :cutoff
+                                    GROUP BY severity, title
                                     ORDER BY timestamp DESC LIMIT 5
                                 """),
                                 {"topic": _ti_name, "cutoff": _ti_alert_cutoff},
@@ -4191,6 +4242,15 @@ if HAS_DB and _watchlist_topics:
                                 st.caption(f"{_tia_icon} {_tia_title}")
                     except Exception:
                         pass
+
+                # Helper button
+                if _ti_vlds and st.button(f"🔍 What should I do about {_ti_name}?", key=f"explain_topic_{_ti_name}"):
+                    with st.spinner(f"Analyzing {_ti_name}..."):
+                        _ti_data = f"Topic: {_ti_name} ({_ti_count} posts)\nVelocity: {_v:.2f}, Longevity: {_l:.2f}, Density: {_d:.2f}, Scarcity: {_s:.2f}\nStrategy: {_ti_strategy}"
+                        if "empathy_score" in _ti_combined.columns:
+                            _ti_data += f"\nAvg Empathy: {_ti_emp:.3f} ({_ti_emp_label})"
+                        explanation = generate_chart_explanation("topic_intelligence", _ti_data, _ti_combined)
+                        st.info(f"📊 **Insight:**\n\n{explanation}")
     except Exception as _ti_err:
         print(f"Topic Intelligence error: {_ti_err}")
 
