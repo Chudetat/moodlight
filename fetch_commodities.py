@@ -100,7 +100,11 @@ def get_previous_price(engine, scope_name):
 
 
 def fetch_commodity(function_name):
-    """Fetch a commodity price from AlphaVantage. Returns (date, value) or None."""
+    """Fetch a commodity price from AlphaVantage.
+
+    Returns (date, value, prev_value) or None.
+    prev_value is the previous data point for computing daily change.
+    """
     url = "https://www.alphavantage.co/query"
     params = {
         "function": function_name,
@@ -126,16 +130,25 @@ def fetch_commodity(function_name):
             print(f"    No data records for {function_name}")
             return None
 
+        # Parse the two most recent valid values
+        parsed = []
         for record in records:
             val_str = record.get("value", "").strip()
             if val_str and val_str != ".":
                 try:
-                    return (record["date"], float(val_str))
+                    parsed.append((record["date"], float(val_str)))
+                    if len(parsed) == 2:
+                        break
                 except (ValueError, KeyError):
                     continue
 
-        print(f"    No valid numeric values for {function_name}")
-        return None
+        if not parsed:
+            print(f"    No valid numeric values for {function_name}")
+            return None
+
+        latest_date, latest_val = parsed[0]
+        prev_val = parsed[1][1] if len(parsed) >= 2 else None
+        return (latest_date, latest_val, prev_val)
 
     except requests.RequestException as e:
         print(f"    Network error for {function_name}: {e}")
@@ -203,13 +216,12 @@ def main():
         print(f"  Fetching {description}...")
         result = fetch_commodity(function_name)
         if result:
-            date_str, price = result
+            date_str, price, prev_val = result
 
-            # Compute daily change from previous price
-            prev_price = get_previous_price(engine, scope_name)
+            # Compute daily change from API response (previous data point)
             daily_change_pct = None
-            if prev_price and prev_price > 0:
-                daily_change_pct = ((price - prev_price) / prev_price) * 100
+            if prev_val and prev_val > 0:
+                daily_change_pct = ((price - prev_val) / prev_val) * 100
 
             if store_commodity(engine, scope_name, date_str, price, daily_change_pct):
                 change_str = f", change: {daily_change_pct:+.2f}%" if daily_change_pct is not None else ""

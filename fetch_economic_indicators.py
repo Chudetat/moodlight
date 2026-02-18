@@ -135,19 +135,21 @@ def _parse_records(records):
 def _compute_cpi_yoy(records):
     """Compute CPI year-over-year % change from monthly index values."""
     parsed = _parse_records(records)
-    if len(parsed) < 2:
+    return _compute_cpi_yoy_at(parsed, 0)
+
+
+def _compute_cpi_yoy_at(parsed, month_offset):
+    """Compute CPI YoY % for the month at the given offset (0=latest, 1=previous)."""
+    if len(parsed) <= month_offset:
         return None
-    latest_date, latest_val = parsed[0]
-    # Find value from ~12 months ago
-    latest_year = int(latest_date[:4])
-    latest_month = int(latest_date[5:7])
-    target_year = latest_year - 1
-    target_month = latest_month
-    target_date_prefix = f"{target_year}-{target_month:02d}"
+    ref_date, ref_val = parsed[month_offset]
+    ref_year = int(ref_date[:4])
+    ref_month = int(ref_date[5:7])
+    target_date_prefix = f"{ref_year - 1}-{ref_month:02d}"
     for date_str, val in parsed:
         if date_str.startswith(target_date_prefix) and val > 0:
-            yoy_pct = (latest_val - val) / val * 100
-            return (latest_date, round(yoy_pct, 2))
+            yoy_pct = (ref_val - val) / val * 100
+            return (ref_date, round(yoy_pct, 2))
     return None
 
 
@@ -233,6 +235,20 @@ def main():
             if store_indicator(engine, metric_name, date_str, value):
                 print(f"    {metric_name} = {value} (date: {date_str})")
                 fetched += 1
+
+                # Also store previous value for dashboard delta arrows
+                parsed = _parse_records(records)
+                if metric_name == "cpi_yoy" and len(parsed) >= 14:
+                    prev_yoy = _compute_cpi_yoy_at(parsed, 1)
+                    if prev_yoy:
+                        store_indicator(engine, metric_name, prev_yoy[0], prev_yoy[1])
+                elif metric_name == "nonfarm_payroll" and len(parsed) >= 3:
+                    prev_date, prev_val = parsed[1][0], parsed[1][1]
+                    _, two_ago_val = parsed[2]
+                    prev_change = round(prev_val - two_ago_val, 0)
+                    store_indicator(engine, metric_name, prev_date, prev_change)
+                elif len(parsed) >= 2:
+                    store_indicator(engine, metric_name, parsed[1][0], parsed[1][1])
             else:
                 print(f"    Failed to store {metric_name}")
         else:
