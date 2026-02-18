@@ -3425,7 +3425,7 @@ try:
             "unemployment_rate": "Unemployment",
             "federal_funds_rate": "Fed Funds Rate",
             "inflation_rate": "Inflation",
-            "nonfarm_payroll": "Nonfarm Payroll (MoM)",
+            "nonfarm_payroll": "Nonfarm Payroll",
         }
         format_suffix = {
             "treasury_yield_10y": "%",
@@ -3435,8 +3435,8 @@ try:
             "inflation_rate": "%",
             "nonfarm_payroll": "K",
         }
-        # Nonfarm is MoM change — show with sign
-        format_override = {"nonfarm_payroll"}
+        # Metrics that show total value with no delta (non-seasonally-adjusted, delta is misleading)
+        no_delta_metrics = {"nonfarm_payroll"}
 
         cols = st.columns(3)
         for idx, (_, row) in enumerate(latest_econ.iterrows()):
@@ -3445,14 +3445,15 @@ try:
             suffix = format_suffix.get(metric, "")
             label = display_names.get(metric, metric)
             delta = None
-            if prev_econ is not None and metric in prev_econ["metric_name"].values:
+            if metric not in no_delta_metrics and prev_econ is not None and metric in prev_econ["metric_name"].values:
                 prev_row = prev_econ[prev_econ["metric_name"] == metric]
                 if not prev_row.empty:
-                    delta = value - prev_row.iloc[0]["metric_value"]
-                    delta = f"{delta:+.2f}{suffix}"
+                    raw_delta = value - prev_row.iloc[0]["metric_value"]
+                    if raw_delta != 0:
+                        delta = f"{raw_delta:+.2f}{suffix}"
             with cols[idx % 3]:
-                if metric in format_override:
-                    st.metric(label, f"{value:+.0f}{suffix}", delta=delta)
+                if metric in no_delta_metrics:
+                    st.metric(label, f"{value:,.0f}{suffix}")
                 else:
                     st.metric(label, f"{value:.2f}{suffix}", delta=delta)
 except Exception as e:

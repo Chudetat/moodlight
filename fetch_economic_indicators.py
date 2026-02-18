@@ -237,7 +237,7 @@ def main():
         if result:
             date_str, value, records = result
 
-            # Compute derived values for CPI and Nonfarm Payroll
+            # Compute derived value for CPI (YoY % from raw index)
             if metric_name == "cpi_yoy":
                 derived = _compute_cpi_yoy(records)
                 if derived:
@@ -245,13 +245,7 @@ def main():
                     print(f"    CPI YoY computed: {value}% (from index, date: {date_str})")
                 else:
                     print(f"    Could not compute CPI YoY — storing raw index")
-            elif metric_name == "nonfarm_payroll":
-                derived = _compute_nonfarm_change(records)
-                if derived:
-                    date_str, value = derived
-                    print(f"    Nonfarm MoM change: {value}K (date: {date_str})")
-                else:
-                    print(f"    Could not compute Nonfarm change — storing raw total")
+            # Nonfarm: store raw total (non-seasonally-adjusted, MoM change is misleading)
 
             if store_indicator(engine, metric_name, date_str, value):
                 print(f"    {metric_name} = {value} (date: {date_str})")
@@ -263,11 +257,8 @@ def main():
                     prev_yoy = _compute_cpi_yoy_at(parsed, 1)
                     if prev_yoy:
                         store_indicator(engine, metric_name, prev_yoy[0], prev_yoy[1])
-                elif metric_name == "nonfarm_payroll" and len(parsed) >= 3:
-                    prev_date, prev_val = parsed[1][0], parsed[1][1]
-                    _, two_ago_val = parsed[2]
-                    prev_change = round(prev_val - two_ago_val, 0)
-                    store_indicator(engine, metric_name, prev_date, prev_change)
+                elif metric_name == "nonfarm_payroll":
+                    pass  # No delta for nonfarm (non-seasonally-adjusted data)
                 elif len(parsed) >= 2:
                     store_indicator(engine, metric_name, parsed[1][0], parsed[1][1])
             else:
