@@ -3466,12 +3466,12 @@ try:
     comm_df = load_commodity_data(days=90)
     if not comm_df.empty:
         st.markdown("#### Commodity Prices")
-        # Get latest price and change per commodity
         price_df = comm_df[comm_df["metric_name"] == "price"]
-        change_df = comm_df[comm_df["metric_name"] == "daily_change_pct"]
         if not price_df.empty:
-            latest_prices = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
-            latest_changes = change_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index() if not change_df.empty else None
+            # Get latest and previous price per commodity for delta computation
+            price_sorted = price_df.sort_values("snapshot_date")
+            latest_prices = price_sorted.groupby("scope_name").last().reset_index()
+            prev_prices = price_sorted.groupby("scope_name").nth(-2).reset_index() if len(price_sorted.groupby("scope_name").filter(lambda x: len(x) >= 2)) > 0 else None
 
             display_names = {
                 "WTI": "Crude Oil (WTI)",
@@ -3487,10 +3487,13 @@ try:
                 price = row["metric_value"]
                 label = display_names.get(name, name)
                 delta = None
-                if latest_changes is not None and name in latest_changes["scope_name"].values:
-                    chg_row = latest_changes[latest_changes["scope_name"] == name]
-                    if not chg_row.empty:
-                        delta = f"{chg_row.iloc[0]['metric_value']:+.2f}%"
+                if prev_prices is not None and name in prev_prices["scope_name"].values:
+                    prev_row = prev_prices[prev_prices["scope_name"] == name]
+                    if not prev_row.empty:
+                        prev_price = prev_row.iloc[0]["metric_value"]
+                        if prev_price and prev_price > 0:
+                            pct_change = ((price - prev_price) / prev_price) * 100
+                            delta = f"{pct_change:+.2f}%"
                 with cols[idx % len(cols)]:
                     st.metric(label, f"${price:.2f}", delta=delta)
 except Exception:

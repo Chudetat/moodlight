@@ -52,6 +52,24 @@ def _get_engine():
     return create_engine(db_url, pool_pre_ping=True, pool_size=1, max_overflow=0)
 
 
+def _cleanup_null_scope_rows(engine):
+    """One-time cleanup: delete economic rows with NULL scope_name.
+    NULL scope_name breaks PostgreSQL ON CONFLICT (NULL != NULL),
+    causing duplicate rows on every pipeline run.
+    """
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                text("DELETE FROM metric_snapshots WHERE scope = 'economic' AND scope_name IS NULL")
+            )
+            conn.commit()
+            if result.rowcount > 0:
+                print(f"  Cleaned up {result.rowcount} legacy NULL scope_name rows")
+    except Exception as e:
+        print(f"  Cleanup note: {e}")
+
+
 def already_captured_today(engine, metric_name):
     """Check if this metric already has a snapshot for today."""
     from sqlalchemy import text
@@ -62,7 +80,7 @@ def already_captured_today(engine, metric_name):
                 text("""
                     SELECT 1 FROM metric_snapshots
                     WHERE scope = 'economic' AND metric_name = :metric
-                      AND snapshot_date = :today
+                      AND scope_name = '' AND snapshot_date = :today
                     LIMIT 1
                 """),
                 {"metric": metric_name, "today": today},
@@ -173,7 +191,7 @@ def store_indicator(engine, metric_name, date_str, value):
                 text("""
                     INSERT INTO metric_snapshots
                         (snapshot_date, scope, scope_name, metric_name, metric_value, sample_size)
-                    VALUES (:date, 'economic', NULL, :metric, :value, 1)
+                    VALUES (:date, 'economic', '', :metric, :value, 1)
                     ON CONFLICT (snapshot_date, scope, scope_name, metric_name)
                     DO UPDATE SET metric_value = :value
                 """),
@@ -195,6 +213,9 @@ def main():
     if not engine:
         print("DATABASE_URL not set — skipping economic indicators")
         sys.exit(0)
+
+    # One-time cleanup of NULL scope_name rows (caused duplicate inserts)
+    _cleanup_null_scope_rows(engine)
 
     print("Fetching economic indicators...")
     fetched = 0

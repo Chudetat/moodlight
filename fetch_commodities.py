@@ -148,7 +148,8 @@ def fetch_commodity(function_name):
 
         latest_date, latest_val = parsed[0]
         prev_val = parsed[1][1] if len(parsed) >= 2 else None
-        return (latest_date, latest_val, prev_val)
+        prev_date = parsed[1][0] if len(parsed) >= 2 else None
+        return (latest_date, latest_val, prev_val, prev_date)
 
     except requests.RequestException as e:
         print(f"    Network error for {function_name}: {e}")
@@ -200,6 +201,19 @@ def main():
         print("DATABASE_URL not set — skipping commodities")
         sys.exit(0)
 
+    # One-time cleanup: remove stale daily_change_pct=0 rows (from first run with no prev data)
+    from sqlalchemy import text as _text
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                _text("DELETE FROM metric_snapshots WHERE scope = 'commodity' AND metric_name = 'daily_change_pct' AND metric_value = 0")
+            )
+            conn.commit()
+            if result.rowcount > 0:
+                print(f"  Cleaned up {result.rowcount} stale daily_change_pct=0 rows")
+    except Exception:
+        pass
+
     print("Fetching commodity prices...")
     fetched = 0
     skipped = 0
@@ -216,17 +230,21 @@ def main():
         print(f"  Fetching {description}...")
         result = fetch_commodity(function_name)
         if result:
-            date_str, price, prev_val = result
+            date_str, price, prev_val, prev_date = result
+            print(f"    API data: price={price}, prev={prev_val}, date={date_str}, prev_date={prev_date}")
 
             # Compute daily change from API response (previous data point)
             daily_change_pct = None
-            if prev_val and prev_val > 0:
-                daily_change_pct = ((price - prev_val) / prev_val) * 100
+            if prev_val and prev_val > 0 and prev_val != price:
+                daily_change_pct = round(((price - prev_val) / prev_val) * 100, 4)
 
             if store_commodity(engine, scope_name, date_str, price, daily_change_pct):
                 change_str = f", change: {daily_change_pct:+.2f}%" if daily_change_pct is not None else ""
                 print(f"    {scope_name} = ${price:.2f}{change_str} (date: {date_str})")
                 fetched += 1
+                # Store previous price for dashboard delta arrows
+                if prev_val and prev_date and prev_date != date_str:
+                    store_commodity(engine, scope_name, prev_date, prev_val)
             else:
                 print(f"    Failed to store {scope_name}")
         else:
