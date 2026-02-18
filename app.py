@@ -3425,7 +3425,7 @@ try:
             "unemployment_rate": "Unemployment",
             "federal_funds_rate": "Fed Funds Rate",
             "inflation_rate": "Inflation",
-            "nonfarm_payroll": "Nonfarm Payroll",
+            "nonfarm_payroll": "Nonfarm Payroll (MoM)",
         }
         format_suffix = {
             "treasury_yield_10y": "%",
@@ -3435,6 +3435,8 @@ try:
             "inflation_rate": "%",
             "nonfarm_payroll": "K",
         }
+        # Nonfarm is MoM change — show with sign
+        format_override = {"nonfarm_payroll"}
 
         cols = st.columns(3)
         for idx, (_, row) in enumerate(latest_econ.iterrows()):
@@ -3449,7 +3451,10 @@ try:
                     delta = value - prev_row.iloc[0]["metric_value"]
                     delta = f"{delta:+.2f}{suffix}"
             with cols[idx % 3]:
-                st.metric(label, f"{value:.2f}{suffix}", delta=delta)
+                if metric in format_override:
+                    st.metric(label, f"{value:+.0f}{suffix}", delta=delta)
+                else:
+                    st.metric(label, f"{value:.2f}{suffix}", delta=delta)
 except Exception as e:
     pass  # Economic data not yet available
 

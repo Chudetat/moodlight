@@ -73,7 +73,11 @@ def already_captured_today(engine, metric_name):
 
 
 def fetch_indicator(function_name, extra_params):
-    """Fetch a single indicator from AlphaVantage. Returns (date, value) or None."""
+    """Fetch a single indicator from AlphaVantage.
+
+    Returns (date, value, records) where records is the full data array,
+    or None on failure.
+    """
     url = "https://www.alphavantage.co/query"
     params = {"function": function_name, "apikey": ALPHAVANTAGE_API_KEY}
     params.update(extra_params)
@@ -103,7 +107,7 @@ def fetch_indicator(function_name, extra_params):
             val_str = record.get("value", "").strip()
             if val_str and val_str != ".":
                 try:
-                    return (record["date"], float(val_str))
+                    return (record["date"], float(val_str), records)
                 except (ValueError, KeyError):
                     continue
 
@@ -113,6 +117,49 @@ def fetch_indicator(function_name, extra_params):
     except requests.RequestException as e:
         print(f"    Network error for {function_name}: {e}")
         return None
+
+
+def _parse_records(records):
+    """Parse records into list of (date_str, float_value) tuples."""
+    parsed = []
+    for r in records:
+        val_str = r.get("value", "").strip()
+        if val_str and val_str != ".":
+            try:
+                parsed.append((r["date"], float(val_str)))
+            except (ValueError, KeyError):
+                continue
+    return parsed
+
+
+def _compute_cpi_yoy(records):
+    """Compute CPI year-over-year % change from monthly index values."""
+    parsed = _parse_records(records)
+    if len(parsed) < 2:
+        return None
+    latest_date, latest_val = parsed[0]
+    # Find value from ~12 months ago
+    latest_year = int(latest_date[:4])
+    latest_month = int(latest_date[5:7])
+    target_year = latest_year - 1
+    target_month = latest_month
+    target_date_prefix = f"{target_year}-{target_month:02d}"
+    for date_str, val in parsed:
+        if date_str.startswith(target_date_prefix) and val > 0:
+            yoy_pct = (latest_val - val) / val * 100
+            return (latest_date, round(yoy_pct, 2))
+    return None
+
+
+def _compute_nonfarm_change(records):
+    """Compute month-over-month nonfarm payroll change (thousands)."""
+    parsed = _parse_records(records)
+    if len(parsed) < 2:
+        return None
+    latest_date, latest_val = parsed[0]
+    _, prev_val = parsed[1]
+    change = latest_val - prev_val
+    return (latest_date, round(change, 0))
 
 
 def store_indicator(engine, metric_name, date_str, value):
@@ -165,7 +212,24 @@ def main():
         print(f"  Fetching {description}...")
         result = fetch_indicator(function_name, extra_params)
         if result:
-            date_str, value = result
+            date_str, value, records = result
+
+            # Compute derived values for CPI and Nonfarm Payroll
+            if metric_name == "cpi_yoy":
+                derived = _compute_cpi_yoy(records)
+                if derived:
+                    date_str, value = derived
+                    print(f"    CPI YoY computed: {value}% (from index, date: {date_str})")
+                else:
+                    print(f"    Could not compute CPI YoY — storing raw index")
+            elif metric_name == "nonfarm_payroll":
+                derived = _compute_nonfarm_change(records)
+                if derived:
+                    date_str, value = derived
+                    print(f"    Nonfarm MoM change: {value}K (date: {date_str})")
+                else:
+                    print(f"    Could not compute Nonfarm change — storing raw total")
+
             if store_indicator(engine, metric_name, date_str, value):
                 print(f"    {metric_name} = {value} (date: {date_str})")
                 fetched += 1
