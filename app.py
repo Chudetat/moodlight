@@ -1867,6 +1867,38 @@ Identify specific events that drove mood spikes or dips. Why did discourse becom
         
         "scarcity": f"""Based on this scarcity data for topics and the relevant headlines below, explain in 2-3 sentences which topics are underserved and represent first-mover opportunities.\n\nData: {data_summary}\n\nHeadlines showing coverage gaps:\n{headline_context}\n\nWhich topics should brands jump on before competitors? What gaps exist in the conversation?""",
 
+        "economic_indicators": f"""Based on these economic indicator values and the relevant headlines below, explain in 2-3 sentences what the current economic picture looks like and what investors should watch for.
+
+Key context for interpreting these indicators:
+- CPI (YoY): Consumer Price Index year-over-year change. Above 3% = elevated inflation, below 2% = deflationary pressure
+- Fed Funds Rate: Set by the FOMC, only changes at Fed meetings. Reflects monetary policy tightness
+- 10Y Treasury: Market-determined, reflects growth/inflation expectations. Rising = markets expect growth or inflation
+- Unemployment Rate: Below 4% = tight labor market, above 5% = weakening
+- Inflation Rate: Annual inflation from AlphaVantage (may differ slightly from CPI YoY)
+- Nonfarm Payroll: Total US non-farm employed workers (non-seasonally-adjusted). January typically shows large seasonal drops from holiday layoffs ending — this is normal and NOT a recession signal
+
+Data: {data_summary}
+
+Relevant headlines:
+{headline_context}
+
+Connect the numbers to real-world events. What story do these indicators tell together? What should someone monitoring brands and markets watch for next? Be specific and actionable.""",
+
+        "commodity_prices": f"""Based on these commodity price movements and the relevant headlines below, explain in 2-3 sentences what's driving prices and the implications for businesses.
+
+Brand relevance mapping (which watchlist brands are affected):
+- WTI & Brent Crude → Lockheed Martin (defense/aerospace fuel costs)
+- Copper → NVIDIA (semiconductor manufacturing, PCB components)
+- Aluminum → NVIDIA (heat sinks, chassis), Amazon (logistics fleet, packaging, data center construction)
+- Natural Gas → General energy/manufacturing costs
+
+Data: {data_summary}
+
+Relevant headlines:
+{headline_context}
+
+What's driving the biggest movers? How do these price changes specifically impact the watchlist brands above? Be specific about supply chain and cost implications. Keep it actionable.""",
+
         "polymarket_divergence": f"""Based on this prediction market vs social sentiment data and headlines below, explain in 2-3 sentences why prediction markets and social mood diverge (or align).
 
 IMPORTANT - Social Mood Score interpretation:
@@ -3456,6 +3488,12 @@ try:
                     st.metric(label, f"{value:,.0f}{suffix}")
                 else:
                     st.metric(label, f"{value:.2f}{suffix}", delta=delta)
+
+        if st.button("🔍 What do these mean?", key="explain_economic"):
+            with st.spinner("Analyzing economic indicators..."):
+                econ_summary = "; ".join([f"{display_names.get(r['metric_name'], r['metric_name'])}: {r['metric_value']:.2f}{format_suffix.get(r['metric_name'], '')}" for _, r in latest_econ.iterrows()])
+                explanation = generate_chart_explanation("economic_indicators", econ_summary, df_all)
+                st.info(f"📊 **Insight:**\n\n{explanation}")
 except Exception as e:
     pass  # Economic data not yet available
 
@@ -3497,6 +3535,12 @@ try:
                             delta = f"{pct_change:+.2f}%"
                 with cols[idx % len(cols)]:
                     st.metric(label, f"${price:.2f}", delta=delta)
+
+            if st.button("🔍 Why these commodities?", key="explain_commodities"):
+                with st.spinner("Analyzing commodity prices..."):
+                    comm_summary = "; ".join([f"{display_names.get(r['scope_name'], r['scope_name'])}: ${r['metric_value']:.2f}" for _, r in latest_prices.iterrows()])
+                    explanation = generate_chart_explanation("commodity_prices", comm_summary, df_all)
+                    st.info(f"📊 **Insight:**\n\n{explanation}")
 except Exception:
     pass  # Commodity data not yet available
 
