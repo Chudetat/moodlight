@@ -23,19 +23,22 @@ def cleanup(engine):
     from sqlalchemy import text
 
     policies = [
-        ("news_scored", "created_at", 30),
-        ("social_scored", "created_at", 30),
-        ("metric_snapshots", "snapshot_date", 90),
-        ("pipeline_runs", "started_at", 30),
-        ("brand_stocks", "bar_datetime", 7),
+        ("news_scored", "created_at", 30, None),
+        ("social_scored", "created_at", 30, None),
+        ("metric_snapshots", "snapshot_date", 90, "scope NOT IN ('economic', 'commodity')"),
+        ("pipeline_runs", "started_at", 30, None),
+        ("brand_stocks", "bar_datetime", 7, None),
     ]
 
     total_deleted = 0
-    for table, column, days in policies:
+    for table, column, days, extra_condition in policies:
         try:
             with engine.connect() as conn:
+                where = f"{column} < NOW() - INTERVAL ':days days'".replace(":days", str(int(days)))
+                if extra_condition:
+                    where += f" AND {extra_condition}"
                 result = conn.execute(
-                    text(f"DELETE FROM {table} WHERE {column} < NOW() - INTERVAL ':days days'".replace(":days", str(int(days))))
+                    text(f"DELETE FROM {table} WHERE {where}")
                 )
                 deleted = result.rowcount
                 conn.commit()

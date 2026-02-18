@@ -3372,9 +3372,8 @@ st.caption("Markets respond to mood before they respond to news.")
 df_markets = load_market_data()
 
 if not df_markets.empty and "market_sentiment" in df_markets.columns:
-    # Show the most recent trading day's data
-    latest_day = df_markets["latest_trading_day"].max()
-    df_markets_latest = df_markets[df_markets["latest_trading_day"] == latest_day]
+    # Show most recent data per index (handles stale international ETF dates)
+    df_markets_latest = df_markets.sort_values("latest_trading_day").groupby("symbol").last().reset_index()
 
     market_score = df_markets_latest["market_sentiment"].iloc[0]
     market_pct = int(round(market_score * 100))
@@ -3412,7 +3411,7 @@ else:
 # ========================================
 try:
     from db_helper import load_economic_data
-    econ_df = load_economic_data(days=30)
+    econ_df = load_economic_data(days=730)
     if not econ_df.empty:
         st.markdown("#### Economic Indicators")
         # Get latest value per metric
@@ -3459,7 +3458,7 @@ except Exception as e:
 # ========================================
 try:
     from db_helper import load_commodity_data
-    comm_df = load_commodity_data(days=7)
+    comm_df = load_commodity_data(days=90)
     if not comm_df.empty:
         st.markdown("#### Commodity Prices")
         # Get latest price and change per commodity

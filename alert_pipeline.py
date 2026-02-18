@@ -204,6 +204,7 @@ def ensure_tables(engine):
 
 def load_data(engine):
     """Load recent news, social, and market data from DB."""
+    from sqlalchemy import text
     cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
 
     df_news = pd.DataFrame()
