@@ -71,7 +71,7 @@ def load_metric_trends(scope: str, scope_name: str = None, metric_name: str = No
             params["metric_name"] = metric_name
         where = " AND ".join(conditions)
         query = sql_text(f"""
-            SELECT snapshot_date, metric_name, metric_value, sample_size
+            SELECT snapshot_date, scope_name, metric_name, metric_value, sample_size
             FROM metric_snapshots
             WHERE {where}
             ORDER BY snapshot_date ASC
