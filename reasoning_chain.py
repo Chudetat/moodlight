@@ -73,6 +73,8 @@ CHAIN_CONFIGS = {
     # Economic detectors
     "economic_stress": ["situation", "historical", "causal", "strategic", "confidence"],
     "economic_threshold_crossing": ["situation", "historical", "causal", "confidence"],
+    # Commodity detector
+    "commodity_spike": ["situation", "causal", "strategic", "confidence"],
 }
 
 DEFAULT_CHAIN = ["situation", "causal", "confidence"]
@@ -149,6 +151,33 @@ def _build_context(alert, df_news=None, df_social=None, df_markets=None, engine=
                         label = name.replace("_", " ").title()
                         econ_lines.append(f"  - {label}: {value} (as of {date})")
                     parts.append("\n".join(econ_lines))
+        except Exception:
+            pass
+
+    # Commodity prices context
+    if engine:
+        try:
+            from sqlalchemy import text as _sql_text
+            with engine.connect() as conn:
+                result = conn.execute(_sql_text("""
+                    SELECT scope_name, metric_name, metric_value
+                    FROM metric_snapshots
+                    WHERE scope = 'commodity'
+                      AND snapshot_date = (
+                          SELECT MAX(snapshot_date) FROM metric_snapshots
+                          WHERE scope = 'commodity'
+                      )
+                    ORDER BY scope_name, metric_name
+                """))
+                rows = result.fetchall()
+                if rows:
+                    comm_lines = ["Commodity prices:"]
+                    for scope_name, metric_name, value in rows:
+                        if metric_name == "price":
+                            comm_lines.append(f"  - {scope_name}: ${value:.2f}")
+                        elif metric_name == "daily_change_pct":
+                            comm_lines.append(f"    (daily change: {value:+.2f}%)")
+                    parts.append("\n".join(comm_lines))
         except Exception:
             pass
 

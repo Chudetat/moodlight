@@ -53,6 +53,8 @@ DEFAULT_THRESHOLDS = {
     # Economic detectors
     "economic_stress": {"warning": 2, "critical": 3},
     "economic_threshold_crossing": {"warning": None, "critical": None},
+    # Commodity detector
+    "commodity_spike": {"warning": 3.0, "critical": 5.0},
 }
 
 

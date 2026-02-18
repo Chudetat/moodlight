@@ -86,6 +86,11 @@ def load_economic_data(days=30):
     return load_metric_trends(scope="economic", days=days)
 
 
+def load_commodity_data(days=7):
+    """Load commodity price data from metric_snapshots."""
+    return load_metric_trends(scope="commodity", days=days)
+
+
 def load_df_from_db(table_name):
     """Load data from database, filtered to last 7 days only.
 

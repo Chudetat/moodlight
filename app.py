@@ -3454,6 +3454,44 @@ try:
 except Exception as e:
     pass  # Economic data not yet available
 
+# ========================================
+# COMMODITY PRICES
+# ========================================
+try:
+    from db_helper import load_commodity_data
+    comm_df = load_commodity_data(days=7)
+    if not comm_df.empty:
+        st.markdown("#### Commodity Prices")
+        # Get latest price and change per commodity
+        price_df = comm_df[comm_df["metric_name"] == "price"]
+        change_df = comm_df[comm_df["metric_name"] == "daily_change_pct"]
+        if not price_df.empty:
+            latest_prices = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+            latest_changes = change_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index() if not change_df.empty else None
+
+            display_names = {
+                "WTI": "Crude Oil (WTI)",
+                "BRENT": "Brent Crude",
+                "NATURAL_GAS": "Natural Gas",
+                "COPPER": "Copper",
+                "ALUMINUM": "Aluminum",
+            }
+
+            cols = st.columns(min(len(latest_prices), 5))
+            for idx, (_, row) in enumerate(latest_prices.iterrows()):
+                name = row["scope_name"]
+                price = row["metric_value"]
+                label = display_names.get(name, name)
+                delta = None
+                if latest_changes is not None and name in latest_changes["scope_name"].values:
+                    chg_row = latest_changes[latest_changes["scope_name"] == name]
+                    if not chg_row.empty:
+                        delta = f"{chg_row.iloc[0]['metric_value']:+.2f}%"
+                with cols[idx % len(cols)]:
+                    st.metric(label, f"${price:.2f}", delta=delta)
+except Exception:
+    pass  # Commodity data not yet available
+
 st.markdown("---")
 
 # ========================================

@@ -40,6 +40,12 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python fetch_economic_indicators.py
 
+      - name: Fetch commodities
+        env:
+          ALPHAVANTAGE_API_KEY: ${{ secrets.ALPHAVANTAGE_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python fetch_commodities.py
+
       - name: Fetch news (NewsAPI + RSS)
         env:
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}

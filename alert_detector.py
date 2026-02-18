@@ -1272,9 +1272,87 @@ def detect_economic_threshold_crossing(engine, thresholds=None):
     return alerts
 
 
+def detect_commodity_spike(engine, thresholds=None):
+    """Fire when a commodity's daily_change_pct exceeds warning/critical thresholds.
+
+    Also generates brand-specific alerts using the commodity-brand relevance map.
+    """
+    from sqlalchemy import text as sql_text
+
+    alerts = []
+    if not engine:
+        return alerts
+
+    t_conf = (thresholds or {}).get("commodity_spike", {})
+    warning_pct = t_conf.get("warning", 3.0)
+    critical_pct = t_conf.get("critical", 5.0)
+
+    # Brand relevance mapping
+    commodity_brand_relevance = {
+        "WTI": ["Lockheed Martin"],
+        "BRENT": ["Lockheed Martin"],
+        "COPPER": ["NVIDIA"],
+        "ALUMINUM": ["NVIDIA", "Amazon"],
+    }
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(sql_text("""
+                SELECT scope_name, metric_value
+                FROM metric_snapshots
+                WHERE scope = 'commodity' AND metric_name = 'daily_change_pct'
+                  AND snapshot_date = (
+                      SELECT MAX(snapshot_date) FROM metric_snapshots
+                      WHERE scope = 'commodity' AND metric_name = 'daily_change_pct'
+                  )
+            """))
+            rows = result.fetchall()
+    except Exception as e:
+        print(f"  Commodity spike query failed: {e}")
+        return alerts
+
+    for commodity_name, change_pct in rows:
+        abs_change = abs(change_pct)
+        if critical_pct and abs_change >= critical_pct:
+            severity = "critical"
+        elif warning_pct and abs_change >= warning_pct:
+            severity = "warning"
+        else:
+            continue
+
+        direction = "surged" if change_pct > 0 else "dropped"
+        alert = _make_alert(
+            alert_type="commodity_spike",
+            severity=severity,
+            title=f"{commodity_name} {direction} {abs_change:.1f}%",
+            summary=f"{commodity_name} {direction} {change_pct:+.1f}% in one day.",
+            data={"commodity": commodity_name, "change_pct": change_pct},
+        )
+        alerts.append(alert)
+
+        # Generate brand-specific alerts for relevant brands
+        relevant_brands = commodity_brand_relevance.get(commodity_name, [])
+        for brand_name in relevant_brands:
+            brand_alert = _make_alert(
+                alert_type="commodity_spike",
+                severity=severity,
+                title=f"{commodity_name} {direction} {abs_change:.1f}% — impacts {brand_name}",
+                summary=(
+                    f"{commodity_name} {direction} {change_pct:+.1f}% in one day. "
+                    f"This commodity is relevant to {brand_name}'s supply chain or operations."
+                ),
+                data={"commodity": commodity_name, "change_pct": change_pct, "brand": brand_name},
+                brand=brand_name,
+            )
+            alerts.append(brand_alert)
+
+    return alerts
+
+
 def run_economic_detectors(engine, thresholds=None):
-    """Run all economic detectors. Returns list of alerts."""
+    """Run all economic and commodity detectors. Returns list of alerts."""
     alerts = []
     alerts.extend(detect_economic_stress(engine, thresholds))
     alerts.extend(detect_economic_threshold_crossing(engine, thresholds))
+    alerts.extend(detect_commodity_spike(engine, thresholds))
     return alerts

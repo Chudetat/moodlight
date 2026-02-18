@@ -380,6 +380,22 @@ Total Articles Analyzed: {len(news_df)}
     except Exception:
         pass
 
+    # Add commodity prices if available
+    try:
+        from db_helper import load_commodity_data
+        comm_df = load_commodity_data(days=7)
+        if not comm_df.empty:
+            price_df = comm_df[comm_df["metric_name"] == "price"]
+            if not price_df.empty:
+                latest = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                comm_lines = []
+                for _, row in latest.iterrows():
+                    comm_lines.append(f"  {row['scope_name']}: ${row['metric_value']:.2f}")
+                comm_block = "\n".join(comm_lines)
+                context += f"\n\nCOMMODITY PRICES:\n{comm_block}\n"
+    except Exception:
+        pass
+
     # Add social data if available
     if social_df is not None and not social_df.empty:
         # Top social topics
