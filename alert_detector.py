@@ -1115,3 +1115,166 @@ def run_topic_detectors(df_news, df_social, topic_name, is_category, username,
     )
     alerts.extend(vlds_alerts)
     return alerts, current_vlds
+
+
+# =====================================================================
+# Part E: Economic Detectors
+# =====================================================================
+
+def detect_economic_stress(engine, thresholds=None):
+    """Score economic stress from multiple indicators.
+
+    Stress signals (each +1 point):
+      - Treasury yield > 5%
+      - Unemployment > 4.5%
+      - CPI > 3.5%
+      - Nonfarm payroll < 100 (thousands)
+      - Federal funds rate > 5.5%
+
+    Fires at warning (2) or critical (3).
+    """
+    from sqlalchemy import text as sql_text
+
+    alerts = []
+    if not engine:
+        return alerts
+
+    t_conf = (thresholds or {}).get("economic_stress", {})
+    warning_threshold = t_conf.get("warning", 2)
+    critical_threshold = t_conf.get("critical", 3)
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(sql_text("""
+                SELECT metric_name, metric_value
+                FROM metric_snapshots
+                WHERE scope = 'economic'
+                  AND snapshot_date = (
+                      SELECT MAX(snapshot_date) FROM metric_snapshots
+                      WHERE scope = 'economic' AND metric_name = metric_snapshots.metric_name
+                  )
+            """))
+            latest = {row[0]: row[1] for row in result.fetchall()}
+    except Exception as e:
+        print(f"  Economic stress query failed: {e}")
+        return alerts
+
+    if not latest:
+        return alerts
+
+    score = 0
+    signals = []
+
+    treasury = latest.get("treasury_yield_10y")
+    if treasury is not None and treasury > 5.0:
+        score += 1
+        signals.append(f"Treasury yield {treasury:.2f}%")
+
+    unemployment = latest.get("unemployment_rate")
+    if unemployment is not None and unemployment > 4.5:
+        score += 1
+        signals.append(f"Unemployment {unemployment:.1f}%")
+
+    cpi = latest.get("cpi_yoy")
+    if cpi is not None and cpi > 3.5:
+        score += 1
+        signals.append(f"CPI {cpi:.1f}%")
+
+    nonfarm = latest.get("nonfarm_payroll")
+    if nonfarm is not None and nonfarm < 100:
+        score += 1
+        signals.append(f"Nonfarm payroll {nonfarm:.0f}K")
+
+    fed_funds = latest.get("federal_funds_rate")
+    if fed_funds is not None and fed_funds > 5.5:
+        score += 1
+        signals.append(f"Fed funds rate {fed_funds:.2f}%")
+
+    if critical_threshold and score >= critical_threshold:
+        severity = "critical"
+    elif warning_threshold and score >= warning_threshold:
+        severity = "warning"
+    else:
+        return alerts
+
+    alerts.append(_make_alert(
+        alert_type="economic_stress",
+        severity=severity,
+        title=f"Economic stress score: {score}/5",
+        summary=f"Multiple economic indicators signal stress: {'; '.join(signals)}.",
+        data={"score": score, "signals": signals, "latest": latest},
+    ))
+    return alerts
+
+
+def detect_economic_threshold_crossing(engine, thresholds=None):
+    """Fire when an individual economic indicator crosses a significant level.
+
+    Checks current vs previous value to detect actual crossings,
+    not just levels above threshold.
+    """
+    from sqlalchemy import text as sql_text
+
+    alerts = []
+    if not engine:
+        return alerts
+
+    # Significant thresholds for each indicator
+    crossings = {
+        "unemployment_rate": [(5.0, "Unemployment crossed 5%"), (4.0, "Unemployment dropped below 4%")],
+        "treasury_yield_10y": [(5.0, "10-year Treasury yield crossed 5%"), (4.0, "10-year Treasury yield crossed 4%")],
+        "cpi_yoy": [(3.0, "CPI crossed 3%"), (4.0, "CPI crossed 4%")],
+        "federal_funds_rate": [(5.0, "Fed funds rate crossed 5%"), (5.5, "Fed funds rate crossed 5.5%")],
+    }
+
+    try:
+        with engine.connect() as conn:
+            for metric_name, thresholds_list in crossings.items():
+                result = conn.execute(sql_text("""
+                    SELECT snapshot_date, metric_value
+                    FROM metric_snapshots
+                    WHERE scope = 'economic' AND metric_name = :metric
+                    ORDER BY snapshot_date DESC LIMIT 2
+                """), {"metric": metric_name})
+                rows = result.fetchall()
+
+                if len(rows) < 2:
+                    continue
+
+                current_val = rows[0][1]
+                previous_val = rows[1][1]
+
+                for level, description in thresholds_list:
+                    # Check if threshold was crossed between previous and current
+                    crossed_up = previous_val < level <= current_val
+                    crossed_down = previous_val > level >= current_val
+                    if crossed_up or crossed_down:
+                        direction = "rose above" if crossed_up else "fell below"
+                        alerts.append(_make_alert(
+                            alert_type="economic_threshold_crossing",
+                            severity="warning",
+                            title=description,
+                            summary=(
+                                f"{metric_name.replace('_', ' ').title()} {direction} {level} "
+                                f"(previous: {previous_val:.2f}, current: {current_val:.2f})."
+                            ),
+                            data={
+                                "metric": metric_name,
+                                "level": level,
+                                "previous": previous_val,
+                                "current": current_val,
+                                "direction": "up" if crossed_up else "down",
+                            },
+                        ))
+    except Exception as e:
+        print(f"  Economic threshold crossing check failed: {e}")
+
+    return alerts
+
+
+def run_economic_detectors(engine, thresholds=None):
+    """Run all economic detectors. Returns list of alerts."""
+    alerts = []
+    alerts.extend(detect_economic_stress(engine, thresholds))
+    alerts.extend(detect_economic_threshold_crossing(engine, thresholds))
+    return alerts

@@ -81,6 +81,11 @@ def load_metric_trends(scope: str, scope_name: str = None, metric_name: str = No
         return pd.DataFrame()
 
 
+def load_economic_data(days=30):
+    """Load economic indicator data from metric_snapshots."""
+    return load_metric_trends(scope="economic", days=days)
+
+
 def load_df_from_db(table_name):
     """Load data from database, filtered to last 7 days only.
 

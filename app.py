@@ -3407,6 +3407,53 @@ if not df_markets.empty and "market_sentiment" in df_markets.columns:
 else:
     st.info("Market data not available. Run fetch_markets.py to fetch.")
 
+# ========================================
+# ECONOMIC INDICATORS
+# ========================================
+try:
+    from db_helper import load_economic_data
+    econ_df = load_economic_data(days=30)
+    if not econ_df.empty:
+        st.markdown("#### Economic Indicators")
+        # Get latest value per metric
+        latest_econ = econ_df.sort_values("snapshot_date").groupby("metric_name").last().reset_index()
+        # Get previous value per metric for delta
+        prev_econ = econ_df.sort_values("snapshot_date").groupby("metric_name").nth(-2).reset_index() if len(econ_df.groupby("metric_name").filter(lambda x: len(x) >= 2)) > 0 else None
+
+        display_names = {
+            "treasury_yield_10y": "10Y Treasury",
+            "cpi_yoy": "CPI (YoY)",
+            "unemployment_rate": "Unemployment",
+            "federal_funds_rate": "Fed Funds Rate",
+            "inflation_rate": "Inflation",
+            "nonfarm_payroll": "Nonfarm Payroll",
+        }
+        format_suffix = {
+            "treasury_yield_10y": "%",
+            "cpi_yoy": "%",
+            "unemployment_rate": "%",
+            "federal_funds_rate": "%",
+            "inflation_rate": "%",
+            "nonfarm_payroll": "K",
+        }
+
+        cols = st.columns(3)
+        for idx, (_, row) in enumerate(latest_econ.iterrows()):
+            metric = row["metric_name"]
+            value = row["metric_value"]
+            suffix = format_suffix.get(metric, "")
+            label = display_names.get(metric, metric)
+            delta = None
+            if prev_econ is not None and metric in prev_econ["metric_name"].values:
+                prev_row = prev_econ[prev_econ["metric_name"] == metric]
+                if not prev_row.empty:
+                    delta = value - prev_row.iloc[0]["metric_value"]
+                    delta = f"{delta:+.2f}{suffix}"
+            with cols[idx % 3]:
+                st.metric(label, f"{value:.2f}{suffix}", delta=delta)
+except Exception as e:
+    pass  # Economic data not yet available
+
 st.markdown("---")
 
 # ========================================

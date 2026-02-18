@@ -70,6 +70,9 @@ CHAIN_CONFIGS = {
     "topic_saturation": ["situation", "causal", "strategic", "confidence"],
     "predictive_topic_velocity_spike": ["situation", "historical", "causal", "strategic", "confidence"],
     "predictive_topic_saturation": ["situation", "historical", "causal", "strategic", "confidence"],
+    # Economic detectors
+    "economic_stress": ["situation", "historical", "causal", "strategic", "confidence"],
+    "economic_threshold_crossing": ["situation", "historical", "causal", "confidence"],
 }
 
 DEFAULT_CHAIN = ["situation", "causal", "confidence"]
@@ -84,7 +87,7 @@ MAX_TOKENS_PER_STEP = 600
 # Context building (adapted from alert_investigator._build_context)
 # ---------------------------------------------------------------------------
 
-def _build_context(alert, df_news=None, df_social=None, df_markets=None):
+def _build_context(alert, df_news=None, df_social=None, df_markets=None, engine=None):
     """Gather supporting data for the investigation prompt."""
     parts = []
     brand = alert.get("brand")
@@ -123,6 +126,31 @@ def _build_context(alert, df_news=None, df_social=None, df_markets=None):
         if "market_sentiment" in df_markets.columns:
             avg_sentiment = df_markets["market_sentiment"].mean()
             parts.append(f"Current market sentiment: {avg_sentiment:.2f} (0=bearish, 1=bullish)")
+
+    # Economic indicators context
+    if engine:
+        try:
+            from sqlalchemy import text as _sql_text
+            with engine.connect() as conn:
+                result = conn.execute(_sql_text("""
+                    SELECT metric_name, metric_value, snapshot_date
+                    FROM metric_snapshots
+                    WHERE scope = 'economic'
+                      AND snapshot_date = (
+                          SELECT MAX(snapshot_date) FROM metric_snapshots
+                          WHERE scope = 'economic' AND metric_name = metric_snapshots.metric_name
+                      )
+                    ORDER BY metric_name
+                """))
+                rows = result.fetchall()
+                if rows:
+                    econ_lines = ["Economic indicators:"]
+                    for name, value, date in rows:
+                        label = name.replace("_", " ").title()
+                        econ_lines.append(f"  - {label}: {value} (as of {date})")
+                    parts.append("\n".join(econ_lines))
+        except Exception:
+            pass
 
     return "\n\n".join(parts) if parts else "No additional context available."
 
@@ -558,7 +586,7 @@ def run_reasoning_chain(alert, engine=None, df_news=None, df_social=None,
     steps_to_run = CHAIN_CONFIGS.get(alert_type, DEFAULT_CHAIN)
 
     # Build data context
-    context = _build_context(alert, df_news, df_social, df_markets)
+    context = _build_context(alert, df_news, df_social, df_markets, engine=engine)
 
     # Execute chain
     completed_steps = []

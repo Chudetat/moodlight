@@ -366,6 +366,20 @@ GEOGRAPHIC DISTRIBUTION:
 Total Articles Analyzed: {len(news_df)}
 """
 
+    # Add economic indicators if available
+    try:
+        from db_helper import load_economic_data
+        econ_df = load_economic_data(days=7)
+        if not econ_df.empty:
+            latest = econ_df.sort_values("snapshot_date").groupby("metric_name").last().reset_index()
+            econ_lines = []
+            for _, row in latest.iterrows():
+                econ_lines.append(f"  {row['metric_name']}: {row['metric_value']:.2f}")
+            econ_block = "\n".join(econ_lines)
+            context += f"\n\nECONOMIC INDICATORS:\n{econ_block}\n"
+    except Exception:
+        pass
+
     # Add social data if available
     if social_df is not None and not social_df.empty:
         # Top social topics

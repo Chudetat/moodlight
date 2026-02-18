@@ -492,9 +492,18 @@ def main():
 
         # 3. Run global detectors (with configurable thresholds)
         print("\nRunning global detectors...")
-        from alert_detector import run_global_detectors, run_brand_detectors, run_competitive_detectors
+        from alert_detector import run_global_detectors, run_brand_detectors, run_competitive_detectors, run_economic_detectors
         global_alerts = run_global_detectors(df_news, df_social, df_markets, thresholds, engine=engine)
         print(f"  Found {len(global_alerts)} global anomalies")
+
+        # 3b. Run economic detectors
+        economic_alerts = []
+        try:
+            economic_alerts = run_economic_detectors(engine, thresholds)
+            if economic_alerts:
+                print(f"  Found {len(economic_alerts)} economic alerts")
+        except Exception as e:
+            print(f"  Economic detectors failed (non-fatal): {e}")
 
         # 4. Run brand detectors (with configurable thresholds)
         print("\nRunning brand detectors...")
@@ -594,7 +603,7 @@ def main():
             print(f"  Predictive detection failed (non-fatal): {e}")
 
         # 5. Process all alerts
-        all_alerts = global_alerts + brand_alerts + competitive_alerts + topic_alerts + predictive_alerts
+        all_alerts = global_alerts + brand_alerts + competitive_alerts + topic_alerts + predictive_alerts + economic_alerts
         print(f"\nTotal anomalies detected: {len(all_alerts)}")
 
         if not all_alerts:

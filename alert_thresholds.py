@@ -50,6 +50,9 @@ DEFAULT_THRESHOLDS = {
     # Topic predictive entries
     "predictive_topic_velocity_spike": {"warning": None, "critical": None},
     "predictive_topic_saturation": {"warning": None, "critical": None},
+    # Economic detectors
+    "economic_stress": {"warning": 2, "critical": 3},
+    "economic_threshold_crossing": {"warning": None, "critical": None},
 }
 
 

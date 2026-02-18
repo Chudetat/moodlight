@@ -377,6 +377,10 @@ METRIC_THRESHOLD_MAP = {
     "avg_empathy_social": ("mood_shift", "critical", 0.25, "above"),
     "high_emotion_ratio_news": ("intensity_cluster", "critical", None, "above"),
     "high_emotion_ratio_social": ("intensity_cluster", "critical", None, "above"),
+    # Economic metrics
+    "treasury_yield_10y": ("economic_stress", "critical", 5.0, "above"),
+    "unemployment_rate": ("economic_stress", "critical", 4.5, "above"),
+    "cpi_yoy": ("economic_stress", "critical", 3.5, "above"),
     # Brand metrics
     "velocity": ("brand_velocity_spike", "critical", None, "above"),
     "density": ("brand_saturation", "warning", None, "above"),
