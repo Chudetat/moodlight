@@ -17,6 +17,27 @@ from datetime import datetime, timezone, timedelta
 from vlds_helper import calculate_brand_vlds
 
 
+def _normalize_empathy(avg: float) -> int:
+    """Normalize GoEmotions empathy score to 0-100 scale.
+
+    RoBERTa/GoEmotions outputs cluster around 0.03-0.15 for normal
+    discourse.  A simple ``* 100`` would put "normal" at ~15 while
+    market sentiment (already 0-1 normalized with 0.5 = flat) sits at
+    ~50, creating a permanent structural gap.  This piecewise mapping
+    matches the dashboard's ``normalize_empathy_score`` so alerts use
+    the same scale users see.
+    """
+    if avg <= 0.04:
+        score = int(round(avg / 0.04 * 50))
+    elif avg <= 0.10:
+        score = int(round(50 + (avg - 0.04) / 0.06 * 15))
+    elif avg <= 0.30:
+        score = int(round(65 + (avg - 0.10) / 0.20 * 20))
+    else:
+        score = int(round(85 + (avg - 0.30) / 0.70 * 15))
+    return min(100, max(0, score))
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -108,7 +129,7 @@ def detect_market_mood_divergence(df_social, df_markets, thresholds=None):
     if "empathy_score" not in df_social.columns or "market_sentiment" not in df_markets.columns:
         return alerts
 
-    social_score = df_social["empathy_score"].mean() * 100
+    social_score = _normalize_empathy(df_social["empathy_score"].mean())
     market_score = df_markets["market_sentiment"].mean() * 100
     gap = abs(social_score - market_score)
 
