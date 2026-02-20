@@ -190,8 +190,14 @@ def _build_context(alert, df_news=None, df_social=None, df_markets=None, engine=
 # Historical data loading
 # ---------------------------------------------------------------------------
 
-def _load_historical_alerts(engine, alert_type, brand=None, days=30):
-    """Load past alerts of the same type for precedent analysis."""
+def _load_historical_alerts(engine, alert_type, brand=None, topic=None, days=30):
+    """Load past alerts of the same type for precedent analysis.
+
+    Filters by brand or topic when provided so the Historical Context
+    step only sees precedents relevant to the specific signal, not
+    unrelated alerts from other brands/topics that happen to share
+    the same alert_type.
+    """
     if not engine:
         return []
 
@@ -210,6 +216,17 @@ def _load_historical_alerts(engine, alert_type, brand=None, days=30):
                         ORDER BY timestamp DESC LIMIT 5
                     """),
                     {"atype": alert_type, "brand": brand, "cutoff": cutoff},
+                )
+            elif topic:
+                result = conn.execute(
+                    text("""
+                        SELECT timestamp, title, summary
+                        FROM alerts
+                        WHERE alert_type = :atype AND topic = :topic
+                          AND timestamp > :cutoff
+                        ORDER BY timestamp DESC LIMIT 5
+                    """),
+                    {"atype": alert_type, "topic": topic, "cutoff": cutoff},
                 )
             else:
                 result = conn.execute(
@@ -351,7 +368,7 @@ def _step_historical(client, alert, context, prior_steps=None, **kwargs):
     """Step 2 — Historical Context: Has this happened before?"""
     engine = kwargs.get("engine")
     historical_alerts = _load_historical_alerts(
-        engine, alert.get("alert_type"), alert.get("brand")
+        engine, alert.get("alert_type"), brand=alert.get("brand"), topic=alert.get("topic")
     )
 
     # Load metric history if this is a predictive alert with metric data

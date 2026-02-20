@@ -260,7 +260,7 @@ def _build_email_html(alert):
                     f'border-left: 3px solid #1976D2; background: #fafafa;">'
                     f'<strong>{step_title}</strong> '
                     f'<span style="color: #999; font-size: 11px;">({conf_pct})</span>'
-                    f'<p style="margin: 4px 0 0 0; font-size: 13px;">{step_content[:500]}</p>'
+                    f'<p style="margin: 4px 0 0 0; font-size: 13px;">{step_content[:2000]}</p>'
                     f'</div>'
                 )
             investigation_html = (
