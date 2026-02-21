@@ -335,32 +335,60 @@ def load_social_data():
 def prepare_intelligence_context(news_df, social_df=None):
     """Prepare context for AI briefing"""
 
-    # Top topics by volume
+    # Split into fresh (48h) and background (7d) windows
+    now = datetime.now(timezone.utc)
+    cutoff_48h = now - pd.Timedelta(hours=48)
+    fresh_df = news_df[news_df['created_at'] >= cutoff_48h] if 'created_at' in news_df.columns else news_df
+    fresh_count = len(fresh_df)
+
+    # Top topics by volume (full 7d for trend context)
     topic_counts = news_df['topic'].value_counts().head(5)
 
-    # High intensity articles (4-5 severity)
-    critical = news_df[news_df['intensity'] >= 4]
+    # Critical articles from last 48h, sorted newest first with dates
+    critical_fresh = fresh_df[fresh_df['intensity'] >= 4].sort_values('created_at', ascending=False) if 'created_at' in fresh_df.columns else fresh_df[fresh_df['intensity'] >= 4]
+
+    # Format critical articles with timestamps so Claude can prioritize by recency
+    critical_lines = []
+    for _, row in critical_fresh.head(15).iterrows():
+        date_str = row['created_at'].strftime('%Y-%m-%d %H:%M') if pd.notna(row.get('created_at')) else 'unknown'
+        critical_lines.append(f"  [{date_str}] [{row.get('country', '?')}] (intensity: {row.get('intensity', '?')}) {row.get('text', '')[:300]}")
+    critical_block = "\n".join(critical_lines) if critical_lines else "  No critical articles in last 48 hours."
+
+    # Background: older high-intensity stories (48h-7d) for ONGOING context
+    older_df = news_df[news_df['created_at'] < cutoff_48h] if 'created_at' in news_df.columns else pd.DataFrame()
+    ongoing_lines = []
+    if not older_df.empty:
+        older_critical = older_df[older_df['intensity'] >= 4].sort_values('created_at', ascending=False)
+        for _, row in older_critical.head(5).iterrows():
+            date_str = row['created_at'].strftime('%Y-%m-%d') if pd.notna(row.get('created_at')) else 'unknown'
+            ongoing_lines.append(f"  [{date_str}] [{row.get('country', '?')}] {row.get('text', '')[:200]}")
+    ongoing_block = "\n".join(ongoing_lines) if ongoing_lines else "  None."
 
     # Geographic distribution
-    country_counts = news_df['country'].value_counts().head(5)
+    country_counts = fresh_df['country'].value_counts().head(5) if not fresh_df.empty else news_df['country'].value_counts().head(5)
 
     # Average intensity by topic
     topic_intensity = news_df.groupby('topic')['intensity'].mean().sort_values(ascending=False).head(5)
 
     context = f"""
-INTELLIGENCE DATA SUMMARY (Last 7 Days)
+INTELLIGENCE DATA SUMMARY
 ==========================================
+Fresh articles (last 48 hours): {fresh_count}
+Background articles (48h-7d): {len(news_df) - fresh_count}
 
-TOP TOPICS BY VOLUME:
+TOP TOPICS BY VOLUME (7 days):
 {topic_counts.to_string()}
 
-HIGHEST INTENSITY TOPICS:
+HIGHEST INTENSITY TOPICS (7 days):
 {topic_intensity.round(2).to_string()}
 
-CRITICAL SEVERITY ARTICLES ({len(critical)} total):
-{critical[['text', 'country', 'intensity']].head(10).to_string()}
+NEW/RECENT CRITICAL ARTICLES (last 48 hours, newest first):
+{critical_block}
 
-GEOGRAPHIC DISTRIBUTION:
+OLDER ONGOING STORIES (for context only — do NOT lead with these):
+{ongoing_block}
+
+GEOGRAPHIC DISTRIBUTION (48h):
 {country_counts.to_string()}
 
 Total Articles Analyzed: {len(news_df)}
@@ -449,11 +477,13 @@ def generate_brief(context):
 Based on the following intelligence data, create a concise executive summary.
 
 IMPORTANT GUIDELINES:
-- Consolidate related stories: If multiple articles cover the same event (e.g., Venezuela), group them into ONE threat entry, not separate items
-- Prioritize by RECENCY + INTENSITY: Recent high-intensity events outrank older high-intensity events
+- LEAD WITH WHAT'S NEW: The "NEW/RECENT CRITICAL ARTICLES" section contains the last 48 hours of data with timestamps. These MUST be the basis of your KEY THREATS. Only reference "OLDER ONGOING STORIES" for context — never lead with them.
+- Consolidate related stories: If multiple articles cover the same event, group them into ONE threat entry, not separate items
+- Prioritize by RECENCY + INTENSITY: A moderate-intensity story from today outranks a high-intensity story from 5 days ago
 - For each threat, include the "SO WHAT?" - why it matters, not just what happened
-- Flag each threat as [NEW] (first appeared in last 48h) or [ONGOING] (continuing situation)
+- Flag each threat as [NEW] (first appeared in last 48h) or [ONGOING] (continuing situation). If ALL your threats are ONGOING, something is wrong — look harder at the fresh data.
 - Add confidence indicator based on data volume: [HIGH CONFIDENCE] = 10+ sources, [MODERATE] = 3-9 sources, [LIMITED] = 1-2 sources
+- DO NOT repeat the same lead stories across consecutive briefs. If a story has been ongoing for days, only include it if there is a NEW development.
 
 Format as:
 DAILY INTELLIGENCE BRIEF - {datetime.now(timezone.utc).strftime("%B %d, %Y")}
