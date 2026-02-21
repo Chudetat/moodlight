@@ -156,6 +156,35 @@ def _build_context(alert, df_news=None, df_social=None, df_markets=None, engine=
         except Exception:
             pass
 
+    # Brand stock data context (for brand-specific alerts)
+    if engine and brand:
+        try:
+            from sqlalchemy import text as _sql_text
+            with engine.connect() as conn:
+                result = conn.execute(_sql_text("""
+                    SELECT metric_name, metric_value
+                    FROM metric_snapshots
+                    WHERE scope = 'brand' AND scope_name = :brand
+                      AND snapshot_date = (
+                          SELECT MAX(snapshot_date) FROM metric_snapshots
+                          WHERE scope = 'brand' AND scope_name = :brand
+                      )
+                    ORDER BY metric_name
+                """), {"brand": brand})
+                rows = result.fetchall()
+                if rows:
+                    stock_lines = [f"Brand stock data ({brand}):"]
+                    for name, value in rows:
+                        if name == "stock_price":
+                            stock_lines.append(f"  - Price: ${value:.2f}")
+                        elif name == "stock_change_pct":
+                            stock_lines.append(f"  - Daily change: {value:+.2f}%")
+                        elif name == "stock_intraday_volatility":
+                            stock_lines.append(f"  - Intraday volatility: {value:.2f}%")
+                    parts.append("\n".join(stock_lines))
+        except Exception:
+            pass
+
     # Commodity prices context
     if engine:
         try:

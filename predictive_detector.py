@@ -381,6 +381,11 @@ METRIC_THRESHOLD_MAP = {
     "treasury_yield_10y": ("economic_stress", "critical", 5.0, "above"),
     "unemployment_rate": ("economic_stress", "critical", 4.5, "above"),
     "cpi_yoy": ("economic_stress", "critical", 3.5, "above"),
+    "federal_funds_rate": ("economic_stress", "critical", 6.0, "above"),
+    "inflation_rate": ("economic_stress", "critical", 4.0, "above"),
+    "nonfarm_payroll": ("economic_stress", "critical", 130000, "below"),
+    # Commodity metrics (daily change %)
+    "price": ("commodity_spike", "warning", 3.0, "above"),
     # Brand metrics
     "velocity": ("brand_velocity_spike", "critical", None, "above"),
     "density": ("brand_saturation", "warning", None, "above"),
@@ -570,7 +575,101 @@ def run_predictive_detectors(engine, df_news, df_social, df_markets,
         engine, "global", None, global_trends, thresholds
     ))
 
-    # 4. Per-brand predictive analysis
+    # 4. Economic metric trend analysis
+    ECONOMIC_METRICS = {
+        "treasury_yield_10y": ("economic_stress", "critical"),
+        "unemployment_rate": ("economic_stress", "critical"),
+        "cpi_yoy": ("economic_stress", "critical"),
+        "federal_funds_rate": ("economic_stress", "critical"),
+        "inflation_rate": ("economic_stress", "critical"),
+        "nonfarm_payroll": ("economic_stress", "critical"),
+    }
+    econ_trends = {}
+    for metric_name in ECONOMIC_METRICS:
+        trend = compute_trend(engine, "economic", "", metric_name)
+        if trend:
+            econ_trends[metric_name] = trend
+
+    for metric_name, (alert_type, level) in ECONOMIC_METRICS.items():
+        trend = econ_trends.get(metric_name)
+        if not trend:
+            continue
+        t_config = thresholds.get(alert_type, {}) if thresholds else {}
+        threshold_val = t_config.get(level)
+        if threshold_val is None:
+            # Use defaults from METRIC_THRESHOLD_MAP
+            map_entry = METRIC_THRESHOLD_MAP.get(metric_name)
+            if map_entry:
+                threshold_val = map_entry[2]
+        if threshold_val is None:
+            continue
+        crossing = predict_threshold_crossing(trend, threshold_val)
+        if crossing and crossing["confidence"] in ("high", "medium"):
+            momentum = compute_momentum(engine, "economic", "", metric_name)
+            direction_note = ""
+            if momentum and momentum["direction"] != "steady":
+                direction_note = f" and {momentum['direction']} ({momentum['magnitude']})"
+            alerts.append(_make_alert(
+                alert_type=f"predictive_{alert_type}",
+                severity="info",
+                title=f"Economic: {metric_name.replace('_', ' ').title()} trending toward threshold",
+                summary=(
+                    f"{metric_name.replace('_', ' ').title()} is trending toward "
+                    f"the {level} threshold ({threshold_val}). "
+                    f"At current rate, crossing in ~{crossing['days_to_crossing']} days"
+                    f"{direction_note}. "
+                    f"Confidence: {crossing['confidence']}."
+                ),
+                data={
+                    "metric": metric_name,
+                    "scope": "economic",
+                    "trend": {
+                        "slope": trend["slope"],
+                        "r_squared": trend["r_squared"],
+                        "current_value": trend["current_value"],
+                    },
+                    "crossing": crossing,
+                    "momentum": momentum,
+                },
+            ))
+
+    if econ_trends:
+        alerts.extend(detect_compound_signals(
+            engine, "economic", "", econ_trends, thresholds
+        ))
+
+    # 5. Commodity price trend analysis
+    COMMODITY_NAMES = ["WTI", "BRENT", "NATURAL_GAS", "COPPER", "ALUMINUM"]
+    for commodity in COMMODITY_NAMES:
+        trend = compute_trend(engine, "commodity", commodity, "price")
+        if not trend:
+            continue
+        momentum = compute_momentum(engine, "commodity", commodity, "price")
+        if momentum and momentum["direction"] == "accelerating" and momentum["magnitude"] == "strong":
+            alerts.append(_make_alert(
+                alert_type="predictive_commodity_spike",
+                severity="info",
+                title=f"Commodity: {commodity} price accelerating",
+                summary=(
+                    f"{commodity} price is accelerating strongly. "
+                    f"Current: ${trend['current_value']:.2f}, "
+                    f"trend slope: {trend['slope']:.4f}/day. "
+                    f"Direction: {momentum['direction']} ({momentum['magnitude']})."
+                ),
+                data={
+                    "metric": "price",
+                    "scope": "commodity",
+                    "commodity": commodity,
+                    "trend": {
+                        "slope": trend["slope"],
+                        "r_squared": trend["r_squared"],
+                        "current_value": trend["current_value"],
+                    },
+                    "momentum": momentum,
+                },
+            ))
+
+    # 6. Per-brand predictive analysis
     for username, brands in (watchlist or {}).items():
         for brand_name in brands:
             brand_trends = {}
@@ -636,7 +735,7 @@ def run_predictive_detectors(engine, df_news, df_social, df_markets,
                 engine, "brand", brand_name, brand_trends, thresholds
             ))
 
-    # 5. Per-topic predictive analysis
+    # 7. Per-topic predictive analysis
     TOPIC_METRIC_THRESHOLDS = {
         "velocity": ("topic_velocity_spike", "critical"),
         "density": ("topic_saturation", "warning"),

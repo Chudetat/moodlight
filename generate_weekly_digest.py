@@ -126,23 +126,35 @@ def prepare_weekly_context(alerts_df, metrics_df, competitive_df, vlds_frames=No
                 brand_counts = brand_alerts["brand"].value_counts()
                 context += f"\nAlerts by brand:\n{brand_counts.to_string()}\n"
 
-        # Include critical alert summaries
+        # Include critical alert summaries with timestamps
         if "severity" in alerts_df.columns and "summary" in alerts_df.columns:
             critical = alerts_df[alerts_df["severity"] == "critical"]
             if not critical.empty:
+                if "timestamp" in critical.columns:
+                    critical = critical.sort_values("timestamp", ascending=False)
                 context += f"\nCRITICAL ALERTS ({len(critical)}):\n"
                 for _, row in critical.head(10).iterrows():
                     title = row.get("title", "Untitled")
                     summary = row.get("summary", "")[:200]
-                    context += f"- {title}: {summary}\n"
+                    date_str = ""
+                    if "timestamp" in row.index and pd.notna(row.get("timestamp")):
+                        ts = pd.to_datetime(row["timestamp"])
+                        date_str = f"[{ts.strftime('%b %d')}] "
+                    context += f"- {date_str}{title}: {summary}\n"
 
-        # Predictive alerts
+        # Predictive alerts with timestamps
         if "alert_type" in alerts_df.columns:
             predictive = alerts_df[alerts_df["alert_type"].str.startswith("predictive_", na=False)]
             if not predictive.empty:
+                if "timestamp" in predictive.columns:
+                    predictive = predictive.sort_values("timestamp", ascending=False)
                 context += f"\nPREDICTIVE SIGNALS ({len(predictive)}):\n"
                 for _, row in predictive.head(5).iterrows():
-                    context += f"- {row.get('title', '')}: {row.get('summary', '')[:150]}\n"
+                    date_str = ""
+                    if "timestamp" in row.index and pd.notna(row.get("timestamp")):
+                        ts = pd.to_datetime(row["timestamp"])
+                        date_str = f"[{ts.strftime('%b %d')}] "
+                    context += f"- {date_str}{row.get('title', '')}: {row.get('summary', '')[:150]}\n"
     else:
         context += "ALERTS: No alerts recorded this week.\n"
 
@@ -231,6 +243,33 @@ def prepare_weekly_context(alerts_df, metrics_df, competitive_df, vlds_frames=No
                     context += "\nWhite Space Opportunities (high scarcity):\n"
                     for _, row in high_opp.head(5).iterrows():
                         context += f"  {row['topic']}: scarcity={row['scarcity_score']:.2f}, mentions={row.get('mention_count', 'N/A')}\n"
+
+    # Economic indicators
+    try:
+        from db_helper import load_economic_data
+        econ_df = load_economic_data(days=7)
+        if not econ_df.empty:
+            latest = econ_df.sort_values("snapshot_date").groupby("metric_name").last().reset_index()
+            context += "\nECONOMIC INDICATORS:\n"
+            for _, row in latest.iterrows():
+                label = row["metric_name"].replace("_", " ").title()
+                context += f"  {label}: {row['metric_value']:.2f} (as of {row['snapshot_date']})\n"
+    except Exception:
+        pass
+
+    # Commodity prices
+    try:
+        from db_helper import load_commodity_data
+        comm_df = load_commodity_data(days=7)
+        if not comm_df.empty:
+            price_df = comm_df[comm_df["metric_name"] == "price"]
+            if not price_df.empty:
+                latest = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                context += "\nCOMMODITY PRICES:\n"
+                for _, row in latest.iterrows():
+                    context += f"  {row['scope_name']}: ${row['metric_value']:.2f}\n"
+    except Exception:
+        pass
 
     return context
 
