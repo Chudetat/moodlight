@@ -37,7 +37,7 @@ CAUSAL_PATTERNS = {
 }
 
 # Minimum relatedness score to consider two alerts correlated
-CORRELATION_THRESHOLD = 3
+CORRELATION_THRESHOLD = 4
 
 
 def _compute_relatedness(alert_a, alert_b):
