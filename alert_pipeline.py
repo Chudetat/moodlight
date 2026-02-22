@@ -220,6 +220,20 @@ def load_data(engine):
             df_news["created_at"] = pd.to_datetime(
                 df_news["created_at"], utc=True, errors="coerce"
             )
+            # Normalize timestamps for recycled articles: RSS articles without
+            # valid publication dates get created_at=now() on every re-fetch,
+            # making old stories appear fresh and triggering false alerts.
+            # For articles with duplicate text, use the oldest created_at so
+            # recycled copies can't drift into short time windows (6h/24h).
+            if "text" in df_news.columns:
+                fp = df_news["text"].fillna("").str[:150].str.lower().str.strip()
+                has_dup = (fp.str.len() > 50) & fp.duplicated(keep=False)
+                if has_dup.any():
+                    df_news["_fp"] = fp
+                    oldest = df_news.groupby("_fp")["created_at"].transform("min")
+                    df_news.loc[has_dup, "created_at"] = oldest[has_dup]
+                    df_news.drop(columns=["_fp"], inplace=True)
+                    print(f"  Normalized timestamps for {has_dup.sum()} recycled articles")
         print(f"  Loaded {len(df_news)} news rows")
     except Exception as e:
         print(f"  Could not load news: {e}")
