@@ -196,11 +196,32 @@ def generate_situation_report(cluster, engine=None, df_news=None, df_social=None
         if alert.get("brand"):
             brands.add(alert["brand"])
 
-        alert_summaries.append(
+        entry = (
             f"{i}. [{alert.get('severity', 'info').upper()}] "
             f"{alert.get('alert_type', 'unknown')}: {alert.get('title', 'Untitled')}\n"
             f"   Summary: {alert.get('summary', 'No summary')}"
         )
+        # Include individual investigation if available — critical for
+        # avoiding false amplification when a signal was already assessed
+        # as a false positive by the reasoning chain.
+        inv = alert.get("investigation")
+        if inv:
+            inv_text = ""
+            if isinstance(inv, dict):
+                # Reasoning chain format — extract step summaries
+                steps = inv.get("steps", [])
+                for step in steps:
+                    content = step.get("content", "")
+                    if content:
+                        inv_text += content[:300] + " "
+                conf = inv.get("overall_confidence", "")
+                if conf:
+                    inv_text += f"[Confidence: {conf}/100]"
+            elif isinstance(inv, str) and len(inv) > 20:
+                inv_text = inv[:500]
+            if inv_text:
+                entry += f"\n   Prior analysis: {inv_text.strip()[:800]}"
+        alert_summaries.append(entry)
 
     context = (
         f"CORRELATED ALERTS ({len(cluster)} signals detected simultaneously):\n\n"
@@ -224,6 +245,11 @@ Analyze these correlated signals and produce a SITUATION REPORT:
 3. SEVERITY: Is the combined situation more serious than any individual alert suggests?
 4. STRATEGIC IMPLICATION: What does this mean for decision-makers?
 5. RECOMMENDED ACTION: What should be done NOW given the full picture?
+
+CRITICAL: If any alert's "Prior analysis" identifies it as a false positive, misclassification, or
+data quality issue, you MUST factor that into your assessment. Do NOT amplify signals that have
+already been assessed as unreliable. A situation report built on false positives is worse than no
+report at all.
 
 Be direct and specific. Connect the dots between signals — that's the entire point.
 Target 200-400 words."""

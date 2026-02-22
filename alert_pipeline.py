@@ -629,26 +629,8 @@ def main():
             complete_pipeline_run(engine, run_id, "success", _pipeline_row_count)
             sys.exit(0)
 
-        # 5b. Alert correlation — detect related signals and generate situation reports
-        print("\nRunning alert correlation...")
-        situation_reports = []
-        try:
-            from alert_correlator import correlate_alerts, generate_situation_report
-            clusters = correlate_alerts(all_alerts)
-            print(f"  Found {len(clusters)} correlated alert cluster(s)")
-            for i, cluster in enumerate(clusters):
-                print(f"  Cluster {i+1}: {len(cluster)} alerts — "
-                      f"{[a.get('alert_type', '?') for a in cluster]}")
-                sit_report = generate_situation_report(
-                    cluster, engine=engine, df_news=df_news, df_social=df_social,
-                )
-                situation_reports.append(sit_report)
-                all_alerts.append(sit_report)
-                print(f"    Generated situation report: {sit_report['title'][:80]}")
-        except Exception as e:
-            print(f"  Alert correlation failed (non-fatal): {e}")
-
-        # 6. Investigate and store (parallel)
+        # 5b. Investigate individual alerts (before correlation so investigation
+        #     results are available to the situation report generator)
         from alert_investigator import investigate_alert
         stored_alerts = []
 
@@ -727,6 +709,33 @@ def main():
                 except Exception as e:
                     print(f"    ERROR investigating '{title[:60]}': {e}")
             print(f"    Stored to DB")
+
+        # 6. Alert correlation — now runs AFTER investigation so situation reports
+        #    can see individual alert analysis (e.g., false positive assessments)
+        print("\nRunning alert correlation...")
+        situation_reports = []
+        try:
+            from alert_correlator import correlate_alerts, generate_situation_report
+            clusters = correlate_alerts(all_alerts)
+            print(f"  Found {len(clusters)} correlated alert cluster(s)")
+            for i, cluster in enumerate(clusters):
+                print(f"  Cluster {i+1}: {len(cluster)} alerts — "
+                      f"{[a.get('alert_type', '?') for a in cluster]}")
+                sit_report = generate_situation_report(
+                    cluster, engine=engine, df_news=df_news, df_social=df_social,
+                )
+                situation_reports.append(sit_report)
+                # Store and email situation reports
+                sit_cooldown = build_cooldown_key(sit_report)
+                if not check_cooldown(engine, sit_cooldown, hours=6):
+                    sit_report["cooldown_key"] = sit_cooldown
+                    store_alert(engine, sit_report)
+                    stored_alerts.append(sit_report)
+                    print(f"    Stored situation report: {sit_report['title'][:80]}")
+                else:
+                    print(f"    SKIP (cooldown): {sit_report['title'][:80]}")
+        except Exception as e:
+            print(f"  Alert correlation failed (non-fatal): {e}")
 
         # 7. Send emails
         print(f"\nSending email alerts...")
