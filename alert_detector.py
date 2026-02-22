@@ -327,6 +327,26 @@ def detect_breaking_signal(df_news, thresholds=None):
     if recent.empty:
         return alerts
 
+    # Filter out recycled articles: if the same text existed in the DB before
+    # the 6h window, the article is old news re-fetched with a fresh created_at
+    # (common for RSS feeds without valid publication dates).
+    if "text" in df_news.columns:
+        older = df_news[df_news["created_at"] < cutoff_6h]
+        if not older.empty:
+            older_fingerprints = set(
+                older["text"].dropna().str[:150].str.lower().str.strip()
+            )
+            recent_fingerprints = (
+                recent["text"].dropna().str[:150].str.lower().str.strip()
+            )
+            is_fresh = ~recent_fingerprints.isin(older_fingerprints)
+            # Reindex to match recent's index (articles with NaN text are kept)
+            is_fresh = is_fresh.reindex(recent.index, fill_value=True)
+            recent = recent[is_fresh]
+
+    if recent.empty:
+        return alerts
+
     for topic, group in recent.groupby("topic"):
         source_count = group["source"].nunique()
         if source_count < 3:
