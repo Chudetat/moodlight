@@ -7,14 +7,15 @@ try:
 except:
     HAS_DB = False
 
-# Ensure all tables exist on startup
-if HAS_DB:
+# Ensure all tables exist on startup (once per session)
+if HAS_DB and not st.session_state.get("_tables_ensured"):
     try:
         from alert_pipeline import ensure_tables as _ensure_tables
         from db_helper import get_engine as _get_startup_engine
         _startup_engine = _get_startup_engine()
         if _startup_engine:
             _ensure_tables(_startup_engine)
+            st.session_state["_tables_ensured"] = True
     except Exception:
         pass
 import streamlit_authenticator as stauth
@@ -93,7 +94,10 @@ def _sync_completed_signups():
     except Exception as e:
         pass  # Table may not exist yet — that's fine
 
-_sync_completed_signups()
+# Sync once per session (also called on-demand during signup activation)
+if not st.session_state.get("_signups_synced"):
+    _sync_completed_signups()
+    st.session_state["_signups_synced"] = True
 
 # Load config
 with open('config.yaml') as file:
