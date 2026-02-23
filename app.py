@@ -1027,20 +1027,8 @@ def compute_world_mood(df: pd.DataFrame) -> tuple[int | None, str | None, str]:
     if "empathy_score" not in df.columns or df["empathy_score"].isna().all():
         return None, None, ""
     avg = df["empathy_score"].mean()
-    
-    # Normalize for GoEmotions output (median ~0.036, 95th ~0.33)
-    # Map: 0.0->0, 0.04->50, 0.10->65, 0.30->85, 1.0->100
-    if avg <= 0.04:
-        score = int(round(avg / 0.04 * 50))
-    elif avg <= 0.10:
-        score = int(round(50 + (avg - 0.04) / 0.06 * 15))
-    elif avg <= 0.30:
-        score = int(round(65 + (avg - 0.10) / 0.20 * 20))
-    else:
-        score = int(round(85 + (avg - 0.30) / 0.70 * 15))
-    
-    score = min(100, max(0, score))
-    
+    score = normalize_empathy_score(avg)
+
     if score < 35:
         label = "Very Cold / Hostile"
         emoji = "🥶"
@@ -3077,17 +3065,17 @@ if brand_focus and custom_query.strip():
 # Create filtered dataset
 if "created_at" in df_all.columns:
     cutoff = datetime.now(timezone.utc) - timedelta(days=FILTER_DAYS)
-    df_48h = df_all[df_all["created_at"] >= cutoff].copy()
+    df_recent = df_all[df_all["created_at"] >= cutoff].copy()
 
     # If date filter removes all data, fall back to all available data with a warning
-    if df_48h.empty and not df_all.empty:
+    if df_recent.empty and not df_all.empty:
         st.warning(f"No data found in the last {FILTER_DAYS} days. Showing all available data instead.")
-        df_48h = df_all.copy()
+        df_recent = df_all.copy()
 else:
-    df_48h = df_all.copy()
+    df_recent = df_all.copy()
 
 # Compute world mood
-world_score, world_label, world_emoji = compute_world_mood(df_48h)
+world_score, world_label, world_emoji = compute_world_mood(df_recent)
 
 # ==========================================
 # INTELLIGENCE VISUALIZATIONS
@@ -3285,14 +3273,14 @@ st.markdown(f"## {current_date}")
 st.markdown("### Cultural Pulse")
 st.caption("The world's emotional temperature—are audiences receptive or reactive?")
 
-if world_score is None or len(df_48h) == 0:
+if world_score is None or len(df_recent) == 0:
     st.info("🔄 Gathering fresh intelligence... Data refreshes automatically every 12 hours.")
 else:
     c1, c2 = st.columns([1, 2])
     with c1:
         st.metric("Global Mood Score", world_score)
     with c2:
-        st.markdown(f"**{world_emoji} {world_label}**  \n*Based on {len(df_48h)} posts*")
+        st.markdown(f"**{world_emoji} {world_label}**  \n*Based on {len(df_recent)} posts*")
     st.caption("50 = neutral · Above 50 = warm/supportive · Below 50 = hostile/negative")
 
 st.caption(f"X query: *{custom_query.strip() or '[default timeline]'}*")
@@ -4152,7 +4140,7 @@ if HAS_DB and _watchlist_topics:
 
         for _ti_name, _ti_is_cat in _watchlist_topics:
             # Filter data for this topic
-            _ti_news = _filter_by_topic(df_48h, _ti_name, _ti_is_cat)
+            _ti_news = _filter_by_topic(df_recent, _ti_name, _ti_is_cat)
             _ti_social = pd.DataFrame()
             if "social_df" in dir() and not social_df.empty:
                 _ti_social = _filter_by_topic(social_df, _ti_name, _ti_is_cat)
@@ -4267,7 +4255,7 @@ st.markdown("---")
 # ========================================
 st.markdown("### Detailed Analysis")
 
-df_filtered = df_48h.copy()
+df_filtered = df_recent.copy()
 
 if "empathy_score" in df_filtered.columns and len(df_filtered):
     avg = df_filtered["empathy_score"].mean()
