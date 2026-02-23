@@ -83,8 +83,18 @@ DEFAULT_CHAIN = ["situation", "causal", "confidence"]
 
 STEP_DISPATCH = {}  # Populated after function definitions
 
-MODEL = "claude-sonnet-4-5-20250929"
+MODEL = "claude-opus-4-6"
 MAX_TOKENS_PER_STEP = 600
+
+# Identity preamble — prevents the model from confusing Moodlight (the platform)
+# with a consumer brand and giving it marketing advice.
+ANALYST_IDENTITY = (
+    "You are an intelligence analyst on the Moodlight platform — a real-time "
+    "reasoning engine that monitors news, social media, and markets for decision-makers. "
+    "Your job is to analyze signals and provide intelligence assessments, NOT brand strategy "
+    "or marketing advice for Moodlight itself. The user is a business professional who "
+    "monitors brands, topics, and geopolitical signals."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -95,6 +105,7 @@ def _build_context(alert, df_news=None, df_social=None, df_markets=None, engine=
     """Gather supporting data for the investigation prompt."""
     parts = []
     brand = alert.get("brand")
+    topic = alert.get("topic")
 
     if df_news is not None and not df_news.empty:
         sample = df_news
@@ -107,6 +118,10 @@ def _build_context(alert, df_news=None, df_social=None, df_markets=None, engine=
                     if not filtered.empty:
                         sample = filtered
                         break
+        elif topic and "topic" in sample.columns:
+            filtered = sample[sample["topic"].str.lower() == topic.lower()]
+            if not filtered.empty:
+                sample = filtered
         if "title" in sample.columns:
             headlines = sample["title"].dropna().head(10).tolist()
             parts.append("Recent headlines:\n" + "\n".join(f"- {h}" for h in headlines))
@@ -122,6 +137,10 @@ def _build_context(alert, df_news=None, df_social=None, df_markets=None, engine=
                     if not filtered.empty:
                         sample = filtered
                         break
+        elif topic and "topic" in sample.columns:
+            filtered = sample[sample["topic"].str.lower() == topic.lower()]
+            if not filtered.empty:
+                sample = filtered
         if "text" in sample.columns:
             posts = sample["text"].dropna().head(5).tolist()
             parts.append("Recent social posts:\n" + "\n".join(f"- {p[:200]}" for p in posts))
@@ -362,7 +381,9 @@ def _step_situation(client, alert, context, prior_steps=None, **kwargs):
     """Step 1 — Situation Assessment: What is happening?"""
     brand_note = f" about {alert['brand']}" if alert.get("brand") else ""
 
-    prompt = f"""You are Moodlight's intelligence analyst. Provide a concise SITUATION ASSESSMENT{brand_note}.
+    prompt = f"""{ANALYST_IDENTITY}
+
+Provide a concise SITUATION ASSESSMENT{brand_note}.
 
 ALERT:
 - Type: {alert.get('alert_type', 'unknown')}
@@ -427,7 +448,9 @@ def _step_historical(client, alert, context, prior_steps=None, **kwargs):
         metric_lines = [f"  {d}: {v:.4f}" for d, v in metric_history[-7:]]
         metric_summary = f"\nMetric trend ({metric_name}):\n" + "\n".join(metric_lines)
 
-    prompt = f"""You are Moodlight's intelligence analyst. Provide HISTORICAL CONTEXT for this alert.
+    prompt = f"""{ANALYST_IDENTITY}
+
+Provide HISTORICAL CONTEXT for this alert.
 
 PRIOR ANALYSIS:
 {prior_text}
@@ -460,7 +483,9 @@ def _step_causal(client, alert, context, prior_steps=None, **kwargs):
     """Step 3 — Causal Analysis: Why is this happening?"""
     prior_text = _format_prior_steps(prior_steps)
 
-    prompt = f"""You are Moodlight's intelligence analyst. Provide CAUSAL ANALYSIS.
+    prompt = f"""{ANALYST_IDENTITY}
+
+Provide CAUSAL ANALYSIS.
 
 PRIOR ANALYSIS:
 {prior_text}
@@ -517,7 +542,9 @@ def _step_strategic(client, alert, context, prior_steps=None, **kwargs):
         print(f"WARNING: loading strategic frameworks failed: {e}")
         framework_prompt = "Apply relevant strategic frameworks to your analysis."
 
-    prompt = f"""You are Moodlight's intelligence analyst. Provide STRATEGIC IMPLICATIONS.
+    prompt = f"""{ANALYST_IDENTITY}
+
+Provide STRATEGIC IMPLICATIONS for the user monitoring this signal.
 
 PRIOR ANALYSIS:
 {prior_text}
@@ -572,7 +599,9 @@ def _step_confidence(client, alert, context, prior_steps=None, **kwargs):
     for step in (prior_steps or []):
         step_confs.append(f"- {step.get('title', '?')}: {step.get('confidence', 'N/A')}")
 
-    prompt = f"""You are Moodlight's intelligence analyst. Provide a CONFIDENCE ASSESSMENT.
+    prompt = f"""{ANALYST_IDENTITY}
+
+Provide a CONFIDENCE ASSESSMENT.
 
 PRIOR ANALYSIS:
 {prior_text}
@@ -581,15 +610,17 @@ Step confidences so far:
 {chr(10).join(step_confs)}
 
 Score your overall confidence 0-100 considering:
-1. Data quality and sample size
+1. Data quality and sample size — fewer than 10 sources should cap confidence below 70
 2. Signal strength (how clear is the pattern?)
 3. Historical precedent (was this confirmed before?)
-4. Agreement across prior steps
+4. Source diversity — are multiple independent sources confirming, or is it one signal repeated?
+
+CALIBRATION: Do not inflate confidence because the narrative sounds coherent. A well-told story built on thin data is still low confidence. Base your score on the DATA, not on how convincing the prior analysis reads. If fewer than 5 distinct sources support the signal, confidence should rarely exceed 60.
 
 Then recommend ONE action:
-- ACT_NOW: High confidence, clear threat/opportunity requiring immediate action
-- MONITOR: Moderate confidence, worth watching closely over next 24-48 hours
-- INVESTIGATE_FURTHER: Low confidence, need more data before acting
+- ACT_NOW: High confidence (75+), clear threat/opportunity requiring immediate action
+- MONITOR: Moderate confidence (40-74), worth watching closely over next 24-48 hours
+- INVESTIGATE_FURTHER: Low confidence (<40), need more data before acting
 
 Format:
 Overall confidence: [0-100]
