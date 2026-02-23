@@ -1222,7 +1222,7 @@ def detect_search_topic(user_message: str, client: Anthropic) -> dict:
     """Detect if user query needs web search - brands, events, or time-sensitive topics"""
     try:
         response = client.messages.create(
-            model="claude-haiku-3-20240307",
+            model="claude-haiku-4-5-20251001",
             max_tokens=150,
             system="""Analyze this message and extract search-worthy topics.
 
@@ -1259,7 +1259,7 @@ def detect_brand_query(user_message: str, client: Anthropic) -> str:
     """Use a fast model to detect if user is asking about a specific brand"""
     try:
         response = client.messages.create(
-            model="claude-haiku-3-20240307",
+            model="claude-haiku-4-5-20251001",
             max_tokens=50,
             system="Extract the brand or company name from this message. If the user is asking about a specific brand or company, return ONLY the brand name. If not asking about a specific brand, return NONE. No explanation.",
             messages=[{"role": "user", "content": user_message}]

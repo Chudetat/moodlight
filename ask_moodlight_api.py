@@ -372,7 +372,7 @@ def detect_search_topic(user_message: str, client: Anthropic) -> dict:
     """Detect if user query needs web search — brands, events, or topics."""
     try:
         response = client.messages.create(
-            model="claude-haiku-3-20240307",
+            model="claude-haiku-4-5-20251001",
             max_tokens=150,
             system="""Analyze this message and extract search-worthy topics.
 
