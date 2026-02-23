@@ -79,7 +79,7 @@ def save_to_db(csv_path: str, table_name: str):
 
     # Remove duplicate IDs
     orig_len = len(df_clean)
-    df_clean = df_clean.drop_duplicates(subset=["id"], keep="first")
+    df_clean = df_clean.drop_duplicates(subset=["id"], keep="last")
     if len(df_clean) < orig_len:
         print(f"⚠️ Removed {orig_len - len(df_clean)} duplicate IDs")
 

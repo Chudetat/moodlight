@@ -201,19 +201,6 @@ def main():
         print("DATABASE_URL not set — skipping commodities")
         sys.exit(0)
 
-    # One-time cleanup: remove stale daily_change_pct=0 rows (from first run with no prev data)
-    from sqlalchemy import text as _text
-    try:
-        with engine.connect() as conn:
-            result = conn.execute(
-                _text("DELETE FROM metric_snapshots WHERE scope = 'commodity' AND metric_name = 'daily_change_pct' AND metric_value = 0")
-            )
-            conn.commit()
-            if result.rowcount > 0:
-                print(f"  Cleaned up {result.rowcount} stale daily_change_pct=0 rows")
-    except Exception:
-        pass
-
     print("Fetching commodity prices...")
     fetched = 0
     skipped = 0

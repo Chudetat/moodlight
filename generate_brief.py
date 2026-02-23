@@ -280,12 +280,14 @@ def load_recent_data():
             from sqlalchemy import create_engine
             db_url = db_url.replace("postgres://", "postgresql://", 1)
             engine = create_engine(db_url)
-            df = pd.read_sql("SELECT * FROM news_scored", engine)
+            from sqlalchemy import text as sql_text
+            cutoff = datetime.now(timezone.utc) - pd.Timedelta(days=7)
+            cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
+            df = pd.read_sql(sql_text("SELECT * FROM news_scored WHERE created_at >= :cutoff"), engine, params={"cutoff": cutoff_str})
             if not df.empty:
                 print(f"✅ Loaded {len(df)} rows from PostgreSQL")
                 df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
-                cutoff = datetime.now(timezone.utc) - pd.Timedelta(days=7)
-                return df[df['created_at'] >= cutoff]
+                return df
         except Exception as e:
             print(f"DB error: {e}")
     # Fallback to CSV
@@ -309,13 +311,13 @@ def load_social_data():
             from sqlalchemy import create_engine
             db_url = db_url.replace("postgres://", "postgresql://", 1)
             engine = create_engine(db_url)
-            df = pd.read_sql("SELECT * FROM social_scored", engine)
+            from sqlalchemy import text as sql_text
+            cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
+            df = pd.read_sql(sql_text("SELECT * FROM social_scored WHERE created_at >= :cutoff"), engine, params={"cutoff": cutoff_str})
             if not df.empty:
                 df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
-                recent = df[df['created_at'] >= cutoff]
-                if not recent.empty:
-                    print(f"✅ Loaded {len(recent)} social posts from PostgreSQL")
-                    return recent
+                print(f"✅ Loaded {len(df)} social posts from PostgreSQL")
+                return df
         except Exception as e:
             print(f"Social DB error: {e}")
     # Fallback to CSV
