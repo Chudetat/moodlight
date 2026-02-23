@@ -1029,21 +1029,28 @@ TOPIC_KEYWORDS = {
     "culture & identity": ["culture", "identity", "values", "tradition", "community", "heritage"],
     "branding & advertising": ["branding", "brand", "marketing", "advertising", "commercial", "campaign"],
     "creative & design": ["design", "designer", "creative", "art direction", "illustration", "graphic"],
-    "technology & ai": ["technology", "tech", "software", "hardware", "ai", "artificial intelligence", "startup", "app", "digital"],
+    "technology & ai": ["technology", "tech", "software", "hardware", "ai", "artificial intelligence", "startup", "mobile app", "apps", "digital", "computing", "algorithm"],
     "climate & environment": ["climate", "environment", "warming", "emissions", "pollution", "flood", "weather", "storm", "wildfire"],
     "healthcare & wellbeing": ["healthcare", "hospital", "doctor", "mental health", "vaccine", "covid", "medical", "pandemic"],
     "immigration": ["immigration", "migrant", "refugee", "asylum", "border", "visa", "deportation"],
     "crime & safety": ["crime", "police", "shooting", "violence", "homicide", "murder", "robbery", "arrest"],
-    "war & foreign policy": ["war", "conflict", "military", "israel", "gaza", "ukraine", "russia", "attack", "troops", "nuclear"],
-    "media & journalism": ["media", "journalism", "reporter", "press", "headline", "newspaper"],
-    "race & ethnicity": ["race", "racism", "ethnicity", "minority", "black", "asian", "discrimination"],
+    "war & foreign policy": ["war", "wars", "warfare", "warzone", "conflict", "military", "israel", "gaza", "ukraine", "russia", "attack", "troops", "nuclear", "invasion", "missile", "sanctions", "diplomatic", "airstrike"],
+    "media & journalism": ["journalism", "journalist", "reporter", "newspaper", "newsroom", "editorial", "news media", "press freedom", "press corps", "media bias", "media coverage"],
+    "race & ethnicity": ["racism", "ethnicity", "minority", "asian", "discrimination", "racial", "black community", "black lives", "racial justice", "racial profiling"],
     "gender & sexuality": ["gender", "feminist", "lgbtq", "queer", "trans", "women", "abortion"],
     "business & corporate": ["business", "company", "ceo", "merger", "earnings", "profit", "revenue", "corporate", "filing", "8-k", "10-k", "10-q", "sec", "shareholder", "annual report", "quarterly report"],
-    "labor & work": ["labor", "union", "strike", "worker", "job", "wage", "employment", "unemployment"],
+    "labor & work": ["labor", "labor union", "trade union", "workers union", "strike", "worker", "workers", "wage", "employment", "unemployment", "workforce", "layoff", "layoffs", "hiring", "job market", "job loss", "workers rights", "minimum wage", "labor market"],
     "housing": ["housing", "rent", "landlord", "mortgage", "eviction", "real estate", "property"],
     "religion & values": ["religion", "church", "faith", "spiritual", "bible", "religious", "muslim", "christian"],
-    "sports": ["sports", "game", "match", "team", "player", "athlete", "championship", "football", "basketball", "nba", "nfl", "nhl", "mlb", "ncaa", "college sports", "sports media", "nil", "transfer portal", "free agency", "draft", "playoff", "super bowl", "world series", "stanley cup", "march madness", "espn", "sports betting", "sportsbook"],
-    "entertainment": ["movie", "film", "tv", "music", "concert", "celebrity", "actor", "entertainment", "box office", "streaming", "netflix", "disney", "hbo", "theatrical", "studio", "producer", "director", "showrunner", "writers room", "production", "content", "subscriber", "ratings", "premiere", "franchise", "sequel", "reboot", "adaptation"],
+    "sports": ["sports", "team", "player", "athlete", "championship", "football", "basketball", "nba", "nfl", "nhl", "mlb", "ncaa", "college sports", "sports media", "nil", "transfer portal", "free agency", "draft", "playoff", "super bowl", "world series", "stanley cup", "march madness", "espn", "sports betting", "sportsbook"],
+    "entertainment": ["movie", "film", "tv", "music", "concert", "celebrity", "actor", "entertainment", "box office", "streaming", "netflix", "disney", "hbo", "theatrical", "studio", "producer", "director", "showrunner", "writers room", "production", "premiere", "franchise", "sequel", "reboot", "adaptation"],
+}
+
+# Pre-compile word-boundary regex patterns for each topic.
+# Uses \b to prevent substring matches (e.g., "war" in "software").
+TOPIC_PATTERNS = {
+    topic: re.compile(r'\b(?:' + '|'.join(re.escape(kw) for kw in kws) + r')\b')
+    for topic, kws in TOPIC_KEYWORDS.items()
 }
 
 def classify_topic(text: str) -> str:
@@ -1053,7 +1060,7 @@ def classify_topic(text: str) -> str:
     # Priority order - check specific topics first
     priority_topics = [
         "war & foreign policy",
-        "climate & environment", 
+        "climate & environment",
         "technology & ai",
         "healthcare & wellbeing",
         "crime & safety",
@@ -1061,13 +1068,13 @@ def classify_topic(text: str) -> str:
     ]
 
     for topic in priority_topics:
-        if any(kw in t for kw in TOPIC_KEYWORDS[topic]):
+        if TOPIC_PATTERNS[topic].search(t):
             return topic
 
     # Then check remaining topics
-    for topic, kws in TOPIC_KEYWORDS.items():
+    for topic in TOPIC_KEYWORDS:
         if topic not in priority_topics:
-            if any(kw in t for kw in kws):
+            if TOPIC_PATTERNS[topic].search(t):
                 return topic
 
     return "other"

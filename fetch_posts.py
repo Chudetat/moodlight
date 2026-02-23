@@ -21,6 +21,7 @@ import argparse
 from typing import List, Dict, Any, Tuple
 from datetime import datetime, timedelta, timezone
 
+import re
 import requests
 import pandas as pd
 from dotenv import load_dotenv
@@ -209,31 +210,38 @@ TOPIC_KEYWORDS = {
     "culture & identity": ["culture", "identity", "values", "tradition", "community", "heritage"],
     "branding & advertising": ["branding", "brand", "marketing", "advertising", "ad campaign", "commercial"],
     "creative & design": ["design", "designer", "creative", "art direction", "illustration", "graphic design", "animation"],
-    "technology & ai": ["technology", "tech", "software", "hardware", "startup", "ai", "artificial intelligence", "chatbot", "machine learning", "app"],
+    "technology & ai": ["technology", "tech", "software", "hardware", "startup", "ai", "artificial intelligence", "chatbot", "machine learning", "mobile app", "apps", "digital", "computing", "algorithm"],
     "climate & environment": ["climate", "environment", "global warming", "emissions", "carbon", "pollution", "wildfire", "flood", "drought", "hurricane", "weather"],
     "healthcare & wellbeing": ["healthcare", "hospital", "doctor", "nurse", "mental health", "therapy", "wellbeing", "vaccine", "covid", "medical"],
     "immigration": ["immigration", "migrant", "refugee", "asylum", "border", "visa", "deportation"],
     "crime & safety": ["crime", "criminal", "police", "law enforcement", "homicide", "shooting", "safety", "violence", "murder", "arrest"],
-    "war & foreign policy": ["war", "conflict", "military", "army", "airstrike", "troops", "israel", "gaza", "ukraine", "russia", "nato", "ceasefire", "foreign policy", "attack"],
-    "media & journalism": ["media", "journalism", "journalist", "reporter", "news outlet", "press", "headline", "fake news"],
-    "race & ethnicity": ["race", "racism", "racial", "ethnicity", "minority", "black", "white", "asian", "latino", "indigenous", "discrimination"],
+    "war & foreign policy": ["war", "wars", "warfare", "warzone", "conflict", "military", "army", "airstrike", "troops", "israel", "gaza", "ukraine", "russia", "nato", "ceasefire", "foreign policy", "attack", "invasion", "missile", "sanctions", "diplomatic"],
+    "media & journalism": ["journalism", "journalist", "reporter", "news outlet", "newspaper", "newsroom", "editorial", "news media", "press freedom", "press corps", "media bias", "media coverage", "fake news"],
+    "race & ethnicity": ["racism", "racial", "ethnicity", "minority", "asian", "latino", "indigenous", "discrimination", "black community", "black lives", "racial justice", "racial profiling"],
     "gender & sexuality": ["gender", "sexism", "feminist", "patriarchy", "lgbtq", "queer", "trans", "non-binary", "sexuality", "women", "abortion"],
     "business & corporate": ["business", "company", "corporate", "ceo", "cfo", "board", "merger", "acquisition", "earnings", "profit", "revenue"],
-    "labor & work": ["labor", "union", "strike", "worker", "workplace", "job", "employment", "wage", "salary", "unemployment"],
+    "labor & work": ["labor", "labor union", "trade union", "workers union", "strike", "worker", "workers", "workplace", "employment", "wage", "salary", "unemployment", "workforce", "layoff", "layoffs", "hiring", "job market", "job loss", "workers rights", "minimum wage", "labor market"],
     "housing": ["housing", "rent", "renter", "landlord", "mortgage", "real estate", "tenant", "eviction", "homeless", "property"],
     "religion & values": ["religion", "religious", "church", "mosque", "synagogue", "faith", "spiritual", "morality", "ethics", "bible"],
-    "sports": ["sports", "game", "match", "tournament", "league", "team", "player", "athlete", "coach", "championship"],
+    "sports": ["sports", "tournament", "league", "team", "player", "athlete", "coach", "championship"],
     "entertainment": ["movie", "film", "cinema", "tv", "series", "episode", "music", "album", "song", "concert", "festival", "celebrity", "actor", "hollywood"],
     "energy & resources": ["energy", "oil", "gas", "natural gas", "opec", "petroleum", "fuel", "power grid", "blackout", "electricity", "energy crisis", "renewable energy", "solar", "wind power", "nuclear power", "coal", "fracking"],
-    "infrastructure & supply chain": ["supply chain", "logistics", "shipping", "port", "cargo", "container", "semiconductor", "chip shortage", "rare earth", "infrastructure", "bridge collapse", "road", "railway", "transport", "freight", "bottleneck"],    
+    "infrastructure & supply chain": ["supply chain", "logistics", "shipping", "port", "cargo", "container", "semiconductor", "chip shortage", "rare earth", "infrastructure", "bridge collapse", "road", "railway", "transport", "freight", "bottleneck"],
     "cybersecurity & tech threats": ["cyberattack", "cyber attack", "ransomware", "hack", "hacker", "data breach", "cybersecurity", "malware", "phishing", "ddos", "zero day", "vulnerability", "exploit", "disinformation", "misinformation", "deepfake"],
-    "social unrest & protests": ["protest", "riot", "unrest", "demonstration", "rally", "march", "civil disobedience", "uprising", "revolt", "strike", "labor strike", "walkout", "picket", "activism", "mass protest"],
+    "social unrest & protests": ["protest", "riot", "unrest", "demonstration", "rally", "march", "civil disobedience", "uprising", "revolt", "labor strike", "walkout", "picket", "activism", "mass protest"],
     "food security & agriculture": ["food shortage", "famine", "hunger", "starvation", "crop failure", "harvest", "drought", "agriculture", "farming", "food crisis", "grain", "wheat", "corn", "livestock", "food supply", "water scarcity"],
     "financial system stress": ["bank failure", "banking crisis", "liquidity", "debt default", "bankruptcy", "foreclosure", "currency collapse", "hyperinflation", "financial crisis", "stock market crash", "recession", "depression", "bailout", "contagion"],
     "nuclear & wmd threats": ["nuclear", "nuclear weapon", "nuke", "atomic", "warhead", "missile test", "icbm", "ballistic missile", "enrichment", "uranium", "plutonium", "wmd", "chemical weapon", "biological weapon", "bioweapon", "nerve agent", "dirty bomb", "proliferation", "non-proliferation"],
-    "terrorism & extremism": ["terrorism", "terrorist", "terror attack", "bombing", "suicide bomber", "isis", "isil", "al qaeda", "al-qaeda", "hezbollah", "taliban", "extremist", "extremism", "jihad", "jihadist", "radicalization", "militant", "insurgent", "hostage", "kidnapping"],    
+    "terrorism & extremism": ["terrorism", "terrorist", "terror attack", "bombing", "suicide bomber", "isis", "isil", "al qaeda", "al-qaeda", "hezbollah", "taliban", "extremist", "extremism", "jihad", "jihadist", "radicalization", "militant", "insurgent", "hostage", "kidnapping"],
     "humanitarian crises & migration": ["humanitarian crisis", "refugee", "displaced", "displacement", "migration", "migrant crisis", "asylum seeker", "genocide", "ethnic cleansing", "war crime", "atrocity", "mass grave", "humanitarian aid", "refugee camp", "internally displaced", "humanitarian disaster"],
     "disinformation & propaganda": ["disinformation", "misinformation", "fake news", "propaganda", "troll farm", "bot network", "election interference", "foreign interference", "information warfare", "psyop", "psychological operation", "influence campaign", "state media", "deepfake", "manipulated media"],
+}
+
+# Pre-compile word-boundary regex patterns for each topic.
+# Uses \b to prevent substring matches (e.g., "war" in "software").
+TOPIC_PATTERNS = {
+    topic: re.compile(r'\b(?:' + '|'.join(re.escape(kw) for kw in kws) + r')\b')
+    for topic, kws in TOPIC_KEYWORDS.items()
 }
 
 def classify_topic(text: str) -> str:
@@ -261,12 +269,12 @@ def classify_topic(text: str) -> str:
     ]
 
     for topic in priority_topics:
-        if any(kw in t for kw in TOPIC_KEYWORDS[topic]):
+        if TOPIC_PATTERNS[topic].search(t):
             return topic
 
-    for topic, kws in TOPIC_KEYWORDS.items():
+    for topic in TOPIC_KEYWORDS:
         if topic not in priority_topics:
-            if any(kw in t for kw in kws):
+            if TOPIC_PATTERNS[topic].search(t):
                 return topic
 
     return "other"
