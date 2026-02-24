@@ -514,8 +514,8 @@ def detect_brand_vlds_alerts(df_news, df_social, brand_name, username,
             username=username,
         ))
 
-    # Narrative Fading
-    if prev_vlds:
+    # Narrative Fading (skip if VLDS version changed to prevent false alerts)
+    if prev_vlds and prev_vlds.get("_vlds_version", 1) == vlds.get("_vlds_version", 1):
         prev_longevity = prev_vlds.get("longevity", 0)
         curr_longevity = vlds.get("longevity", 0)
         nf_from = t_nf.get("warning", 0.6)
