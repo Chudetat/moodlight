@@ -1,0 +1,11 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements-worker-lightweight.txt .
+RUN pip install --no-cache-dir -r requirements-worker-lightweight.txt
+
+COPY *.py ./
+COPY static/ ./static/
+
+CMD ["python", "worker_lightweight.py"]
