@@ -1184,7 +1184,7 @@ Return a JSON object with these fields:
 - "event": specific event if mentioned, e.g. "Super Bowl", "Olympics", "CES", "election" (or null)
 - "topic": specific topic if time-sensitive, e.g. "AI", "layoffs", "tariffs" (or null)
 - "needs_web": true if the query mentions "yesterday", "today", "this week", "recent", "latest", or asks about current/breaking events
-- "needs_report": true if the user asks for a "report", "deep dive", "full analysis", "intelligence report", or "analyze [brand/topic] in depth" (or false)
+- "needs_report": true ONLY if the user asks for a "report", "deep dive", "full analysis", "intelligence report", or "analyze [brand/topic] in depth". NOT for strategic brief prompts, campaign briefs, or general conversation requests. (default false)
 
 Example: "What happened at yesterday's Super Bowl?"
 {"brand": null, "event": "Super Bowl 2026", "topic": null, "needs_web": true, "needs_report": false}
@@ -1197,6 +1197,12 @@ Example: "Generate a report on Tesla"
 
 Example: "Deep dive on AI trends for the last 30 days"
 {"brand": null, "event": null, "topic": "AI", "needs_web": false, "needs_report": true}
+
+Example: "Generate a prompt for the strategic brief generator"
+{"brand": null, "event": null, "topic": null, "needs_web": false, "needs_report": false}
+
+Example: "Now create a brief based on those challenges"
+{"brand": null, "event": null, "topic": null, "needs_web": false, "needs_report": false}
 
 Return ONLY valid JSON, no explanation.""",
             messages=[{"role": "user", "content": user_message}]
@@ -5017,6 +5023,18 @@ if _has_ask_access and (prompt := st.chat_input("Ask a question about the data..
             needs_web = search_info.get("needs_web", False)
             needs_report = search_info.get("needs_report", False)
 
+            # Carry forward brand/topic from previous turn for follow-up questions
+            if brand_name or topic_name:
+                # New context detected — store it
+                st.session_state["_last_search_info"] = search_info
+            elif st.session_state.get("_last_search_info"):
+                # No brand/topic in current message — inherit from previous turn
+                prev = st.session_state["_last_search_info"]
+                if not brand_name:
+                    brand_name = prev.get("brand") or ""
+                if not topic_name:
+                    topic_name = prev.get("topic") or ""
+
             # Route to on-demand report generator if requested
             if needs_report and (brand_name or topic_name):
                 report_subject = brand_name or topic_name
@@ -5472,4 +5490,5 @@ When users share written content, respond conversationally — provide feedback,
 if _has_ask_access and st.session_state.chat_messages:
     if st.button("🗑️ Clear chat"):
         st.session_state.chat_messages = []
+        st.session_state.pop("_last_search_info", None)
         st.rerun()
