@@ -1,0 +1,7 @@
+pandas>=2.0.0
+anthropic
+python-dotenv>=1.0.0
+sqlalchemy
+psycopg2-binary
+fastapi
+uvicorn
