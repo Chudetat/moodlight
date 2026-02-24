@@ -4865,7 +4865,7 @@ if st.session_state.get('generate_brief'):
     with st.sidebar:
         with st.spinner("🎯 Generating your strategic brief..."):
             try:
-                brief, frameworks_used = generate_strategic_brief(user_need, df_all)
+                brief, frameworks_used = generate_strategic_brief(user_need, df_all, username)
                 decrement_brief_credits(username)
             except Exception as e:
                 st.error(f"Error generating brief: {e}")

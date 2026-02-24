@@ -1,8 +1,12 @@
+import json
 import os
 from datetime import datetime, timezone
 from anthropic import Anthropic
 import pandas as pd
+from sqlalchemy import text as sql_text
 from strategic_frameworks import select_frameworks, get_framework_prompt, STRATEGIC_FRAMEWORKS
+from db_helper import get_engine
+from vlds_helper import calculate_brand_vlds
 
 # Shared regulatory guidance used by both Strategic Brief Generator and Ask Moodlight
 REGULATORY_GUIDANCE = """HEALTHCARE / PHARMA / MEDICAL DEVICES:
@@ -56,7 +60,201 @@ LEGAL SERVICES:
 For all industries: Consider regulatory and reputational risk when recommending bold creative angles. When in doubt, recommend client consult with their legal/compliance team before execution."""
 
 
-def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> tuple:
+def _build_enrichment(engine, username: str, user_need: str, df: pd.DataFrame) -> str:
+    """Build brand/topic enrichment context for the strategic brief.
+
+    Three-layer matching:
+      Layer 1 — Brand match: VLDS v2 + competitive snapshot + recent alerts
+      Layer 2 — Topic match: recent alerts for matching topics
+      Layer 3 — No match: returns empty string (graceful fallback)
+    """
+    user_need_lower = user_need.lower()
+
+    # Load watchlist brands
+    with engine.connect() as conn:
+        rows = conn.execute(
+            sql_text("SELECT brand_name FROM brand_watchlist WHERE username = :username"),
+            {"username": username},
+        ).fetchall()
+    brands = [r[0] for r in rows]
+
+    # Layer 1: Brand match
+    matched_brand = None
+    for brand in brands:
+        if brand.lower() in user_need_lower:
+            matched_brand = brand
+            break
+
+    if matched_brand:
+        sections = []
+        brand_lower = matched_brand.lower()
+
+        # Compute VLDS v2 for matched brand
+        if "text" in df.columns:
+            brand_df = df[df["text"].str.lower().str.contains(brand_lower, na=False)].copy()
+            if "created_at" in brand_df.columns:
+                brand_df = brand_df.dropna(subset=["created_at"])
+            if len(brand_df) >= 5:
+                vlds = calculate_brand_vlds(brand_df)
+                if vlds:
+                    v = vlds.get("velocity", 0)
+                    v_label = vlds.get("velocity_label", "")
+                    v_insight = vlds.get("velocity_insight", "")
+                    l = vlds.get("longevity", 0)
+                    l_label = vlds.get("longevity_label", "")
+                    l_insight = vlds.get("longevity_insight", "")
+                    d = vlds.get("density", 0)
+                    d_label = vlds.get("density_label", "")
+                    d_insight = vlds.get("density_insight", "")
+                    sc = vlds.get("scarcity", 0)
+                    sc_label = vlds.get("scarcity_label", "")
+                    emp_label = vlds.get("empathy_label", "N/A")
+
+                    # Top emotions
+                    top_emo = vlds.get("top_emotions_detailed", [])
+                    emo_str = ", ".join(
+                        f"{e['emotion']} ({e['percentage']}%)" for e in top_emo[:3]
+                    ) if top_emo else "N/A"
+
+                    sections.append(
+                        f"BRAND INTELLIGENCE — {matched_brand.upper()}:\n"
+                        f"---\n"
+                        f"  Velocity: {v:.2f} ({v_label}) — {v_insight}\n"
+                        f"  Longevity: {l:.2f} ({l_label}) — {l_insight}\n"
+                        f"  Density: {d:.2f} ({d_label}) — {d_insight}\n"
+                        f"  Scarcity: {sc:.2f} ({sc_label})\n"
+                        f"  Top Emotions: {emo_str}\n"
+                        f"  Empathy: {emp_label}\n"
+                        f"---"
+                    )
+
+        # Load competitive snapshot
+        with engine.connect() as conn:
+            comp_row = conn.execute(
+                sql_text(
+                    "SELECT snapshot_data FROM competitive_snapshots "
+                    "WHERE LOWER(brand_name) = :brand "
+                    "ORDER BY created_at DESC LIMIT 1"
+                ),
+                {"brand": brand_lower},
+            ).fetchone()
+
+        if comp_row:
+            snapshot = comp_row[0]
+            if isinstance(snapshot, str):
+                try:
+                    snap = json.loads(snapshot)
+                except (json.JSONDecodeError, TypeError):
+                    snap = {}
+            else:
+                snap = snapshot or {}
+
+            comp_lines = []
+            sov = snap.get("share_of_voice", {})
+            if sov:
+                comp_lines.append("  Share of Voice:")
+                for name, pct in sorted(sov.items(), key=lambda x: -x[1]):
+                    comp_lines.append(f"    {name}: {pct:.1f}%")
+
+            vlds_comp = snap.get("vlds_comparison", {})
+            if vlds_comp:
+                # Compute velocity/density gaps vs competitor average
+                comp_velocities = []
+                comp_densities = []
+                for comp_name, metrics in vlds_comp.items():
+                    if isinstance(metrics, dict) and comp_name.lower() != brand_lower:
+                        if "velocity" in metrics:
+                            comp_velocities.append(metrics["velocity"])
+                        if "density" in metrics:
+                            comp_densities.append(metrics["density"])
+
+                brand_metrics = vlds_comp.get(matched_brand, {})
+                if isinstance(brand_metrics, dict):
+                    brand_v = brand_metrics.get("velocity")
+                    brand_d = brand_metrics.get("density")
+                    if brand_v is not None and comp_velocities:
+                        avg_cv = sum(comp_velocities) / len(comp_velocities)
+                        comp_lines.append(f"  Velocity gap: {brand_v - avg_cv:+.2f} ({'brand accelerating faster than competitor avg' if brand_v > avg_cv else 'competitors accelerating faster'})")
+                    if brand_d is not None and comp_densities:
+                        avg_cd = sum(comp_densities) / len(comp_densities)
+                        comp_lines.append(f"  Density gap: {brand_d - avg_cd:+.2f} ({'brand has more coverage' if brand_d > avg_cd else 'competitors have slightly more coverage'})")
+
+            if comp_lines:
+                sections.append("COMPETITIVE LANDSCAPE:\n" + "\n".join(comp_lines))
+
+        # Load recent alerts for this brand
+        with engine.connect() as conn:
+            alert_rows = conn.execute(
+                sql_text(
+                    "SELECT alert_type, severity, title, summary "
+                    "FROM alerts "
+                    "WHERE username = :username AND timestamp > NOW() - INTERVAL '7 days' "
+                    "AND brand = :brand "
+                    "ORDER BY timestamp DESC LIMIT 20"
+                ),
+                {"username": username, "brand": matched_brand},
+            ).fetchall()
+
+        if alert_rows:
+            alert_lines = []
+            for row in alert_rows:
+                sev = (row[1] or "MEDIUM").upper()
+                atype = row[0] or "unknown"
+                summary = row[3] or row[2] or ""
+                alert_lines.append(f"  - [{sev}] {atype}: {summary[:200]}")
+            sections.append(
+                "RECENT INTELLIGENCE ALERTS (Last 7 Days):\n" + "\n".join(alert_lines)
+            )
+
+        if sections:
+            return "\n\n".join(sections)
+        return ""
+
+    # Layer 2: Topic match
+    with engine.connect() as conn:
+        topic_rows = conn.execute(
+            sql_text("SELECT topic_name FROM topic_watchlist WHERE username = :username"),
+            {"username": username},
+        ).fetchall()
+    user_topics = [r[0] for r in topic_rows]
+
+    matched_topics = [t for t in user_topics if t.lower() in user_need_lower]
+
+    if matched_topics:
+        # Load recent alerts for matching topics
+        with engine.connect() as conn:
+            placeholders = ", ".join(f":t{i}" for i in range(len(matched_topics)))
+            params = {"username": username}
+            params.update({f"t{i}": t for i, t in enumerate(matched_topics)})
+            alert_rows = conn.execute(
+                sql_text(
+                    f"SELECT alert_type, severity, title, summary, topic "
+                    f"FROM alerts "
+                    f"WHERE username = :username AND timestamp > NOW() - INTERVAL '7 days' "
+                    f"AND topic IN ({placeholders}) "
+                    f"ORDER BY timestamp DESC LIMIT 20"
+                ),
+                params,
+            ).fetchall()
+
+        if alert_rows:
+            alert_lines = []
+            for row in alert_rows:
+                sev = (row[1] or "MEDIUM").upper()
+                atype = row[0] or "unknown"
+                summary = row[3] or row[2] or ""
+                topic = row[4] or ""
+                alert_lines.append(f"  - [{sev}] {atype}: {summary[:200]} (Topic: {topic})")
+            return (
+                "RELEVANT INTELLIGENCE ALERTS (Last 7 Days):\n"
+                "---\n" + "\n".join(alert_lines) + "\n---"
+            )
+
+    # Layer 3: No match
+    return ""
+
+
+def generate_strategic_brief(user_need: str, df: pd.DataFrame, username: str = None) -> tuple:
     """Generate strategic campaign brief using AI and Moodlight data"""
 
     client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
@@ -109,6 +307,16 @@ def generate_strategic_brief(user_need: str, df: pd.DataFrame) -> tuple:
                 for _, row in viral.iterrows()
             ])
 
+    # Build brand/topic enrichment if username provided
+    brand_context = ""
+    if username:
+        try:
+            engine = get_engine()
+            if engine:
+                brand_context = _build_enrichment(engine, username, user_need, df)
+        except Exception:
+            brand_context = ""
+
     context = f"""
 MOODLIGHT INTELLIGENCE SNAPSHOT
 ================================
@@ -143,6 +351,7 @@ RECENT HEADLINES (What just happened - with source, empathy, emotion):
 HIGH-ENGAGEMENT CONTENT (What's resonating now - with engagement scores):
 {viral_headlines if viral_headlines else "No engagement data available"}
 
+{brand_context}
 Total Posts Analyzed: {len(df)}
 """
 
@@ -160,6 +369,8 @@ Based on the following real-time intelligence data from Moodlight (which tracks 
 {context}
 
 {framework_guidance}
+
+If BRAND INTELLIGENCE or RELEVANT INTELLIGENCE ALERTS data is included in the intelligence snapshot, weave those insights into your analysis: brand VLDS into territorial mapping (Section 1), competitive gaps into your unexpected angle (Section 4), and recent alerts as real-time triggers (Section 5). Do not repeat raw numbers — interpret them strategically.
 
 KEY METRICS TO CONSIDER:
 - VELOCITY: How fast a topic is accelerating (high = trending now)
