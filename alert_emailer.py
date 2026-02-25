@@ -110,6 +110,48 @@ def _get_user_disabled_alert_types():
         return {}
 
 
+def _get_alert_opted_out_emails():
+    """Get emails of users who have explicitly set alert_emails=FALSE.
+    Used to filter env var recipients who would otherwise bypass preference checks."""
+    db_url = os.getenv("DATABASE_URL", "")
+    if not db_url:
+        return set()
+    try:
+        from sqlalchemy import create_engine, text
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+        if "sslmode" not in db_url:
+            sep = "&" if "?" in db_url else "?"
+            db_url = db_url + sep + "sslmode=require"
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT u.email FROM users u
+                JOIN user_preferences p ON u.username = p.username
+                WHERE p.alert_emails = FALSE
+                  AND u.email IS NOT NULL AND u.email != ''
+            """))
+            return {row[0].lower() for row in result.fetchall()}
+    except Exception as e:
+        print(f"WARNING: _get_alert_opted_out_emails failed: {e}")
+        return set()
+
+
+def _get_recommendation(alert):
+    """Extract reasoning chain recommendation from an alert's investigation field.
+    Returns 'act_now', 'monitor', 'investigate_further', 'likely_false_positive', or None."""
+    investigation = alert.get("investigation", "")
+    if not investigation:
+        return None
+    if isinstance(investigation, str):
+        try:
+            inv = json.loads(investigation)
+        except (json.JSONDecodeError, TypeError):
+            return None
+    else:
+        inv = investigation
+    return inv.get("recommendation")
+
+
 def send_alert_emails(alerts, engine=None):
     """Send email alerts to appropriate subscribers.
 
@@ -130,9 +172,15 @@ def send_alert_emails(alerts, engine=None):
     subscriber_map = get_subscriber_emails()  # {username: email}
     cancelled = get_cancelled_emails()
 
-    # Build global recipient list: DB subscribers + env var fallback, deduplicated
+    # Build global recipient list: DB subscribers + env var recipients, deduplicated.
+    # Env var recipients are checked against the users table — if they have a matching
+    # account with alert_emails=FALSE, they are excluded (same as DB subscribers).
     env_recipients = [r.strip() for r in recipients_str.split(",") if r.strip()]
-    all_emails = set(e.lower() for e in env_recipients)
+    opted_out_emails = _get_alert_opted_out_emails()
+    env_filtered = [e for e in env_recipients if e.lower() not in opted_out_emails]
+    if len(env_filtered) < len(env_recipients):
+        print(f"  Filtered {len(env_recipients) - len(env_filtered)} env recipient(s) who opted out of alert emails")
+    all_emails = set(e.lower() for e in env_filtered)
     all_emails.update(e.lower() for e in subscriber_map.values() if e)
     if not all_emails:
         print("  No recipients found (DB or env var) — skipping email alerts")
@@ -153,6 +201,23 @@ def send_alert_emails(alerts, engine=None):
     # Filter to only critical/warning alerts, prioritize critical first
     emailable = [a for a in alerts if a.get("severity") in ("critical", "warning")]
     emailable.sort(key=lambda a: 0 if a.get("severity") == "critical" else 1)
+
+    # Gate on reasoning chain recommendation: only email act_now and monitor.
+    # Alerts with investigate_further or likely_false_positive are logged but not emailed.
+    # Alerts without a recommendation (single-turn investigation or no investigation)
+    # pass through — they're already filtered by severity above.
+    # Situation reports (alert_type=situation_report) are always passed through.
+    _EMAIL_RECOMMENDATIONS = {"act_now", "monitor"}
+    pre_gate = len(emailable)
+    emailable = [
+        a for a in emailable
+        if a.get("alert_type") == "situation_report"
+        or _get_recommendation(a) is None
+        or _get_recommendation(a) in _EMAIL_RECOMMENDATIONS
+    ]
+    gated = pre_gate - len(emailable)
+    if gated:
+        print(f"  Suppressed {gated} alert email(s) (low-confidence recommendation)")
     if not emailable:
         print("  No critical/warning alerts to email")
         return 0

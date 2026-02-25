@@ -701,6 +701,16 @@ def main():
 
             alert["investigation"] = investigation
             alert["cooldown_key"] = cooldown_key
+
+            # Gate on reasoning chain recommendation: only store act_now, monitor,
+            # and alerts without a recommendation (single-turn or no investigation).
+            # investigate_further and likely_false_positive are noise — don't store or email.
+            _STORE_RECOMMENDATIONS = {"act_now", "monitor"}
+            rec = investigation.get("recommendation") if isinstance(investigation, dict) else None
+            if rec and rec not in _STORE_RECOMMENDATIONS:
+                print(f"    SUPPRESSED (recommendation={rec}): {alert['title'][:60]}")
+                return None
+
             store_alert(engine, alert)
             return alert
 
