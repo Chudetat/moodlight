@@ -422,8 +422,8 @@ def _should_use_chain(alert):
     if alert_type in ("topic_velocity_spike", "topic_saturation"):
         return True
 
-    # Use chain for critical severity
-    if severity == "critical":
+    # Use chain for all emailable severities (critical + warning)
+    if severity in ("critical", "warning"):
         return True
 
     # Use chain for strategic brand alerts
