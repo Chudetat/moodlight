@@ -202,12 +202,12 @@ def send_alert_emails(alerts, engine=None):
     emailable = [a for a in alerts if a.get("severity") in ("critical", "warning")]
     emailable.sort(key=lambda a: 0 if a.get("severity") == "critical" else 1)
 
-    # Gate on reasoning chain recommendation: only email act_now and monitor.
-    # Alerts with investigate_further or likely_false_positive are logged but not emailed.
+    # Gate on reasoning chain recommendation: only email act_now.
+    # monitor, investigate_further, and likely_false_positive are dashboard-only.
     # Alerts without a recommendation (single-turn investigation or no investigation)
     # pass through — they're already filtered by severity above.
     # Situation reports (alert_type=situation_report) are always passed through.
-    _EMAIL_RECOMMENDATIONS = {"act_now", "monitor"}
+    _EMAIL_RECOMMENDATIONS = {"act_now"}
     pre_gate = len(emailable)
     emailable = [
         a for a in emailable
