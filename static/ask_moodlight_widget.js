@@ -461,9 +461,9 @@
     panel.classList.add("inline-mode");
 
     const suggestedPrompts = [
-      "What's the conversation around Nike right now, and where is the white space their competitors are missing?",
-      "Is alcohol a topic where markets and public sentiment are telling different stories?",
-      "If Netflix wanted to own a cultural moment right now, which rising topic has momentum but isn't crowded yet?",
+      "What's the cultural mood around AI right now — and which companies are positioned to win?",
+      "Are markets and public sentiment telling different stories about entertainment right now?",
+      "What emerging patterns in the labor market should a Fortune 500 CEO be watching this week?",
     ];
 
     panel.innerHTML = `
