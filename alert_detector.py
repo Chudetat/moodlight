@@ -348,6 +348,9 @@ def detect_breaking_signal(df_news, thresholds=None):
         return alerts
 
     for topic, group in recent.groupby("topic"):
+        # Skip the catch-all "other" category — no topical coherence
+        if topic == "other":
+            continue
         source_count = group["source"].nunique()
         if source_count < 3:
             continue
