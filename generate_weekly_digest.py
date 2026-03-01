@@ -334,7 +334,11 @@ DATA:
             system=(
                 "You are a senior strategic intelligence analyst. You synthesize weekly signals "
                 "into actionable strategic insights. You focus on patterns, not noise, and always "
-                "explain why something matters for business decision-making."
+                "explain why something matters for business decision-making. "
+                "TRAINING DATA BAN: Your ONLY sources of truth are the data provided in the prompt. "
+                "Do NOT inject facts, events, corporate actions, or narratives from your training data. "
+                "Your training knowledge is stale — presenting it as current intelligence destroys credibility. "
+                "Analyze what the data shows. Never fill gaps with training-data knowledge."
             ),
             messages=[{"role": "user", "content": prompt}],
         )

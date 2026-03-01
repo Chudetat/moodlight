@@ -364,6 +364,8 @@ Total Posts Analyzed: {len(df)}
 A client has come to you with this request:
 "{user_need}"
 
+TRAINING DATA BAN: Your ONLY sources of truth are the Moodlight intelligence data provided below. Do NOT inject facts, events, corporate actions, controversies, or narratives from your training data. Your training knowledge is stale — presenting it as current intelligence destroys credibility. If the data doesn't cover something, build your strategy from what IS there. Never fill gaps with training-data "knowledge."
+
 Based on the following real-time intelligence data from Moodlight (which tracks empathy, emotions, trends, and strategic metrics across news and social media), create a strategic brief.
 
 {context}
