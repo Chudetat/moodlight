@@ -59,7 +59,7 @@
 
   // ── Styles ──
   const STYLES = `
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    /* Helvetica Neue — system font, no import needed */
 
     /* ── Floating button ── */
     #ml-widget-btn {
@@ -101,7 +101,7 @@
       display: none;
       flex-direction: column;
       overflow: hidden;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     }
     #ml-widget-panel.floating-mode.open { display: flex; }
 
@@ -114,7 +114,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       padding: 12px 20px;
     }
 
@@ -161,7 +161,7 @@
       padding: 16px 56px 16px 24px;
       color: #2D2D2D;
       font-size: 16px;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       outline: none;
       transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
       box-sizing: border-box;
@@ -216,7 +216,7 @@
       color: rgba(45, 45, 45, 0.6);
       cursor: pointer;
       transition: all 0.2s;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       text-align: left;
     }
     .ml-prompt-chip:hover {
@@ -318,7 +318,7 @@
       font-size: 13px;
       color: rgba(45, 45, 45, 0.5);
       cursor: pointer;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       transition: all 0.2s;
     }
     .ml-new-question-btn:hover {
@@ -336,7 +336,7 @@
       padding: 12px 28px;
       font-size: 14px;
       font-weight: 500;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       cursor: pointer;
       transition: opacity 0.2s, transform 0.2s;
       margin-top: 8px;
@@ -468,7 +468,7 @@
 
     panel.innerHTML = `
       <div class="ml-logo">
-        <div class="ml-logo-text"><span class="ml-logo-icon"><img src="${API_BASE}/static/logo_white.png" alt="Moodlight" style="width:48px;height:48px;vertical-align:middle"></span> Ask Moodlight</div>
+        <div class="ml-logo-text"><span class="ml-logo-icon"><img src="${API_BASE}/static/logo_black.png" alt="Moodlight" style="width:48px;height:48px;vertical-align:middle"></span> Ask Moodlight</div>
       </div>
 
       <div class="ml-search-container">
