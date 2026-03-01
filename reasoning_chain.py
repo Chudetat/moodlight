@@ -555,6 +555,7 @@ Based on the situation, history, and causes identified:
 1. What are the strategic implications? (2-3 sentences)
 2. What specific actions should be taken? (2-3 bullet points)
 3. What frameworks best apply and why? (1-2 sentences)
+4. Forward look: Based on the pattern of events and historical precedent from prior steps, what is the most likely development in the next 7-14 days? Rate as HIGH (>70%), MODERATE (40-70%), or LOW (<40%) probability. If multiple outcomes are plausible, list the top 2. Ground every projection in specific data points from the analysis — do not speculate beyond what the signals support.
 
 End with: Confidence: [0.0-1.0]"""
 

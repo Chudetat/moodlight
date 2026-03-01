@@ -115,6 +115,7 @@ def _format_brief_section(title, lines):
         "KEY THREATS": "#DC143C",
         "WATCH LIST": "#FFB300",
         "EMERGING PATTERNS": "#1976D2",
+        "FORWARD LOOK": "#7B1FA2",
         "RECOMMENDED ACTIONS": "#2E7D32",
     }
     color = section_colors.get(title, "#1976D2")
@@ -501,6 +502,9 @@ WATCH LIST:
 EMERGING PATTERNS:
 [Group related signals. Note if each pattern is ACCELERATING ↑ or DECELERATING ↓]
 
+FORWARD LOOK:
+[2-3 most likely developments in the next 7-14 days based on converging signals above. For each: state the projection, rate probability (HIGH/MODERATE/LOW), cite the data points. Only include projections where 2+ independent signals converge.]
+
 RECOMMENDED ACTIONS:
 - IMMEDIATE (24h): [...]
 - SHORT-TERM (this week): [...]
@@ -523,6 +527,7 @@ DATA INTEGRITY — NON-NEGOTIABLE:
 - Strategic reasoning about actor motivations is welcome when grounded in the pattern of events. Do not attribute specific insider knowledge or conspiratorial coordination without evidence.
 - Confidence levels (HIGH/MODERATE/LIMITED) must reflect actual source count in the data, not how confident the narrative sounds.
 - Strategic inference is valuable — connecting real signals into forward-looking assessments is the point. But ground every inference in specific data points from the brief. "These three energy signals suggest supply risk" is good. "This is likely orchestrated by [actor]" with no source evidence is not.
+- FORWARD LOOK predictions must be grounded in multiple converging signals from the data. Rate each as HIGH/MODERATE/LOW probability. Frame as analytical projections, not guarantees.
 - The brief goes directly to customers via email. Factual claims must be defensible against the source data. Strategic projections should be clearly framed as analysis, not reported as fact.
 
 EMPATHY / MOOD SCORE INTERPRETATION:
