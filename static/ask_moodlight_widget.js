@@ -167,7 +167,7 @@
       box-sizing: border-box;
     }
     .ml-search-bar::placeholder {
-      color: rgba(45, 45, 45, 0.45);
+      color: rgba(45, 45, 45, 0.65);
       font-weight: 400;
     }
     .ml-search-bar:focus {
@@ -213,7 +213,7 @@
       padding: 10px 16px;
       font-size: 13px;
       line-height: 1.4;
-      color: rgba(45, 45, 45, 0.6);
+      color: rgba(45, 45, 45, 0.8);
       cursor: pointer;
       transition: all 0.2s;
       font-family: 'Space Grotesk', sans-serif;
@@ -300,7 +300,7 @@
     /* ── Badge ── */
     .ml-queries-badge {
       font-size: 12px;
-      color: rgba(45, 45, 45, 0.4);
+      color: rgba(45, 45, 45, 0.65);
       text-align: center;
       margin-top: 12px;
     }
@@ -489,9 +489,6 @@
 
       <div class="ml-queries-badge" id="ml-queries-badge">${queriesRemaining} free questions remaining</div>
 
-      <div class="ml-footer-inline">
-        <a href="https://moodlightintel.com" target="_blank">moodlightintel.com</a>
-      </div>
     `;
 
     target.appendChild(panel);
