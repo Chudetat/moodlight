@@ -207,8 +207,8 @@
       max-width: 580px;
     }
     .ml-prompt-chip {
-      background: rgba(107, 70, 193, 0.06);
-      border: 1px solid rgba(107, 70, 193, 0.15);
+      background: rgba(0, 0, 0, 0.04);
+      border: 1px solid rgba(0, 0, 0, 0.12);
       border-radius: 12px;
       padding: 10px 16px;
       font-size: 13px;
@@ -220,8 +220,8 @@
       text-align: left;
     }
     .ml-prompt-chip:hover {
-      background: rgba(107, 70, 193, 0.12);
-      border-color: rgba(107, 70, 193, 0.35);
+      background: rgba(0, 0, 0, 0.08);
+      border-color: rgba(0, 0, 0, 0.18);
       color: #2D2D2D;
     }
 
@@ -238,7 +238,7 @@
     }
     .ml-results::-webkit-scrollbar { width: 4px; }
     .ml-results::-webkit-scrollbar-track { background: transparent; }
-    .ml-results::-webkit-scrollbar-thumb { background: rgba(107, 70, 193, 0.3); border-radius: 2px; }
+    .ml-results::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 2px; }
 
     .ml-result-user {
       font-size: 14px;
@@ -312,7 +312,7 @@
     }
     .ml-new-question-btn {
       background: none;
-      border: 1px solid rgba(107, 70, 193, 0.25);
+      border: 1px solid rgba(0, 0, 0, 0.12);
       border-radius: 20px;
       padding: 8px 20px;
       font-size: 13px;
@@ -322,7 +322,7 @@
       transition: all 0.2s;
     }
     .ml-new-question-btn:hover {
-      border-color: rgba(107, 70, 193, 0.4);
+      border-color: rgba(0, 0, 0, 0.25);
       color: #2D2D2D;
     }
 
@@ -363,10 +363,10 @@
       color: rgba(45, 45, 45, 0.35);
     }
     .ml-footer-inline a {
-      color: rgba(107, 70, 193, 0.5);
+      color: rgba(45, 45, 45, 0.45);
       text-decoration: none;
     }
-    .ml-footer-inline a:hover { color: #6B46C1; }
+    .ml-footer-inline a:hover { color: rgba(45, 45, 45, 0.7); }
 
     /* ── Floating panel header ── */
     .ml-float-header {
