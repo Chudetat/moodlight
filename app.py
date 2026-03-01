@@ -4242,7 +4242,7 @@ if "engagement" in df_all.columns and "created_at" in df_all.columns and len(df_
         # If limited data, show all posts with engagement
         vdf_high = vdf
     if len(vdf_high) > 0:
-        st.caption(f"Showing {len(vdf_high)} high-potential posts (X: {len(vdf_high[vdf_high['source']=='x'])}, News: {len(vdf_high[vdf_high['source']=='news'])})")
+        st.caption(f"Showing {len(vdf_high)} high-potential posts from X")
         
         virality_chart = (
             alt.Chart(vdf_high)
