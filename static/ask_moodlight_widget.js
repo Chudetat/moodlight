@@ -93,10 +93,10 @@
       right: 24px;
       width: 400px;
       max-height: 560px;
-      background: #0E1117;
-      border: 1px solid rgba(107, 70, 193, 0.25);
+      background: #FFFFFF;
+      border: 1px solid rgba(0, 0, 0, 0.1);
       border-radius: 16px;
-      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
       z-index: 10001;
       display: none;
       flex-direction: column;
@@ -126,7 +126,7 @@
     .ml-logo-text {
       font-size: 56px;
       font-weight: 400;
-      color: #FAFAFA;
+      color: #2D2D2D;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       letter-spacing: -0.5px;
       line-height: 1.1;
@@ -140,7 +140,7 @@
     }
     .ml-logo-sub {
       font-size: 15px;
-      color: rgba(250, 250, 250, 0.4);
+      color: rgba(45, 45, 45, 0.5);
       font-weight: 300;
       margin-top: 8px;
       letter-spacing: 0.5px;
@@ -155,11 +155,11 @@
     }
     .ml-search-bar {
       width: 100%;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(107, 70, 193, 0.3);
+      background: rgba(0, 0, 0, 0.04);
+      border: 1px solid rgba(0, 0, 0, 0.12);
       border-radius: 28px;
       padding: 16px 56px 16px 24px;
-      color: #FAFAFA;
+      color: #2D2D2D;
       font-size: 16px;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       outline: none;
@@ -167,13 +167,13 @@
       box-sizing: border-box;
     }
     .ml-search-bar::placeholder {
-      color: rgba(250, 250, 250, 0.7);
+      color: rgba(45, 45, 45, 0.45);
       font-weight: 400;
     }
     .ml-search-bar:focus {
       border-color: rgba(107, 70, 193, 0.5);
       box-shadow: 0 4px 24px rgba(107, 70, 193, 0.15);
-      background: rgba(255, 255, 255, 0.12);
+      background: rgba(0, 0, 0, 0.02);
     }
     .ml-search-bar:disabled { opacity: 0.5; }
 
@@ -207,22 +207,22 @@
       max-width: 580px;
     }
     .ml-prompt-chip {
-      background: rgba(107, 70, 193, 0.1);
-      border: 1px solid rgba(107, 70, 193, 0.2);
+      background: rgba(107, 70, 193, 0.06);
+      border: 1px solid rgba(107, 70, 193, 0.15);
       border-radius: 12px;
       padding: 10px 16px;
       font-size: 13px;
       line-height: 1.4;
-      color: rgba(250, 250, 250, 0.55);
+      color: rgba(45, 45, 45, 0.6);
       cursor: pointer;
       transition: all 0.2s;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       text-align: left;
     }
     .ml-prompt-chip:hover {
-      background: rgba(107, 70, 193, 0.18);
+      background: rgba(107, 70, 193, 0.12);
       border-color: rgba(107, 70, 193, 0.35);
-      color: #FAFAFA;
+      color: #2D2D2D;
     }
 
     /* ── Results area ── */
@@ -242,7 +242,7 @@
 
     .ml-result-user {
       font-size: 14px;
-      color: rgba(250, 250, 250, 0.5);
+      color: rgba(45, 45, 45, 0.6);
       padding: 0 4px;
       display: flex;
       align-items: center;
@@ -262,16 +262,16 @@
     }
 
     .ml-result-card {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(107, 70, 193, 0.18);
+      background: rgba(0, 0, 0, 0.03);
+      border: 1px solid rgba(0, 0, 0, 0.08);
       border-radius: 12px;
       padding: 16px 20px;
-      color: #E0E0E0;
+      color: #3D3D3D;
       font-size: 14px;
       line-height: 1.6;
       word-wrap: break-word;
     }
-    .ml-result-card strong { color: #FAFAFA; }
+    .ml-result-card strong { color: #1A1A1A; }
     .ml-result-card p { margin: 8px 0; }
 
     /* ── Typing indicator ── */
@@ -279,8 +279,8 @@
       display: flex;
       gap: 5px;
       padding: 20px 24px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(107, 70, 193, 0.18);
+      background: rgba(0, 0, 0, 0.03);
+      border: 1px solid rgba(0, 0, 0, 0.08);
       border-radius: 12px;
     }
     .ml-typing-dot {
@@ -300,7 +300,7 @@
     /* ── Badge ── */
     .ml-queries-badge {
       font-size: 12px;
-      color: rgba(250, 250, 250, 0.35);
+      color: rgba(45, 45, 45, 0.4);
       text-align: center;
       margin-top: 12px;
     }
@@ -316,14 +316,14 @@
       border-radius: 20px;
       padding: 8px 20px;
       font-size: 13px;
-      color: rgba(250, 250, 250, 0.5);
+      color: rgba(45, 45, 45, 0.5);
       cursor: pointer;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       transition: all 0.2s;
     }
     .ml-new-question-btn:hover {
       border-color: rgba(107, 70, 193, 0.4);
-      color: #FAFAFA;
+      color: #2D2D2D;
     }
 
     /* ── Unlock button ── */
@@ -350,7 +350,7 @@
       margin-top: 16px;
     }
     .ml-unlock-cta p {
-      color: rgba(250, 250, 250, 0.5);
+      color: rgba(45, 45, 45, 0.5);
       font-size: 13px;
       margin: 0 0 8px 0;
     }
@@ -360,7 +360,7 @@
       margin-top: 16px;
       text-align: center;
       font-size: 11px;
-      color: rgba(250, 250, 250, 0.25);
+      color: rgba(45, 45, 45, 0.35);
     }
     .ml-footer-inline a {
       color: rgba(107, 70, 193, 0.5);
@@ -371,8 +371,8 @@
     /* ── Floating panel header ── */
     .ml-float-header {
       padding: 14px 20px;
-      background: linear-gradient(135deg, rgba(107, 70, 193, 0.12), rgba(25, 118, 210, 0.08));
-      border-bottom: 1px solid rgba(107, 70, 193, 0.15);
+      background: linear-gradient(135deg, rgba(107, 70, 193, 0.06), rgba(25, 118, 210, 0.04));
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -380,18 +380,18 @@
     .ml-float-header-title {
       font-size: 14px;
       font-weight: 600;
-      color: #FAFAFA;
+      color: #2D2D2D;
     }
     .ml-float-close {
       background: none;
       border: none;
-      color: rgba(250, 250, 250, 0.4);
+      color: rgba(45, 45, 45, 0.4);
       cursor: pointer;
       font-size: 20px;
       padding: 0;
       line-height: 1;
     }
-    .ml-float-close:hover { color: #FAFAFA; }
+    .ml-float-close:hover { color: #2D2D2D; }
 
     /* ── Responsive ── */
     @media (max-width: 640px) {
