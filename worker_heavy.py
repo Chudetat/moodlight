@@ -77,7 +77,7 @@ def run_step(step_name: str, command: list, step_num: int, total: int) -> bool:
     """Run a single pipeline step. Returns True on success, False on failure."""
     print(f"\n--- Step {step_num}/{total}: {step_name} ---", flush=True)
     try:
-        result = subprocess.run(command, timeout=1800)  # 30 min timeout
+        result = subprocess.run(command, timeout=5400)  # 90 min timeout
         if result.returncode == 0:
             print(f"OK: {step_name}", flush=True)
             return True
@@ -88,7 +88,7 @@ def run_step(step_name: str, command: list, step_num: int, total: int) -> bool:
             print(f"FAIL: {step_name} exited with code {result.returncode}", flush=True)
             return False
     except subprocess.TimeoutExpired:
-        print(f"FAIL: {step_name} timed out after 30 minutes", flush=True)
+        print(f"FAIL: {step_name} timed out after 90 minutes", flush=True)
         return False
 
 
