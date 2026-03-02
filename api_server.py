@@ -12,7 +12,9 @@ Start locally:
 
 import os
 import json
+import secrets
 import pandas as pd
+import bcrypt
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -54,7 +56,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -643,6 +645,224 @@ def ask(req: AskRequest, payload: dict = Depends(require_auth)):
         engine=engine,
     )
     return result
+
+
+# ---------------------------------------------------------------------------
+# Admin helpers
+# ---------------------------------------------------------------------------
+
+def _require_admin(payload: dict):
+    """Check JWT payload belongs to an admin. Raises 403 if not."""
+    if not is_admin_email(payload.get("email", "")):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
+# ---------------------------------------------------------------------------
+# Admin — Customer CRUD (Phase 0E, Step 1)
+# ---------------------------------------------------------------------------
+
+class CreateCustomerRequest(BaseModel):
+    email: str
+    name: str = ""
+    tier: str = "monthly"
+    initial_credits: int = 0
+
+
+class CreateCustomerResponse(BaseModel):
+    username: str
+    email: str
+    tier: str
+    temp_password: str
+
+
+class UpdateCustomerRequest(BaseModel):
+    tier: Optional[str] = None
+    extra_seats: Optional[int] = None
+
+
+class AddCreditsRequest(BaseModel):
+    credits: int
+
+
+@app.get("/api/admin/customers")
+def admin_list_customers(payload: dict = Depends(require_auth)):
+    """List all customers."""
+    _require_admin(payload)
+    engine = _require_engine()
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(sql_text(
+                "SELECT email, username, tier, brief_credits, "
+                "stripe_customer_id, stripe_subscription_id, extra_seats, created_at "
+                "FROM users ORDER BY created_at DESC"
+            )).fetchall()
+        customers = []
+        for r in rows:
+            customers.append({
+                "email": r[0],
+                "username": r[1],
+                "tier": r[2],
+                "brief_credits": r[3],
+                "stripe_customer_id": r[4],
+                "stripe_subscription_id": r[5],
+                "extra_seats": r[6],
+                "created_at": r[7].isoformat() if r[7] else None,
+            })
+        return {"customers": customers, "count": len(customers)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/admin/customers", response_model=CreateCustomerResponse)
+def admin_create_customer(req: CreateCustomerRequest, payload: dict = Depends(require_auth)):
+    """Create a new customer. Returns a temporary password."""
+    _require_admin(payload)
+    engine = _require_engine()
+
+    clean_email = req.email.strip().lower()
+    clean_name = req.name.strip() if req.name.strip() else clean_email.split("@")[0]
+    new_username = clean_name.lower().replace(" ", "_")
+
+    try:
+        with engine.connect() as conn:
+            # Check duplicate email
+            existing = conn.execute(
+                sql_text("SELECT 1 FROM users WHERE email = :email"),
+                {"email": clean_email},
+            ).fetchone()
+            if existing:
+                raise HTTPException(status_code=409, detail="User already exists")
+
+            # Ensure username uniqueness
+            existing_usernames = {
+                r[0] for r in conn.execute(sql_text("SELECT username FROM users")).fetchall()
+            }
+            if new_username in existing_usernames:
+                suffix = 1
+                while f"{new_username}_{suffix}" in existing_usernames:
+                    suffix += 1
+                new_username = f"{new_username}_{suffix}"
+
+            temp_password = secrets.token_urlsafe(12)
+            password_hash = bcrypt.hashpw(temp_password.encode(), bcrypt.gensalt()).decode()
+
+            conn.execute(sql_text(
+                "INSERT INTO users (username, email, password_hash, tier, brief_credits) "
+                "VALUES (:username, :email, :password_hash, :tier, :credits)"
+            ), {
+                "username": new_username,
+                "email": clean_email,
+                "password_hash": password_hash,
+                "tier": req.tier,
+                "credits": req.initial_credits,
+            })
+            conn.commit()
+
+        return CreateCustomerResponse(
+            username=new_username,
+            email=clean_email,
+            tier=req.tier,
+            temp_password=temp_password,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/api/admin/customers/{username}")
+def admin_update_customer(username: str, req: UpdateCustomerRequest, payload: dict = Depends(require_auth)):
+    """Update a customer's tier and/or extra_seats."""
+    _require_admin(payload)
+    engine = _require_engine()
+
+    if req.tier is None and req.extra_seats is None:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+
+    try:
+        with engine.connect() as conn:
+            existing = conn.execute(
+                sql_text("SELECT 1 FROM users WHERE username = :u"),
+                {"u": username},
+            ).fetchone()
+            if not existing:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            if req.tier is not None:
+                conn.execute(sql_text(
+                    "UPDATE users SET tier = :tier, updated_at = CURRENT_TIMESTAMP "
+                    "WHERE username = :u"
+                ), {"tier": req.tier, "u": username})
+
+            if req.extra_seats is not None:
+                conn.execute(sql_text(
+                    "UPDATE users SET extra_seats = :seats, updated_at = CURRENT_TIMESTAMP "
+                    "WHERE username = :u"
+                ), {"seats": req.extra_seats, "u": username})
+
+            conn.commit()
+        return {"status": "ok", "username": username}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/admin/customers/{username}")
+def admin_delete_customer(username: str, payload: dict = Depends(require_auth)):
+    """Delete a customer. Cannot delete your own account."""
+    _require_admin(payload)
+    engine = _require_engine()
+
+    if username == payload["sub"]:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+
+    try:
+        with engine.connect() as conn:
+            existing = conn.execute(
+                sql_text("SELECT 1 FROM users WHERE username = :u"),
+                {"u": username},
+            ).fetchone()
+            if not existing:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            conn.execute(
+                sql_text("DELETE FROM users WHERE username = :u"),
+                {"u": username},
+            )
+            conn.commit()
+        return {"status": "ok", "username": username}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/admin/customers/{username}/credits")
+def admin_add_credits(username: str, req: AddCreditsRequest, payload: dict = Depends(require_auth)):
+    """Add credits to a customer."""
+    _require_admin(payload)
+    engine = _require_engine()
+
+    try:
+        with engine.connect() as conn:
+            existing = conn.execute(
+                sql_text("SELECT 1 FROM users WHERE username = :u"),
+                {"u": username},
+            ).fetchone()
+            if not existing:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            conn.execute(sql_text(
+                "UPDATE users SET brief_credits = brief_credits + :credits, "
+                "updated_at = CURRENT_TIMESTAMP WHERE username = :u"
+            ), {"credits": req.credits, "u": username})
+            conn.commit()
+        return {"status": "ok", "username": username, "credits_added": req.credits}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
