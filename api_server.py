@@ -517,6 +517,30 @@ def chart_explain(req: ChartExplainRequest):
     return {"explanation": explanation}
 
 
+class AskRequest(BaseModel):
+    message: str
+    username: str = "admin"
+    conversation_history: list[dict] = []
+    last_search_info: Optional[dict] = None
+
+
+@app.post("/api/ask")
+def ask(req: AskRequest):
+    """Ask Moodlight chat endpoint for authenticated dashboard users."""
+    engine = _require_engine()
+
+    from ask_engine import ask_moodlight
+
+    result = ask_moodlight(
+        message=req.message,
+        username=req.username,
+        conversation_history=req.conversation_history,
+        last_search_info=req.last_search_info,
+        engine=engine,
+    )
+    return result
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
