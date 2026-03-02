@@ -17,8 +17,9 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlalchemy import text as sql_text
 
 from db_helper import (
@@ -30,6 +31,11 @@ from db_helper import (
     load_brand_stock_data,
 )
 from vlds_helper import calculate_brand_vlds
+from auth_helper import (
+    create_access_token, verify_password, lookup_user,
+    is_admin_email, require_auth, _DUMMY_HASH,
+)
+from tier_helper import ACTIVE_TIERS, TIER_FEATURES, log_user_event
 
 load_dotenv()
 
@@ -398,11 +404,103 @@ def get_pipeline_health():
 
 
 # ---------------------------------------------------------------------------
-# Claude-powered endpoints (Phase 0C)
+# Authentication (Phase 0D)
 # ---------------------------------------------------------------------------
 
-from pydantic import BaseModel
+class LoginRequest(BaseModel):
+    email: Optional[str] = None
+    username: Optional[str] = None
+    password: str
 
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    username: str
+    email: str
+    tier: str
+    is_admin: bool
+    expires_in: int
+
+
+class SessionResponse(BaseModel):
+    username: str
+    email: str
+    tier: str
+    is_admin: bool
+
+
+@app.post("/api/auth/login", response_model=LoginResponse)
+def auth_login(req: LoginRequest):
+    """Validate credentials and return a JWT."""
+    if not req.email and not req.username:
+        raise HTTPException(status_code=400, detail="email or username required")
+
+    engine = _require_engine()
+    user = lookup_user(engine, email=req.email, username=req.username)
+
+    if not user:
+        # Timing-attack mitigation: still run bcrypt on dummy hash
+        verify_password(req.password, _DUMMY_HASH)
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    if not verify_password(req.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = create_access_token(user["username"], user["email"])
+    log_user_event(user["username"], "login", f"via API ({req.email or req.username})")
+
+    return LoginResponse(
+        access_token=token,
+        username=user["username"],
+        email=user["email"],
+        tier=user["tier"],
+        is_admin=is_admin_email(user["email"]),
+        expires_in=24 * 3600,
+    )
+
+
+@app.get("/api/auth/session", response_model=SessionResponse)
+def auth_session(payload: dict = Depends(require_auth)):
+    """Validate JWT and return current user info (tier from DB live)."""
+    engine = _require_engine()
+    user = lookup_user(engine, username=payload["sub"])
+    if not user:
+        raise HTTPException(status_code=401, detail="User no longer exists")
+
+    return SessionResponse(
+        username=user["username"],
+        email=user["email"],
+        tier=user["tier"],
+        is_admin=is_admin_email(user["email"]),
+    )
+
+
+@app.post("/api/auth/logout")
+def auth_logout(payload: dict = Depends(require_auth)):
+    """Log the logout event. Stateless JWT — no server-side invalidation."""
+    log_user_event(payload["sub"], "logout", "via API")
+    return {"status": "ok"}
+
+
+def _require_active_tier(payload: dict, feature: str):
+    """Single DB query: check user exists + tier allows feature.
+    Raises 401 if user deleted, 403 if tier lacks access."""
+    engine = _require_engine()
+    user = lookup_user(engine, username=payload["sub"])
+    if not user:
+        raise HTTPException(status_code=401, detail="User no longer exists")
+    allowed_tiers = TIER_FEATURES.get(feature, ACTIVE_TIERS)
+    if user["tier"] not in allowed_tiers:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Your account ({user['tier']}) does not have access to {feature}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Claude-powered endpoints (Phase 0C)
+# ---------------------------------------------------------------------------
 
 class ReportRequest(BaseModel):
     subject: str
