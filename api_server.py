@@ -510,8 +510,9 @@ class ReportRequest(BaseModel):
 
 
 @app.post("/api/report")
-def generate_report(req: ReportRequest):
+def generate_report(req: ReportRequest, payload: dict = Depends(require_auth)):
     """Generate an on-demand intelligence report for a brand or topic."""
+    _require_active_tier(payload, "intelligence_reports")
     engine = _require_engine()
 
     from generate_report import generate_intelligence_report, email_report
@@ -538,8 +539,10 @@ class StrategicBriefRequest(BaseModel):
 
 
 @app.post("/api/strategic-brief")
-def strategic_brief(req: StrategicBriefRequest):
+def strategic_brief(req: StrategicBriefRequest, payload: dict = Depends(require_auth)):
     """Generate a strategic campaign brief powered by Claude."""
+    _require_active_tier(payload, "strategic_brief")
+    req.username = payload["sub"]  # JWT username overrides request body
     engine = _require_engine()
 
     from generate_strategic_brief import generate_strategic_brief, send_strategic_brief_email
@@ -584,8 +587,9 @@ class ChartExplainRequest(BaseModel):
 
 
 @app.post("/api/chart/explain")
-def chart_explain(req: ChartExplainRequest):
+def chart_explain(req: ChartExplainRequest, payload: dict = Depends(require_auth)):
     """Generate an AI explanation for a dashboard chart."""
+    _require_active_tier(payload, "intelligence_dashboard")
     engine = _require_engine()
 
     from chart_explainer import generate_chart_explanation
@@ -623,8 +627,10 @@ class AskRequest(BaseModel):
 
 
 @app.post("/api/ask")
-def ask(req: AskRequest):
+def ask(req: AskRequest, payload: dict = Depends(require_auth)):
     """Ask Moodlight chat endpoint for authenticated dashboard users."""
+    _require_active_tier(payload, "ask_moodlight")
+    req.username = payload["sub"]  # JWT username overrides request body
     engine = _require_engine()
 
     from ask_engine import ask_moodlight
