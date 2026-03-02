@@ -397,6 +397,42 @@ def get_pipeline_health():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ---------------------------------------------------------------------------
+# Claude-powered endpoints (Phase 0C)
+# ---------------------------------------------------------------------------
+
+from pydantic import BaseModel
+
+
+class ReportRequest(BaseModel):
+    subject: str
+    subject_type: str = "brand"
+    days: int = 7
+    email_recipient: Optional[str] = None
+
+
+@app.post("/api/report")
+def generate_report(req: ReportRequest):
+    """Generate an on-demand intelligence report for a brand or topic."""
+    engine = _require_engine()
+
+    from generate_report import generate_intelligence_report, email_report
+
+    report_text = generate_intelligence_report(
+        engine, req.subject, days=min(req.days, 30), subject_type=req.subject_type
+    )
+    if report_text.startswith("Error"):
+        raise HTTPException(status_code=500, detail=report_text)
+
+    email_sent = False
+    if req.email_recipient:
+        email_sent = email_report(
+            report_text, req.subject, req.email_recipient, days=req.days
+        )
+
+    return {"report": report_text, "email_sent": email_sent}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)

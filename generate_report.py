@@ -378,30 +378,16 @@ DATA:
 
 def _build_report_html(report_text, subject, days):
     """Convert report text to styled HTML for email or display."""
-    try:
-        from generate_brief import _build_brief_html
-        html = _build_brief_html(report_text)
-        # Replace header badge and title
-        html = html.replace("INTELLIGENCE BRIEF", "INTELLIGENCE REPORT")
-        html = html.replace("Daily Intelligence Brief", f"Intelligence Report: {subject}")
-        html = html.replace("Executive Brief", f"Intelligence Report — Last {days} days")
-        return html
-    except ImportError:
-        # Fallback: basic HTML
-        return f"""
-        <html>
-          <body style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #1976D2;">Intelligence Report: {subject}</h2>
-            <p style="color: #666;">Last {days} days</p>
-            <pre style="white-space: pre-wrap; font-size: 14px;">{report_text}</pre>
-            <hr>
-            <p style="color: #999; font-size: 12px;">
-              Moodlight Intelligence Platform — On-Demand Report<br>
-              <a href="https://moodlight.up.railway.app" style="color: #1976D2;">View Dashboard</a>
-            </p>
-          </body>
-        </html>
-        """
+    from email_templates import render_email, parse_and_render_sections
+
+    body_html = parse_and_render_sections(report_text)
+    return render_email(
+        badge_text="INTELLIGENCE REPORT",
+        badge_color="#1976D2",
+        title=f"Intelligence Report: {subject}",
+        body_html=body_html,
+        footer_text=f"Moodlight Intelligence Platform — {days}-Day Report",
+    )
 
 
 def email_report(report_text, subject, recipient_email, days=7):
