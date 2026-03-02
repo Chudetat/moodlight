@@ -1007,6 +1007,93 @@ def admin_ask_queries(payload: dict = Depends(require_auth)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ---------------------------------------------------------------------------
+# Admin — Teams (Phase 0E, Step 3)
+# ---------------------------------------------------------------------------
+
+class CreateTeamRequest(BaseModel):
+    team_name: str
+    owner_username: str
+
+
+@app.get("/api/admin/teams")
+def admin_list_teams(payload: dict = Depends(require_auth)):
+    """List all teams with member counts."""
+    _require_admin(payload)
+    engine = _require_engine()
+
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(sql_text(
+                "SELECT t.id, t.team_name, t.owner_username, "
+                "COUNT(tm.id) AS member_count, t.created_at "
+                "FROM teams t "
+                "LEFT JOIN team_members tm ON t.id = tm.team_id "
+                "GROUP BY t.id, t.team_name, t.owner_username, t.created_at "
+                "ORDER BY t.created_at DESC"
+            )).fetchall()
+
+        teams = [
+            {
+                "id": r[0],
+                "team_name": r[1],
+                "owner_username": r[2],
+                "member_count": r[3],
+                "created_at": r[4].isoformat() if r[4] else None,
+            }
+            for r in rows
+        ]
+        return {"teams": teams, "count": len(teams)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/admin/teams")
+def admin_create_team(req: CreateTeamRequest, payload: dict = Depends(require_auth)):
+    """Create a team. Validates owner exists and doesn't already own a team."""
+    _require_admin(payload)
+    engine = _require_engine()
+
+    try:
+        with engine.connect() as conn:
+            # Validate owner exists
+            owner = conn.execute(
+                sql_text("SELECT 1 FROM users WHERE username = :u"),
+                {"u": req.owner_username},
+            ).fetchone()
+            if not owner:
+                raise HTTPException(status_code=404, detail="Owner not found")
+
+            # Check owner doesn't already own a team
+            existing = conn.execute(
+                sql_text("SELECT 1 FROM teams WHERE owner_username = :u"),
+                {"u": req.owner_username},
+            ).fetchone()
+            if existing:
+                raise HTTPException(status_code=409, detail="Owner already has a team")
+
+            # Create team
+            result = conn.execute(sql_text(
+                "INSERT INTO teams (team_name, owner_username) "
+                "VALUES (:name, :owner) RETURNING id"
+            ), {"name": req.team_name, "owner": req.owner_username})
+            team_id = result.scalar()
+
+            # Add owner as member
+            conn.execute(sql_text(
+                "INSERT INTO team_members (team_id, username, role) "
+                "VALUES (:team_id, :username, 'owner')"
+            ), {"team_id": team_id, "username": req.owner_username})
+
+            conn.commit()
+
+        return {"status": "ok", "team_id": team_id, "team_name": req.team_name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
