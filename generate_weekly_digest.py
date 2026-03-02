@@ -423,29 +423,17 @@ def send_weekly_digest(digest_text):
 
     print(f"Sending weekly digest to {len(recipients)} recipient(s)")
 
-    # Build HTML using generate_brief.py formatting
-    try:
-        from generate_brief import _build_brief_html
-        html = _build_brief_html(digest_text)
-        # Replace the header badge text
-        html = html.replace("INTELLIGENCE BRIEF", "WEEKLY DIGEST")
-        html = html.replace("Daily Intelligence Brief", "Weekly Strategic Digest")
-        html = html.replace("Executive Brief", "Weekly Strategic Digest")
-    except ImportError:
-        # Fallback: basic HTML
-        html = f"""
-        <html>
-          <body style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #1976D2;">Weekly Strategic Digest</h2>
-            <pre style="white-space: pre-wrap; font-size: 14px;">{digest_text}</pre>
-            <hr>
-            <p style="color: #999; font-size: 12px;">
-              Moodlight Intelligence Platform — Weekly Digest<br>
-              <a href="https://moodlight.up.railway.app" style="color: #1976D2;">View Dashboard</a>
-            </p>
-          </body>
-        </html>
-        """
+    # Build HTML using shared email design primitives
+    from email_templates import render_email, parse_and_render_sections
+
+    body_html = parse_and_render_sections(digest_text)
+    html = render_email(
+        badge_text="WEEKLY DIGEST",
+        badge_color="#1976D2",
+        title="Weekly Strategic Digest",
+        body_html=body_html,
+        footer_text="Moodlight Intelligence Platform — Weekly Strategic Digest",
+    )
 
     week_end = datetime.now(timezone.utc).strftime("%B %d, %Y")
     subject = f"[Moodlight Digest] Weekly Strategic Intelligence — {week_end}"
