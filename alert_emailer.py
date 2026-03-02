@@ -152,6 +152,21 @@ def _get_recommendation(alert):
     return inv.get("recommendation")
 
 
+def _get_confidence(alert):
+    """Extract overall confidence from alert's investigation field."""
+    investigation = alert.get("investigation", "")
+    if not investigation:
+        return None
+    if isinstance(investigation, str):
+        try:
+            inv = json.loads(investigation)
+        except (json.JSONDecodeError, TypeError):
+            return None
+    else:
+        inv = investigation
+    return inv.get("overall_confidence")
+
+
 def send_alert_emails(alerts, engine=None):
     """Send email alerts to appropriate subscribers.
 
@@ -202,22 +217,24 @@ def send_alert_emails(alerts, engine=None):
     emailable = [a for a in alerts if a.get("severity") in ("critical", "warning")]
     emailable.sort(key=lambda a: 0 if a.get("severity") == "critical" else 1)
 
-    # Gate on reasoning chain recommendation: only email act_now.
-    # monitor, investigate_further, and likely_false_positive are dashboard-only.
-    # Alerts without a recommendation (single-turn investigation or no investigation)
-    # pass through — they're already filtered by severity above.
-    # Situation reports (alert_type=situation_report) are always passed through.
+    # Gate on reasoning chain recommendation + confidence floor.
+    # Only email act_now with confidence >= 65. Situation reports and
+    # single-turn alerts (no recommendation) pass through unchanged.
     _EMAIL_RECOMMENDATIONS = {"act_now"}
+    _MIN_EMAIL_CONFIDENCE = 65
     pre_gate = len(emailable)
     emailable = [
         a for a in emailable
         if a.get("alert_type") == "situation_report"
-        or _get_recommendation(a) is None
-        or _get_recommendation(a) in _EMAIL_RECOMMENDATIONS
+        or _get_recommendation(a) is None  # single-turn, pass through
+        or (
+            _get_recommendation(a) in _EMAIL_RECOMMENDATIONS
+            and (_get_confidence(a) or 0) >= _MIN_EMAIL_CONFIDENCE
+        )
     ]
     gated = pre_gate - len(emailable)
     if gated:
-        print(f"  Suppressed {gated} alert email(s) (low-confidence recommendation)")
+        print(f"  Suppressed {gated} alert email(s) (recommendation/confidence gate)")
     if not emailable:
         print("  No critical/warning alerts to email")
         return 0
