@@ -740,7 +740,7 @@ def main():
         situation_reports = []
         try:
             from alert_correlator import correlate_alerts, generate_situation_report
-            clusters = correlate_alerts(all_alerts)
+            clusters = correlate_alerts(stored_alerts)
             print(f"  Found {len(clusters)} correlated alert cluster(s)")
             for i, cluster in enumerate(clusters):
                 print(f"  Cluster {i+1}: {len(cluster)} alerts — "
@@ -749,6 +749,13 @@ def main():
                     cluster, engine=engine, df_news=df_news, df_social=df_social,
                 )
                 situation_reports.append(sit_report)
+                # Gate on recommendation: suppress noise situation reports
+                # same pattern as individual alerts (lines 708-712)
+                _sit_inv = sit_report.get("investigation")
+                _sit_rec = _sit_inv.get("recommendation") if isinstance(_sit_inv, dict) else None
+                if _sit_rec and _sit_rec not in {"act_now", "monitor"}:
+                    print(f"    SUPPRESSED sit report (recommendation={_sit_rec}): {sit_report['title'][:60]}")
+                    continue
                 # Store and email situation reports
                 sit_cooldown = build_cooldown_key(sit_report)
                 if not check_cooldown(engine, sit_cooldown, hours=6):

@@ -218,15 +218,14 @@ def send_alert_emails(alerts, engine=None):
     emailable.sort(key=lambda a: 0 if a.get("severity") == "critical" else 1)
 
     # Gate on reasoning chain recommendation + confidence floor.
-    # Only email act_now with confidence >= 65. Situation reports and
-    # single-turn alerts (no recommendation) pass through unchanged.
+    # Only email act_now with confidence >= 65. Single-turn alerts
+    # (no recommendation) pass through unchanged.
     _EMAIL_RECOMMENDATIONS = {"act_now"}
     _MIN_EMAIL_CONFIDENCE = 65
     pre_gate = len(emailable)
     emailable = [
         a for a in emailable
-        if a.get("alert_type") == "situation_report"
-        or _get_recommendation(a) is None  # single-turn, pass through
+        if _get_recommendation(a) is None  # single-turn, pass through
         or (
             _get_recommendation(a) in _EMAIL_RECOMMENDATIONS
             and (_get_confidence(a) or 0) >= _MIN_EMAIL_CONFIDENCE

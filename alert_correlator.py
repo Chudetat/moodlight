@@ -6,6 +6,7 @@ and generates unified "Situation Reports" that connect the dots.
 """
 
 import os
+import re
 import json
 from datetime import datetime, timezone
 from anthropic import Anthropic
@@ -232,27 +233,30 @@ def generate_situation_report(cluster, engine=None, df_news=None, df_social=None
         context += f"\n\nBrands involved: {', '.join(brands)}"
     context += f"\nAlert types: {', '.join(alert_types)}"
 
-    prompt = f"""You are a senior intelligence analyst. Multiple alert signals have fired simultaneously
-in our monitoring system. Your job is to determine HOW these signals are connected and what the
-unified situation means strategically.
+    prompt = f"""You are a senior intelligence analyst. Multiple alert signals have fired simultaneously.
+Determine if these signals represent a GENUINE compound situation or are merely
+co-occurring noise (same topic triggering multiple detectors independently).
 
 {context}
 
-Analyze these correlated signals and produce a SITUATION REPORT:
+Respond in EXACTLY this format:
 
-1. CONNECTION: How are these signals related? What is the common thread or causal chain?
-2. UNIFIED ASSESSMENT: What is the overall situation when you connect these dots?
-3. SEVERITY: Is the combined situation more serious than any individual alert suggests?
-4. STRATEGIC IMPLICATION: What does this mean for decision-makers?
-5. RECOMMENDED ACTION: What should be done NOW given the full picture?
+CONNECTION: [1 sentence — how these signals are causally linked, or "No causal link — independent co-occurring signals."]
+
+BOTTOM LINE: [1-2 sentences — what this means for decision-makers]
+
+RECOMMENDED ACTION: [1 sentence — what to do now]
+
+Overall confidence: [0-100]
+Recommendation: [ACT_NOW|MONITOR|INVESTIGATE_FURTHER|LIKELY_FALSE_POSITIVE]
 
 CRITICAL: If any alert's "Prior analysis" identifies it as a false positive, misclassification, or
 data quality issue, you MUST factor that into your assessment. Do NOT amplify signals that have
-already been assessed as unreliable. A situation report built on false positives is worse than no
-report at all.
+already been assessed as unreliable.
 
-Be direct and specific. Connect the dots between signals — that's the entire point.
-Target 200-400 words."""
+If these alerts share a topic but have no causal relationship beyond the same topic being discussed,
+confidence should be below 30 and recommendation should be LIKELY_FALSE_POSITIVE. Co-detection is
+not correlation. Only escalate when the combination reveals something no individual alert captured."""
 
     try:
         response = client.messages.create(
@@ -268,6 +272,35 @@ Target 200-400 words."""
         investigation = response.content[0].text
     except Exception as e:
         investigation = f"Situation report generation failed: {e}"
+
+    # Parse structured fields from response (same pattern as reasoning_chain.py)
+    overall_confidence = 50
+    match = re.search(r'overall\s+confidence[:\s]+(\d{1,3})', investigation, re.IGNORECASE)
+    if match:
+        overall_confidence = min(100, max(0, int(match.group(1))))
+
+    recommendation = "monitor"
+    rec_match = re.search(
+        r'\*?\*?Recommendation\*?\*?:\s*(ACT_NOW|MONITOR|INVESTIGATE_FURTHER|LIKELY_FALSE_POSITIVE)',
+        investigation,
+        re.IGNORECASE | re.MULTILINE
+    )
+    if rec_match:
+        recommendation = rec_match.group(1).lower()
+
+    investigation_dict = {
+        "analysis": investigation,
+        "overall_confidence": overall_confidence,
+        "recommendation": recommendation,
+    }
+
+    # Derive severity from confidence instead of hardcoding critical
+    if overall_confidence >= 75:
+        derived_severity = "critical"
+    elif overall_confidence >= 40:
+        derived_severity = "warning"
+    else:
+        derived_severity = "info"
 
     # Build the situation report alert
     title_parts = []
@@ -304,10 +337,10 @@ Target 200-400 words."""
 
     return {
         "alert_type": "situation_report",
-        "severity": "critical",
+        "severity": derived_severity,
         "title": title,
         "summary": "\n".join(summary_parts),
-        "investigation": investigation,
+        "investigation": investigation_dict,
         "data": json.dumps(correlated_data),
         "brand": ", ".join(brands) if brands else None,
         "username": cluster[0].get("username"),
