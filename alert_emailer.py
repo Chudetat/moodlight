@@ -285,7 +285,12 @@ def _build_subject(alert):
 
 
 def _build_email_html(alert):
-    """Build HTML email body for an alert."""
+    """Build HTML email body for an alert.
+
+    Multi-step chain alerts get an executive briefing format (BOTTOM LINE,
+    WHY THIS MATTERS, KEY EVIDENCE). Single-turn alerts keep the legacy
+    compact format.
+    """
     severity_colors = {
         "critical": "#DC143C",
         "warning": "#FFB300",
@@ -295,7 +300,7 @@ def _build_email_html(alert):
     severity = alert.get("severity", "info").upper()
 
     investigation = alert.get("investigation", "")
-    investigation_html = ""
+    inv = None
     if investigation:
         if isinstance(investigation, str):
             try:
@@ -305,50 +310,26 @@ def _build_email_html(alert):
         else:
             inv = investigation
 
-        # Check for reasoning chain steps
-        if inv.get("steps"):
-            chain_parts = []
-            oc = inv.get("overall_confidence", "?")
-            rec = inv.get("recommendation", "monitor")
-            rec_labels = {"act_now": "Act Now", "monitor": "Monitor", "investigate_further": "Investigate Further"}
-            chain_parts.append(
-                f'<p style="margin: 0 0 10px 0;"><strong>Confidence:</strong> {oc}/100 '
-                f'| <strong>Recommendation:</strong> {rec_labels.get(rec, rec)}</p>'
-            )
-            for step_data in inv["steps"]:
-                step_title = step_data.get("title", step_data.get("step", ""))
-                step_content = step_data.get("content", "")
-                step_conf = step_data.get("confidence", 0)
-                conf_pct = f"{step_conf:.0%}" if isinstance(step_conf, float) and step_conf <= 1 else str(step_conf)
-                chain_parts.append(
-                    f'<div style="margin: 8px 0; padding: 8px 12px; '
-                    f'border-left: 3px solid #1976D2; background: #fafafa;">'
-                    f'<strong>{step_title}</strong> '
-                    f'<span style="color: #999; font-size: 11px;">({conf_pct})</span>'
-                    f'<p style="margin: 4px 0 0 0; font-size: 13px;">{step_content}</p>'
-                    f'</div>'
-                )
+    # --- Multi-step chain: executive briefing format ---
+    if inv and inv.get("steps"):
+        return _build_chain_email_html(alert, inv, color, severity)
+
+    # --- Single-turn / legacy format (already concise) ---
+    investigation_html = ""
+    if inv:
+        sections = []
+        if inv.get("analysis"):
+            sections.append(f"<p><strong>Analysis:</strong> {inv['analysis']}</p>")
+        if inv.get("implications"):
+            sections.append(f"<p><strong>Implications:</strong> {inv['implications']}</p>")
+        if inv.get("watch_items"):
+            sections.append(f"<p><strong>Watch:</strong><br>{inv['watch_items']}</p>")
+        if sections:
             investigation_html = (
                 '<div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">'
-                + "".join(chain_parts)
+                + "".join(sections)
                 + "</div>"
             )
-        else:
-            # Legacy single-turn format
-            sections = []
-            if inv.get("analysis"):
-                sections.append(f"<p><strong>Analysis:</strong> {inv['analysis']}</p>")
-            if inv.get("implications"):
-                sections.append(f"<p><strong>Implications:</strong> {inv['implications']}</p>")
-            if inv.get("watch_items"):
-                sections.append(f"<p><strong>Watch:</strong><br>{inv['watch_items']}</p>")
-
-            if sections:
-                investigation_html = (
-                    '<div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">'
-                    + "".join(sections)
-                    + "</div>"
-                )
 
     brand_badge = ""
     if alert.get("brand"):
@@ -371,18 +352,132 @@ def _build_email_html(alert):
             {datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC")}
           </p>
         </div>
-
         <p style="font-size: 15px; color: #333; line-height: 1.6;">
           {alert.get('summary', '')}
         </p>
-
         {investigation_html}
-
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
         <p style="color: #999; font-size: 12px;">
-          Moodlight Intelligence Platform — Autonomous Alert System<br>
+          Moodlight Intelligence Platform<br>
           <a href="https://moodlight.up.railway.app" style="color: #1976D2;">View Dashboard</a>
         </p>
+      </body>
+    </html>
+    """
+
+
+def _build_chain_email_html(alert, inv, color, severity):
+    """Build executive briefing HTML for multi-step reasoning chain alerts."""
+    oc = inv.get("overall_confidence", 0)
+    rec = inv.get("recommendation", "monitor")
+    rec_labels = {"act_now": "Act Now", "monitor": "Monitor", "investigate_further": "Investigate"}
+
+    # Confidence bar color
+    if oc >= 75:
+        conf_color = "#2E7D32"
+    elif oc >= 40:
+        conf_color = "#F9A825"
+    else:
+        conf_color = "#C62828"
+
+    # Extract structured data from chain steps
+    why_items = []
+    evidence_items = []
+    for step in inv.get("steps", []):
+        step_name = step.get("step", "")
+        if step_name == "strategic" and step.get("recommended_actions"):
+            why_items = [a for a in step["recommended_actions"][:3]]
+        if step_name == "causal" and step.get("likely_causes"):
+            evidence_items = [c for c in step["likely_causes"][:2]]
+
+    # Fallback: extract from causal step content if no structured likely_causes
+    if not evidence_items:
+        for step in inv.get("steps", []):
+            if step.get("step") == "causal" and step.get("content"):
+                sentences = [s.strip() for s in step["content"].split(".") if len(s.strip()) > 20]
+                evidence_items = sentences[:2]
+                break
+
+    # Fallback: extract from strategic step content if no structured recommended_actions
+    if not why_items:
+        for step in inv.get("steps", []):
+            if step.get("step") == "strategic" and step.get("content"):
+                sentences = [s.strip() for s in step["content"].split(".") if len(s.strip()) > 20]
+                why_items = sentences[:2]
+                break
+
+    brand_label = alert.get("brand", "")
+    brand_line = f'<span style="color: #555; font-size: 14px; font-weight: 600;">{brand_label}</span><br>' if brand_label else ""
+
+    # Bottom line: summary + first recommended action for act_now
+    bottom_line = alert.get("summary", "")
+    if rec == "act_now" and why_items:
+        bottom_line += f" {why_items[0]}"
+
+    # Build bullet lists
+    why_html = ""
+    if why_items:
+        bullets = "".join(
+            f'<li style="margin: 4px 0; color: #333; font-size: 14px; line-height: 1.5;">{item}</li>'
+            for item in why_items
+        )
+        why_html = f"""
+        <div style="margin: 0 0 20px 0;">
+          <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: 700; color: #888; letter-spacing: 1px;">WHY THIS MATTERS</p>
+          <ul style="margin: 0; padding-left: 18px;">{bullets}</ul>
+        </div>"""
+
+    evidence_html = ""
+    if evidence_items:
+        bullets = "".join(
+            f'<li style="margin: 4px 0; color: #333; font-size: 14px; line-height: 1.5;">{item}</li>'
+            for item in evidence_items
+        )
+        evidence_html = f"""
+        <div style="margin: 0 0 20px 0;">
+          <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: 700; color: #888; letter-spacing: 1px;">KEY EVIDENCE</p>
+          <ul style="margin: 0; padding-left: 18px;">{bullets}</ul>
+        </div>"""
+
+    # Confidence bar (visual)
+    filled = max(1, int(oc / 100 * 16))
+    bar = "█" * filled + "░" * (16 - filled)
+
+    return f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+        <!-- Header -->
+        <div style="border-bottom: 2px solid {color}; padding-bottom: 12px; margin-bottom: 20px;">
+          <span style="background: {color}; color: white; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;">
+            {severity}
+          </span>
+          <h2 style="margin: 10px 0 4px 0; color: #222; font-size: 20px;">{alert.get('title', 'Alert')}</h2>
+          {brand_line}
+          <span style="color: #999; font-size: 12px;">{datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC")}</span>
+        </div>
+
+        <!-- Bottom Line -->
+        <div style="background: #f8f9fa; border-left: 4px solid {color}; padding: 14px 16px; margin: 0 0 16px 0; border-radius: 0 6px 6px 0;">
+          <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 700; color: #888; letter-spacing: 1px;">BOTTOM LINE</p>
+          <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #222;">{bottom_line}</p>
+        </div>
+
+        <!-- Confidence -->
+        <div style="margin: 0 0 20px 0; padding: 0 2px;">
+          <span style="font-size: 13px; color: #555;">Confidence: <strong style="color: {conf_color};">{oc}/100</strong></span>
+          <span style="margin-left: 12px; font-size: 13px; color: #555;">| {rec_labels.get(rec, rec)}</span>
+          <br>
+          <span style="font-family: monospace; font-size: 12px; color: {conf_color}; letter-spacing: 1px;">{bar}</span>
+        </div>
+
+        {why_html}
+        {evidence_html}
+
+        <!-- Footer -->
+        <div style="border-top: 1px solid #eee; padding-top: 16px; margin-top: 8px; text-align: center;">
+          <a href="https://moodlight.up.railway.app" style="display: inline-block; background: #1976D2; color: white; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600;">View Full Analysis</a>
+          <p style="color: #aaa; font-size: 11px; margin-top: 12px;">Moodlight Intelligence Platform</p>
+        </div>
       </body>
     </html>
     """
