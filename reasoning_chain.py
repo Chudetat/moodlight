@@ -643,13 +643,16 @@ Reasoning: [2-3 sentences explaining your assessment]"""
     if match:
         overall = min(100, max(0, int(match.group(1))))
 
-    # Parse recommendation
+    # Parse recommendation — match only the structured "Recommendation:" line
+    # to avoid false positives from prose like "not urgent enough for ACT_NOW"
     recommendation = "monitor"
-    text_lower = text.lower()
-    if "act_now" in text_lower or "act now" in text_lower:
-        recommendation = "act_now"
-    elif "investigate_further" in text_lower or "investigate further" in text_lower:
-        recommendation = "investigate_further"
+    rec_match = re.search(
+        r'\*?\*?Recommendation\*?\*?:\s*(ACT_NOW|MONITOR|INVESTIGATE_FURTHER)',
+        text,
+        re.IGNORECASE | re.MULTILINE
+    )
+    if rec_match:
+        recommendation = rec_match.group(1).lower()
 
     return {
         "step": "confidence",
