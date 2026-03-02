@@ -433,6 +433,53 @@ def generate_report(req: ReportRequest):
     return {"report": report_text, "email_sent": email_sent}
 
 
+class StrategicBriefRequest(BaseModel):
+    user_need: str
+    username: str = "admin"
+    email_recipient: Optional[str] = None
+
+
+@app.post("/api/strategic-brief")
+def strategic_brief(req: StrategicBriefRequest):
+    """Generate a strategic campaign brief powered by Claude."""
+    engine = _require_engine()
+
+    from generate_strategic_brief import generate_strategic_brief, send_strategic_brief_email
+
+    # Load combined data (same as /api/data/combined)
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+    frames = []
+    for table in ("news_scored", "social_scored"):
+        try:
+            df = pd.read_sql(
+                sql_text(f"SELECT * FROM {table} WHERE created_at >= :cutoff"),
+                engine,
+                params={"cutoff": cutoff},
+            )
+            if not df.empty:
+                frames.append(df)
+        except Exception:
+            pass
+
+    combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    if "created_at" in combined.columns:
+        combined["created_at"] = pd.to_datetime(
+            combined["created_at"], utc=True, errors="coerce"
+        )
+
+    brief_text, framework_names = generate_strategic_brief(
+        req.user_need, combined, username=req.username
+    )
+
+    email_sent = False
+    if req.email_recipient:
+        email_sent = send_strategic_brief_email(
+            req.email_recipient, req.user_need, brief_text, frameworks=framework_names
+        )
+
+    return {"brief": brief_text, "frameworks": framework_names, "email_sent": email_sent}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
