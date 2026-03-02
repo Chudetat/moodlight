@@ -865,6 +865,148 @@ def admin_add_credits(username: str, req: AddCreditsRequest, payload: dict = Dep
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ---------------------------------------------------------------------------
+# Admin — Analytics (Phase 0E, Step 2)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/admin/analytics")
+def admin_analytics(payload: dict = Depends(require_auth)):
+    """Active users, feature usage, last activity, and feature adoption."""
+    _require_admin(payload)
+    engine = _require_engine()
+
+    try:
+        with engine.connect() as conn:
+            # Active users (7d and 30d)
+            active_7d = conn.execute(sql_text(
+                "SELECT COUNT(DISTINCT username) FROM user_events "
+                "WHERE created_at >= NOW() - INTERVAL '7 days'"
+            )).scalar() or 0
+
+            active_30d = conn.execute(sql_text(
+                "SELECT COUNT(DISTINCT username) FROM user_events "
+                "WHERE created_at >= NOW() - INTERVAL '30 days'"
+            )).scalar() or 0
+
+            # Feature usage (last 30 days)
+            usage_rows = conn.execute(sql_text(
+                "SELECT event_type, COUNT(*) AS total, COUNT(DISTINCT username) AS unique_users "
+                "FROM user_events WHERE created_at >= NOW() - INTERVAL '30 days' "
+                "GROUP BY event_type ORDER BY total DESC"
+            )).fetchall()
+            feature_usage = [
+                {"event_type": r[0], "total": r[1], "unique_users": r[2]}
+                for r in usage_rows
+            ]
+
+            # Last activity per user
+            activity_rows = conn.execute(sql_text(
+                "SELECT username, MAX(created_at) AS last_active, COUNT(*) AS total_events "
+                "FROM user_events GROUP BY username ORDER BY last_active DESC"
+            )).fetchall()
+            now = datetime.now(timezone.utc)
+            user_activity = []
+            for r in activity_rows:
+                last_active = r[1]
+                if last_active and last_active.tzinfo is None:
+                    last_active = last_active.replace(tzinfo=timezone.utc)
+                days_ago = (now - last_active).days if last_active else None
+                user_activity.append({
+                    "username": r[0],
+                    "last_active": last_active.isoformat() if last_active else None,
+                    "total_events": r[2],
+                    "status": "At Risk" if days_ago is not None and days_ago >= 14 else "Active",
+                })
+
+            # Feature adoption counts
+            brand_watchlist_users = conn.execute(sql_text(
+                "SELECT COUNT(DISTINCT username) FROM brand_watchlist"
+            )).scalar() or 0
+            topic_watchlist_users = conn.execute(sql_text(
+                "SELECT COUNT(DISTINCT username) FROM topic_watchlist"
+            )).scalar() or 0
+            feedback_users = conn.execute(sql_text(
+                "SELECT COUNT(DISTINCT username) FROM alert_feedback"
+            )).scalar() or 0
+
+        return {
+            "active_users_7d": active_7d,
+            "active_users_30d": active_30d,
+            "feature_usage": feature_usage,
+            "user_activity": user_activity,
+            "adoption": {
+                "brand_watchlist_users": brand_watchlist_users,
+                "topic_watchlist_users": topic_watchlist_users,
+                "alert_feedback_users": feedback_users,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/ask-queries")
+def admin_ask_queries(payload: dict = Depends(require_auth)):
+    """Widget analytics: query list, counts, unique visitors, top brands."""
+    _require_admin(payload)
+    engine = _require_engine()
+
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(sql_text(
+                "SELECT id, question, detected_brand, detected_topic, "
+                "is_paid, ip_hash, created_at "
+                "FROM ask_queries ORDER BY created_at DESC LIMIT 200"
+            )).fetchall()
+
+        queries = []
+        paid_count = 0
+        ip_hashes = set()
+        brands = []
+        for r in rows:
+            queries.append({
+                "id": r[0],
+                "question": r[1],
+                "detected_brand": r[2],
+                "detected_topic": r[3],
+                "is_paid": r[4],
+                "ip_hash": r[5],
+                "created_at": r[6].isoformat() if r[6] else None,
+            })
+            if r[4]:
+                paid_count += 1
+            if r[5]:
+                ip_hashes.add(r[5])
+            if r[2]:
+                brands.append(r[2])
+
+        # Top 10 brands by frequency
+        brand_counts: dict[str, int] = {}
+        for b in brands:
+            brand_counts[b] = brand_counts.get(b, 0) + 1
+        top_brands = sorted(brand_counts, key=brand_counts.get, reverse=True)[:10]
+
+        return {
+            "queries": queries,
+            "total": len(queries),
+            "paid": paid_count,
+            "free": len(queries) - paid_count,
+            "unique_visitors": len(ip_hashes),
+            "top_brands": top_brands,
+        }
+    except Exception as e:
+        # Graceful fallback if ask_queries table doesn't exist
+        if "does not exist" in str(e).lower() or "relation" in str(e).lower():
+            return {
+                "queries": [],
+                "total": 0,
+                "paid": 0,
+                "free": 0,
+                "unique_visitors": 0,
+                "top_brands": [],
+            }
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
