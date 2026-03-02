@@ -480,6 +480,43 @@ def strategic_brief(req: StrategicBriefRequest):
     return {"brief": brief_text, "frameworks": framework_names, "email_sent": email_sent}
 
 
+class ChartExplainRequest(BaseModel):
+    chart_type: str
+    data_summary: str
+
+
+@app.post("/api/chart/explain")
+def chart_explain(req: ChartExplainRequest):
+    """Generate an AI explanation for a dashboard chart."""
+    engine = _require_engine()
+
+    from chart_explainer import generate_chart_explanation
+
+    # Load combined data for headline retrieval
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+    frames = []
+    for table in ("news_scored", "social_scored"):
+        try:
+            df = pd.read_sql(
+                sql_text(f"SELECT * FROM {table} WHERE created_at >= :cutoff"),
+                engine,
+                params={"cutoff": cutoff},
+            )
+            if not df.empty:
+                frames.append(df)
+        except Exception:
+            pass
+
+    combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    if "created_at" in combined.columns:
+        combined["created_at"] = pd.to_datetime(
+            combined["created_at"], utc=True, errors="coerce"
+        )
+
+    explanation = generate_chart_explanation(req.chart_type, req.data_summary, combined)
+    return {"explanation": explanation}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
