@@ -1,0 +1,10 @@
+pandas>=2.0.0
+requests
+feedparser
+transformers
+torch
+anthropic
+python-dotenv>=1.0.0
+sqlalchemy
+psycopg2-binary
+fpdf2

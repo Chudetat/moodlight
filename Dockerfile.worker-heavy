@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements-worker-heavy.txt .
+RUN pip install --no-cache-dir \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    -r requirements-worker-heavy.txt
+
+# Pre-cache the RoBERTa model so it's baked into the image
+ENV HF_HOME=/app/.cache/huggingface
+RUN python -c "from transformers import pipeline; pipeline('text-classification', model='SamLowe/roberta-base-go_emotions', top_k=None)"
+
+COPY *.py ./
+COPY static/ ./static/
+
+CMD ["python", "worker_heavy.py"]
