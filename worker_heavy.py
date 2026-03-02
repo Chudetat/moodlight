@@ -24,15 +24,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Each job is (label, list of (step_name, command) tuples)
+# Each job is (label, list of step tuples).
+# Step tuple: (step_name, command) or (step_name, command, critical).
+# critical defaults to True. Non-critical steps log a warning on failure
+# but don't abort the pipeline — used for independent data fetchers that
+# write to their own tables with no downstream dependency.
 JOBS = {
     "fetch-news": {
         "label": "Fetch News (Hourly)",
         "steps": [
-            ("Fetch markets", [sys.executable, "fetch_markets.py"]),
-            ("Fetch economic indicators", [sys.executable, "fetch_economic_indicators.py"]),
-            ("Fetch commodities", [sys.executable, "fetch_commodities.py"]),
-            ("Fetch brand stocks", [sys.executable, "fetch_brand_stocks.py"]),
+            ("Fetch markets", [sys.executable, "fetch_markets.py"], False),
+            ("Fetch economic indicators", [sys.executable, "fetch_economic_indicators.py"], False),
+            ("Fetch commodities", [sys.executable, "fetch_commodities.py"], False),
+            ("Fetch brand stocks", [sys.executable, "fetch_brand_stocks.py"], False),
             ("Fetch news (RSS)", [sys.executable, "fetch_news_rss.py"]),
             ("Score news", [sys.executable, "score_empathy.py", "news.csv", "news_scored.csv"]),
             ("Save news to PostgreSQL", [sys.executable, "save_to_db.py", "news_scored.csv", "news_scored"]),
@@ -140,12 +144,17 @@ def main():
     print(f"Job: {job_name} ({len(steps)} steps)")
     print("=" * 60)
 
-    for i, (step_name, command) in enumerate(steps, 1):
+    for i, step in enumerate(steps, 1):
+        step_name, command = step[0], step[1]
+        critical = step[2] if len(step) > 2 else True
         ok = run_step(step_name, command, i, len(steps))
         if not ok:
-            print(f"\n{job_label} FAILED at step {i}/{len(steps)}: {step_name}")
-            send_failure_email(job_label, step_name)
-            sys.exit(1)
+            if critical:
+                print(f"\n{job_label} FAILED at step {i}/{len(steps)}: {step_name}")
+                send_failure_email(job_label, step_name)
+                sys.exit(1)
+            else:
+                print(f"SKIPPED: {step_name} failed (non-critical, continuing pipeline)", flush=True)
 
     print(f"\n{job_label} completed successfully ({len(steps)} steps).")
     sys.exit(0)
