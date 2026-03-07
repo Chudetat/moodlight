@@ -1705,6 +1705,46 @@ def api_log_user_event(req: UserEventRequest, payload: dict = Depends(require_au
     return {"status": "ok"}
 
 
+# ---------------------------------------------------------------------------
+# Support Email
+# ---------------------------------------------------------------------------
+
+class SupportRequest(BaseModel):
+    message: str
+
+
+@app.post("/api/support")
+def api_send_support(req: SupportRequest, payload: dict = Depends(require_auth)):
+    """Send a support email to intel@moodlightintel.com."""
+    username = payload["sub"]
+    message = req.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+
+    import smtplib
+    from email.mime.text import MIMEText
+
+    sender = os.getenv("EMAIL_ADDRESS", "")
+    password = os.getenv("EMAIL_PASSWORD", "")
+    if not sender or not password:
+        raise HTTPException(status_code=503, detail="Email service unavailable. Please email intel@moodlightintel.com directly.")
+
+    try:
+        body = f"Support request from: {username}\n\n{message}"
+        msg = MIMEText(body, "plain")
+        msg["Subject"] = f"[Moodlight Support] {username}"
+        msg["From"] = sender
+        msg["To"] = "intel@moodlightintel.com"
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as srv:
+            srv.login(sender, password)
+            srv.send_message(msg)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not send: {e}")
+
+    log_user_event(username, "support_request")
+    return {"status": "ok"}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
