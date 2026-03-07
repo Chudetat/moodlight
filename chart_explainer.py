@@ -282,7 +282,43 @@ Data: {data_summary}
 Headlines driving sentiment:
 {headline_context}
 
-What does this divergence signal? Is the crowd wrong or are markets ahead? Any opportunity for contrarian positioning? Match your tone interpretation to the actual score. Be specific and actionable."""
+What does this divergence signal? Is the crowd wrong or are markets ahead? Any opportunity for contrarian positioning? Match your tone interpretation to the actual score. Be specific and actionable.""",
+
+        "market_sentiment": f"""Based on this market index data and the relevant headlines below, explain in 2-3 sentences what's driving market moves today.
+
+Data: {data_summary}
+
+Relevant headlines:
+{headline_context}
+
+What macro events or sector shifts explain these movements? Any notable divergences between indices? Be specific.""",
+
+        "brand_vlds": f"""Based on this brand's VLDS (Velocity, Longevity, Density, Scarcity) metrics and the relevant headlines below, explain in 2-3 sentences what the brand's current narrative position looks like.
+
+Data: {data_summary}
+
+Relevant headlines:
+{headline_context}
+
+What do these metrics mean for the brand's cultural relevance? Where are the opportunities and risks? Be strategic.""",
+
+        "competitive_war_room": f"""Based on this competitive landscape data (share of voice and competitive gaps) and relevant headlines, explain in 2-3 sentences the competitive dynamics.
+
+Data: {data_summary}
+
+Relevant headlines:
+{headline_context}
+
+Which competitors are gaining ground and why? Where are the strategic opportunities? Be specific about competitive positioning.""",
+
+        "brand_comparison": f"""Based on this brand comparison data and headlines, explain in 2-3 sentences the key differences between these brands' cultural positioning.
+
+Data: {data_summary}
+
+Relevant headlines:
+{headline_context}
+
+How do these brands differ in audience perception? Where does each have an advantage? Be specific and actionable.""",
     }
 
     prompt = prompts.get(chart_type, "Explain this data pattern in 2-3 sentences.")
