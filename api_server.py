@@ -37,7 +37,20 @@ from auth_helper import (
     create_access_token, verify_password, lookup_user,
     is_admin_email, require_auth, _DUMMY_HASH,
 )
-from tier_helper import ACTIVE_TIERS, TIER_FEATURES, log_user_event
+from tier_helper import (
+    ACTIVE_TIERS, TIER_FEATURES, TIER_LIMITS, log_user_event,
+    mark_alert_read, mark_all_alerts_read,
+    get_user_alert_preferences, update_user_alert_preferences,
+    bulk_update_alert_sensitivity,
+    get_user_preferences, update_user_preferences,
+    get_report_schedules, create_report_schedule,
+    toggle_report_schedule, delete_report_schedule,
+    get_user_team, get_team_members, invite_team_member,
+    remove_team_member, get_team_watchlist_brands, get_team_watchlist_topics,
+    decrement_brief_credits,
+)
+from alert_feedback import record_feedback
+from competitor_discovery import ensure_competitor_tables, ensure_competitors_cached
 
 load_dotenv()
 
@@ -1092,6 +1105,592 @@ def admin_create_team(req: CreateTeamRequest, payload: dict = Depends(require_au
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Watchlist CRUD (Phase 2, Step 0A)
+# ---------------------------------------------------------------------------
+
+class AddBrandRequest(BaseModel):
+    brand_name: str
+
+
+class AddTopicRequest(BaseModel):
+    topic_name: str
+    is_category: bool = False
+
+
+@app.post("/api/watchlist/brands")
+def add_brand_to_watchlist(req: AddBrandRequest, payload: dict = Depends(require_auth)):
+    """Add a brand to the user's watchlist. Triggers competitor discovery."""
+    username = payload["sub"]
+    engine = _require_engine()
+    brand = req.brand_name.strip()
+
+    if not brand or len(brand) > 100:
+        raise HTTPException(status_code=400, detail="Brand name must be 1-100 characters")
+
+    try:
+        with engine.connect() as conn:
+            # Check current count against tier limit
+            count = conn.execute(
+                sql_text("SELECT COUNT(*) FROM brand_watchlist WHERE username = :u"),
+                {"u": username},
+            ).scalar() or 0
+
+            max_brands = TIER_LIMITS.get("brand_watchlist_max", {})
+            user_row = conn.execute(
+                sql_text("SELECT tier FROM users WHERE username = :u"),
+                {"u": username},
+            ).fetchone()
+            user_tier = user_row[0] if user_row else "free"
+            limit = max_brands.get(user_tier, 5)
+
+            if count >= limit:
+                raise HTTPException(status_code=400, detail=f"Maximum {limit} brands reached")
+
+            # Check duplicate
+            existing = conn.execute(
+                sql_text("SELECT 1 FROM brand_watchlist WHERE username = :u AND brand_name = :b"),
+                {"u": username, "b": brand},
+            ).fetchone()
+            if existing:
+                raise HTTPException(status_code=409, detail="Brand already in watchlist")
+
+            conn.execute(
+                sql_text("INSERT INTO brand_watchlist (username, brand_name) VALUES (:u, :b)"),
+                {"u": username, "b": brand},
+            )
+            conn.commit()
+
+        log_user_event(username, "add_brand", brand)
+
+        # Trigger competitor discovery (non-fatal)
+        try:
+            ensure_competitor_tables(engine)
+            ensure_competitors_cached(engine, brand)
+        except Exception:
+            pass
+
+        return {"status": "ok", "brand_name": brand}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/watchlist/brands/{brand_name}")
+def remove_brand_from_watchlist(brand_name: str, payload: dict = Depends(require_auth)):
+    """Remove a brand from the user's watchlist."""
+    username = payload["sub"]
+    engine = _require_engine()
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                sql_text("DELETE FROM brand_watchlist WHERE username = :u AND brand_name = :b"),
+                {"u": username, "b": brand_name},
+            )
+            conn.commit()
+            if result.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Brand not found in watchlist")
+
+        log_user_event(username, "remove_brand", brand_name)
+        return {"status": "ok", "brand_name": brand_name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/watchlist/topics")
+def add_topic_to_watchlist(req: AddTopicRequest, payload: dict = Depends(require_auth)):
+    """Add a topic to the user's watchlist."""
+    username = payload["sub"]
+    engine = _require_engine()
+    topic = req.topic_name.strip()
+
+    if not topic or len(topic) > 100:
+        raise HTTPException(status_code=400, detail="Topic name must be 1-100 characters")
+
+    try:
+        with engine.connect() as conn:
+            # Check current count against tier limit
+            count = conn.execute(
+                sql_text("SELECT COUNT(*) FROM topic_watchlist WHERE username = :u"),
+                {"u": username},
+            ).scalar() or 0
+
+            max_topics = TIER_LIMITS.get("topic_watchlist_max", {})
+            user_row = conn.execute(
+                sql_text("SELECT tier FROM users WHERE username = :u"),
+                {"u": username},
+            ).fetchone()
+            user_tier = user_row[0] if user_row else "free"
+            limit = max_topics.get(user_tier, 10)
+
+            if count >= limit:
+                raise HTTPException(status_code=400, detail=f"Maximum {limit} topics reached")
+
+            # Check duplicate
+            existing = conn.execute(
+                sql_text("SELECT 1 FROM topic_watchlist WHERE username = :u AND topic_name = :t"),
+                {"u": username, "t": topic},
+            ).fetchone()
+            if existing:
+                raise HTTPException(status_code=409, detail="Topic already in watchlist")
+
+            conn.execute(
+                sql_text(
+                    "INSERT INTO topic_watchlist (username, topic_name, is_category) "
+                    "VALUES (:u, :t, :is_cat)"
+                ),
+                {"u": username, "t": topic, "is_cat": req.is_category},
+            )
+            conn.commit()
+
+        log_user_event(username, "add_topic", topic)
+        return {"status": "ok", "topic_name": topic, "is_category": req.is_category}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/watchlist/topics/{topic_name}")
+def remove_topic_from_watchlist(topic_name: str, payload: dict = Depends(require_auth)):
+    """Remove a topic from the user's watchlist."""
+    username = payload["sub"]
+    engine = _require_engine()
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                sql_text("DELETE FROM topic_watchlist WHERE username = :u AND topic_name = :t"),
+                {"u": username, "t": topic_name},
+            )
+            conn.commit()
+            if result.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Topic not found in watchlist")
+
+        log_user_event(username, "remove_topic", topic_name)
+        return {"status": "ok", "topic_name": topic_name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Alert Management (Phase 2, Step 0B)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/alerts/{alert_id}/mark-read")
+def api_mark_alert_read(alert_id: int, payload: dict = Depends(require_auth)):
+    """Mark a single alert as read."""
+    username = payload["sub"]
+    mark_alert_read(username, alert_id)
+    return {"status": "ok", "alert_id": alert_id}
+
+
+@app.post("/api/alerts/mark-all-read")
+def api_mark_all_alerts_read(payload: dict = Depends(require_auth)):
+    """Mark all alerts as read for the current user."""
+    username = payload["sub"]
+    mark_all_alerts_read(username)
+    return {"status": "ok"}
+
+
+class AlertFeedbackRequest(BaseModel):
+    action: str  # "expanded", "thumbs_up", or "thumbs_down"
+
+
+@app.post("/api/alerts/{alert_id}/feedback")
+def api_alert_feedback(alert_id: int, req: AlertFeedbackRequest, payload: dict = Depends(require_auth)):
+    """Record user feedback on an alert."""
+    username = payload["sub"]
+    if req.action not in ("expanded", "thumbs_up", "thumbs_down"):
+        raise HTTPException(status_code=400, detail="Action must be expanded, thumbs_up, or thumbs_down")
+    engine = _require_engine()
+    record_feedback(engine, alert_id, username, req.action)
+    log_user_event(username, f"alert_{req.action}", str(alert_id))
+    return {"status": "ok", "alert_id": alert_id, "action": req.action}
+
+
+# ---------------------------------------------------------------------------
+# User Preferences (Phase 2, Step 0C)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/user/alert-preferences")
+def api_get_alert_preferences(payload: dict = Depends(require_auth)):
+    """Get per-alert-type preferences for the current user."""
+    username = payload["sub"]
+    prefs = get_user_alert_preferences(username)
+    return {"preferences": prefs}
+
+
+class UpdateAlertPreferencesRequest(BaseModel):
+    alert_type: Optional[str] = None
+    enabled: Optional[bool] = None
+    sensitivity: Optional[str] = None  # "low", "medium", "high"
+
+
+@app.patch("/api/user/alert-preferences")
+def api_update_alert_preferences(req: UpdateAlertPreferencesRequest, payload: dict = Depends(require_auth)):
+    """Update alert preferences. If alert_type is provided, update that type.
+    If only sensitivity is provided (no alert_type), bulk-update all types."""
+    username = payload["sub"]
+
+    if req.sensitivity and req.sensitivity not in ("low", "medium", "high"):
+        raise HTTPException(status_code=400, detail="Sensitivity must be low, medium, or high")
+
+    if req.alert_type:
+        update_user_alert_preferences(
+            username,
+            req.alert_type,
+            enabled=req.enabled if req.enabled is not None else True,
+            sensitivity=req.sensitivity or "medium",
+        )
+    elif req.sensitivity:
+        bulk_update_alert_sensitivity(username, req.sensitivity)
+    else:
+        raise HTTPException(status_code=400, detail="Provide alert_type or sensitivity")
+
+    log_user_event(username, "update_alert_preferences")
+    return {"status": "ok"}
+
+
+class UpdateUserPreferencesRequest(BaseModel):
+    digest_daily: Optional[bool] = None
+    digest_weekly: Optional[bool] = None
+    alert_emails: Optional[bool] = None
+
+
+@app.patch("/api/user/preferences")
+def api_update_user_preferences(req: UpdateUserPreferencesRequest, payload: dict = Depends(require_auth)):
+    """Update email/digest preferences for the current user."""
+    username = payload["sub"]
+    current = get_user_preferences(username)
+    update_user_preferences(
+        username,
+        digest_daily=req.digest_daily if req.digest_daily is not None else current["digest_daily"],
+        digest_weekly=req.digest_weekly if req.digest_weekly is not None else current["digest_weekly"],
+        alert_emails=req.alert_emails if req.alert_emails is not None else current["alert_emails"],
+    )
+    log_user_event(username, "update_preferences")
+    return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Report Schedules (Phase 2, Step 0D)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/user/report-schedules")
+def api_get_report_schedules(payload: dict = Depends(require_auth)):
+    """Get all report schedules for the current user."""
+    username = payload["sub"]
+    rows = get_report_schedules(username)
+    schedules = []
+    for r in rows:
+        schedules.append({
+            "id": r[0],
+            "subject": r[1],
+            "subject_type": r[2],
+            "frequency": r[3],
+            "days_lookback": r[4],
+            "enabled": r[5],
+            "last_run": r[6].isoformat() if r[6] else None,
+            "next_run": r[7].isoformat() if r[7] else None,
+        })
+    return {"schedules": schedules, "count": len(schedules)}
+
+
+class CreateReportScheduleRequest(BaseModel):
+    subject: str
+    subject_type: str = "brand"  # "brand" or "topic"
+    frequency: str = "weekly"  # "daily" or "weekly"
+    days_lookback: int = 7
+
+
+@app.post("/api/user/report-schedules")
+def api_create_report_schedule(req: CreateReportScheduleRequest, payload: dict = Depends(require_auth)):
+    """Create a new report schedule."""
+    username = payload["sub"]
+    if req.frequency not in ("daily", "weekly"):
+        raise HTTPException(status_code=400, detail="Frequency must be daily or weekly")
+    if req.subject_type not in ("brand", "topic"):
+        raise HTTPException(status_code=400, detail="Subject type must be brand or topic")
+    if not req.subject.strip():
+        raise HTTPException(status_code=400, detail="Subject is required")
+
+    ok = create_report_schedule(
+        username, req.subject.strip(), req.subject_type,
+        req.frequency, req.days_lookback,
+    )
+    if not ok:
+        raise HTTPException(status_code=500, detail="Failed to create schedule")
+    log_user_event(username, "create_report_schedule", req.subject.strip())
+    return {"status": "ok"}
+
+
+class ToggleReportScheduleRequest(BaseModel):
+    enabled: bool
+
+
+@app.patch("/api/user/report-schedules/{schedule_id}")
+def api_toggle_report_schedule(schedule_id: int, req: ToggleReportScheduleRequest, payload: dict = Depends(require_auth)):
+    """Enable or disable a report schedule."""
+    toggle_report_schedule(schedule_id, req.enabled)
+    return {"status": "ok", "schedule_id": schedule_id, "enabled": req.enabled}
+
+
+@app.delete("/api/user/report-schedules/{schedule_id}")
+def api_delete_report_schedule(schedule_id: int, payload: dict = Depends(require_auth)):
+    """Delete a report schedule."""
+    delete_report_schedule(schedule_id)
+    log_user_event(payload["sub"], "delete_report_schedule", str(schedule_id))
+    return {"status": "ok", "schedule_id": schedule_id}
+
+
+# ---------------------------------------------------------------------------
+# Team Management (Phase 2, Step 0E)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/user/team")
+def api_get_user_team(payload: dict = Depends(require_auth)):
+    """Get the current user's team info."""
+    username = payload["sub"]
+    team = get_user_team(username)
+    if not team:
+        return {"team": None}
+    return {"team": team}
+
+
+@app.get("/api/teams/{team_id}/members")
+def api_get_team_members(team_id: int, payload: dict = Depends(require_auth)):
+    """Get members of a team."""
+    rows = get_team_members(team_id)
+    members = []
+    for r in rows:
+        members.append({
+            "username": r[0],
+            "role": r[1],
+            "joined_at": r[2].isoformat() if r[2] else None,
+            "email": r[3],
+        })
+    return {"members": members, "count": len(members)}
+
+
+class InviteTeamMemberRequest(BaseModel):
+    email: str
+    name: str = ""
+
+
+@app.post("/api/teams/{team_id}/members")
+def api_invite_team_member(team_id: int, req: InviteTeamMemberRequest, payload: dict = Depends(require_auth)):
+    """Invite a new member to the team."""
+    username = payload["sub"]
+    if not req.email.strip():
+        raise HTTPException(status_code=400, detail="Email is required")
+    ok, msg = invite_team_member(team_id, req.email, req.name, username)
+    if not ok:
+        raise HTTPException(status_code=400, detail=msg)
+    log_user_event(username, "invite_team_member", req.email)
+    return {"status": "ok", "message": msg}
+
+
+@app.delete("/api/teams/{team_id}/members/{member_username}")
+def api_remove_team_member(team_id: int, member_username: str, payload: dict = Depends(require_auth)):
+    """Remove a member from the team."""
+    removed = remove_team_member(team_id, member_username)
+    if not removed:
+        raise HTTPException(status_code=400, detail="Cannot remove member (may be owner or not found)")
+    log_user_event(payload["sub"], "remove_team_member", member_username)
+    return {"status": "ok", "username": member_username}
+
+
+@app.get("/api/teams/{team_id}/watchlists")
+def api_get_team_watchlists(team_id: int, payload: dict = Depends(require_auth)):
+    """Get the team owner's shared watchlists."""
+    brands = get_team_watchlist_brands(team_id)
+    topics = get_team_watchlist_topics(team_id)
+    return {
+        "brands": brands,
+        "topics": [{"topic_name": t[0], "is_category": t[1]} for t in topics],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Remaining Endpoints (Phase 2, Step 0F)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/user/brief-credits/decrement")
+def api_decrement_brief_credits(payload: dict = Depends(require_auth)):
+    """Decrement brief credits by 1 after generation."""
+    username = payload["sub"]
+    decrement_brief_credits(username)
+    return {"status": "ok"}
+
+
+class SignupRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    plan: str = "monthly"  # "monthly" or "annually"
+
+
+@app.post("/api/auth/signup")
+def api_signup(req: SignupRequest):
+    """Create a pending signup and return the Stripe payment link."""
+    import re
+    from urllib.parse import quote as url_quote
+
+    engine = _require_engine()
+    name = req.name.strip()
+    email = req.email.strip().lower()
+    password = req.password.strip()
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Valid email is required")
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if req.plan not in ("monthly", "annually"):
+        raise HTTPException(status_code=400, detail="Plan must be monthly or annually")
+
+    try:
+        with engine.connect() as conn:
+            # Ensure pending_signups table exists
+            conn.execute(sql_text("""
+                CREATE TABLE IF NOT EXISTS pending_signups (
+                    id SERIAL PRIMARY KEY,
+                    signup_token VARCHAR(64) UNIQUE NOT NULL,
+                    name VARCHAR(200) NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    username VARCHAR(100) NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    tier VARCHAR(20) NOT NULL,
+                    status VARCHAR(20) DEFAULT 'pending',
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """))
+            conn.commit()
+
+            # Check existing user
+            existing = conn.execute(
+                sql_text("SELECT 1 FROM users WHERE email = :email"),
+                {"email": email},
+            ).fetchone()
+            if existing:
+                raise HTTPException(status_code=409, detail="An account with this email already exists")
+
+            # Generate username
+            username = re.sub(r'[^a-z0-9_]', '', name.lower().replace(" ", "_"))
+            if not username:
+                username = email.split("@")[0]
+            ex_user = conn.execute(
+                sql_text("SELECT 1 FROM users WHERE username = :u"),
+                {"u": username},
+            ).fetchone()
+            if ex_user:
+                username = f"{username}_{secrets.randbelow(999)}"
+
+            password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            signup_token = secrets.token_urlsafe(32)
+
+            conn.execute(sql_text(
+                "INSERT INTO pending_signups (signup_token, name, email, username, password_hash, tier) "
+                "VALUES (:token, :name, :email, :username, :hash, :tier)"
+            ), {
+                "token": signup_token, "name": name, "email": email,
+                "username": username, "hash": password_hash, "tier": req.plan,
+            })
+            conn.commit()
+
+        # Build Stripe payment link
+        stripe_link_env = "STRIPE_MONTHLY_LINK" if req.plan == "monthly" else "STRIPE_ANNUAL_LINK"
+        stripe_link = os.getenv(stripe_link_env, "")
+        stripe_url = None
+        if stripe_link:
+            stripe_url = f"{stripe_link}?prefilled_email={url_quote(email)}&client_reference_id={signup_token}"
+
+        return {
+            "status": "ok",
+            "signup_token": signup_token,
+            "stripe_url": stripe_url,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ActivateRequest(BaseModel):
+    signup_token: str
+
+
+@app.post("/api/auth/activate")
+def api_activate(req: ActivateRequest):
+    """Check pending signup status and create user if payment completed."""
+    engine = _require_engine()
+
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(sql_text(
+                "SELECT status, name, email, username, password_hash, tier "
+                "FROM pending_signups WHERE signup_token = :token"
+            ), {"token": req.signup_token}).fetchone()
+
+            if not row:
+                raise HTTPException(status_code=404, detail="Signup token not found")
+
+            status, name, email, username, password_hash, tier = row
+
+            if status == "synced":
+                return {"status": "already_active", "message": "Account already active. Please log in."}
+
+            if status != "completed":
+                return {"status": "pending", "message": "Payment not confirmed yet."}
+
+            # Payment confirmed — create user in users table
+            existing_user = conn.execute(
+                sql_text("SELECT 1 FROM users WHERE email = :email"),
+                {"email": email},
+            ).fetchone()
+            if not existing_user:
+                conn.execute(sql_text(
+                    "INSERT INTO users (username, email, password_hash, tier) "
+                    "VALUES (:username, :email, :hash, :tier)"
+                ), {
+                    "username": username, "email": email,
+                    "hash": password_hash, "tier": tier,
+                })
+
+            # Mark as synced
+            conn.execute(sql_text(
+                "UPDATE pending_signups SET status = 'synced' WHERE signup_token = :token"
+            ), {"token": req.signup_token})
+            conn.commit()
+
+        return {"status": "activated", "message": "Account activated. Please log in."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class UserEventRequest(BaseModel):
+    event_type: str
+    event_data: Optional[str] = None
+
+
+@app.post("/api/user/events")
+def api_log_user_event(req: UserEventRequest, payload: dict = Depends(require_auth)):
+    """Log a user event for analytics."""
+    username = payload["sub"]
+    log_user_event(username, req.event_type, req.event_data)
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":
