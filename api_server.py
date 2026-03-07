@@ -451,6 +451,7 @@ class SessionResponse(BaseModel):
     email: str
     tier: str
     brief_credits: int = 0
+    extra_seats: int = 0
     is_admin: bool
 
 
@@ -497,6 +498,7 @@ def auth_session(payload: dict = Depends(require_auth)):
         email=user["email"],
         tier=user["tier"],
         brief_credits=user.get("brief_credits", 0),
+        extra_seats=user.get("extra_seats", 0),
         is_admin=is_admin_email(user["email"]),
     )
 
