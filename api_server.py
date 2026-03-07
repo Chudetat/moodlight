@@ -86,11 +86,14 @@ def _df_to_records(df: pd.DataFrame) -> list[dict]:
     # Convert timestamps to ISO strings for JSON serialization
     for col in df.select_dtypes(include=["datetime64[ns, UTC]", "datetime64[ns]"]).columns:
         df[col] = df[col].dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-    # Replace NaN/Infinity with None for JSON compatibility
-    import numpy as np
-    df = df.replace([np.inf, -np.inf], None)
-    df = df.where(pd.notnull(df), None)
-    return df.to_dict("records")
+    # Use orient="records" then sanitize NaN/Infinity which aren't JSON-safe
+    import math
+    records = df.to_dict("records")
+    for row in records:
+        for k, v in row.items():
+            if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                row[k] = None
+    return records
 
 
 def _require_engine():
