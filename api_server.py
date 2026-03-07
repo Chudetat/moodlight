@@ -86,6 +86,10 @@ def _df_to_records(df: pd.DataFrame) -> list[dict]:
     # Convert timestamps to ISO strings for JSON serialization
     for col in df.select_dtypes(include=["datetime64[ns, UTC]", "datetime64[ns]"]).columns:
         df[col] = df[col].dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Replace NaN/Infinity with None for JSON compatibility
+    import numpy as np
+    df = df.replace([np.inf, -np.inf], None)
+    df = df.where(pd.notnull(df), None)
     return df.to_dict("records")
 
 
