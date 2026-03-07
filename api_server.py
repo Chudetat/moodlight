@@ -443,6 +443,7 @@ class SessionResponse(BaseModel):
     username: str
     email: str
     tier: str
+    brief_credits: int = 0
     is_admin: bool
 
 
@@ -488,6 +489,7 @@ def auth_session(payload: dict = Depends(require_auth)):
         username=user["username"],
         email=user["email"],
         tier=user["tier"],
+        brief_credits=user.get("brief_credits", 0),
         is_admin=is_admin_email(user["email"]),
     )
 

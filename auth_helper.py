@@ -68,7 +68,7 @@ def lookup_user(engine, *, email: str = None, username: str = None) -> dict | No
             if email:
                 row = conn.execute(
                     sql_text(
-                        "SELECT username, email, password_hash, tier "
+                        "SELECT username, email, password_hash, tier, COALESCE(brief_credits, 0) "
                         "FROM users WHERE email = :email"
                     ),
                     {"email": email},
@@ -76,7 +76,7 @@ def lookup_user(engine, *, email: str = None, username: str = None) -> dict | No
             else:
                 row = conn.execute(
                     sql_text(
-                        "SELECT username, email, password_hash, tier "
+                        "SELECT username, email, password_hash, tier, COALESCE(brief_credits, 0) "
                         "FROM users WHERE username = :username"
                     ),
                     {"username": username},
@@ -87,6 +87,7 @@ def lookup_user(engine, *, email: str = None, username: str = None) -> dict | No
                     "email": row[1],
                     "password_hash": row[2],
                     "tier": row[3],
+                    "brief_credits": row[4],
                 }
     except Exception as e:
         print(f"WARNING: lookup_user failed: {e}")
