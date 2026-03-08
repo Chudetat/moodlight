@@ -37,6 +37,7 @@ export function useAuth() {
     isAdmin: session?.is_admin ?? false,
     tier: session?.tier ?? "free",
     username: session?.username ?? "",
+    briefCredits: session?.brief_credits ?? 0,
     error,
     logout,
   };

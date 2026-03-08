@@ -237,15 +237,12 @@ export type AlertFeedbackAction = "expanded" | "thumbs_up" | "thumbs_down";
 
 // ── Competitive ───────────────────────────────────────
 
-export interface CompetitorInfo {
-  name: string;
-  relationship: string;
-}
-
-export interface CompetitiveSnapshot {
-  competitors: CompetitorInfo[];
-  metrics: Record<string, unknown>;
-}
+// Snapshot is a free-form JSON blob from competitive_analyzer.py:
+//   { "BrandName": { vlds: {...}, mention_count: N },
+//     "Competitor": { vlds: {...}, mention_count: N },
+//     share_of_voice: { brand: pct, ... },
+//     competitive_gaps: { velocity_gap, velocity_brand, ... } }
+export type CompetitiveSnapshot = Record<string, unknown>;
 
 export interface CompetitiveResponse {
   brand: string;
