@@ -13,17 +13,28 @@ export function EconomicIndicator({
   indicator,
   previousValue,
 }: EconomicIndicatorProps) {
-  const config = ECONOMIC_INDICATORS[indicator.indicator_name];
-  const label = config?.label || indicator.indicator_name;
+  // Map metric_name to display config. The API stores internal names like
+  // "cpi", "federal_funds_rate" etc. Try both raw and title-cased lookups.
+  const nameMap: Record<string, string> = {
+    cpi: "CPI",
+    federal_funds_rate: "Federal Funds Rate",
+    "10_year_treasury": "10-Year Treasury",
+    unemployment_rate: "Unemployment Rate",
+    inflation_rate: "Inflation Rate",
+    nonfarm_payroll: "Nonfarm Payroll",
+  };
+  const displayName = nameMap[indicator.metric_name] || indicator.metric_name;
+  const config = ECONOMIC_INDICATORS[displayName];
+  const label = config?.label || displayName;
 
   // Format the display value
   let displayValue: string;
   if (config?.format === "number") {
-    displayValue = formatNumber(indicator.value);
+    displayValue = formatNumber(indicator.metric_value);
   } else if (config?.format === "percent" || config?.format === "currency") {
-    displayValue = `${indicator.value.toFixed(2)}%`;
+    displayValue = `${indicator.metric_value.toFixed(2)}%`;
   } else {
-    displayValue = String(indicator.value);
+    displayValue = String(indicator.metric_value);
   }
 
   // Compute delta
@@ -32,14 +43,14 @@ export function EconomicIndicator({
 
   if (
     previousValue !== undefined &&
-    indicator.indicator_name !== "Nonfarm Payroll"
+    displayName !== "Nonfarm Payroll"
   ) {
-    const diff = indicator.value - previousValue;
+    const diff = indicator.metric_value - previousValue;
     if (Math.abs(diff) > 0.001) {
       deltaDir = diff > 0 ? "up" : "down";
       // For Fed Funds Rate, hide delta when exactly 0
       if (
-        indicator.indicator_name === "Federal Funds Rate" &&
+        displayName === "Federal Funds Rate" &&
         Math.abs(diff) < 0.001
       ) {
         deltaStr = undefined;

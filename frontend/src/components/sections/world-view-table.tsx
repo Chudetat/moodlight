@@ -20,7 +20,6 @@ import type { CombinedDataItem } from "@/lib/types";
 interface TableRow {
   text: string;
   topic: string;
-  source: string;
   country: string;
   empathy: number;
   engagement: number;
@@ -33,7 +32,7 @@ const columns = [
   columnHelper.accessor("text", {
     header: "Headline",
     cell: (info) => (
-      <span className="line-clamp-2 max-w-xs text-xs">{info.getValue()}</span>
+      <span className="line-clamp-2 text-xs">{info.getValue()}</span>
     ),
   }),
   columnHelper.accessor("topic", {
@@ -41,10 +40,6 @@ const columns = [
     cell: (info) => (
       <span className="text-xs capitalize">{info.getValue()}</span>
     ),
-  }),
-  columnHelper.accessor("source", {
-    header: "Source",
-    cell: (info) => <span className="text-xs">{info.getValue()}</span>,
   }),
   columnHelper.accessor("country", {
     header: "Country",
@@ -85,7 +80,6 @@ export function WorldViewTable() {
     return (data?.data ?? []).map((d: CombinedDataItem) => ({
       text: d.text,
       topic: d.topic,
-      source: d.source,
       country: d.country,
       empathy: normalizeEmpathyScore(d.empathy_score),
       engagement: d.engagement,
@@ -105,11 +99,10 @@ export function WorldViewTable() {
   });
 
   function exportCsv() {
-    const headers = ["Headline", "Topic", "Source", "Country", "Empathy", "Engagement", "Time"];
+    const headers = ["Headline", "Topic", "Country", "Empathy", "Engagement", "Time"];
     const rows = tableData.map((r) => [
       `"${r.text.replace(/"/g, '""')}"`,
       r.topic,
-      r.source,
       r.country,
       r.empathy,
       r.engagement,

@@ -24,12 +24,13 @@ export function CommodityPrices() {
 
   const allCommodities = data?.data ?? [];
 
-  // Group by commodity_name, get latest + previous for delta
+  // Filter to price metrics only, group by scope_name (commodity name)
+  const priceEntries = allCommodities.filter((c) => c.metric_name === "price");
   const grouped = new Map<string, CommodityData[]>();
-  for (const c of allCommodities) {
-    const list = grouped.get(c.commodity_name) || [];
+  for (const c of priceEntries) {
+    const list = grouped.get(c.scope_name) || [];
     list.push(c);
-    grouped.set(c.commodity_name, list);
+    grouped.set(c.scope_name, list);
   }
 
   const latestByName: Array<{
@@ -45,7 +46,7 @@ export function CommodityPrices() {
     );
     latestByName.push({
       commodity: items[0],
-      previousPrice: items.length > 1 ? items[1].price : undefined,
+      previousPrice: items.length > 1 ? items[1].metric_value : undefined,
     });
   }
 
@@ -53,7 +54,7 @@ export function CommodityPrices() {
   const dataSummary = latestByName
     .map(
       ({ commodity, previousPrice }) =>
-        `${commodity.commodity_name}: $${commodity.price.toFixed(2)} ${commodity.currency}${
+        `${commodity.scope_name}: $${commodity.metric_value.toFixed(2)}${
           previousPrice
             ? ` (prev: $${previousPrice.toFixed(2)})`
             : ""
@@ -75,7 +76,7 @@ export function CommodityPrices() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {latestByName.map(({ commodity, previousPrice }) => (
           <CommodityPrice
-            key={commodity.commodity_name}
+            key={commodity.scope_name}
             commodity={commodity}
             previousPrice={previousPrice}
           />

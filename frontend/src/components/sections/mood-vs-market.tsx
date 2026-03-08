@@ -37,17 +37,21 @@ export function MoodVsMarket() {
     };
 
     // SPY as market proxy (normalize to 0-100 range for visual comparison)
-    const spy = markets?.data?.find((m) => m.symbol === "SPY");
+    // Find the latest SPY entry by timestamp
+    const spyEntries = (markets?.data ?? []).filter((m) => m.symbol === "SPY");
+    const spy = spyEntries.length > 0
+      ? spyEntries.reduce((a, b) => (a.timestamp > b.timestamp ? a : b))
+      : undefined;
     const series: DefaultSeries[] = [moodLine];
     if (spy) {
-      // Use last date from mood data and create a single market reference point
+      const changePct = parseFloat(spy.change_percent) || 0;
       const lastDate = moodLine.data[moodLine.data.length - 1]?.x;
       if (lastDate) {
         series.push({
           id: "S&P 500 (scaled)",
           data: moodLine.data.map((p) => ({
             x: p.x,
-            y: Math.round(50 + spy.change_pct * 5),
+            y: Math.round(50 + changePct * 5),
           })),
         });
       }

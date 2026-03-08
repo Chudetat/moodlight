@@ -93,14 +93,15 @@ export interface CombinedDataResponse {
 }
 
 export interface MarketData {
+  timestamp: string;
   symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  change_percent: string;
+  volume: string;
   latest_trading_day: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-  change_pct: number;
+  market_sentiment: number;
 }
 
 export interface MarketDataResponse {
@@ -124,11 +125,11 @@ export interface MetricDataResponse {
 // ── Economic ──────────────────────────────────────────
 
 export interface EconomicIndicator {
-  indicator_name: string;
-  value: number;
-  unit: string;
   snapshot_date: string;
-  source: string;
+  scope_name: string;
+  metric_name: string;
+  metric_value: number;
+  sample_size: number;
 }
 
 export interface EconomicDataResponse {
@@ -137,11 +138,11 @@ export interface EconomicDataResponse {
 }
 
 export interface CommodityPrice {
-  commodity_name: string;
-  price: number;
-  currency: string;
-  daily_change_pct: number;
   snapshot_date: string;
+  scope_name: string;
+  metric_name: string;
+  metric_value: number;
+  sample_size: number;
 }
 
 export interface CommodityDataResponse {
@@ -212,16 +213,18 @@ export type AlertCategory = "brand" | "topic" | "global" | "predictive" | "compe
 
 export interface Alert {
   id: number;
+  timestamp: string;
   alert_type: string;
   severity: AlertSeverity;
-  brand: string | null;
-  topic: string | null;
   title: string;
   summary: string;
-  confidence: number;
-  recommendation: string;
-  reasoning_steps: string | null;
-  created_at: string;
+  investigation: string | null;
+  data: string | null;
+  emailed: boolean;
+  cooldown_key: string;
+  username: string;
+  brand: string | null;
+  topic: string | null;
   is_read: boolean;
 }
 

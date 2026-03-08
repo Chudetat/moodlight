@@ -27,18 +27,29 @@ export function AlertCard({ alert }: AlertCardProps) {
     setExpanded(!expanded);
   }
 
-  // Parse reasoning steps (stored as JSON string)
-  let reasoningSteps: string[] = [];
-  if (alert.reasoning_steps) {
+  // Parse investigation JSON (contains analysis, confidence, recommendation)
+  let confidence: number | undefined;
+  let recommendation: string | undefined;
+  let analysis: string | undefined;
+  if (alert.investigation) {
     try {
-      const parsed = JSON.parse(alert.reasoning_steps);
-      if (Array.isArray(parsed)) {
-        reasoningSteps = parsed.map((s: { step?: string; finding?: string }) =>
-          s.finding || s.step || JSON.stringify(s)
-        );
-      }
+      const parsed = JSON.parse(alert.investigation);
+      confidence = parsed.overall_confidence;
+      recommendation = parsed.recommendation;
+      analysis = parsed.analysis;
     } catch {
-      reasoningSteps = [alert.reasoning_steps];
+      // investigation is plain text
+      analysis = alert.investigation;
+    }
+  }
+
+  // Extract reasoning steps from analysis text
+  const reasoningSteps: string[] = [];
+  if (analysis) {
+    // Split analysis into meaningful sections
+    const lines = analysis.split("\n").filter((l: string) => l.trim());
+    for (const line of lines) {
+      if (line.trim()) reasoningSteps.push(line.trim());
     }
   }
 
@@ -72,7 +83,7 @@ export function AlertCard({ alert }: AlertCardProps) {
                   </Badge>
                 )}
                 <span className="text-[10px] text-muted-foreground">
-                  {timeAgo(alert.created_at)}
+                  {timeAgo(alert.timestamp)}
                 </span>
               </div>
             </div>
@@ -99,45 +110,37 @@ export function AlertCard({ alert }: AlertCardProps) {
         {expanded && (
           <div className="mt-3 space-y-3 border-t border-border pt-3">
             {/* Confidence */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                Confidence:
-              </span>
-              <div className="h-1.5 w-24 rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${alert.confidence}%` }}
-                />
-              </div>
-              <span className="text-xs font-medium">{alert.confidence}%</span>
-            </div>
-
-            {/* Reasoning chain */}
-            {reasoningSteps.length > 0 && (
-              <div>
-                <p className="mb-1.5 text-xs font-medium">Reasoning Chain</p>
-                <div className="space-y-1.5">
-                  {reasoningSteps.map((step, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-2 text-xs text-muted-foreground"
-                    >
-                      <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-muted text-[9px] font-medium">
-                        {i + 1}
-                      </span>
-                      <p>{step}</p>
-                    </div>
-                  ))}
+            {confidence !== undefined && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Confidence:
+                </span>
+                <div className="h-1.5 w-24 rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary"
+                    style={{ width: `${confidence}%` }}
+                  />
                 </div>
+                <span className="text-xs font-medium">{confidence}%</span>
+              </div>
+            )}
+
+            {/* Analysis */}
+            {analysis && (
+              <div>
+                <p className="mb-1.5 text-xs font-medium">Analysis</p>
+                <p className="whitespace-pre-wrap text-xs text-muted-foreground">
+                  {analysis}
+                </p>
               </div>
             )}
 
             {/* Recommendation */}
-            {alert.recommendation && (
+            {recommendation && (
               <div>
                 <p className="mb-1 text-xs font-medium">Recommendation</p>
-                <p className="text-xs text-muted-foreground">
-                  {alert.recommendation}
+                <p className="text-xs text-muted-foreground capitalize">
+                  {recommendation.replace(/_/g, " ")}
                 </p>
               </div>
             )}

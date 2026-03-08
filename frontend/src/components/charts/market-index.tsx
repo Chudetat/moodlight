@@ -9,8 +9,9 @@ interface MarketIndexProps {
 }
 
 export function MarketIndex({ market }: MarketIndexProps) {
-  const name = MARKET_SYMBOLS[market.symbol] || market.symbol;
-  const isPositive = market.change_pct >= 0;
+  const name = MARKET_SYMBOLS[market.symbol] || market.name || market.symbol;
+  const changePct = parseFloat(market.change_percent) || 0;
+  const isPositive = changePct >= 0;
 
   return (
     <div className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
@@ -22,14 +23,14 @@ export function MarketIndex({ market }: MarketIndexProps) {
       </div>
       <div className="text-right">
         <p className="text-sm font-bold tabular-nums">
-          ${market.close.toFixed(2)}
+          ${market.price.toFixed(2)}
         </p>
         <p
           className={`text-xs font-medium tabular-nums ${
             isPositive ? "text-green-400" : "text-red-400"
           }`}
         >
-          {formatPctChange(market.change_pct)}
+          {formatPctChange(changePct)}
         </p>
       </div>
     </div>

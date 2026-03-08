@@ -21,14 +21,24 @@ export function MarketSentiment() {
     );
   }
 
-  const markets = data?.data ?? [];
+  // Deduplicate markets — API may return multiple entries per symbol (different dates).
+  // Keep the latest by timestamp for each symbol.
+  const allMarkets = data?.data ?? [];
+  const latestBySymbol = new Map<string, (typeof allMarkets)[0]>();
+  for (const m of allMarkets) {
+    const existing = latestBySymbol.get(m.symbol);
+    if (!existing || m.timestamp > existing.timestamp) {
+      latestBySymbol.set(m.symbol, m);
+    }
+  }
+  const markets = Array.from(latestBySymbol.values());
 
   // Build data summary for helper button
   const dataSummary = markets
-    .map(
-      (m) =>
-        `${m.symbol}: $${m.close.toFixed(2)} (${m.change_pct >= 0 ? "+" : ""}${m.change_pct.toFixed(2)}%)`
-    )
+    .map((m) => {
+      const pct = parseFloat(m.change_percent) || 0;
+      return `${m.symbol}: $${m.price.toFixed(2)} (${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%)`;
+    })
     .join("\n");
 
   return (

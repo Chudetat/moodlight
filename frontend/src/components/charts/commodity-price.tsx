@@ -13,13 +13,13 @@ export function CommodityPrice({
   previousPrice,
 }: CommodityPriceProps) {
   const name =
-    COMMODITY_NAMES[commodity.commodity_name] || commodity.commodity_name;
+    COMMODITY_NAMES[commodity.scope_name] || commodity.scope_name;
 
   // Compute delta from previous price entry (as the dashboard does)
   let deltaPct: number | undefined;
   if (previousPrice && previousPrice > 0) {
     deltaPct =
-      ((commodity.price - previousPrice) / previousPrice) * 100;
+      ((commodity.metric_value - previousPrice) / previousPrice) * 100;
   }
 
   const isPositive = (deltaPct ?? 0) >= 0;
@@ -29,7 +29,7 @@ export function CommodityPrice({
       <p className="text-xs font-medium text-muted-foreground">{name}</p>
       <div className="mt-1 flex items-baseline gap-2">
         <span className="text-xl font-bold tabular-nums">
-          ${commodity.price.toFixed(2)}
+          ${commodity.metric_value.toFixed(2)}
         </span>
         {deltaPct !== undefined && Math.abs(deltaPct) > 0.001 && (
           <span
@@ -44,7 +44,7 @@ export function CommodityPrice({
         )}
       </div>
       <p className="mt-0.5 text-[10px] text-muted-foreground">
-        {commodity.currency} &middot;{" "}
+        USD &middot;{" "}
         {new Date(commodity.snapshot_date).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
