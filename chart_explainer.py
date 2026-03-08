@@ -9,6 +9,47 @@ import pandas as pd
 from anthropic import Anthropic
 
 
+def _get_high_engagement(df: pd.DataFrame, n: int) -> list:
+    """Pull top-N headlines by engagement/virality."""
+    for col in ("virality", "retweets", "engagement"):
+        if col in df.columns:
+            return df.nlargest(n, col)["text"].tolist()
+    return []
+
+
+def _get_topic_diverse(df: pd.DataFrame, num_topics: int, per_topic: int) -> list:
+    """Pull headlines spread across top topics by volume."""
+    if "topic" not in df.columns:
+        return []
+    headlines = []
+    for topic in df["topic"].value_counts().head(num_topics).index:
+        headlines.extend(df[df["topic"] == topic]["text"].head(per_topic).tolist())
+    return headlines
+
+
+def _filter_by_summary_brands(df: pd.DataFrame, data_summary: str) -> pd.DataFrame:
+    """Try to find headlines mentioning brands referenced in the data summary."""
+    known_brands = ["NVIDIA", "Amazon", "Disney", "Lockheed Martin", "FIFA",
+                    "Apple", "Google", "Microsoft", "Tesla", "Meta", "Netflix",
+                    "AMD", "Intel", "Sony", "Samsung"]
+    matches = [b for b in known_brands if b.lower() in data_summary.lower()]
+    if not matches or "text" not in df.columns:
+        return pd.DataFrame()
+    pattern = "|".join(matches)
+    mask = df["text"].str.contains(pattern, case=False, na=False)
+    return df[mask]
+
+
+def _filter_by_summary_topic(df: pd.DataFrame, data_summary: str) -> pd.DataFrame:
+    """Try to find headlines matching the topic referenced in the data summary."""
+    if "topic" not in df.columns:
+        return pd.DataFrame()
+    for topic in df["topic"].unique():
+        if topic and topic.lower() in data_summary.lower():
+            return df[df["topic"] == topic]
+    return pd.DataFrame()
+
+
 def retrieve_relevant_headlines(df: pd.DataFrame, chart_type: str, data_summary: str, max_headlines: int = 15) -> str:
     """Stage 1: Context-aware headline retrieval based on chart type and anomalies."""
 
@@ -37,15 +78,20 @@ def retrieve_relevant_headlines(df: pd.DataFrame, chart_type: str, data_summary:
                     relevant_headlines.extend(day_headlines)
 
     elif chart_type == "mood_vs_market":
-        # Pull headlines with extreme sentiment (very high or very low)
+        # Broad sample: extreme empathy + high-engagement + topic diversity
         if "empathy_score" in df.columns:
-            extreme_low = df[df["empathy_score"] < 30]["text"].head(5).tolist()
-            extreme_high = df[df["empathy_score"] > 70]["text"].head(5).tolist()
+            # Raw RoBERTa scores cluster 0.03-0.15; use raw thresholds
+            extreme_low = df[df["empathy_score"] < 0.04]["text"].head(3).tolist()
+            extreme_high = df[df["empathy_score"] > 0.12]["text"].head(3).tolist()
             relevant_headlines.extend(extreme_low)
             relevant_headlines.extend(extreme_high)
+        relevant_headlines.extend(_get_high_engagement(df, 5))
+        if "created_at" in df.columns:
+            relevant_headlines.extend(df.nlargest(4, "created_at")["text"].tolist())
+        relevant_headlines.extend(_get_topic_diverse(df, 4, 2))
 
     elif chart_type in ["density", "scarcity"]:
-        # Pull headlines from topics mentioned in the data summary
+        # Headlines from crowded AND sparse topics
         if "topic" in df.columns:
             topic_counts = df["topic"].value_counts()
             top_topics = topic_counts.head(3).index.tolist()
@@ -55,39 +101,101 @@ def retrieve_relevant_headlines(df: pd.DataFrame, chart_type: str, data_summary:
                 relevant_headlines.extend(topic_headlines)
 
     elif chart_type == "velocity_longevity":
-        # Pull recent headlines (high velocity) and older persistent ones
+        # Recent headlines (high velocity) and older persistent ones
         if "created_at" in df.columns:
             recent = df.nlargest(5, "created_at")["text"].tolist()
-            if "virality" in df.columns:
-                viral = df.nlargest(5, "virality")["text"].tolist()
-                relevant_headlines.extend(viral)
             relevant_headlines.extend(recent)
+        relevant_headlines.extend(_get_high_engagement(df, 5))
 
     elif chart_type == "virality_empathy":
-        # Pull most viral headlines
-        if "virality" in df.columns:
-            viral = df.nlargest(10, "virality")["text"].tolist()
-            relevant_headlines.extend(viral)
-        elif "retweets" in df.columns:
-            viral = df.nlargest(10, "retweets")["text"].tolist()
-            relevant_headlines.extend(viral)
+        # Most viral + empathy extremes for contrast
+        relevant_headlines.extend(_get_high_engagement(df, 8))
+        if "empathy_score" in df.columns:
+            extreme_low = df.nsmallest(3, "empathy_score")["text"].tolist()
+            extreme_high = df.nlargest(3, "empathy_score")["text"].tolist()
+            relevant_headlines.extend(extreme_low)
+            relevant_headlines.extend(extreme_high)
 
     elif chart_type == "geographic_hotspots":
-        # Pull headlines from top intensity countries
-        if "country" in df.columns and "intensity" in df.columns:
-            top_countries = df.groupby("country")["intensity"].mean().nlargest(5).index.tolist()
-            for country in top_countries:
-                country_headlines = df[df["country"] == country]["text"].head(3).tolist()
-                relevant_headlines.extend(country_headlines)
+        # Topic diversity + recent — geographic data may not be in news/social tables
+        relevant_headlines.extend(_get_topic_diverse(df, 5, 2))
+        if "created_at" in df.columns:
+            relevant_headlines.extend(df.nlargest(5, "created_at")["text"].tolist())
+
+    elif chart_type in ("empathy_by_topic", "topic_distribution"):
+        # Pull from top topics by volume for representative coverage
+        relevant_headlines.extend(_get_topic_diverse(df, 5, 3))
+
+    elif chart_type == "emotional_breakdown":
+        # Empathy extremes + high engagement + topic diversity for broad emotional range
+        if "empathy_score" in df.columns:
+            relevant_headlines.extend(df.nsmallest(4, "empathy_score")["text"].tolist())
+            relevant_headlines.extend(df.nlargest(4, "empathy_score")["text"].tolist())
+        relevant_headlines.extend(_get_high_engagement(df, 4))
+        relevant_headlines.extend(_get_topic_diverse(df, 3, 1))
+
+    elif chart_type == "empathy_distribution":
+        # Sample across the empathy spectrum + topic diversity
+        if "empathy_score" in df.columns:
+            sorted_df = df.sort_values("empathy_score")
+            n = len(sorted_df)
+            if n >= 4:
+                quartile = n // 4
+                for i in range(4):
+                    chunk = sorted_df.iloc[i * quartile:(i + 1) * quartile]
+                    relevant_headlines.extend(chunk["text"].head(3).tolist())
+        relevant_headlines.extend(_get_topic_diverse(df, 3, 1))
+
+    elif chart_type == "trending_headlines":
+        # High engagement + recent
+        relevant_headlines.extend(_get_high_engagement(df, 8))
+        if "created_at" in df.columns:
+            relevant_headlines.extend(df.nlargest(5, "created_at")["text"].tolist())
+
+    elif chart_type in ("economic_indicators", "commodity_prices", "market_sentiment"):
+        # Market-relevant: filter by economic/market topics + recent + engagement
+        market_topics = {"economics", "business", "finance", "markets", "trade",
+                         "energy", "commodities", "labor & work"}
+        if "topic" in df.columns:
+            mask = df["topic"].str.lower().isin(market_topics)
+            market_df = df[mask]
+            if not market_df.empty:
+                relevant_headlines.extend(market_df["text"].head(8).tolist())
+        relevant_headlines.extend(_get_high_engagement(df, 4))
+        if "created_at" in df.columns:
+            relevant_headlines.extend(df.nlargest(4, "created_at")["text"].tolist())
+
+    elif chart_type in ("brand_vlds", "brand_comparison", "competitive_war_room"):
+        # Try to extract brand names from data_summary and filter
+        brand_df = _filter_by_summary_brands(df, data_summary)
+        if not brand_df.empty:
+            relevant_headlines.extend(brand_df["text"].head(8).tolist())
+        relevant_headlines.extend(_get_high_engagement(df, 4))
+        if "created_at" in df.columns:
+            relevant_headlines.extend(df.nlargest(4, "created_at")["text"].tolist())
+
+    elif chart_type == "topic_intelligence":
+        # Filter by the specific topic if detectable from data_summary
+        topic_df = _filter_by_summary_topic(df, data_summary)
+        if not topic_df.empty:
+            relevant_headlines.extend(topic_df["text"].head(10).tolist())
+        relevant_headlines.extend(_get_high_engagement(df, 3))
+        if "created_at" in df.columns:
+            relevant_headlines.extend(df.nlargest(3, "created_at")["text"].tolist())
+
+    elif chart_type == "polymarket_divergence":
+        # Broad like mood_vs_market: engagement + recent + topic diversity
+        relevant_headlines.extend(_get_high_engagement(df, 5))
+        if "created_at" in df.columns:
+            relevant_headlines.extend(df.nlargest(4, "created_at")["text"].tolist())
+        relevant_headlines.extend(_get_topic_diverse(df, 4, 2))
 
     else:
-        # Default: get most recent + highest intensity mix
-        if "intensity" in df.columns:
-            high_intensity = df.nlargest(7, "intensity")["text"].tolist()
-            relevant_headlines.extend(high_intensity)
+        # Default: broad sample — recent + engagement + topic diversity
         if "created_at" in df.columns:
-            recent = df.nlargest(8, "created_at")["text"].tolist()
-            relevant_headlines.extend(recent)
+            relevant_headlines.extend(df.nlargest(5, "created_at")["text"].tolist())
+        relevant_headlines.extend(_get_high_engagement(df, 5))
+        relevant_headlines.extend(_get_topic_diverse(df, 4, 2))
 
     # Fallback if no relevant headlines found
     if not relevant_headlines:
@@ -157,7 +265,7 @@ What events or dynamics are driving the tone of coverage? Be specific about what
 
         "geographic_hotspots": f"""Based on this geographic intensity data and the relevant headlines below, explain why the TOP-RANKED countries show elevated threat levels.\n\nData (sorted by intensity, highest first): {data_summary}\n\nRelevant headlines from top countries:\n{headline_context}\n\nIMPORTANT: Format each country consistently. Be specific about actual events driving the scores.""",
 
-        "mood_vs_market": f"""Based on this social mood vs market data and the relevant headlines below, explain in 2-3 sentences why there is divergence or alignment between public sentiment and market performance.
+        "mood_vs_market": f"""Based on this social mood vs market data and the headlines below, explain in 3-4 sentences why there is divergence or alignment between public sentiment and market performance.
 
 IMPORTANT - Social Mood Score interpretation:
 - The Social Mood score (0-100) measures EMPATHETIC TONE in discourse, NOT topic positivity
@@ -167,12 +275,17 @@ IMPORTANT - Social Mood Score interpretation:
 - Above 70 = Highly Empathetic tone
 - A high score (e.g., 68) means people are discussing topics with warmth/nuance, EVEN IF the topics themselves are heavy or negative
 
+IMPORTANT - Breadth of analysis:
+- Consider the FULL range of headlines, not just 1-2 stories. Markets are driven by macro events (geopolitics, central bank policy, conflicts, commodities) not just tech/cultural news.
+- If there are geopolitical, economic, or conflict-related headlines, these likely matter MORE to markets than cultural stories.
+- Avoid anchoring on a single narrative — synthesize across multiple drivers.
+
 Data: {data_summary}
 
-Headlines driving sentiment extremes:
+Representative headlines (extreme sentiment, high engagement, recent, topic-diverse):
 {headline_context}
 
-Is social sentiment leading or lagging the market? What specific events explain the gap or alignment? Match your tone interpretation to the actual score. Be specific and actionable for investors.""",
+What macro forces, geopolitical events, or sector shifts explain the divergence or alignment? Is social sentiment leading or lagging the market? Keep it concise — 3-4 sentences max, no headers or bullet points.""",
 
         "trending_headlines": f"""Based on these trending headlines and their engagement metrics, explain in 2-3 sentences what common themes or events are driving virality.\n\nData: {data_summary}\n\nTop trending headlines:\n{headline_context}\n\nWhat patterns do you see? Why are these resonating with audiences right now?""",
 
