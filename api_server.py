@@ -137,15 +137,26 @@ def health():
 
 @app.get("/api/data/combined")
 def get_combined_data(days: int = Query(default=7, ge=1, le=30)):
-    """Return news_scored + social_scored union (df_all equivalent)."""
+    """Return news_scored + social_scored union (df_all equivalent).
+
+    Text is truncated to 200 chars to keep payload manageable for browsers.
+    """
     engine = _require_engine()
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+
+    # Select only columns used by the frontend — truncate text to 200 chars
+    cols = """
+        LEFT(text, 200) AS text, created_at, link, source, topic,
+        COALESCE(engagement, 0) AS engagement,
+        country, intensity, empathy_score, empathy_label,
+        emotion_top_1, emotion_top_2, emotion_top_3
+    """
 
     frames = []
     for table in ("news_scored", "social_scored"):
         try:
             df = pd.read_sql(
-                sql_text(f"SELECT * FROM {table} WHERE created_at >= :cutoff"),
+                sql_text(f"SELECT {cols} FROM {table} WHERE created_at >= :cutoff"),
                 engine,
                 params={"cutoff": cutoff},
             )
