@@ -1,26 +1,36 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { LogOut, BarChart3 } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { BrandWatchlist } from "@/components/sidebar/brand-watchlist";
 import { TopicWatchlist } from "@/components/sidebar/topic-watchlist";
 import { EmailPreferences } from "@/components/sidebar/email-preferences";
 import { ReportGenerator } from "@/components/sidebar/report-generator";
 import { BriefGenerator } from "@/components/sidebar/brief-generator";
 
+const STRIPE_PORTAL_LINK = process.env.NEXT_PUBLIC_STRIPE_PORTAL_LINK;
+
 export function Sidebar() {
   const { session, logout, isLoading } = useAuth();
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-border bg-card">
+    <aside className="flex h-screen w-72 flex-col border-r border-border bg-card">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-4 py-5">
-        <BarChart3 className="h-6 w-6 text-primary" />
-        <span className="text-lg font-bold tracking-tight">Moodlight</span>
+      <div className="flex items-center px-4 py-4">
+        <Image
+          src="/logo.png"
+          alt="Moodlight"
+          width={140}
+          height={28}
+          className="h-7 w-auto"
+          priority
+        />
       </div>
 
       <Separator />
@@ -62,8 +72,26 @@ export function Sidebar() {
         <BriefGenerator />
       </ScrollArea>
 
-      {/* Logout */}
-      <div className="border-t border-border p-4">
+      {/* Footer */}
+      <div className="space-y-1 border-t border-border p-4">
+        {STRIPE_PORTAL_LINK && (
+          <a
+            href={STRIPE_PORTAL_LINK}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-xs text-muted-foreground hover:text-foreground"
+          >
+            Manage subscription
+          </a>
+        )}
+        {session?.is_admin && (
+          <Link
+            href="/admin"
+            className="block text-xs text-muted-foreground hover:text-foreground"
+          >
+            Admin Panel
+          </Link>
+        )}
         <Button
           variant="ghost"
           size="sm"

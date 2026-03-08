@@ -316,16 +316,24 @@ export interface StrategicBriefResponse {
 }
 
 export interface PredictionMarket {
+  question: string;
   yes_odds: number;
   no_odds: number;
+  volume: number;
   [key: string]: unknown;
+}
+
+export interface PredictionMarketsDivergence {
+  divergence: number;
+  status: string;
+  interpretation: string;
 }
 
 export interface PredictionMarketsResponse {
   markets: PredictionMarket[];
   avg_market_confidence: number;
   avg_social_mood: number;
-  divergence: string;
+  divergence: PredictionMarketsDivergence | null;
 }
 
 // ── User Preferences ──────────────────────────────────
