@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 load_dotenv()
+import re
 import streamlit as st
 try:
     from db_helper import load_df_from_db
@@ -2846,8 +2847,8 @@ def create_geographic_hotspot_map(df: pd.DataFrame):
     country_stats.columns = ['country', 'avg_intensity', 'article_count']
     
     country_stats = country_stats[
-        (country_stats['country'] != 'Unknown') & 
-        (country_stats['article_count'] >= 3)
+        (country_stats['country'] != 'Unknown') &
+        (country_stats['article_count'] >= 10)
     ].sort_values('avg_intensity', ascending=False).head(15)
     
     chart = (
@@ -2919,19 +2920,24 @@ def create_trend_indicators(df: pd.DataFrame):
     prev_topics = Counter(prev_df['topic'])
     
     trends = []
+    new_topics = []
     for topic in recent_topics:
         recent_count = recent_topics[topic]
-        prev_count = prev_topics.get(topic, 1)
+        if recent_count < 5:
+            continue
+        prev_count = prev_topics.get(topic, 0)
+        if prev_count == 0:
+            new_topics.append({'topic': topic, 'recent': recent_count})
+            continue
         change_pct = ((recent_count - prev_count) / prev_count) * 100
-        
         trends.append({
             'topic': topic,
             'change_pct': round(change_pct, 1),
             'recent': recent_count
         })
-    
+
     trends_df = pd.DataFrame(sorted(trends, key=lambda x: abs(x['change_pct']), reverse=True)[:15])
-    
+
     chart = (
         alt.Chart(trends_df)
         .mark_bar()
@@ -2951,7 +2957,11 @@ def create_trend_indicators(df: pd.DataFrame):
         )
         .properties(title='Topic Trends (24h % change)', height=500)
     )
-    
+
+    if new_topics:
+        new_label = ", ".join(f"**{t['topic']}** ({t['recent']})" for t in sorted(new_topics, key=lambda x: x['recent'], reverse=True))
+        st.caption(f"🆕 New topics this period: {new_label}")
+
     return chart
 
 # Date header
@@ -2994,8 +3004,8 @@ if compare_mode:
         
         brand_results = {}
         for brand in brands_to_compare:
-            brand_df = df_compare[df_compare["text"].str.lower().str.contains(brand.lower(), na=False)]
-            if len(brand_df) >= 5:
+            brand_df = df_compare[df_compare["text"].str.contains(r'\b' + re.escape(brand) + r'\b', case=False, na=False, regex=True)]
+            if len(brand_df) >= 15:
                 brand_results[brand] = calculate_brand_vlds(brand_df)
                 brand_results[brand]['post_count'] = len(brand_df)
             else:
@@ -3959,7 +3969,7 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
         .reset_index()
         .rename(columns={'mean': 'avg_empathy'})
     )
-    topic_avg = topic_avg[topic_avg['count'] >= 2]
+    topic_avg = topic_avg[topic_avg['count'] >= 10]
     topic_avg = topic_avg[~topic_avg['topic'].isin(['race & ethnicity', 'gender & sexuality'])]
     topic_avg["label"] = topic_avg["avg_empathy"].apply(empathy_label_from_score)
     topic_avg["idx"] = topic_avg["label"].apply(empathy_index_from_label)
@@ -4783,7 +4793,7 @@ elif 'intensity' in df_all.columns and 'country' in df_all.columns:
     col1, col2 = st.columns([1, 2])
     
     with col1:
-        avg_int = df_all['intensity'].mean()
+        avg_int = df_all['intensity'].median()
         chart = create_intensity_gauge(df_all, avg_int)
         if chart is not None:
             st.altair_chart(chart, use_container_width=True)
@@ -4806,10 +4816,9 @@ elif 'intensity' in df_all.columns and 'country' in df_all.columns:
                 if 'country' in recent.columns and 'intensity' in recent.columns:
                     country_stats = recent.groupby('country').agg({'intensity': 'mean', 'id': 'count'}).reset_index()
                     country_stats.columns = ['country', 'avg_intensity', 'article_count']
-                    # Match chart filters: exclude Unknown, require 3+ articles
                     country_stats = country_stats[
-                        (country_stats['country'] != 'Unknown') & 
-                        (country_stats['article_count'] >= 3)
+                        (country_stats['country'] != 'Unknown') &
+                        (country_stats['article_count'] >= 10)
                     ].sort_values('avg_intensity', ascending=False).head(5)
                     data_summary = country_stats.to_string()
                 else:

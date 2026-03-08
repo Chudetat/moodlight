@@ -1245,15 +1245,22 @@ INTENSITY_KEYWORDS = {
     1: ["stable", "peace", "agreement", "deal", "cooperation", "partnership", "growth", "recovery", "improvement", "success", "celebration", "achievement"],
 }
 
+# Pre-compile word-boundary regex patterns for intensity keywords.
+# Prevents substring false positives (e.g., "war" in "software").
+INTENSITY_PATTERNS = {
+    score: re.compile(r'\b(?:' + '|'.join(re.escape(kw) for kw in kws) + r')\b')
+    for score, kws in INTENSITY_KEYWORDS.items()
+}
+
 def calculate_intensity(text: str) -> int:
     """Calculate threat intensity score 1-5 based on content"""
     t = text.lower()
-    
+
     # Check from highest to lowest intensity
     for score in [5, 4, 3, 2, 1]:
-        if any(kw in t for kw in INTENSITY_KEYWORDS[score]):
+        if INTENSITY_PATTERNS[score].search(t):
             return score
-    
+
     # Default to moderate intensity for news
     return 2
 
