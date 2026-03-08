@@ -416,14 +416,16 @@ def get_pipeline_health():
         with engine.connect() as conn:
             rows = conn.execute(sql_text("""
                 SELECT DISTINCT ON (pipeline_name)
-                    pipeline_name, status, row_count, started_at, completed_at
+                    pipeline_name, status, row_count, started_at, completed_at,
+                    LEFT(error_message, 100) AS error_preview
                 FROM pipeline_runs
                 ORDER BY pipeline_name, started_at DESC
             """)).fetchall()
 
         pipelines = {}
         for row in rows:
-            name, status, row_count, started_at, completed_at = row
+            name, status, row_count, started_at, completed_at = row[:5]
+            error_preview = row[5] if len(row) > 5 else None
             age_hours = None
             if completed_at:
                 age_hours = round(
@@ -435,6 +437,7 @@ def get_pipeline_health():
                 "row_count": row_count,
                 "last_run": started_at.isoformat() if started_at else None,
                 "age_hours": age_hours,
+                "error_preview": error_preview,
             }
         return {"pipelines": pipelines}
     except Exception as e:
