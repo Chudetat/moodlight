@@ -329,7 +329,7 @@ DATA:
 
     try:
         response = client.messages.create(
-            model="claude-sonnet-4-5-20250929",
+            model="claude-opus-4-6",
             max_tokens=2500,
             system=(
                 "You are a senior strategic intelligence analyst. You synthesize weekly signals "

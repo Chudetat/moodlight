@@ -1667,7 +1667,7 @@ What does this divergence signal? Is the crowd wrong or are markets ahead? Any o
     
     try:
         response = client.messages.create(
-            model="claude-opus-4-20250514",
+            model="claude-opus-4-6",
             max_tokens=800,
             system="You are a senior intelligence analyst. Give concise, specific insights that connect the quantitative data to actual events in the headlines. Show your work - explain WHAT happened, not just what the numbers show. No fluff.",
             messages=[{"role": "user", "content": prompt}]
@@ -3079,7 +3079,7 @@ if compare_mode:
                     
                     client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
                     response = client.messages.create(
-                        model="claude-opus-4-20250514",
+                        model="claude-opus-4-6",
                         messages=[{"role": "user", "content": prompt}],
                         max_tokens=500
                     )
@@ -4662,7 +4662,7 @@ Be specific and prescriptive. Reference the actual scores. No generic advice. (2
                 
                 client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
                 response = client.messages.create(
-                    model="claude-opus-4-20250514",
+                    model="claude-opus-4-6",
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=500
                 )
@@ -5478,7 +5478,7 @@ When users share written content, respond conversationally — provide feedback,
 
             try:
                 response = client.messages.create(
-                    model="claude-opus-4-20250514",
+                    model="claude-opus-4-6",
                     max_tokens=4096,
                     system=system_prompt,
                     messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_messages]

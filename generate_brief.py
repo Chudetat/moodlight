@@ -517,7 +517,7 @@ DATA:
 """
 
     response = client.messages.create(
-        model="claude-opus-4-20250514",
+        model="claude-opus-4-6",
         max_tokens=2500,
         system="""You are a senior intelligence analyst preparing daily briefs for decision-makers. You consolidate noise into signal, distinguish new developments from ongoing situations, and always explain WHY something matters — not just WHAT happened.
 

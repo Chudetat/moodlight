@@ -485,7 +485,7 @@ Powered by Moodlight's Cultural Momentum Matrix™"
 """
 
     response = client.messages.create(
-        model="claude-opus-4-20250514",
+        model="claude-opus-4-6",
         max_tokens=4000,
         system="You are a senior strategist who combines data intelligence with creative intuition. You speak plainly and give bold recommendations.",
         messages=[{"role": "user", "content": prompt}]

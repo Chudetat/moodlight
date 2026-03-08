@@ -325,7 +325,7 @@ How do these brands differ in audience perception? Where does each have an advan
 
     try:
         response = client.messages.create(
-            model="claude-opus-4-20250514",
+            model="claude-opus-4-6",
             max_tokens=800,
             system="You are a senior intelligence analyst. Give concise, specific insights that connect the quantitative data to actual events in the headlines. Show your work - explain WHAT happened, not just what the numbers show. No fluff.",
             messages=[{"role": "user", "content": prompt}]

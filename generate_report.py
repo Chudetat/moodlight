@@ -360,7 +360,7 @@ DATA:
 
     try:
         response = client.messages.create(
-            model="claude-sonnet-4-5-20250929",
+            model="claude-opus-4-6",
             max_tokens=3000,
             system=(
                 "You are a senior strategic intelligence analyst. You produce comprehensive, "
