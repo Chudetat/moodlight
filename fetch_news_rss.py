@@ -398,6 +398,27 @@ FEEDS: List[tuple[str, str]] = [
     ("SpaceNews", "https://spacenews.com/feed/"),
     ("Air Force Magazine", "https://www.airandspaceforces.com/feed/"),
 
+    # Geopolitical / Think Tanks & Policy
+    ("Council on Foreign Relations", "https://www.cfr.org/rss.xml"),
+    ("Atlantic Council", "https://www.atlanticcouncil.org/feed/"),
+    ("CSIS", "https://www.csis.org/feed"),
+    ("RAND Corporation", "https://www.rand.org/content/rand/blog.feed.xml"),
+
+    # Geopolitical / Defense & Security Analysis
+    ("War on the Rocks", "https://warontherocks.com/feed/"),
+    ("Lawfare", "https://www.lawfaremedia.org/rss.xml"),
+    ("Defense One", "https://www.defenseone.com/rss/"),
+
+    # Geopolitical / Foreign Policy Journals
+    ("Foreign Policy", "https://foreignpolicy.com/feed/"),
+    ("Foreign Affairs", "https://www.foreignaffairs.com/rss.xml"),
+    ("The National Interest", "https://nationalinterest.org/feed"),
+    ("The Diplomat", "https://thediplomat.com/feed/"),
+
+    # Geopolitical / European Security
+    ("ECFR", "https://ecfr.eu/feed/"),
+    ("RUSI", "https://www.rusi.org/rss.xml"),
+
     # Education
     ("Education Week", "https://www.edweek.org/feed"),
     ("Higher Ed Dive", "https://www.highereddive.com/feeds/news/"),
@@ -818,6 +839,25 @@ TOPIC_QUERIES = [
     # M&A / Deals
     "acquisition announced", "merger blocked", "IPO filing", "SPAC deal",
     "private equity buyout", "venture funding round",
+
+    # Geopolitical / Defense & Strategic
+    "NATO defense spending", "nuclear deterrence", "military deployment",
+    "defense minister", "arms deal", "strategic weapons",
+
+    # Geopolitical / Conflict & Diplomacy
+    "hybrid warfare", "proxy war", "territorial dispute",
+    "sanctions violation", "diplomatic summit", "peace negotiations", "ceasefire",
+
+    # Geopolitical / Regional Security
+    "Eastern Europe security", "Middle East escalation", "South China Sea",
+    "Taiwan strait", "Arctic sovereignty",
+
+    # Geopolitical / European Defense
+    "European defense initiative", "EU defense spending", "European rearmament",
+
+    # Geopolitical / Intelligence & Threats
+    "espionage", "cyberattack critical infrastructure",
+    "disinformation campaign", "election interference",
 ]
 
 # -------------------------------
@@ -1034,7 +1074,7 @@ TOPIC_KEYWORDS = {
     "healthcare & wellbeing": ["healthcare", "hospital", "doctor", "mental health", "vaccine", "covid", "medical", "pandemic"],
     "immigration": ["immigration", "migrant", "refugee", "asylum", "border", "visa", "deportation"],
     "crime & safety": ["crime", "police", "shooting", "violence", "homicide", "murder", "robbery", "arrest"],
-    "war & foreign policy": ["war", "wars", "warfare", "warzone", "conflict", "military", "israel", "gaza", "ukraine", "russia", "attack", "troops", "nuclear", "invasion", "missile", "sanctions", "diplomatic", "airstrike"],
+    "war & foreign policy": ["war", "wars", "warfare", "warzone", "conflict", "military", "israel", "gaza", "ukraine", "russia", "attack", "troops", "nuclear", "invasion", "missile", "sanctions", "diplomatic", "airstrike", "nato", "deterrence", "deployment", "mobilization", "escalation", "proxy", "insurgency", "occupation", "ceasefire", "armistice", "defense spending", "arms", "weapons", "drone strike", "espionage", "intelligence", "counterterrorism", "border tension", "territorial"],
     "media & journalism": ["journalism", "journalist", "reporter", "newspaper", "newsroom", "editorial", "news media", "press freedom", "press corps", "media bias", "media coverage"],
     "race & ethnicity": ["racism", "ethnicity", "minority", "asian", "discrimination", "racial", "black community", "black lives", "racial justice", "racial profiling"],
     "gender & sexuality": ["gender", "feminist", "lgbtq", "queer", "trans", "women", "abortion"],
