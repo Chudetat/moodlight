@@ -39,6 +39,19 @@ export function formatPctChange(pct: number): string {
 }
 
 /**
+ * Clean source names for display (matches Streamlit).
+ */
+export function cleanSourceName(source: string): string {
+  if (source === "x") return "X (Twitter)";
+  if (source === "news") return "NewsAPI";
+  if (source.toLowerCase().includes("reddit")) {
+    const parts = source.replace("reddit_", "").replace(/_/g, " ");
+    return `Reddit: ${parts.charAt(0).toUpperCase() + parts.slice(1)}`;
+  }
+  return source.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
  * Relative time string (e.g., "2 hours ago")
  */
 export function timeAgo(dateStr: string): string {

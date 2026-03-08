@@ -12,7 +12,7 @@ export function CulturalPulse() {
   if (isLoading) {
     return (
       <div>
-        <h2 className="mb-3 text-lg font-semibold">Cultural Pulse</h2>
+        <h2 className="mb-1 text-lg font-semibold">Cultural Pulse</h2>
         <MetricSkeleton />
       </div>
     );
@@ -35,7 +35,7 @@ export function CulturalPulse() {
 
   return (
     <div>
-      <h2 className="mb-3 text-lg font-semibold">Cultural Pulse</h2>
+      <h2 className="mb-1 text-lg font-semibold">Cultural Pulse</h2>
       <MetricCard
         label="Global Mood Score"
         value={moodScore}

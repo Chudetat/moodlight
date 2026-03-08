@@ -12,7 +12,7 @@ export function EconomicIndicators() {
   if (isLoading) {
     return (
       <div>
-        <h2 className="mb-3 text-lg font-semibold">Economic Indicators</h2>
+        <h2 className="mb-1 text-lg font-semibold">Economic Indicators</h2>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <MetricSkeleton key={i} />

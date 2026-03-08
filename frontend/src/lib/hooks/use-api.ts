@@ -126,6 +126,17 @@ export function useAlerts(username: string, days = 7, severity?: string) {
   });
 }
 
+export function useMarkAlertRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (alertId: number) =>
+      apiFetch(`/api/alerts/${alertId}/mark-read`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alerts"] });
+    },
+  });
+}
+
 export function useAlertFeedback() {
   const queryClient = useQueryClient();
   return useMutation({

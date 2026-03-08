@@ -1,107 +1,110 @@
 "use client";
 
-import { useState } from "react";
-import { useTopicVLDS, useAlerts } from "@/lib/hooks/use-api";
 import { useAuth } from "@/lib/hooks/use-auth";
-import { Card, CardContent } from "@/components/ui/card";
+import { useTopicVLDS, useAlerts } from "@/lib/hooks/use-api";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
 import { HelperButton } from "@/components/shared/helper-button";
 import { CardListSkeleton } from "@/components/shared/loading-skeleton";
+import { SEVERITY_ICONS } from "@/lib/constants";
 
-function getStrategicLabel(v: number, l: number, d: number, s: number): string {
-  if (v > 0.6 && l > 0.5 && d < 0.4 && s > 0.5) return "First Mover";
-  if (v > 0.6 && l < 0.3) return "Flash Trend";
-  if (d > 0.6 && s < 0.3) return "Red Ocean";
-  if (d > 0.5 && s > 0.5) return "Niche Opportunity";
-  if (l > 0.7) return "Established";
-  return "Emerging";
-}
-
-function getLabelColor(label: string): string {
-  switch (label) {
-    case "First Mover": return "text-green-400";
-    case "Flash Trend": return "text-yellow-400";
-    case "Red Ocean": return "text-red-400";
-    case "Niche Opportunity": return "text-blue-400";
-    case "Established": return "text-purple-400";
-    default: return "text-muted-foreground";
-  }
-}
-
-interface TopicCardProps {
-  topic: string;
-  velocity: number;
-  longevity: number;
-  density: number;
-  scarcity: number;
-  alertCount: number;
+function getStrategicLabel(
+  v: number,
+  l: number,
+  d: number,
+  s: number
+): { label: string; color: string } {
+  // Thresholds match Streamlit app.py lines 3854-3869
+  if (v >= 0.7 && l >= 0.7 && d < 0.5 && s >= 0.5)
+    return { label: "First Mover Opportunity", color: "#22C55E" };
+  if (v >= 0.7 && l >= 0.7 && d >= 0.7 && s < 0.3)
+    return { label: "Red Ocean", color: "#EF4444" };
+  if (v >= 0.7 && l < 0.5)
+    return { label: "Flash Trend", color: "#EAB308" };
+  if (v < 0.3 && l >= 0.7)
+    return { label: "Steady Presence", color: "#3B82F6" };
+  if (d >= 0.7 && s >= 0.7)
+    return { label: "Niche Opportunity", color: "#F97316" };
+  if (v >= 0.5 && s >= 0.5)
+    return { label: "White Space", color: "#22C55E" };
+  if (d >= 0.7 && s < 0.3)
+    return { label: "Oversaturated", color: "#EF4444" };
+  return { label: "Monitor", color: "#9CA3AF" };
 }
 
 function TopicCard({
-  topic,
+  topicName,
   velocity,
   longevity,
   density,
   scarcity,
-  alertCount,
-}: TopicCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const label = getStrategicLabel(velocity, longevity, density, scarcity);
+  postCount,
+  alerts,
+}: {
+  topicName: string;
+  velocity: number;
+  longevity: number;
+  density: number;
+  scarcity: number;
+  postCount: number;
+  alerts: { severity: string; title: string }[];
+}) {
+  const { label: strategicLabel, color: labelColor } = getStrategicLabel(
+    velocity,
+    longevity,
+    density,
+    scarcity
+  );
 
-  const dataSummary = `Topic: ${topic}\nVelocity: ${(velocity ?? 0).toFixed(2)}\nLongevity: ${(longevity ?? 0).toFixed(2)}\nDensity: ${(density ?? 0).toFixed(2)}\nScarcity: ${(scarcity ?? 0).toFixed(2)}\nStrategic Label: ${label}`;
+  const dataSummary = `Topic: ${topicName} (${postCount} posts), Velocity: ${velocity.toFixed(2)}, Longevity: ${longevity.toFixed(2)}, Density: ${density.toFixed(2)}, Scarcity: ${scarcity.toFixed(2)}, Strategy: ${strategicLabel}`;
 
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium capitalize">{topic}</span>
-            <Badge variant="secondary" className={`text-[10px] ${getLabelColor(label)}`}>
-              {label}
-            </Badge>
-            {alertCount > 0 && (
-              <Badge variant="outline" className="text-[10px]">
-                {alertCount} alert{alertCount !== 1 ? "s" : ""}
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <HelperButton chartType="topic_intelligence" dataSummary={dataSummary} />
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => setExpanded(!expanded)}
-            >
-              {expanded ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          </div>
-        </div>
+    <div className="rounded border border-border p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-sm font-semibold">{topicName}</div>
+        <Badge
+          style={{ backgroundColor: labelColor, color: "#fff" }}
+          className="text-[10px]"
+        >
+          {strategicLabel}
+        </Badge>
+      </div>
 
-        {expanded && (
-          <div className="mt-3 grid grid-cols-4 gap-3 border-t border-border pt-3">
-            {[
-              { name: "Velocity", val: velocity },
-              { name: "Longevity", val: longevity },
-              { name: "Density", val: density },
-              { name: "Scarcity", val: scarcity },
-            ].map((m) => (
-              <div key={m.name} className="text-center">
-                <p className="text-[10px] text-muted-foreground">{m.name}</p>
-                <p className="text-sm font-bold tabular-nums">
-                  {(m.val ?? 0).toFixed(2)}
-                </p>
-              </div>
-            ))}
+      {/* VLDS metrics */}
+      <div className="mb-2 grid grid-cols-4 gap-2 text-center text-xs">
+        {[
+          { label: "Velocity", value: velocity },
+          { label: "Longevity", value: longevity },
+          { label: "Density", value: density },
+          { label: "Scarcity", value: scarcity },
+        ].map((m) => (
+          <div key={m.label}>
+            <div className="text-muted-foreground">{m.label}</div>
+            <div className="font-semibold">
+              {Math.round(m.value * 100)}%
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        ))}
+      </div>
+
+      {/* Post count */}
+      <div className="mb-2 text-xs text-muted-foreground">
+        {postCount} posts analyzed
+      </div>
+
+      {/* Recent alerts */}
+      {alerts.length > 0 && (
+        <div className="mb-2 space-y-0.5">
+          <div className="text-xs text-muted-foreground">Recent Alerts:</div>
+          {alerts.slice(0, 3).map((a, i) => (
+            <div key={i} className="text-xs">
+              {SEVERITY_ICONS[a.severity] ?? "\uD83D\uDD35"} {a.title}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <HelperButton chartType="topic_intelligence" dataSummary={dataSummary} />
+    </div>
   );
 }
 
@@ -113,7 +116,7 @@ export function TopicIntelligence() {
   if (vldsLoading) {
     return (
       <div>
-        <h2 className="mb-3 text-lg font-semibold">Topic Intelligence</h2>
+        <h2 className="mb-1 text-lg font-semibold">Topic Intelligence</h2>
         <CardListSkeleton count={4} />
       </div>
     );
@@ -122,49 +125,74 @@ export function TopicIntelligence() {
   // Build per-topic VLDS map from separate arrays
   const topicMap = new Map<
     string,
-    { velocity: number; longevity: number; density: number; scarcity: number }
+    {
+      velocity: number;
+      longevity: number;
+      density: number;
+      scarcity: number;
+      postCount: number;
+    }
   >();
 
   for (const item of vldsData?.topic_longevity ?? []) {
-    const existing = topicMap.get(item.scope_name) || {
+    const key = (item.scope_name ?? "").toLowerCase();
+    const existing = topicMap.get(key) || {
       velocity: 0,
       longevity: 0,
       density: 0,
       scarcity: 0,
+      postCount: 0,
     };
-    existing.longevity = item.metric_value ?? 0;
-    topicMap.set(item.scope_name, existing);
+    if (item.metric_name === "velocity_score")
+      existing.velocity = item.metric_value ?? 0;
+    else if (item.metric_name === "longevity_score")
+      existing.longevity = item.metric_value ?? 0;
+    else if (item.metric_name === "post_count")
+      existing.postCount = item.metric_value ?? 0;
+    else existing.longevity = item.metric_value ?? 0;
+    topicMap.set(key, existing);
   }
   for (const item of vldsData?.topic_density ?? []) {
-    const existing = topicMap.get(item.scope_name) || {
+    const key = (item.scope_name ?? "").toLowerCase();
+    const existing = topicMap.get(key) || {
       velocity: 0,
       longevity: 0,
       density: 0,
       scarcity: 0,
+      postCount: 0,
     };
-    existing.density = item.metric_value ?? 0;
-    topicMap.set(item.scope_name, existing);
+    if (item.metric_name === "density_score")
+      existing.density = item.metric_value ?? 0;
+    else if (item.metric_name === "post_count")
+      existing.postCount = Math.max(existing.postCount, item.metric_value ?? 0);
+    else existing.density = item.metric_value ?? 0;
+    topicMap.set(key, existing);
   }
   for (const item of vldsData?.topic_scarcity ?? []) {
-    const existing = topicMap.get(item.scope_name) || {
+    const key = (item.scope_name ?? "").toLowerCase();
+    const existing = topicMap.get(key) || {
       velocity: 0,
       longevity: 0,
       density: 0,
       scarcity: 0,
+      postCount: 0,
     };
-    existing.scarcity = item.metric_value ?? 0;
-    topicMap.set(item.scope_name, existing);
+    if (item.metric_name === "scarcity_score")
+      existing.scarcity = item.metric_value ?? 0;
+    else if (item.metric_name === "post_count")
+      existing.postCount = Math.max(existing.postCount, item.metric_value ?? 0);
+    else existing.scarcity = item.metric_value ?? 0;
+    topicMap.set(key, existing);
   }
 
-  // Count alerts per topic
-  const alertsByTopic = new Map<string, number>();
-  for (const alert of alertsData?.data ?? []) {
-    if (alert.topic) {
-      alertsByTopic.set(
-        alert.topic,
-        (alertsByTopic.get(alert.topic) || 0) + 1
-      );
-    }
+  // Build per-topic alert lists
+  const allAlerts = alertsData?.data ?? [];
+  const topicAlerts = new Map<string, { severity: string; title: string }[]>();
+  for (const a of allAlerts) {
+    const t = (a.topic ?? "").toLowerCase();
+    if (!t) continue;
+    if (!topicAlerts.has(t)) topicAlerts.set(t, []);
+    topicAlerts.get(t)!.push({ severity: a.severity, title: a.title });
   }
 
   const topics = Array.from(topicMap.entries()).sort(
@@ -173,23 +201,31 @@ export function TopicIntelligence() {
 
   return (
     <div>
-      <h2 className="mb-3 text-lg font-semibold">Topic Intelligence</h2>
-      <div className="space-y-2">
-        {topics.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No topic data available.
-          </p>
-        ) : (
-          topics.map(([topic, scores]) => (
+      <h2 className="mb-1 text-lg font-semibold">Topic Intelligence</h2>
+      <p className="mb-3 text-xs text-muted-foreground">
+        VLDS metrics and alerts for your watched topics.
+      </p>
+
+      {topics.length === 0 ? (
+        <p className="py-4 text-center text-sm text-muted-foreground">
+          No topic data available.
+        </p>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {topics.map(([key, scores]) => (
             <TopicCard
-              key={topic}
-              topic={topic}
-              {...scores}
-              alertCount={alertsByTopic.get(topic) || 0}
+              key={key}
+              topicName={key}
+              velocity={scores.velocity}
+              longevity={scores.longevity}
+              density={scores.density}
+              scarcity={scores.scarcity}
+              postCount={scores.postCount}
+              alerts={topicAlerts.get(key) ?? []}
             />
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

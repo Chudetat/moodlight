@@ -211,6 +211,25 @@ export type AlertSeverity = "critical" | "warning" | "info" | "correlation" | "p
 
 export type AlertCategory = "brand" | "topic" | "global" | "predictive" | "competitive";
 
+export interface InvestigationStep {
+  step: number;
+  title?: string;
+  question?: string;
+  content?: string;
+  finding?: string;
+  confidence: number;
+  likely_causes?: string[];
+  recommended_actions?: string[];
+  frameworks_applied?: string[];
+}
+
+export interface Investigation {
+  steps: InvestigationStep[];
+  overall_confidence?: number;
+  final_confidence?: number;
+  recommendation?: string;
+}
+
 export interface Alert {
   id: number;
   timestamp: string;
@@ -218,12 +237,16 @@ export interface Alert {
   severity: AlertSeverity;
   title: string;
   summary: string;
-  investigation: string | null;
-  data: string | null;
+  description?: string;
+  recommendation?: string;
+  confidence?: number;
+  investigation: Investigation | string | null;
+  data: Record<string, unknown> | string | null;
   emailed: boolean;
   cooldown_key: string;
   username: string;
   brand: string | null;
+  brand_name?: string;
   topic: string | null;
   is_read: boolean;
 }

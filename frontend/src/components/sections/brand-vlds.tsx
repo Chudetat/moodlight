@@ -23,7 +23,7 @@ export function BrandVLDS() {
   if (isLoading) {
     return (
       <div>
-        <h2 className="mb-3 text-lg font-semibold">Brand VLDS: {focusedBrand}</h2>
+        <h2 className="mb-1 text-lg font-semibold">Brand VLDS: {focusedBrand}</h2>
         <div className="grid grid-cols-4 gap-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <MetricSkeleton key={i} />
@@ -37,7 +37,7 @@ export function BrandVLDS() {
   if (!vlds) {
     return (
       <div>
-        <h2 className="mb-3 text-lg font-semibold">Brand VLDS: {focusedBrand}</h2>
+        <h2 className="mb-1 text-lg font-semibold">Brand VLDS: {focusedBrand}</h2>
         <p className="text-sm text-muted-foreground">
           {data?.reason || "No VLDS data available for this brand."}
         </p>

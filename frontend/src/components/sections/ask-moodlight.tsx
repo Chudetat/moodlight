@@ -114,7 +114,7 @@ function ChatContent() {
 export function AskMoodlight() {
   return (
     <div>
-      <h2 className="mb-3 text-lg font-semibold">Ask Moodlight</h2>
+      <h2 className="mb-1 text-lg font-semibold">Ask Moodlight</h2>
       <FeatureGate feature="ask_moodlight">
         <ChatContent />
       </FeatureGate>

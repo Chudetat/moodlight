@@ -158,7 +158,7 @@ function WarRoomContent() {
 export function CompetitiveWarRoom() {
   return (
     <div>
-      <h2 className="mb-3 text-lg font-semibold">Competitive War Room</h2>
+      <h2 className="mb-1 text-lg font-semibold">Competitive War Room</h2>
       <FeatureGate feature="competitive_war_room">
         <WarRoomContent />
       </FeatureGate>

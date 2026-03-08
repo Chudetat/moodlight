@@ -11,7 +11,7 @@ export function MarketSentiment() {
   if (isLoading) {
     return (
       <div>
-        <h2 className="mb-3 text-lg font-semibold">Market Sentiment</h2>
+        <h2 className="mb-1 text-lg font-semibold">Market Sentiment</h2>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <MetricSkeleton key={i} />

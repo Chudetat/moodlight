@@ -112,7 +112,7 @@ function DashboardContent() {
 export function IntelDashboard() {
   return (
     <div>
-      <h2 className="mb-3 text-lg font-semibold">
+      <h2 className="mb-1 text-lg font-semibold">
         Intelligence Dashboard
       </h2>
       <FeatureGate feature="intelligence_dashboard">

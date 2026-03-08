@@ -38,7 +38,7 @@ export function MoodHistory() {
   if (isLoading) {
     return (
       <div>
-        <h2 className="mb-3 text-lg font-semibold">7-Day Mood History</h2>
+        <h2 className="mb-1 text-lg font-semibold">7-Day Mood History</h2>
         <ChartSkeleton />
       </div>
     );

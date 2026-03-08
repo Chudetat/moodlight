@@ -1,14 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown } from "lucide-react";
 import { SEVERITY_ICONS } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
-import { useAlertFeedback } from "@/lib/hooks/use-api";
-import type { Alert } from "@/lib/types";
+import { useAlertFeedback, useMarkAlertRead } from "@/lib/hooks/use-api";
+import type { Alert, Investigation } from "@/lib/types";
+
+function parseInvestigation(raw: Alert["investigation"]): Investigation | null {
+  if (!raw) return null;
+  if (typeof raw === "object") return raw as Investigation;
+  try {
+    return JSON.parse(raw) as Investigation;
+  } catch {
+    return null;
+  }
+}
+
+function parseData(raw: Alert["data"]): Record<string, unknown> | null {
+  if (!raw) return null;
+  if (typeof raw === "object") return raw;
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
 
 interface AlertCardProps {
   alert: Alert;
@@ -16,167 +34,202 @@ interface AlertCardProps {
 
 export function AlertCard({ alert }: AlertCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const markRead = useMarkAlertRead();
   const feedback = useAlertFeedback();
 
-  const icon = SEVERITY_ICONS[alert.severity] || "\uD83D\uDD35";
+  const icon =
+    alert.alert_type === "situation_report"
+      ? "\uD83D\uDD17"
+      : (SEVERITY_ICONS[alert.severity] ?? "\uD83D\uDD35");
 
-  function handleExpand() {
-    if (!expanded) {
-      feedback.mutate({ alertId: alert.id, action: "expanded" });
+  const investigation = parseInvestigation(alert.investigation);
+  const alertData = parseData(alert.data);
+
+  const handleExpand = () => {
+    if (!expanded && !alert.is_read) {
+      markRead.mutate(alert.id);
     }
     setExpanded(!expanded);
-  }
-
-  // Parse investigation JSON (contains analysis, confidence, recommendation)
-  let confidence: number | undefined;
-  let recommendation: string | undefined;
-  let analysis: string | undefined;
-  if (alert.investigation) {
-    try {
-      const parsed = JSON.parse(alert.investigation);
-      confidence = parsed.overall_confidence;
-      recommendation = parsed.recommendation;
-      analysis = parsed.analysis;
-    } catch {
-      // investigation is plain text
-      analysis = alert.investigation;
-    }
-  }
-
-  // Extract reasoning steps from analysis text
-  const reasoningSteps: string[] = [];
-  if (analysis) {
-    // Split analysis into meaningful sections
-    const lines = analysis.split("\n").filter((l: string) => l.trim());
-    for (const line of lines) {
-      if (line.trim()) reasoningSteps.push(line.trim());
-    }
-  }
+  };
 
   return (
-    <Card
-      className={`transition-colors ${
+    <div
+      className={`rounded border border-border p-3 ${
         alert.is_read ? "opacity-70" : ""
       }`}
     >
-      <CardContent className="p-4">
-        {/* Header row */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-2">
-            <span className="mt-0.5 text-base">{icon}</span>
-            <div className="min-w-0">
-              <p className="text-sm font-medium leading-tight">
-                {alert.title}
-              </p>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <Badge variant="secondary" className="text-[10px]">
-                  {alert.alert_type.replace(/_/g, " ")}
-                </Badge>
-                {alert.brand && (
-                  <Badge variant="outline" className="text-[10px]">
-                    {alert.brand}
-                  </Badge>
-                )}
-                {alert.topic && (
-                  <Badge variant="outline" className="text-[10px]">
-                    {alert.topic}
-                  </Badge>
-                )}
-                <span className="text-[10px] text-muted-foreground">
-                  {timeAgo(alert.timestamp)}
-                </span>
-              </div>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={handleExpand}
-          >
-            {expanded ? (
-              <ChevronUp className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
+      {/* Header */}
+      <button
+        className="flex w-full items-start gap-2 text-left"
+        onClick={handleExpand}
+      >
+        <span className="mt-0.5 text-base">{icon}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            {(alert.brand_name || alert.brand) && (
+              <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                {alert.brand_name || alert.brand}
+              </Badge>
             )}
-          </Button>
+            {alert.topic && (
+              <Badge variant="secondary" className="px-1 py-0 text-[10px]">
+                {alert.topic}
+              </Badge>
+            )}
+            <Badge
+              variant="outline"
+              className="px-1 py-0 text-[10px] text-muted-foreground"
+            >
+              {alert.alert_type.replace(/_/g, " ")}
+            </Badge>
+          </div>
+          <div className="mt-0.5 text-sm font-medium">{alert.title}</div>
         </div>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {timeAgo(alert.timestamp)}
+        </span>
+      </button>
 
-        {/* Summary */}
-        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-          {alert.summary}
-        </p>
+      {/* Expanded content */}
+      {expanded && (
+        <div className="mt-3 space-y-3 border-t border-border/50 pt-3">
+          <p className="text-sm">{alert.description || alert.summary}</p>
 
-        {/* Expanded content */}
-        {expanded && (
-          <div className="mt-3 space-y-3 border-t border-border pt-3">
-            {/* Confidence */}
-            {confidence !== undefined && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  Confidence:
-                </span>
-                <div className="h-1.5 w-24 rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${confidence}%` }}
-                  />
-                </div>
-                <span className="text-xs font-medium">{confidence}%</span>
-              </div>
-            )}
-
-            {/* Analysis */}
-            {analysis && (
-              <div>
-                <p className="mb-1.5 text-xs font-medium">Analysis</p>
-                <p className="whitespace-pre-wrap text-xs text-muted-foreground">
-                  {analysis}
-                </p>
-              </div>
-            )}
-
-            {/* Recommendation */}
-            {recommendation && (
-              <div>
-                <p className="mb-1 text-xs font-medium">Recommendation</p>
-                <p className="text-xs text-muted-foreground capitalize">
-                  {recommendation.replace(/_/g, " ")}
-                </p>
-              </div>
-            )}
-
-            {/* Feedback buttons */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() =>
-                  feedback.mutate({
-                    alertId: alert.id,
-                    action: "thumbs_up",
-                  })
-                }
-                title="Helpful"
-              >
-                <ThumbsUp className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() =>
-                  feedback.mutate({
-                    alertId: alert.id,
-                    action: "thumbs_down",
-                  })
-                }
-                title="Not helpful"
-              >
-                <ThumbsDown className="h-3 w-3" />
-              </Button>
+          {(alert.recommendation || investigation?.recommendation) && (
+            <div className="rounded bg-muted p-2 text-sm">
+              <span className="font-medium">Recommendation: </span>
+              {(
+                alert.recommendation ||
+                investigation?.recommendation ||
+                ""
+              ).replace(/_/g, " ")}
             </div>
+          )}
+
+          {/* Situation report: correlated alerts */}
+          {alert.alert_type === "situation_report" && alertData && (
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-muted-foreground">
+                Correlated Signals:
+              </div>
+              {(
+                (alertData.correlated_alerts as
+                  | {
+                      severity?: string;
+                      alert_type?: string;
+                      title?: string;
+                    }[]
+                  | undefined) ?? []
+              ).map(
+                (
+                  ca: {
+                    severity?: string;
+                    alert_type?: string;
+                    title?: string;
+                  },
+                  i: number
+                ) => (
+                  <div key={i} className="text-xs">
+                    {SEVERITY_ICONS[ca.severity ?? "info"] ?? "\uD83D\uDD35"}{" "}
+                    <span className="font-medium">
+                      {(ca.alert_type ?? "")
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (c) => c.toUpperCase())}
+                      :
+                    </span>{" "}
+                    {ca.title ?? "Untitled"}
+                  </div>
+                )
+              )}
+            </div>
+          )}
+
+          {/* Investigation (reasoning chain) */}
+          {investigation &&
+            investigation.steps &&
+            investigation.steps.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-muted-foreground">
+                  Investigation (
+                  {investigation.overall_confidence ??
+                    investigation.final_confidence ??
+                    alert.confidence ??
+                    0}
+                  /100 confidence)
+                </div>
+                {investigation.steps.map((step, idx) => {
+                  const stepTitle =
+                    step.title ?? step.question ?? `Step ${step.step}`;
+                  const stepContent = step.content ?? step.finding ?? "";
+                  const confPct =
+                    typeof step.confidence === "number"
+                      ? step.confidence <= 1
+                        ? Math.round(step.confidence * 100)
+                        : Math.round(step.confidence)
+                      : 0;
+                  return (
+                    <div
+                      key={idx}
+                      className="rounded border border-border/50 p-2 text-xs"
+                    >
+                      <div className="font-medium">
+                        {stepTitle} (confidence: {confPct}%)
+                      </div>
+                      {stepContent && (
+                        <div className="mt-1 whitespace-pre-wrap text-muted-foreground">
+                          {stepContent}
+                        </div>
+                      )}
+                      {step.likely_causes && step.likely_causes.length > 0 && (
+                        <div className="mt-1">
+                          <span className="font-medium">Likely causes: </span>
+                          {step.likely_causes.join(", ")}
+                        </div>
+                      )}
+                      {step.recommended_actions &&
+                        step.recommended_actions.length > 0 && (
+                          <div className="mt-1">
+                            <span className="font-medium">Recommended: </span>
+                            {step.recommended_actions.join(", ")}
+                          </div>
+                        )}
+                      {step.frameworks_applied &&
+                        step.frameworks_applied.length > 0 && (
+                          <div className="mt-1 text-muted-foreground">
+                            Frameworks: {step.frameworks_applied.join(", ")}
+                          </div>
+                        )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+          {/* Feedback */}
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs"
+              onClick={() =>
+                feedback.mutate({ alertId: alert.id, action: "thumbs_up" })
+              }
+            >
+              👍 Helpful
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs"
+              onClick={() =>
+                feedback.mutate({ alertId: alert.id, action: "thumbs_down" })
+              }
+            >
+              👎 Not helpful
+            </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 }
