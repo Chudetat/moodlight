@@ -13,7 +13,7 @@ interface BarChartProps {
   enableLabel?: boolean;
   axisBottomLegend?: string;
   axisLeftLegend?: string;
-  colors?: string[];
+  colors?: string[] | ((datum: { id: string | number; indexValue?: string | number; data?: Record<string, unknown>; [key: string]: unknown }) => string);
 }
 
 export function BarChart({

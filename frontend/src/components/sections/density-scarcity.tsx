@@ -5,6 +5,7 @@ import { useTopicVLDS } from "@/lib/hooks/use-api";
 import { BarChart } from "@/components/charts/bar-chart";
 import { HelperButton } from "@/components/shared/helper-button";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
+import { OPPORTUNITY_COLORS } from "@/lib/constants";
 
 export function DensityScarcity() {
   const { data, isLoading } = useTopicVLDS();
@@ -83,7 +84,12 @@ export function DensityScarcity() {
             indexBy="topic"
             layout="horizontal"
             height={Math.max(200, scarcityData.length * 28)}
-            colors={["#21C354"]}
+            colors={(datum) => {
+              const v = typeof datum.data?.scarcity === "number" ? datum.data.scarcity : 0;
+              if (v >= 0.7) return OPPORTUNITY_COLORS.HIGH;
+              if (v >= 0.4) return OPPORTUNITY_COLORS.MEDIUM;
+              return OPPORTUNITY_COLORS.LOW;
+            }}
           />
         ) : (
           <p className="py-4 text-center text-sm text-muted-foreground">

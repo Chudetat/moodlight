@@ -6,6 +6,7 @@ import { normalizeEmpathyScore } from "@/lib/utils";
 import { BarChart } from "@/components/charts/bar-chart";
 import { HelperButton } from "@/components/shared/helper-button";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
+import { EMOTION_COLORS, EMPATHY_COLORS } from "@/lib/constants";
 
 export function EmpathyByTopic() {
   const { data, isLoading } = useCombinedData(7);
@@ -49,6 +50,13 @@ export function EmpathyByTopic() {
           indexBy="topic"
           layout="horizontal"
           height={Math.max(250, chartData.length * 30)}
+          colors={(datum) => {
+            const v = typeof datum.data?.empathy === "number" ? datum.data.empathy : 0;
+            if (v < 35) return EMPATHY_COLORS[0]; // red
+            if (v < 50) return EMPATHY_COLORS[1]; // gold
+            if (v < 70) return EMPATHY_COLORS[2]; // green
+            return EMPATHY_COLORS[3]; // blue
+          }}
         />
       ) : (
         <p className="py-4 text-center text-sm text-muted-foreground">No data</p>
@@ -105,7 +113,16 @@ export function EmotionalBreakdown() {
               </div>
             ))}
           </div>
-          <BarChart data={chartData} keys={["count"]} indexBy="emotion" height={280} />
+          <BarChart
+            data={chartData}
+            keys={["count"]}
+            indexBy="emotion"
+            height={280}
+            colors={(datum) => {
+              const emotion = String(datum.indexValue || "").toLowerCase();
+              return EMOTION_COLORS[emotion] || "#808080";
+            }}
+          />
         </>
       ) : (
         <p className="py-4 text-center text-sm text-muted-foreground">No data</p>
@@ -147,7 +164,20 @@ export function EmpathyDistribution() {
         <p className="text-sm font-medium">Empathy Distribution</p>
         <HelperButton chartType="empathy_distribution" dataSummary={dataSummary} />
       </div>
-      <BarChart data={chartData} keys={["count"]} indexBy="range" height={250} />
+      <BarChart
+        data={chartData}
+        keys={["count"]}
+        indexBy="range"
+        height={250}
+        colors={(datum) => {
+          const range = String(datum.indexValue || "");
+          if (range === "0-20") return EMPATHY_COLORS[0]; // red
+          if (range === "20-40") return EMPATHY_COLORS[1]; // gold
+          if (range === "40-60") return EMPATHY_COLORS[1]; // gold
+          if (range === "60-80") return EMPATHY_COLORS[2]; // green
+          return EMPATHY_COLORS[3]; // blue
+        }}
+      />
     </div>
   );
 }
@@ -194,7 +224,7 @@ export function TopicDistribution() {
               </div>
             ))}
           </div>
-          <BarChart data={chartData} keys={["count"]} indexBy="topic" height={300} />
+          <BarChart data={chartData} keys={["count"]} indexBy="topic" height={300} colors={["#1f77b4"]} />
         </>
       ) : (
         <p className="py-4 text-center text-sm text-muted-foreground">No data</p>

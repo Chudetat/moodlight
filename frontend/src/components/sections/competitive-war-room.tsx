@@ -94,6 +94,11 @@ function BrandWarRoom({ brand }: BrandWarRoomProps) {
             indexBy="brand"
             layout="horizontal"
             height={Math.max(200, sovData.length * 40)}
+            colors={(datum) => {
+              return String(datum.indexValue) === brand
+                ? "#4CAF50"
+                : "#78909C";
+            }}
           />
         </div>
       )}

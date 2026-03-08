@@ -5,6 +5,7 @@ import { useTopicVLDS } from "@/lib/hooks/use-api";
 import { ScatterChart, type ScatterSeries } from "@/components/charts/scatter-chart";
 import { HelperButton } from "@/components/shared/helper-button";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
+import { QUADRANT_COLORS } from "@/lib/constants";
 
 export function VelocityLongevity() {
   const { data, isLoading } = useTopicVLDS();
@@ -45,7 +46,22 @@ export function VelocityLongevity() {
       else quadrantCounts.fading++;
     }
 
-    const chartData: ScatterSeries[] = [{ id: "Topics", data: points }];
+    // Split into 4 quadrant-colored series
+    const quadrantSeries: Record<string, typeof points> = {
+      "Lasting Movement": [],
+      "Flash Trend": [],
+      "Evergreen Topic": [],
+      "Fading Out": [],
+    };
+    for (const p of points) {
+      if (p.x > 0.5 && p.y > 0.5) quadrantSeries["Lasting Movement"].push(p);
+      else if (p.x > 0.5 && p.y <= 0.5) quadrantSeries["Flash Trend"].push(p);
+      else if (p.x <= 0.5 && p.y > 0.5) quadrantSeries["Evergreen Topic"].push(p);
+      else quadrantSeries["Fading Out"].push(p);
+    }
+    const chartData: ScatterSeries[] = Object.entries(quadrantSeries)
+      .filter(([, pts]) => pts.length > 0)
+      .map(([name, pts]) => ({ id: name, data: pts }));
     const dataSummary = points
       .map((p) => `${p.label}: V=${(p.x ?? 0).toFixed(2)}, L=${(p.y ?? 0).toFixed(2)}`)
       .join("\n");
@@ -98,6 +114,7 @@ export function VelocityLongevity() {
           height={350}
           xLabel="Velocity"
           yLabel="Longevity"
+          colors={chartData.map((s) => QUADRANT_COLORS[s.id] || "#808080")}
         />
       ) : (
         <p className="py-4 text-center text-sm text-muted-foreground">

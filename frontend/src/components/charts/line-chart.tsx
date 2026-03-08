@@ -12,6 +12,7 @@ interface LineChartProps {
   axisLeftFormat?: string;
   enablePoints?: boolean;
   curve?: "linear" | "monotoneX" | "natural" | "step";
+  colors?: string[];
 }
 
 export function LineChart({
@@ -23,6 +24,7 @@ export function LineChart({
   axisLeftFormat,
   enablePoints = true,
   curve = "monotoneX",
+  colors,
 }: LineChartProps) {
   return (
     <div style={{ height }}>
@@ -45,7 +47,7 @@ export function LineChart({
           tickSize: 5,
           tickPadding: 5,
         }}
-        colors={[...COLORS.chart]}
+        colors={colors || [...COLORS.chart]}
         lineWidth={2}
         pointSize={enablePoints ? 6 : 0}
         pointColor={{ theme: "background" }}

@@ -73,7 +73,7 @@ export function MoodVsMarket() {
         <HelperButton chartType="mood_vs_market" dataSummary={dataSummary} />
       </div>
       {chartData.length > 0 && chartData[0].data.length > 0 ? (
-        <LineChart data={chartData} height={300} />
+        <LineChart data={chartData} height={300} colors={["#1f77b4", "#2E7D32"]} />
       ) : (
         <p className="py-4 text-center text-sm text-muted-foreground">
           Not enough data for comparison.

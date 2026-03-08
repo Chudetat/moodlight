@@ -69,6 +69,7 @@ export function MoodHistory() {
             enableArea
             yFormat=" >-.0f"
             axisLeftFormat=" >-.0f"
+            colors={["#1f77b4"]}
           />
         </div>
       ) : (

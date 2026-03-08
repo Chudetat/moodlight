@@ -59,6 +59,7 @@ export function ViralityEmpathy() {
           height={350}
           xLabel="Virality Score"
           yLabel="Empathy Score"
+          colors={["#FF6B6B"]}
         />
       ) : (
         <p className="py-4 text-center text-sm text-muted-foreground">

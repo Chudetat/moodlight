@@ -21,6 +21,7 @@ interface ScatterChartProps {
   xLabel?: string;
   yLabel?: string;
   nodeSize?: number | ((d: { data: ScatterDataPoint }) => number);
+  colors?: string[];
 }
 
 export function ScatterChart({
@@ -29,6 +30,7 @@ export function ScatterChart({
   xLabel,
   yLabel,
   nodeSize = 8,
+  colors,
 }: ScatterChartProps) {
   return (
     <div style={{ height }}>
@@ -37,7 +39,7 @@ export function ScatterChart({
         margin={{ top: 20, right: 20, bottom: 60, left: 70 }}
         xScale={{ type: "linear", min: "auto", max: "auto" }}
         yScale={{ type: "linear", min: "auto", max: "auto" }}
-        colors={[...COLORS.chart]}
+        colors={colors || [...COLORS.chart]}
         nodeSize={typeof nodeSize === "function" ? nodeSize : nodeSize}
         axisBottom={{
           legend: xLabel,

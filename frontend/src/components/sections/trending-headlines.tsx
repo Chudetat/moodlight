@@ -61,6 +61,7 @@ export function TrendingHeadlines() {
           height={350}
           xLabel="Age (hours)"
           yLabel="Empathy Score"
+          colors={["#60A5FA"]}
         />
       ) : (
         <p className="py-4 text-center text-sm text-muted-foreground">

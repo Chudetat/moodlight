@@ -97,6 +97,67 @@ export const COMMODITY_NAMES: Record<string, string> = {
   "Natural Gas": "Natural Gas",
 };
 
+// ── GoEmotions colors (28 emotions, matches app.py) ──
+
+export const EMOTION_COLORS: Record<string, string> = {
+  admiration: "#FFD700",
+  amusement: "#FF8C00",
+  anger: "#DC143C",
+  annoyance: "#CD5C5C",
+  approval: "#32CD32",
+  caring: "#FF69B4",
+  confusion: "#9370DB",
+  curiosity: "#00CED1",
+  desire: "#FF1493",
+  disappointment: "#708090",
+  disapproval: "#B22222",
+  disgust: "#556B2F",
+  embarrassment: "#DDA0DD",
+  excitement: "#FF4500",
+  fear: "#8B008B",
+  gratitude: "#20B2AA",
+  grief: "#2F4F4F",
+  joy: "#FFD700",
+  love: "#FF69B4",
+  nervousness: "#DA70D6",
+  neutral: "#808080",
+  optimism: "#98FB98",
+  pride: "#4169E1",
+  realization: "#00BFFF",
+  relief: "#87CEEB",
+  remorse: "#696969",
+  sadness: "#4682B4",
+  surprise: "#FF8C00",
+};
+
+// ── Empathy level colors ─────────────────────────────
+
+export const EMPATHY_LABELS = [
+  "Cold / Hostile",
+  "Detached / Neutral",
+  "Warm / Supportive",
+  "Highly Empathetic",
+];
+
+export const EMPATHY_COLORS = ["#FF4444", "#FFBB44", "#44BB44", "#4444FF"];
+
+// ── Velocity/Longevity quadrant colors ───────────────
+
+export const QUADRANT_COLORS: Record<string, string> = {
+  "Lasting Movement": "#2E7D32",
+  "Flash Trend": "#FFA726",
+  "Evergreen Topic": "#5C6BC0",
+  "Fading Out": "#9E9E9E",
+};
+
+// ── Scarcity opportunity level colors ────────────────
+
+export const OPPORTUNITY_COLORS: Record<string, string> = {
+  HIGH: "#2E7D32",
+  MEDIUM: "#FFA726",
+  LOW: "#9E9E9E",
+};
+
 // ── Colors (Streamlit-inspired dark theme) ────────────
 
 export const COLORS = {

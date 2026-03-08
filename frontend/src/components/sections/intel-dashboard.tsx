@@ -6,6 +6,7 @@ import { normalizeEmpathyScore } from "@/lib/utils";
 import { FeatureGate } from "@/components/layout/feature-gate";
 import { GaugeChart } from "@/components/charts/gauge-chart";
 import { BarChart } from "@/components/charts/bar-chart";
+import { HelperButton } from "@/components/shared/helper-button";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
 
 function DashboardContent() {
@@ -79,15 +80,30 @@ function DashboardContent() {
         {/* Geographic hotspots */}
         {hotspots.length > 0 && (
           <div className="flex-1 rounded-lg border border-border bg-card p-4">
-            <p className="mb-2 text-sm font-medium">
-              Geographic Hotspots
-            </p>
+            <div className="mb-2 flex items-center gap-2">
+              <p className="text-sm font-medium">Geographic Hotspots</p>
+              <HelperButton
+                chartType="geographic_hotspots"
+                dataSummary={hotspots
+                  .map((d) => `${d.country}: ${d.count}`)
+                  .join("\n")}
+              />
+            </div>
             <BarChart
               data={hotspots}
               keys={["count"]}
               indexBy="country"
               layout="horizontal"
               height={Math.max(200, hotspots.length * 30)}
+              colors={(datum) => {
+                const maxCount = hotspots[0]?.count || 1;
+                const val = typeof datum.data?.count === "number" ? datum.data.count : 0;
+                const intensity = Math.max(0.3, val / maxCount);
+                const r = 220;
+                const g = Math.round(60 * (1 - intensity));
+                const b = Math.round(60 * (1 - intensity));
+                return `rgb(${r},${g},${b})`;
+              }}
             />
           </div>
         )}
@@ -102,6 +118,7 @@ function DashboardContent() {
             keys={["count"]}
             indexBy="topic"
             height={300}
+            colors={["#60A5FA"]}
           />
         </div>
       )}
