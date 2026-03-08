@@ -488,27 +488,48 @@ IMPORTANT GUIDELINES:
 - Add confidence indicator based on data volume: [HIGH CONFIDENCE] = 10+ sources, [MODERATE] = 3-9 sources, [LIMITED] = 1-2 sources
 - DO NOT repeat the same lead stories across consecutive briefs. If a story has been ongoing for days, only include it if there is a NEW development.
 
-Format as:
-DAILY INTELLIGENCE BRIEF - {datetime.now(timezone.utc).strftime("%B %d, %Y")}
+Format EXACTLY as shown below. Do not deviate from this structure:
 
-KEY THREATS:
-1. [NEW/ONGOING] **Threat Title** - [CONFIDENCE LEVEL]
-   What: [One sentence on what happened]
-   So What: [Why this matters / implications]
+KEY THREATS
+1. [NEW] Threat Title - [HIGH CONFIDENCE]
+   What: One sentence on what happened.
+   So What: Why this matters. Keep to 2-3 sentences max.
 
-WATCH LIST:
-[Lower priority items worth monitoring - not urgent but could escalate]
+2. [ONGOING] Threat Title - [MODERATE CONFIDENCE]
+   What: One concise sentence.
+   So What: 2-3 sentences on implications.
 
-EMERGING PATTERNS:
-[Group related signals. Note if each pattern is ACCELERATING ↑ or DECELERATING ↓]
+WATCH LIST
+• One-liner description of item worth monitoring
+• Another one-liner — keep each bullet to one sentence
 
-FORWARD LOOK:
-[2-3 most likely developments in the next 7-14 days based on converging signals above. For each: state the projection, rate probability (HIGH/MODERATE/LOW), cite the data points. Only include projections where 2+ independent signals converge.]
+EMERGING PATTERNS
+• Pattern Name [ACCELERATING ↑]: One sentence on what's converging
+• Pattern Name [DECELERATING ↓]: One sentence on what's fading
+• Pattern Name [UNCERTAIN]: One sentence
 
-RECOMMENDED ACTIONS:
-- IMMEDIATE (24h): [...]
-- SHORT-TERM (this week): [...]
-- MONITOR: [...]
+FORWARD LOOK
+1. Projection statement - [HIGH/MODERATE/LOW] probability
+   Data points: Cite 2-3 specific signals from the data
+   Projection: What happens next and timeframe
+
+2. Next projection - [PROBABILITY] probability
+   Data points: Supporting signals
+   Projection: Expected outcome
+
+RECOMMENDED ACTIONS
+• [IMMEDIATE] (24h): Specific action
+• [SHORT-TERM] (this week): Specific action
+• [MONITOR]: What to watch
+
+STRICT FORMATTING RULES (violations break email rendering):
+- Section headers: NO colons. Write "KEY THREATS" not "KEY THREATS:"
+- Status tags: ONLY use [NEW] or [ONGOING]. Never compound tags like [ONGOING — NEW DEVELOPMENTS] or [NEW — ESCALATING]. Pick one.
+- Confidence tags: ONLY use [HIGH CONFIDENCE], [MODERATE CONFIDENCE], or [LIMITED CONFIDENCE]. Place at end of threat title line after a dash.
+- Emerging Patterns: Tag goes AFTER the pattern name in brackets. Always one of [ACCELERATING ↑], [DECELERATING ↓], or [UNCERTAIN]. Followed by colon and one sentence.
+- Watch List: One sentence per bullet. No elaboration.
+- Forward Look: Always use the "Data points:" and "Projection:" sub-labels on separate lines.
+- Action tags: Use [IMMEDIATE], [SHORT-TERM], [MONITOR] in brackets.
 
 Target 600-800 words. Use clear, direct language. No fluff.
 
