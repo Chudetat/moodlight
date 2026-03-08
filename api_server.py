@@ -144,11 +144,11 @@ def get_combined_data(days: int = Query(default=7, ge=1, le=30)):
     engine = _require_engine()
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
 
-    # Select only columns used by the frontend — truncate text to 200 chars
+    # Select only columns the frontend uses — truncate text to keep payload small
     cols = """
-        LEFT(text, 200) AS text, created_at, link, source, topic,
+        LEFT(text, 140) AS text, created_at, source, topic,
         COALESCE(engagement, 0) AS engagement,
-        country, intensity, empathy_score, empathy_label,
+        country, intensity, empathy_score,
         emotion_top_1, emotion_top_2, emotion_top_3
     """
 
