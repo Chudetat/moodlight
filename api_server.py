@@ -36,6 +36,7 @@ from vlds_helper import calculate_brand_vlds
 from auth_helper import (
     create_access_token, verify_password, lookup_user,
     is_admin_email, require_auth, _DUMMY_HASH,
+    create_session, validate_session, clear_session,
 )
 from tier_helper import (
     ACTIVE_TIERS, TIER_FEATURES, TIER_LIMITS, log_user_event,
@@ -490,7 +491,8 @@ def auth_login(req: LoginRequest):
     if not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_access_token(user["username"], user["email"])
+    sid = create_session(engine, user["username"])
+    token = create_access_token(user["username"], user["email"], session_id=sid)
     log_user_event(user["username"], "login", f"via API ({req.email or req.username})")
 
     return LoginResponse(
@@ -511,6 +513,10 @@ def auth_session(payload: dict = Depends(require_auth)):
     if not user:
         raise HTTPException(status_code=401, detail="User no longer exists")
 
+    # Check session is still active (not superseded by another login)
+    if not validate_session(engine, payload["sub"], payload.get("sid", "")):
+        raise HTTPException(status_code=401, detail="Session expired — logged in from another location")
+
     return SessionResponse(
         username=user["username"],
         email=user["email"],
@@ -523,7 +529,9 @@ def auth_session(payload: dict = Depends(require_auth)):
 
 @app.post("/api/auth/logout")
 def auth_logout(payload: dict = Depends(require_auth)):
-    """Log the logout event. Stateless JWT — no server-side invalidation."""
+    """Clear session and log the event."""
+    engine = _require_engine()
+    clear_session(engine, payload["sub"])
     log_user_event(payload["sub"], "logout", "via API")
     return {"status": "ok"}
 

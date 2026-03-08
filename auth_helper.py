@@ -6,6 +6,7 @@ Tier is NOT stored in the JWT — checked from DB on every protected request.
 """
 
 import os
+import uuid
 from datetime import datetime, timezone, timedelta
 
 import bcrypt
@@ -26,8 +27,8 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 _DUMMY_HASH = bcrypt.hashpw(b"dummy_password_for_timing", bcrypt.gensalt()).decode()
 
 
-def create_access_token(username: str, email: str) -> str:
-    """Create a signed JWT with username and email claims."""
+def create_access_token(username: str, email: str, session_id: str | None = None) -> str:
+    """Create a signed JWT with username, email, and session_id claims."""
     if not JWT_SECRET:
         raise RuntimeError("JWT_SECRET not configured")
     payload = {
@@ -36,7 +37,59 @@ def create_access_token(username: str, email: str) -> str:
         "iat": datetime.now(timezone.utc),
         "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS),
     }
+    if session_id:
+        payload["sid"] = session_id
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def create_session(engine, username: str) -> str:
+    """Create a new session for a user, invalidating any previous session.
+    Stores session_id in users table. Returns the new session_id."""
+    sid = str(uuid.uuid4())
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                sql_text("UPDATE users SET session_id = :sid WHERE username = :u"),
+                {"sid": sid, "u": username},
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"WARNING: create_session failed: {e}")
+    return sid
+
+
+def validate_session(engine, username: str, session_id: str) -> bool:
+    """Check if session_id matches the current active session in DB."""
+    if not session_id:
+        return True  # Legacy tokens without sid are allowed (graceful migration)
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(
+                sql_text("SELECT session_id FROM users WHERE username = :u"),
+                {"u": username},
+            ).fetchone()
+            if not row:
+                return False
+            db_sid = row[0]
+            if db_sid is None:
+                return True  # No session enforcement yet for this user
+            return db_sid == session_id
+    except Exception as e:
+        print(f"WARNING: validate_session failed: {e}")
+        return True  # Fail open on DB errors
+
+
+def clear_session(engine, username: str):
+    """Clear the session on logout, invalidating the current token."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                sql_text("UPDATE users SET session_id = NULL WHERE username = :u"),
+                {"u": username},
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"WARNING: clear_session failed: {e}")
 
 
 def decode_access_token(token: str) -> dict:
