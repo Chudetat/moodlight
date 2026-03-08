@@ -4756,7 +4756,7 @@ if len(df_world_view):
     display_df = df_world_view[cols].copy()
     if "created_at" in display_df.columns:
         display_df = display_df.sort_values("created_at", ascending=False).reset_index(drop=True)
-        display_df["created_at"] = display_df["created_at"].dt.strftime("%b %d, %H:%M")
+        display_df["created_at"] = display_df["created_at"].dt.strftime("%m/%d %H:%M")
 
     st.dataframe(
         display_df.head(3000),
@@ -4766,7 +4766,7 @@ if len(df_world_view):
             "source": st.column_config.TextColumn("Source", width="small"),
             "engagement": st.column_config.NumberColumn("Engagement", format="%d"),
             "empathy_label": st.column_config.TextColumn("Empathy"),
-            "created_at": st.column_config.TextColumn("Posted")
+            "created_at": st.column_config.TextColumn("Posted", width="small")
         },
         height=600
     )
