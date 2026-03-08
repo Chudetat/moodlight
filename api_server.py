@@ -642,7 +642,7 @@ def prediction_markets(payload: dict = Depends(require_auth)):
 
     from polymarket_helper import fetch_polymarket_markets, calculate_sentiment_divergence
 
-    markets = fetch_polymarket_markets(limit=15, min_volume=5000)
+    markets = fetch_polymarket_markets(limit=25, min_volume=1000)
     if not markets:
         return {"markets": [], "divergence": None}
 
@@ -676,12 +676,12 @@ def prediction_markets(payload: dict = Depends(require_auth)):
     except Exception:
         pass
 
-    top8 = markets[:8]
-    avg_market = sum(max(m["yes_odds"], m["no_odds"]) for m in top8) / len(top8)
+    top10 = markets[:10]
+    avg_market = sum(max(m["yes_odds"], m["no_odds"]) for m in top10) / len(top10)
     divergence = calculate_sentiment_divergence(avg_market, avg_social)
 
     return {
-        "markets": top8,
+        "markets": top10,
         "avg_market_confidence": round(avg_market, 1),
         "avg_social_mood": avg_social,
         "divergence": divergence,
