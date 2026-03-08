@@ -626,6 +626,60 @@ def strategic_brief(req: StrategicBriefRequest, payload: dict = Depends(require_
     return {"brief": brief_text, "frameworks": framework_names, "email_sent": email_sent}
 
 
+@app.get("/api/prediction-markets")
+def prediction_markets(payload: dict = Depends(require_auth)):
+    """Fetch live prediction market data with social sentiment divergence."""
+    _require_active_tier(payload, "prediction_markets")
+    engine = _require_engine()
+
+    from polymarket_helper import fetch_polymarket_markets, calculate_sentiment_divergence
+
+    markets = fetch_polymarket_markets(limit=15, min_volume=5000)
+    if not markets:
+        return {"markets": [], "divergence": None}
+
+    # Compute average social sentiment from last 7 days
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+    avg_social = 50.0  # default
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(
+                sql_text(
+                    "SELECT AVG(empathy_score) FROM ("
+                    "  SELECT empathy_score FROM news_scored WHERE created_at >= :cutoff"
+                    "  UNION ALL"
+                    "  SELECT empathy_score FROM social_scored WHERE created_at >= :cutoff"
+                    ") sub"
+                ),
+                {"cutoff": cutoff},
+            ).fetchone()
+            if row and row[0] is not None:
+                raw = float(row[0])
+                # Piecewise normalization (matches app.py)
+                if raw <= 0.04:
+                    avg_social = round(raw / 0.04 * 50)
+                elif raw <= 0.10:
+                    avg_social = round(50 + (raw - 0.04) / 0.06 * 15)
+                elif raw <= 0.30:
+                    avg_social = round(65 + (raw - 0.10) / 0.20 * 20)
+                else:
+                    avg_social = round(85 + (raw - 0.30) / 0.70 * 15)
+                avg_social = min(100.0, max(0.0, avg_social))
+    except Exception:
+        pass
+
+    top8 = markets[:8]
+    avg_market = sum(max(m["yes_odds"], m["no_odds"]) for m in top8) / len(top8)
+    divergence = calculate_sentiment_divergence(avg_market, avg_social)
+
+    return {
+        "markets": top8,
+        "avg_market_confidence": round(avg_market, 1),
+        "avg_social_mood": avg_social,
+        "divergence": divergence,
+    }
+
+
 class ReportPdfRequest(BaseModel):
     report_text: str
     subject: str
