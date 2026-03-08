@@ -288,18 +288,14 @@ What events or dynamics are driving the tone of coverage? Be specific about what
 
         "topic_distribution": f"""Based on this topic distribution and the relevant headlines below, explain in 2-3 sentences why certain topics dominate the news cycle.\n\nData: {data_summary}\n\nRelevant headlines:\n{headline_context}\n\nWhat events or trends are driving topic volume? Be specific.""",
 
-        "geographic_hotspots": f"""Based on this geographic intensity data and headlines below, give a concise summary of why the top-ranked countries show elevated threat levels.
+        "geographic_hotspots": f"""Based on this geographic intensity data and the relevant headlines below, explain why the TOP-RANKED countries show elevated threat levels.
 
 Data (sorted by intensity, highest first): {data_summary}
 
-Headlines mentioning these countries:
+Relevant headlines from top countries:
 {headline_context}
 
-CRITICAL RULES:
-- Only reference events that appear in the headlines above. Do NOT speculate or infer events that aren't in the headlines.
-- If no headlines mention a specific country, say "no matching coverage" for that country — do not guess why it ranks high.
-- Keep it to 4-6 sentences total, covering the top 3-4 countries. No headers, no bullet points, no numbered lists.
-- Focus on what the headlines actually say is happening, and what the intensity ranking signals for strategic monitoring.""",
+IMPORTANT: Format each country consistently as a short heading followed by 1-2 sentences. Only reference events that appear in the headlines — if no headlines mention a specific country, note "no matching headlines" rather than speculating. Be specific about actual events driving the scores.""",
 
         "mood_vs_market": f"""Based on this social mood vs market data and the headlines below, explain in 3-4 sentences why there is divergence or alignment between public sentiment and market performance.
 
