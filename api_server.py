@@ -156,7 +156,11 @@ def get_combined_data(days: int = Query(default=7, ge=1, le=30)):
     for table in ("news_scored", "social_scored"):
         try:
             df = pd.read_sql(
-                sql_text(f"SELECT {cols} FROM {table} WHERE created_at >= :cutoff"),
+                sql_text(
+                    f"SELECT {cols} FROM {table} "
+                    f"WHERE created_at >= :cutoff "
+                    f"ORDER BY created_at DESC LIMIT 5000"
+                ),
                 engine,
                 params={"cutoff": cutoff},
             )
