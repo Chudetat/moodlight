@@ -295,7 +295,12 @@ Data (sorted by intensity, highest first): {data_summary}
 Relevant headlines from top countries:
 {headline_context}
 
-IMPORTANT: Format each country consistently as a short heading followed by 1-2 sentences. Only reference events that appear in the headlines — if no headlines mention a specific country, note "no matching headlines" rather than speculating. Be specific about actual events driving the scores.""",
+IMPORTANT:
+- Format each country as a short heading followed by 1-2 sentences.
+- Only reference events that appear in the headlines — do not speculate.
+- If a country's headlines are clearly non-threat (lifestyle, sports, travel), SKIP it entirely — do not waste space explaining why the score is misleading. Focus your analysis on countries with genuine security, geopolitical, or economic events.
+- If no headlines mention a specific country, skip it.
+- Be specific about actual events driving the scores.""",
 
         "mood_vs_market": f"""Based on this social mood vs market data and the headlines below, explain in 3-4 sentences why there is divergence or alignment between public sentiment and market performance.
 
