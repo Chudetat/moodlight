@@ -6,11 +6,7 @@ import { useEffect } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 

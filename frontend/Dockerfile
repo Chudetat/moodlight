@@ -1,16 +1,17 @@
 FROM node:20-alpine AS base
 
-# Install dependencies
+# Install ALL dependencies (including dev) for building
 FROM base AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
 
 # Build
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY frontend/ .
+RUN mkdir -p public
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

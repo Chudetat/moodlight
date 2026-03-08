@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { usePipelineHealth } from "@/lib/hooks/use-api";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -155,11 +156,13 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
-      <h2 className="text-xl font-bold">Admin Panel</h2>
-      <Customers />
-      <Analytics />
-      <PipelineHealth />
-    </div>
+    <DashboardShell>
+      <div className="mx-auto max-w-5xl space-y-8">
+        <h2 className="text-xl font-bold">Admin Panel</h2>
+        <Customers />
+        <Analytics />
+        <PipelineHealth />
+      </div>
+    </DashboardShell>
   );
 }

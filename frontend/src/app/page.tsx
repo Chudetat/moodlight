@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { LazySection } from "@/components/layout/lazy-section";
 import { CulturalPulse } from "@/components/sections/cultural-pulse";
 import { MarketSentiment } from "@/components/sections/market-sentiment";
@@ -27,6 +28,7 @@ import { WorldViewTable } from "@/components/sections/world-view-table";
 
 export default function DashboardPage() {
   return (
+    <DashboardShell>
     <div className="mx-auto max-w-7xl space-y-6">
       {/* Phase 2B — Above the fold */}
       <LazySection>
@@ -110,5 +112,6 @@ export default function DashboardPage() {
         <WorldViewTable />
       </LazySection>
     </div>
+    </DashboardShell>
   );
 }
