@@ -626,6 +626,45 @@ def strategic_brief(req: StrategicBriefRequest, payload: dict = Depends(require_
     return {"brief": brief_text, "frameworks": framework_names, "email_sent": email_sent}
 
 
+class ReportPdfRequest(BaseModel):
+    report_text: str
+    subject: str
+    days: int = 7
+
+
+@app.post("/api/report/pdf")
+def report_pdf(req: ReportPdfRequest, payload: dict = Depends(require_auth)):
+    """Generate a branded PDF from an intelligence report."""
+    from fastapi.responses import Response
+    from pdf_export import generate_report_pdf
+
+    pdf_bytes = generate_report_pdf(req.report_text, req.subject, days=req.days)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="moodlight_report.pdf"'},
+    )
+
+
+class BriefPdfRequest(BaseModel):
+    brief_text: str
+    product: str
+
+
+@app.post("/api/brief/pdf")
+def brief_pdf(req: BriefPdfRequest, payload: dict = Depends(require_auth)):
+    """Generate a branded PDF from a strategic brief."""
+    from fastapi.responses import Response
+    from pdf_export import generate_brief_pdf
+
+    pdf_bytes = generate_brief_pdf(req.brief_text, req.product)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="moodlight_strategic_brief.pdf"'},
+    )
+
+
 class ChartExplainRequest(BaseModel):
     chart_type: str
     data_summary: str

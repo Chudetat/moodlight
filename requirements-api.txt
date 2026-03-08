@@ -9,3 +9,4 @@ requests
 feedparser
 bcrypt>=4.0.0
 PyJWT>=2.8.0
+fpdf2>=2.7.0
