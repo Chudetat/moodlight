@@ -1,11 +1,15 @@
 """
 chart_explainer.py
 Two-stage chart explanation engine: context-aware headline retrieval + Claude analysis.
+Web search fallback when internal data is insufficient for the chart signal.
 Extracted from app.py for use by the API server (Phase 0C-3).
 """
 
 import os
+import re
+import requests
 import pandas as pd
+from datetime import datetime, timezone, timedelta
 from anthropic import Anthropic
 
 
@@ -71,6 +75,153 @@ def _filter_by_country_mentions(df: pd.DataFrame, data_summary: str) -> list:
         matched = df[mask]["text"].head(3).tolist()
         headlines.extend(matched)
     return headlines
+
+
+def _web_search(query: str, max_results: int = 8) -> list:
+    """Fetch recent news via NewsAPI with Google News RSS fallback."""
+    articles = []
+
+    newsapi_key = os.getenv("NEWSAPI_KEY")
+    if newsapi_key:
+        try:
+            from_date = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+            params = {
+                "q": query,
+                "language": "en",
+                "pageSize": max_results,
+                "sortBy": "publishedAt",
+                "from": from_date,
+            }
+            headers = {"X-Api-Key": newsapi_key}
+            resp = requests.get(
+                "https://newsapi.org/v2/everything",
+                params=params,
+                headers=headers,
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                for art in data.get("articles", []):
+                    title = art.get("title", "") or ""
+                    summary = art.get("description", "") or ""
+                    source = art.get("source", {}).get("name", "")
+                    if title:
+                        text = f"{title}. {summary[:150]}" if summary else title
+                        articles.append(f"[{source}] {text}")
+                if articles:
+                    return articles
+        except Exception as e:
+            print(f"Chart explainer NewsAPI error: {e}")
+
+    # Fallback: Google News RSS
+    try:
+        import feedparser
+        q = query.replace(" ", "+")
+        url = f"https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en"
+        resp = requests.get(url, timeout=10, headers={
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+        })
+        resp.raise_for_status()
+        feed = feedparser.parse(resp.content)
+        for entry in feed.entries[:max_results]:
+            title = entry.get("title", "")
+            source_info = entry.get("source", {})
+            source = source_info.get("title", "") if hasattr(source_info, "get") else ""
+            summary = entry.get("summary", "")
+            summary = re.sub(r"<[^>]+>", "", summary)[:150]
+            if title:
+                text = f"{title}. {summary}" if summary else title
+                articles.append(f"[{source}] {text}" if source else text)
+        return articles
+    except Exception as e:
+        print(f"Chart explainer Google News error: {e}")
+        return []
+
+
+def _build_search_query(chart_type: str, data_summary: str) -> str:
+    """Build a targeted web search query from chart type and data summary."""
+    if chart_type == "geographic_hotspots":
+        countries = re.findall(r'\b([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+)*)\b', data_summary)
+        countries += re.findall(r'\b([A-Z]{3,})\b', data_summary)
+        skip = {"Intensity", "Geographic", "Hotspots", "Country", "Top", "Average",
+                "Unknown", "NaN"}
+        countries = [c for c in countries if c not in skip and len(c) > 2]
+        if countries:
+            return f"{countries[0]} security geopolitics news"
+        return "global security threats news"
+
+    elif chart_type in ("brand_vlds", "brand_comparison", "competitive_war_room"):
+        known_brands = ["NVIDIA", "Amazon", "Disney", "Lockheed Martin", "FIFA",
+                        "Apple", "Google", "Microsoft", "Tesla", "Meta"]
+        for brand in known_brands:
+            if brand.lower() in data_summary.lower():
+                return f"{brand} news latest"
+        match = re.search(r'\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b', data_summary)
+        return f"{match.group(1)} news" if match else "business news latest"
+
+    elif chart_type == "topic_intelligence":
+        topics = ["technology & ai", "economics", "sports", "entertainment",
+                  "war & foreign policy", "media & journalism", "labor & work",
+                  "climate & environment", "healthcare & wellbeing"]
+        for topic in topics:
+            if topic in data_summary.lower():
+                return f"{topic} news latest"
+        return "trending news"
+
+    elif chart_type == "economic_indicators":
+        return "US economic indicators Fed rate employment inflation"
+
+    elif chart_type == "commodity_prices":
+        return "commodity prices oil copper aluminum natural gas"
+
+    elif chart_type == "market_sentiment":
+        return "stock market news today"
+
+    elif chart_type == "polymarket_divergence":
+        return "prediction markets trending news"
+
+    elif chart_type in ("mood_vs_market", "mood_history"):
+        return "major news events this week"
+
+    else:
+        words = re.findall(r'\b([A-Z][a-z]{3,})\b', data_summary)
+        if words:
+            return " ".join(words[:3]) + " news"
+        return "major news today"
+
+
+def _check_headline_sufficiency(chart_type: str, df: pd.DataFrame, data_summary: str) -> bool:
+    """Return True if DB has sufficient chart-relevant headlines, False if web search needed."""
+    if df.empty or "text" not in df.columns:
+        return False
+
+    MIN_RELEVANT = 3
+
+    if chart_type == "geographic_hotspots":
+        return len(_filter_by_country_mentions(df, data_summary)) >= MIN_RELEVANT
+
+    elif chart_type in ("brand_vlds", "brand_comparison", "competitive_war_room"):
+        brand_df = _filter_by_summary_brands(df, data_summary)
+        return len(brand_df) >= MIN_RELEVANT
+
+    elif chart_type == "topic_intelligence":
+        topic_df = _filter_by_summary_topic(df, data_summary)
+        return not topic_df.empty and len(topic_df) >= MIN_RELEVANT
+
+    elif chart_type in ("economic_indicators", "commodity_prices", "market_sentiment"):
+        market_topics = {"economics", "business & corporate", "labor & work"}
+        if "topic" in df.columns:
+            return df["topic"].str.lower().isin(market_topics).sum() >= MIN_RELEVANT
+        return False
+
+    elif chart_type in ("mood_vs_market", "mood_history"):
+        if "created_at" in df.columns:
+            return len(df) >= MIN_RELEVANT
+        return False
+
+    # Default: assume sufficient for internal-data charts
+    # (emotional_breakdown, empathy_distribution, topic_distribution, etc.)
+    return True
 
 
 def retrieve_relevant_headlines(df: pd.DataFrame, chart_type: str, data_summary: str, max_headlines: int = 15) -> str:
@@ -240,17 +391,33 @@ def retrieve_relevant_headlines(df: pd.DataFrame, chart_type: str, data_summary:
 
 
 def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFrame) -> str:
-    """Generate dynamic explanation for chart insights using AI — two-stage architecture."""
+    """Generate dynamic explanation for chart insights using AI — two-stage architecture
+    with web search fallback when internal data is insufficient."""
 
     client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-    # Stage 1: Context-aware headline retrieval
+    # Stage 1: Context-aware headline retrieval from DB
     relevant_headlines = retrieve_relevant_headlines(df, chart_type, data_summary)
 
-    if not relevant_headlines:
+    # Stage 1.5: Web search fallback if DB headlines are insufficient
+    web_context = ""
+    if not _check_headline_sufficiency(chart_type, df, data_summary):
+        search_query = _build_search_query(chart_type, data_summary)
+        try:
+            web_results = _web_search(search_query, max_results=8)
+            if web_results:
+                web_context = "\n\n--- Additional context from web search (internal data coverage was limited) ---\n"
+                web_context += "\n".join(web_results[:8])
+                print(f"  Web search triggered for {chart_type}: '{search_query}' -> {len(web_results)} results")
+        except Exception as e:
+            print(f"  Web search failed for {chart_type}: {e}")
+
+    if not relevant_headlines and not web_context:
         headline_context = "No headlines available for this time period."
     else:
-        headline_context = relevant_headlines
+        headline_context = relevant_headlines or ""
+        if web_context:
+            headline_context += web_context
 
     prompts = {
         "empathy_by_topic": f"""Based on this empathy-by-topic data and the relevant headlines below, explain in 2-3 sentences why certain topics score higher/lower on empathy.
@@ -473,11 +640,15 @@ How do these brands differ in audience perception? Where does each have an advan
 
     prompt = prompts.get(chart_type, "Explain this data pattern in 2-3 sentences.")
 
+    system_prompt = "You are a senior intelligence analyst. Give concise, specific insights that connect the quantitative data to actual events in the headlines. Show your work - explain WHAT happened, not just what the numbers show. No fluff."
+    if web_context:
+        system_prompt += " Web search context is included because internal data coverage was limited. Use web search results to verify or explain the chart signal. If the chart ranking appears driven by data noise rather than real events, say so directly."
+
     try:
         response = client.messages.create(
             model="claude-opus-4-6",
             max_tokens=800,
-            system="You are a senior intelligence analyst. Give concise, specific insights that connect the quantitative data to actual events in the headlines. Show your work - explain WHAT happened, not just what the numbers show. No fluff.",
+            system=system_prompt,
             messages=[{"role": "user", "content": prompt}]
         )
         return response.content[0].text
