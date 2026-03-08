@@ -63,7 +63,7 @@ function Customers() {
                   {c.tier}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  {c.brief_credits} credits
+                  {c.extra_seats} seat{c.extra_seats !== 1 ? "s" : ""}
                 </span>
                 <Button
                   variant="ghost"

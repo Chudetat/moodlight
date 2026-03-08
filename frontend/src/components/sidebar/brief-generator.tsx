@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/lib/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 
 export function BriefGenerator() {
-  const { briefCredits } = useAuth();
   const [product, setProduct] = useState("");
   const [audience, setAudience] = useState("");
   const [markets, setMarkets] = useState("");
@@ -99,14 +97,6 @@ export function BriefGenerator() {
           placeholder='Timeline / Budget — e.g. "Q1 2025, $2M digital"'
           className="h-7 text-xs"
         />
-        {canGenerate && (
-          <p className="text-[10px] text-muted-foreground">
-            Brief credits:{" "}
-            <span className="font-medium">
-              {briefCredits === -1 ? "Unlimited" : briefCredits}
-            </span>
-          </p>
-        )}
         <Input
           type="email"
           value={email}
