@@ -2,81 +2,153 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/hooks/use-auth";
-import { useTopics } from "@/lib/hooks/use-api";
-import { useQueryClient } from "@tanstack/react-query";
+import { useTopics, useAddTopic, useRemoveTopic } from "@/lib/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus } from "lucide-react";
-import { TIER_LIMITS } from "@/lib/constants";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TOPIC_CATEGORIES } from "@/lib/constants";
 
 export function TopicWatchlist() {
   const { username } = useAuth();
   const { data } = useTopics(username);
-  const queryClient = useQueryClient();
-  const [newTopic, setNewTopic] = useState("");
-  const [loading, setLoading] = useState(false);
+  const addTopic = useAddTopic();
+  const removeTopic = useRemoveTopic();
+  const [mode, setMode] = useState<"category" | "custom">("category");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [customTopic, setCustomTopic] = useState("");
 
   const topics = data?.topics ?? [];
-  const atLimit = topics.length >= TIER_LIMITS.topic_watchlist_max;
 
-  async function addTopic(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newTopic.trim() || atLimit) return;
-    setLoading(true);
-    try {
-      await fetch("/api/proxy/api/watchlist/topics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic_name: newTopic.trim() }),
-      });
-      setNewTopic("");
-      queryClient.invalidateQueries({ queryKey: ["topics"] });
-    } finally {
-      setLoading(false);
+  const handleAdd = () => {
+    if (mode === "category" && selectedCategory) {
+      addTopic.mutate(
+        { topic_name: selectedCategory, is_category: true },
+        { onSuccess: () => setSelectedCategory("") }
+      );
+    } else if (mode === "custom" && customTopic.trim()) {
+      addTopic.mutate(
+        { topic_name: customTopic.trim(), is_category: false },
+        { onSuccess: () => setCustomTopic("") }
+      );
     }
-  }
-
-  async function removeTopic(topic: string) {
-    await fetch(`/api/proxy/api/watchlist/topics/${encodeURIComponent(topic)}`, {
-      method: "DELETE",
-    });
-    queryClient.invalidateQueries({ queryKey: ["topics"] });
-  }
+  };
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground">
-        Topic Watchlist ({topics.length}/{TIER_LIMITS.topic_watchlist_max})
+      <p className="text-xs font-medium uppercase text-muted-foreground">
+        Topic Watchlist ({topics.length}/10)
       </p>
-      <div className="flex flex-wrap gap-1.5">
-        {topics.map((t) => (
-          <Badge key={t.topic_name} variant="secondary" className="gap-1 text-xs">
-            {t.topic_name}
+      {topics.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          Add a topic to monitor sentiment shifts.
+        </p>
+      )}
+      {topics.map((t) => (
+        <div
+          key={t.topic_name}
+          className="flex items-center justify-between"
+        >
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-medium">{t.topic_name}</span>
             {t.is_category && (
-              <span className="text-[9px] text-muted-foreground">(cat)</span>
+              <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                cat
+              </Badge>
             )}
-            <button
-              onClick={() => removeTopic(t.topic_name)}
-              className="ml-0.5 hover:text-destructive"
-            >
-              <X className="h-2.5 w-2.5" />
-            </button>
-          </Badge>
-        ))}
-      </div>
-      {!atLimit && (
-        <form onSubmit={addTopic} className="flex gap-1.5">
-          <Input
-            value={newTopic}
-            onChange={(e) => setNewTopic(e.target.value)}
-            placeholder="Add topic..."
-            className="h-7 text-xs"
-          />
-          <Button type="submit" size="icon-xs" disabled={loading || !newTopic.trim()}>
-            <Plus className="h-3 w-3" />
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+            onClick={() => removeTopic.mutate(t.topic_name)}
+            disabled={removeTopic.isPending}
+          >
+            Remove
           </Button>
-        </form>
+        </div>
+      ))}
+      {topics.length < 10 && (
+        <div className="space-y-2">
+          <div className="flex gap-2 text-xs">
+            <button
+              className={`${
+                mode === "category"
+                  ? "font-medium text-foreground"
+                  : "text-muted-foreground"
+              }`}
+              onClick={() => setMode("category")}
+            >
+              Category
+            </button>
+            <button
+              className={`${
+                mode === "custom"
+                  ? "font-medium text-foreground"
+                  : "text-muted-foreground"
+              }`}
+              onClick={() => setMode("custom")}
+            >
+              Custom
+            </button>
+          </div>
+          {mode === "category" ? (
+            <div className="flex gap-1">
+              <Select
+                value={selectedCategory}
+                onValueChange={(v) => setSelectedCategory(v ?? "")}
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TOPIC_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                className="h-8"
+                onClick={handleAdd}
+                disabled={addTopic.isPending}
+              >
+                Add
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-1">
+              <Input
+                placeholder="e.g. student loans"
+                value={customTopic}
+                onChange={(e) => setCustomTopic(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                className="h-8 text-sm"
+              />
+              <Button
+                size="sm"
+                className="h-8"
+                onClick={handleAdd}
+                disabled={addTopic.isPending}
+              >
+                Add
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+      {addTopic.isError && (
+        <p className="text-xs text-destructive">
+          {(addTopic.error as Error).message}
+        </p>
       )}
     </div>
   );

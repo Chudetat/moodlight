@@ -123,6 +123,33 @@ export const COLORS = {
   ],
 } as const;
 
+// ── Topic categories (matches app.py _TOPIC_CATEGORIES) ─
+
+export const TOPIC_CATEGORIES = [
+  "politics",
+  "government",
+  "economics",
+  "education",
+  "culture & identity",
+  "branding & advertising",
+  "creative & design",
+  "technology & ai",
+  "climate & environment",
+  "healthcare & wellbeing",
+  "immigration",
+  "crime & safety",
+  "war & foreign policy",
+  "media & journalism",
+  "race & ethnicity",
+  "gender & sexuality",
+  "business & corporate",
+  "labor & work",
+  "housing",
+  "religion & values",
+  "sports",
+  "entertainment",
+];
+
 // ── Alert type categories ─────────────────────────────
 
 export const ALERT_TYPE_CATEGORIES: Record<string, string[]> = {
@@ -150,6 +177,17 @@ export const ALERT_TYPE_CATEGORIES: Record<string, string[]> = {
     "regulatory_policy_spike",
     "breaking_signal",
     "geopolitical_risk_escalation",
+  ],
+  predictive: [
+    "predictive_mood_shift",
+    "predictive_intensity_cluster",
+    "predictive_brand_velocity_spike",
+    "predictive_brand_saturation",
+    "predictive_brand_white_space",
+    "predictive_market_mood_divergence",
+    "predictive_compound_signal",
+    "predictive_topic_velocity_spike",
+    "predictive_topic_saturation",
   ],
   competitive: [
     "competitor_momentum",

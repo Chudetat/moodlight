@@ -1,15 +1,19 @@
 import { create } from "zustand";
 
 interface DashboardState {
+  // Search
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+
   // Brand focus
   focusedBrand: string | null;
   setFocusedBrand: (brand: string | null) => void;
 
   // Compare mode
   compareMode: boolean;
-  compareBrands: [string, string] | null;
+  compareBrands: string[];
   setCompareMode: (on: boolean) => void;
-  setCompareBrands: (brands: [string, string] | null) => void;
+  setCompareBrands: (brands: string[]) => void;
 
   // Time range
   days: number;
@@ -21,11 +25,14 @@ interface DashboardState {
 }
 
 export const useDashboardStore = create<DashboardState>((set) => ({
+  searchQuery: "",
+  setSearchQuery: (q) => set({ searchQuery: q }),
+
   focusedBrand: null,
   setFocusedBrand: (brand) => set({ focusedBrand: brand }),
 
   compareMode: false,
-  compareBrands: null,
+  compareBrands: ["", "", ""],
   setCompareMode: (on) => set({ compareMode: on }),
   setCompareBrands: (brands) => set({ compareBrands: brands }),
 

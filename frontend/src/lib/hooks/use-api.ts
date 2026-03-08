@@ -20,6 +20,10 @@ import type {
   UserPreferences,
   AlertPreferencesResponse,
   PipelineHealthResponse,
+  ReportSchedule,
+  Team,
+  TeamMember,
+  Customer,
 } from "../types";
 
 const REFETCH_INTERVAL = 60_000; // 1 minute
@@ -205,6 +209,387 @@ export function useAlertPreferences() {
   return useQuery<AlertPreferencesResponse>({
     queryKey: ["alert-preferences"],
     queryFn: () => apiFetch("/api/user/alert-preferences"),
+  });
+}
+
+// ── Watchlist Mutations ──────────────────────────────
+
+export function useAddBrand() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (brandName: string) =>
+      apiFetch("/api/watchlist/brands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brand_name: brandName }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["brands"] }),
+  });
+}
+
+export function useRemoveBrand() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (brandName: string) =>
+      apiFetch(`/api/watchlist/brands/${encodeURIComponent(brandName)}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["brands"] }),
+  });
+}
+
+export function useAddTopic() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { topic_name: string; is_category: boolean }) =>
+      apiFetch("/api/watchlist/topics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["topics"] }),
+  });
+}
+
+export function useRemoveTopic() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (topicName: string) =>
+      apiFetch(`/api/watchlist/topics/${encodeURIComponent(topicName)}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["topics"] }),
+  });
+}
+
+// ── Alert Mutations ──────────────────────────────────
+
+export function useMarkAllAlertsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch("/api/alerts/mark-all-read", { method: "POST" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["alerts"] }),
+  });
+}
+
+// ── Preference Mutations ─────────────────────────────
+
+export function useUpdateUserPreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<UserPreferences>) =>
+      apiFetch("/api/user/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["user-preferences"] }),
+  });
+}
+
+export function useUpdateAlertPreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      alert_type?: string;
+      enabled?: boolean;
+      sensitivity?: string;
+    }) =>
+      apiFetch("/api/user/alert-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["alert-preferences"] }),
+  });
+}
+
+// ── Report Schedules ─────────────────────────────────
+
+export function useReportSchedules() {
+  return useQuery<{ schedules: ReportSchedule[]; count: number }>({
+    queryKey: ["reportSchedules"],
+    queryFn: () => apiFetch("/api/user/report-schedules"),
+  });
+}
+
+export function useCreateReportSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      subject: string;
+      subject_type: string;
+      frequency: string;
+      days_lookback?: number;
+    }) =>
+      apiFetch("/api/user/report-schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reportSchedules"] }),
+  });
+}
+
+export function useToggleReportSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
+      apiFetch(`/api/user/report-schedules/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reportSchedules"] }),
+  });
+}
+
+export function useDeleteReportSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      apiFetch(`/api/user/report-schedules/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reportSchedules"] }),
+  });
+}
+
+// ── Teams ────────────────────────────────────────────
+
+export function useUserTeam() {
+  return useQuery<{ team: (Team & { role: string }) | null }>({
+    queryKey: ["userTeam"],
+    queryFn: () => apiFetch("/api/user/team"),
+  });
+}
+
+export function useTeamMembers(teamId: number | undefined) {
+  return useQuery<{ members: TeamMember[]; count: number }>({
+    queryKey: ["teamMembers", teamId],
+    queryFn: () => apiFetch(`/api/teams/${teamId}/members`),
+    enabled: !!teamId,
+  });
+}
+
+export function useInviteTeamMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      teamId,
+      email,
+      name,
+    }: {
+      teamId: number;
+      email: string;
+      name: string;
+    }) =>
+      apiFetch(`/api/teams/${teamId}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["teamMembers"] }),
+  });
+}
+
+export function useRemoveTeamMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      teamId,
+      username,
+    }: {
+      teamId: number;
+      username: string;
+    }) =>
+      apiFetch(`/api/teams/${teamId}/members/${username}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["teamMembers"] }),
+  });
+}
+
+export function useTeamWatchlists(teamId: number | undefined) {
+  return useQuery<{
+    brands: string[];
+    topics: { topic_name: string; is_category: boolean }[];
+  }>({
+    queryKey: ["teamWatchlists", teamId],
+    queryFn: () => apiFetch(`/api/teams/${teamId}/watchlists`),
+    enabled: !!teamId,
+  });
+}
+
+export function useCreateUserTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { team_name: string; owner_username: string }) =>
+      apiFetch<{ status: string; team_id: number; team_name: string }>(
+        "/api/admin/teams",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["userTeam"] }),
+  });
+}
+
+// ── Claude-powered Generators ────────────────────────
+
+export function useGenerateReport() {
+  return useMutation({
+    mutationFn: (data: {
+      subject: string;
+      days?: number;
+      username?: string;
+      send_email?: boolean;
+    }) =>
+      apiFetch<{ report: string; email_sent: boolean }>("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+  });
+}
+
+export function useGenerateStrategicBrief() {
+  return useMutation({
+    mutationFn: (data: {
+      user_need: string;
+      username?: string;
+      email_recipient?: string;
+    }) =>
+      apiFetch<{ brief: string; frameworks: string[]; email_sent: boolean }>(
+        "/api/strategic-brief",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      ),
+  });
+}
+
+export function useAskMoodlight() {
+  return useMutation({
+    mutationFn: (data: {
+      message: string;
+      username?: string;
+      conversation_history?: { role: string; content: string }[];
+      last_search_info?: Record<string, unknown> | null;
+    }) =>
+      apiFetch<{ response: string; search_info?: Record<string, unknown> }>(
+        "/api/ask",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      ),
+  });
+}
+
+// ── Support ──────────────────────────────────────────
+
+export function useSendSupport() {
+  return useMutation({
+    mutationFn: (data: { message: string }) =>
+      apiFetch<{ status: string }>("/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+  });
+}
+
+export function useLogEvent() {
+  return useMutation({
+    mutationFn: (data: { event_type: string; event_data?: string }) =>
+      apiFetch("/api/user/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+  });
+}
+
+// ── Admin ────────────────────────────────────────────
+
+export function useAdminCustomers() {
+  return useQuery<{ customers: Customer[]; count: number }>({
+    queryKey: ["admin", "customers"],
+    queryFn: () => apiFetch("/api/admin/customers"),
+  });
+}
+
+export function useAdminAnalytics() {
+  return useQuery({
+    queryKey: ["admin", "analytics"],
+    queryFn: () => apiFetch<Record<string, unknown>>("/api/admin/analytics"),
+  });
+}
+
+export function useAdminTeams() {
+  return useQuery({
+    queryKey: ["admin", "teams"],
+    queryFn: () =>
+      apiFetch<{ teams: Record<string, unknown>[]; count: number }>(
+        "/api/admin/teams"
+      ),
+  });
+}
+
+export function useCreateCustomer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      email: string;
+      name: string;
+      tier?: string;
+      initial_credits?: number;
+    }) =>
+      apiFetch<{
+        username: string;
+        email: string;
+        tier: string;
+        temp_password: string;
+      }>("/api/admin/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "customers"] }),
+  });
+}
+
+export function useUpdateCustomer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      username,
+      ...data
+    }: {
+      username: string;
+      tier?: string;
+      extra_seats?: number;
+    }) =>
+      apiFetch(`/api/admin/customers/${username}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "customers"] }),
+  });
+}
+
+export function useDeleteCustomer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (username: string) =>
+      apiFetch(`/api/admin/customers/${username}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "customers"] }),
   });
 }
 

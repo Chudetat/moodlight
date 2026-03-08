@@ -2,92 +2,116 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/hooks/use-auth";
-import { useBrands } from "@/lib/hooks/use-api";
-import { useQueryClient } from "@tanstack/react-query";
+import {
+  useBrands,
+  useAddBrand,
+  useRemoveBrand,
+  useUserTeam,
+  useTeamWatchlists,
+} from "@/lib/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus } from "lucide-react";
-import { TIER_LIMITS } from "@/lib/constants";
 import { useDashboardStore } from "@/store/dashboard-store";
 
 export function BrandWatchlist() {
   const { username } = useAuth();
   const { data } = useBrands(username);
-  const queryClient = useQueryClient();
+  const { data: teamData } = useUserTeam();
+  const team = teamData?.team;
+  const { data: teamWatchlists } = useTeamWatchlists(team?.id);
+  const addBrand = useAddBrand();
+  const removeBrand = useRemoveBrand();
   const [newBrand, setNewBrand] = useState("");
-  const [loading, setLoading] = useState(false);
   const setFocusedBrand = useDashboardStore((s) => s.setFocusedBrand);
   const focusedBrand = useDashboardStore((s) => s.focusedBrand);
 
   const brands = data?.brands ?? [];
-  const atLimit = brands.length >= TIER_LIMITS.brand_watchlist_max;
+  const sharedBrands = new Set(teamWatchlists?.brands ?? []);
+  const isOwner = team?.role === "owner";
 
-  async function addBrand(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newBrand.trim() || atLimit) return;
-    setLoading(true);
-    try {
-      await fetch("/api/proxy/api/watchlist/brands", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brand_name: newBrand.trim() }),
-      });
-      setNewBrand("");
-      queryClient.invalidateQueries({ queryKey: ["brands"] });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function removeBrand(brand: string) {
-    await fetch(`/api/proxy/api/watchlist/brands/${encodeURIComponent(brand)}`, {
-      method: "DELETE",
+  const handleAdd = () => {
+    const name = newBrand.trim();
+    if (!name) return;
+    addBrand.mutate(name, {
+      onSuccess: () => setNewBrand(""),
     });
-    if (focusedBrand === brand) setFocusedBrand(null);
-    queryClient.invalidateQueries({ queryKey: ["brands"] });
-  }
+  };
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground">
-        Brand Watchlist ({brands.length}/{TIER_LIMITS.brand_watchlist_max})
+      <p className="text-xs font-medium uppercase text-muted-foreground">
+        Brand Watchlist ({brands.length}/5)
       </p>
-      <div className="flex flex-wrap gap-1.5">
-        {brands.map((b) => (
-          <Badge
-            key={b}
-            variant={focusedBrand === b ? "default" : "secondary"}
-            className="cursor-pointer gap-1 text-xs"
-            onClick={() =>
-              setFocusedBrand(focusedBrand === b ? null : b)
-            }
-          >
-            {b}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                removeBrand(b);
-              }}
-              className="ml-0.5 hover:text-destructive"
-            >
-              <X className="h-2.5 w-2.5" />
-            </button>
-          </Badge>
-        ))}
-      </div>
-      {!atLimit && (
-        <form onSubmit={addBrand} className="flex gap-1.5">
+      {brands.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          Add your first brand to unlock VLDS tracking.
+        </p>
+      )}
+      {brands.map((b) => {
+        const isShared = sharedBrands.has(b) && !isOwner;
+        return (
+          <div key={b} className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <button
+                className={`text-sm font-medium ${
+                  focusedBrand === b ? "text-primary" : ""
+                }`}
+                onClick={() =>
+                  setFocusedBrand(focusedBrand === b ? null : b)
+                }
+              >
+                {b}
+              </button>
+              {isShared && (
+                <Badge
+                  variant="outline"
+                  className="px-1 py-0 text-[10px]"
+                >
+                  shared
+                </Badge>
+              )}
+            </div>
+            {!isShared && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                onClick={() => {
+                  if (focusedBrand === b) setFocusedBrand(null);
+                  removeBrand.mutate(b);
+                }}
+                disabled={removeBrand.isPending}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+        );
+      })}
+      {brands.length < 5 && (
+        <div className="flex gap-1">
           <Input
+            placeholder="e.g. Nike"
             value={newBrand}
             onChange={(e) => setNewBrand(e.target.value)}
-            placeholder="Add brand..."
-            className="h-7 text-xs"
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            className="h-8 text-sm"
           />
-          <Button type="submit" size="icon-xs" disabled={loading || !newBrand.trim()}>
-            <Plus className="h-3 w-3" />
+          <Button
+            size="sm"
+            className="h-8"
+            onClick={handleAdd}
+            disabled={addBrand.isPending}
+          >
+            Add
           </Button>
-        </form>
+        </div>
+      )}
+      {addBrand.isError && (
+        <p className="text-xs text-destructive">
+          {(addBrand.error as Error).message}
+        </p>
       )}
     </div>
   );

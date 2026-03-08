@@ -359,6 +359,7 @@ export interface ReportSchedule {
   subject_type: "brand" | "topic";
   frequency: "daily" | "weekly";
   email_recipient: string;
+  enabled: boolean;
 }
 
 // ── Teams ─────────────────────────────────────────────
