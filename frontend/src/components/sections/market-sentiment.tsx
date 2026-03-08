@@ -37,7 +37,7 @@ export function MarketSentiment() {
   const dataSummary = markets
     .map((m) => {
       const pct = parseFloat(m.change_percent) || 0;
-      return `${m.symbol}: $${m.price.toFixed(2)} (${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%)`;
+      return `${m.symbol}: $${(m.price ?? 0).toFixed(2)} (${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%)`;
     })
     .join("\n");
 

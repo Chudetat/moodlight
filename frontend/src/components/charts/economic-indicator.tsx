@@ -30,9 +30,9 @@ export function EconomicIndicator({
   // Format the display value
   let displayValue: string;
   if (config?.format === "number") {
-    displayValue = formatNumber(indicator.metric_value);
+    displayValue = formatNumber(indicator.metric_value ?? 0);
   } else if (config?.format === "percent" || config?.format === "currency") {
-    displayValue = `${indicator.metric_value.toFixed(2)}%`;
+    displayValue = `${(indicator.metric_value ?? 0).toFixed(2)}%`;
   } else {
     displayValue = String(indicator.metric_value);
   }
@@ -45,7 +45,7 @@ export function EconomicIndicator({
     previousValue !== undefined &&
     displayName !== "Nonfarm Payroll"
   ) {
-    const diff = indicator.metric_value - previousValue;
+    const diff = (indicator.metric_value ?? 0) - previousValue;
     if (Math.abs(diff) > 0.001) {
       deltaDir = diff > 0 ? "up" : "down";
       // For Fed Funds Rate, hide delta when exactly 0

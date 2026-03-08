@@ -19,7 +19,7 @@ export function CommodityPrice({
   let deltaPct: number | undefined;
   if (previousPrice && previousPrice > 0) {
     deltaPct =
-      ((commodity.metric_value - previousPrice) / previousPrice) * 100;
+      (((commodity.metric_value ?? 0) - previousPrice) / previousPrice) * 100;
   }
 
   const isPositive = (deltaPct ?? 0) >= 0;
@@ -29,7 +29,7 @@ export function CommodityPrice({
       <p className="text-xs font-medium text-muted-foreground">{name}</p>
       <div className="mt-1 flex items-baseline gap-2">
         <span className="text-xl font-bold tabular-nums">
-          ${commodity.metric_value.toFixed(2)}
+          ${(commodity.metric_value ?? 0).toFixed(2)}
         </span>
         {deltaPct !== undefined && Math.abs(deltaPct) > 0.001 && (
           <span

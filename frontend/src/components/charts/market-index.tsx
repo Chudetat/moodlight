@@ -23,7 +23,7 @@ export function MarketIndex({ market }: MarketIndexProps) {
       </div>
       <div className="text-right">
         <p className="text-sm font-bold tabular-nums">
-          ${market.price.toFixed(2)}
+          ${(market.price ?? 0).toFixed(2)}
         </p>
         <p
           className={`text-xs font-medium tabular-nums ${

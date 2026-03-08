@@ -24,7 +24,7 @@ export function VelocityLongevity() {
         velocity: 0,
         longevity: 0,
       };
-      existing.longevity = item.metric_value;
+      existing.longevity = item.metric_value ?? 0;
       topicMap.set(item.scope_name, existing);
     }
 
@@ -47,7 +47,7 @@ export function VelocityLongevity() {
 
     const chartData: ScatterSeries[] = [{ id: "Topics", data: points }];
     const dataSummary = points
-      .map((p) => `${p.label}: V=${p.x.toFixed(2)}, L=${p.y.toFixed(2)}`)
+      .map((p) => `${p.label}: V=${(p.x ?? 0).toFixed(2)}, L=${(p.y ?? 0).toFixed(2)}`)
       .join("\n");
 
     return { chartData, dataSummary, quadrantCounts };

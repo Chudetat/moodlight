@@ -54,7 +54,7 @@ export function CommodityPrices() {
   const dataSummary = latestByName
     .map(
       ({ commodity, previousPrice }) =>
-        `${commodity.scope_name}: $${commodity.metric_value.toFixed(2)}${
+        `${commodity.scope_name}: $${(commodity.metric_value ?? 0).toFixed(2)}${
           previousPrice
             ? ` (prev: $${previousPrice.toFixed(2)})`
             : ""

@@ -132,7 +132,7 @@ function PipelineHealth() {
               </div>
               <div className="mt-1 flex gap-3 text-xs text-muted-foreground">
                 <span>{info.row_count.toLocaleString()} rows</span>
-                <span>{info.age_hours.toFixed(1)}h ago</span>
+                <span>{(info.age_hours ?? 0).toFixed(1)}h ago</span>
               </div>
               {info.error_preview && (
                 <p className="mt-1 text-xs text-destructive">

@@ -45,7 +45,7 @@ export function BrandVLDS() {
     );
   }
 
-  const dataSummary = `Brand: ${focusedBrand}\nVelocity: ${vlds.velocity.toFixed(2)}\nLongevity: ${vlds.longevity.toFixed(2)}\nDensity: ${vlds.density.toFixed(2)}\nScarcity: ${vlds.scarcity.toFixed(2)}`;
+  const dataSummary = `Brand: ${focusedBrand}\nVelocity: ${(vlds.velocity ?? 0).toFixed(2)}\nLongevity: ${(vlds.longevity ?? 0).toFixed(2)}\nDensity: ${(vlds.density ?? 0).toFixed(2)}\nScarcity: ${(vlds.scarcity ?? 0).toFixed(2)}`;
 
   return (
     <div>
@@ -54,10 +54,10 @@ export function BrandVLDS() {
         <HelperButton chartType="brand_vlds" dataSummary={dataSummary} />
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <MetricCard label="Velocity" value={vlds.velocity.toFixed(2)} />
-        <MetricCard label="Longevity" value={vlds.longevity.toFixed(2)} />
-        <MetricCard label="Density" value={vlds.density.toFixed(2)} />
-        <MetricCard label="Scarcity" value={vlds.scarcity.toFixed(2)} />
+        <MetricCard label="Velocity" value={(vlds.velocity ?? 0).toFixed(2)} />
+        <MetricCard label="Longevity" value={(vlds.longevity ?? 0).toFixed(2)} />
+        <MetricCard label="Density" value={(vlds.density ?? 0).toFixed(2)} />
+        <MetricCard label="Scarcity" value={(vlds.scarcity ?? 0).toFixed(2)} />
       </div>
     </div>
   );

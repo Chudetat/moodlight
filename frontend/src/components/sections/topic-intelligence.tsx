@@ -50,7 +50,7 @@ function TopicCard({
   const [expanded, setExpanded] = useState(false);
   const label = getStrategicLabel(velocity, longevity, density, scarcity);
 
-  const dataSummary = `Topic: ${topic}\nVelocity: ${velocity.toFixed(2)}\nLongevity: ${longevity.toFixed(2)}\nDensity: ${density.toFixed(2)}\nScarcity: ${scarcity.toFixed(2)}\nStrategic Label: ${label}`;
+  const dataSummary = `Topic: ${topic}\nVelocity: ${(velocity ?? 0).toFixed(2)}\nLongevity: ${(longevity ?? 0).toFixed(2)}\nDensity: ${(density ?? 0).toFixed(2)}\nScarcity: ${(scarcity ?? 0).toFixed(2)}\nStrategic Label: ${label}`;
 
   return (
     <Card>
@@ -94,7 +94,7 @@ function TopicCard({
               <div key={m.name} className="text-center">
                 <p className="text-[10px] text-muted-foreground">{m.name}</p>
                 <p className="text-sm font-bold tabular-nums">
-                  {m.val.toFixed(2)}
+                  {(m.val ?? 0).toFixed(2)}
                 </p>
               </div>
             ))}
@@ -132,7 +132,7 @@ export function TopicIntelligence() {
       density: 0,
       scarcity: 0,
     };
-    existing.longevity = item.metric_value;
+    existing.longevity = item.metric_value ?? 0;
     topicMap.set(item.scope_name, existing);
   }
   for (const item of vldsData?.topic_density ?? []) {
@@ -142,7 +142,7 @@ export function TopicIntelligence() {
       density: 0,
       scarcity: 0,
     };
-    existing.density = item.metric_value;
+    existing.density = item.metric_value ?? 0;
     topicMap.set(item.scope_name, existing);
   }
   for (const item of vldsData?.topic_scarcity ?? []) {
@@ -152,7 +152,7 @@ export function TopicIntelligence() {
       density: 0,
       scarcity: 0,
     };
-    existing.scarcity = item.metric_value;
+    existing.scarcity = item.metric_value ?? 0;
     topicMap.set(item.scope_name, existing);
   }
 
