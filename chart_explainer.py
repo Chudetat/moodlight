@@ -50,6 +50,29 @@ def _filter_by_summary_topic(df: pd.DataFrame, data_summary: str) -> pd.DataFram
     return pd.DataFrame()
 
 
+def _filter_by_country_mentions(df: pd.DataFrame, data_summary: str) -> list:
+    """Pull headlines that mention countries referenced in the data summary."""
+    import re
+    if "text" not in df.columns:
+        return []
+    # Extract capitalized words that look like country names from data_summary
+    # Data summary format: "Country: intensity X.XX (N articles), ..."
+    country_pattern = re.findall(r'\b([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+)*)\b', data_summary)
+    # Also catch all-caps like "CONGO", "UKRAINE"
+    country_pattern += re.findall(r'\b([A-Z]{3,})\b', data_summary)
+    # Filter out common non-country words
+    skip = {"Intensity", "Geographic", "Hotspots", "articles", "Country", "Top", "Average"}
+    countries = [c for c in country_pattern if c not in skip and len(c) > 2]
+    if not countries:
+        return []
+    headlines = []
+    for country in countries[:8]:  # Top 8 countries max
+        mask = df["text"].str.contains(country, case=False, na=False)
+        matched = df[mask]["text"].head(3).tolist()
+        headlines.extend(matched)
+    return headlines
+
+
 def retrieve_relevant_headlines(df: pd.DataFrame, chart_type: str, data_summary: str, max_headlines: int = 15) -> str:
     """Stage 1: Context-aware headline retrieval based on chart type and anomalies."""
 
@@ -117,10 +140,12 @@ def retrieve_relevant_headlines(df: pd.DataFrame, chart_type: str, data_summary:
             relevant_headlines.extend(extreme_high)
 
     elif chart_type == "geographic_hotspots":
-        # Topic diversity + recent — geographic data may not be in news/social tables
-        relevant_headlines.extend(_get_topic_diverse(df, 5, 2))
+        # Extract country names from data_summary and filter headlines by mention
+        relevant_headlines.extend(_filter_by_country_mentions(df, data_summary))
+        # Backfill with recent + topic diversity if sparse
         if "created_at" in df.columns:
             relevant_headlines.extend(df.nlargest(5, "created_at")["text"].tolist())
+        relevant_headlines.extend(_get_topic_diverse(df, 3, 1))
 
     elif chart_type in ("empathy_by_topic", "topic_distribution"):
         # Pull from top topics by volume for representative coverage
@@ -263,7 +288,18 @@ What events or dynamics are driving the tone of coverage? Be specific about what
 
         "topic_distribution": f"""Based on this topic distribution and the relevant headlines below, explain in 2-3 sentences why certain topics dominate the news cycle.\n\nData: {data_summary}\n\nRelevant headlines:\n{headline_context}\n\nWhat events or trends are driving topic volume? Be specific.""",
 
-        "geographic_hotspots": f"""Based on this geographic intensity data and the relevant headlines below, explain why the TOP-RANKED countries show elevated threat levels.\n\nData (sorted by intensity, highest first): {data_summary}\n\nRelevant headlines from top countries:\n{headline_context}\n\nIMPORTANT: Format each country consistently. Be specific about actual events driving the scores.""",
+        "geographic_hotspots": f"""Based on this geographic intensity data and headlines below, give a concise summary of why the top-ranked countries show elevated threat levels.
+
+Data (sorted by intensity, highest first): {data_summary}
+
+Headlines mentioning these countries:
+{headline_context}
+
+CRITICAL RULES:
+- Only reference events that appear in the headlines above. Do NOT speculate or infer events that aren't in the headlines.
+- If no headlines mention a specific country, say "no matching coverage" for that country — do not guess why it ranks high.
+- Keep it to 4-6 sentences total, covering the top 3-4 countries. No headers, no bullet points, no numbered lists.
+- Focus on what the headlines actually say is happening, and what the intensity ranking signals for strategic monitoring.""",
 
         "mood_vs_market": f"""Based on this social mood vs market data and the headlines below, explain in 3-4 sentences why there is divergence or alignment between public sentiment and market performance.
 
