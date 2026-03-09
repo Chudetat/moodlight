@@ -1864,6 +1864,32 @@ def api_send_support(req: SupportRequest, payload: dict = Depends(require_auth))
     return {"status": "ok"}
 
 
+# ---------------------------------------------------------------------------
+# Signal Log (Prediction Outcome Tracking)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/signal-log")
+def get_signal_log(days: int = Query(default=90, ge=1, le=730)):
+    """Return signal log entries with market outcomes."""
+    engine = _require_engine()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+    try:
+        df = pd.read_sql(
+            sql_text(
+                "SELECT * FROM signal_log "
+                "WHERE signal_date >= :cutoff "
+                "ORDER BY signal_date DESC"
+            ),
+            engine,
+            params={"cutoff": cutoff},
+        )
+        return {"data": _df_to_records(df), "count": len(df)}
+    except Exception as e:
+        if "does not exist" in str(e).lower():
+            return {"data": [], "count": 0}
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)

@@ -768,6 +768,13 @@ def main():
         except Exception as e:
             print(f"  Alert correlation failed (non-fatal): {e}")
 
+        # 6b. Log predictive/divergence signals for outcome tracking
+        try:
+            from signal_log_tracker import log_new_signals
+            log_new_signals(engine, stored_alerts)
+        except Exception as e:
+            print(f"  Signal logging failed (non-fatal): {e}")
+
         # 7. Send emails
         print(f"\nSending email alerts...")
         from alert_emailer import send_alert_emails

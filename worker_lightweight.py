@@ -34,6 +34,10 @@ JOBS = {
         "module": "run_scheduled_reports",
         "label": "Scheduled Reports",
     },
+    "signal-log": {
+        "module": "signal_log_tracker",
+        "label": "Signal Log Outcome Tracker",
+    },
 }
 
 
