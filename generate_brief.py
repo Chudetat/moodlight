@@ -49,17 +49,19 @@ def _build_brief_html(brief_text):
     current_lines = []
 
     for line in brief_text.split("\n"):
-        # Detect section headers (ALL CAPS lines, optionally with colons)
+        # Detect section headers (ALL CAPS lines, optionally with colons or markdown #)
         stripped = line.strip()
-        if (stripped and re.match(r'^[A-Z][A-Z &\-/]+:?\s*$', stripped)
-                and len(stripped) > 3 and stripped not in ("DATA:", "FORMAT:")):
+        # Strip leading markdown hashes: "## KEY THREATS" → "KEY THREATS"
+        header_text = re.sub(r'^#{1,4}\s*', '', stripped).strip()
+        if (header_text and re.match(r'^[A-Z][A-Z &\-/]+:?\s*$', header_text)
+                and len(header_text) > 3 and header_text not in ("DATA:", "FORMAT:")):
             # Save previous section
             if current_section:
                 sections_html.append(_format_brief_section(current_section, current_lines))
-            current_section = stripped.rstrip(":")
+            current_section = header_text.rstrip(":")
             current_lines = []
-        elif stripped.startswith("DAILY INTELLIGENCE BRIEF"):
-            # Skip the title line — we render our own header
+        elif header_text.startswith("DAILY INTELLIGENCE BRIEF") or re.match(r'^\d+\s+\w+\s+\d{4}', header_text):
+            # Skip the title line and date subtitle — we render our own header
             continue
         elif stripped.startswith("===") or stripped.startswith("---"):
             continue
@@ -124,10 +126,10 @@ def _format_brief_section(title, lines):
 
     return (
         f'<div style="margin: 20px 0;">'
-        f'<div style="border-left: 3px solid {color}; padding-left: 12px; margin-bottom: 8px;">'
-        f'<h3 style="margin: 0; color: {color}; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">{title}</h3>'
+        f'<div style="margin-bottom: 10px;">'
+        f'<span style="background: {color}; color: white; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; letter-spacing: 0.5px;">{title}</span>'
         f'</div>'
-        f'<div style="background: #fafafa; padding: 12px 15px; border-radius: 8px;">'
+        f'<div style="background: #fafafa; padding: 12px 15px; border-radius: 8px; border-left: 3px solid {color};">'
         f'<div style="font-size: 15px; color: #333; line-height: 1.6;">{content_html}</div>'
         f'</div>'
         f'</div>'
@@ -173,6 +175,15 @@ def _markdown_to_html(text):
         return f'<span style="background: #ECEFF1; color: #546E7A; padding: 1px 6px; border-radius: 3px; font-size: 11px;">{tag}</span>'
 
     text = re.sub(r'\[([A-Z][A-Z \-]+?)\]', _style_tag, text)
+
+    # Inline labels: What:, So What:, Data points:, Projection:
+    def _style_inline_label(m):
+        label = m.group(1)
+        return (
+            f'<span style="background: #ECEFF1; color: #37474F; padding: 1px 6px; border-radius: 3px; '
+            f'font-size: 11px; font-weight: bold;">{label}</span>'
+        )
+    text = re.sub(r'\b(What|So What|Data points?|Projection):', _style_inline_label, text)
 
     # Arrows
     text = text.replace("↑", '<span style="color: #DC143C;">&#8593;</span>')
