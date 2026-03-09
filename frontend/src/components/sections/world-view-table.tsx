@@ -209,10 +209,13 @@ export function WorldViewTable() {
                   key={i}
                   className="group border-b border-border/50 hover:bg-muted/30"
                 >
-                  <td className="p-2" title={r.text}>
-                    <span className="block overflow-hidden text-ellipsis whitespace-nowrap group-hover:overflow-visible group-hover:whitespace-normal group-hover:break-words">
+                  <td className="relative p-2">
+                    <span className="block truncate">
                       {r.text}
                     </span>
+                    <div className="pointer-events-none absolute left-0 top-0 z-50 hidden max-w-[700px] rounded border border-border bg-card p-2.5 text-xs leading-relaxed shadow-lg group-hover:block">
+                      {r.text}
+                    </div>
                   </td>
                   <td className="truncate p-2">{r.source}</td>
                   <td className="truncate p-2">{r.topic}</td>
