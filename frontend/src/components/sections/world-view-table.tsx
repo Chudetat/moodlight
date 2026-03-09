@@ -210,7 +210,7 @@ export function WorldViewTable() {
                   className="border-b border-border/50 hover:bg-muted/30"
                 >
                   <td className="p-2">
-                    <span className="line-clamp-4 block leading-relaxed">
+                    <span className="line-clamp-4 leading-relaxed">
                       {r.text}
                     </span>
                   </td>
