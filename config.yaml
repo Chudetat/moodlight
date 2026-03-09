@@ -3,7 +3,7 @@ credentials:
     admin:
       email: intel@moodlightintel.com
       name: Admin
-      password: $2b$12$OXpPytylZIVxruJW3ZlJaObkM3r1LKB6ec9So45oYKm2hqBOMhh36
+      password: $2b$12$f0u/lE9K6c6nbGujUs4EWe53UWcLfp2WfelDlBEP6KpnD9Az7P/.6
       failed_login_attempts: 0
       logged_in: False
 
