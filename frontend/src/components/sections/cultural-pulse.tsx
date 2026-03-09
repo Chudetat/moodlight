@@ -49,7 +49,7 @@ export function CulturalPulse() {
         label="Global Mood Score"
         value={moodScore}
         emoji={emoji}
-        sublabel={`${label} \u00B7 Based on ${recentCount} posts`}
+        sublabel={label}
         className="max-w-xs"
       />
       <p className="mt-2 text-[10px] text-muted-foreground">
