@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useEconomicData } from "@/lib/hooks/use-api";
 import { EconomicIndicator } from "@/components/charts/economic-indicator";
 import { HelperButton } from "@/components/shared/helper-button";
@@ -22,41 +23,45 @@ export function EconomicIndicators() {
     );
   }
 
-  const allIndicators = data?.data ?? [];
+  const { latestByName, dataSummary } = useMemo(() => {
+    const allIndicators = data?.data ?? [];
 
-  // Group by metric_name, get latest + previous for delta
-  const grouped = new Map<string, EconData[]>();
-  for (const ind of allIndicators) {
-    const list = grouped.get(ind.metric_name) || [];
-    list.push(ind);
-    grouped.set(ind.metric_name, list);
-  }
+    // Group by metric_name, get latest + previous for delta
+    const grouped = new Map<string, EconData[]>();
+    for (const ind of allIndicators) {
+      const list = grouped.get(ind.metric_name) || [];
+      list.push(ind);
+      grouped.set(ind.metric_name, list);
+    }
 
-  const latestByName: Array<{
-    indicator: EconData;
-    previousValue?: number;
-  }> = [];
+    const latest: Array<{
+      indicator: EconData;
+      previousValue?: number;
+    }> = [];
 
-  for (const [, items] of grouped) {
-    // Sort by date descending
-    items.sort(
-      (a, b) =>
-        new Date(b.snapshot_date).getTime() -
-        new Date(a.snapshot_date).getTime()
-    );
-    latestByName.push({
-      indicator: items[0],
-      previousValue: items.length > 1 ? items[1].metric_value : undefined,
-    });
-  }
+    for (const [, items] of grouped) {
+      // Sort by date descending
+      items.sort(
+        (a, b) =>
+          new Date(b.snapshot_date).getTime() -
+          new Date(a.snapshot_date).getTime()
+      );
+      latest.push({
+        indicator: items[0],
+        previousValue: items.length > 1 ? items[1].metric_value : undefined,
+      });
+    }
 
-  // Build data summary for helper button
-  const dataSummary = latestByName
-    .map(
-      ({ indicator }) =>
-        `${indicator.metric_name}: ${indicator.metric_value}`
-    )
-    .join("\n");
+    // Build data summary for helper button
+    const summary = latest
+      .map(
+        ({ indicator }) =>
+          `${indicator.metric_name}: ${indicator.metric_value}`
+      )
+      .join("\n");
+
+    return { latestByName: latest, dataSummary: summary };
+  }, [data]);
 
   return (
     <div>

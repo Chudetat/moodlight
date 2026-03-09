@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useTopicVLDS, useAlerts, useCombinedData, useTopics } from "@/lib/hooks/use-api";
 import { normalizeEmpathyScore } from "@/lib/utils";
@@ -141,95 +142,99 @@ export function TopicIntelligence() {
     );
   }
 
-  // Build per-topic VLDS map from separate arrays
-  const topicMap = new Map<
-    string,
-    {
-      velocity: number;
-      longevity: number;
-      density: number;
-      scarcity: number;
-      postCount: number;
+  const { topics, topicAlerts, topicEmpathy, topicEmotions } = useMemo(() => {
+    // Build per-topic VLDS map from separate arrays
+    const topicMap = new Map<
+      string,
+      {
+        velocity: number;
+        longevity: number;
+        density: number;
+        scarcity: number;
+        postCount: number;
+      }
+    >();
+
+    for (const item of vldsData?.topic_longevity ?? []) {
+      const key = (item.topic ?? "").toLowerCase();
+      const existing = topicMap.get(key) || {
+        velocity: 0,
+        longevity: 0,
+        density: 0,
+        scarcity: 0,
+        postCount: 0,
+      };
+      existing.velocity = item.velocity_score ?? 0;
+      existing.longevity = item.longevity_score ?? 0;
+      existing.postCount = item.post_count ?? 0;
+      topicMap.set(key, existing);
     }
-  >();
-
-  for (const item of vldsData?.topic_longevity ?? []) {
-    const key = (item.topic ?? "").toLowerCase();
-    const existing = topicMap.get(key) || {
-      velocity: 0,
-      longevity: 0,
-      density: 0,
-      scarcity: 0,
-      postCount: 0,
-    };
-    existing.velocity = item.velocity_score ?? 0;
-    existing.longevity = item.longevity_score ?? 0;
-    existing.postCount = item.post_count ?? 0;
-    topicMap.set(key, existing);
-  }
-  for (const item of vldsData?.topic_density ?? []) {
-    const key = (item.topic ?? "").toLowerCase();
-    const existing = topicMap.get(key) || {
-      velocity: 0,
-      longevity: 0,
-      density: 0,
-      scarcity: 0,
-      postCount: 0,
-    };
-    existing.density = item.density_score ?? 0;
-    topicMap.set(key, existing);
-  }
-  for (const item of vldsData?.topic_scarcity ?? []) {
-    const key = (item.topic ?? "").toLowerCase();
-    const existing = topicMap.get(key) || {
-      velocity: 0,
-      longevity: 0,
-      density: 0,
-      scarcity: 0,
-      postCount: 0,
-    };
-    existing.scarcity = item.scarcity_score ?? 0;
-    topicMap.set(key, existing);
-  }
-
-  // Build per-topic alert lists
-  const allAlerts = alertsData?.data ?? [];
-  const topicAlerts = new Map<string, { severity: string; title: string }[]>();
-  for (const a of allAlerts) {
-    const t = (a.topic ?? "").toLowerCase();
-    if (!t) continue;
-    if (!topicAlerts.has(t)) topicAlerts.set(t, []);
-    topicAlerts.get(t)!.push({ severity: a.severity, title: a.title });
-  }
-
-  // Per-topic empathy and emotions from combined data
-  const topicEmpathy = new Map<string, number[]>();
-  const topicEmotions = new Map<string, Map<string, number>>();
-  for (const item of combinedData?.data ?? []) {
-    const t = (item.topic ?? "").toLowerCase();
-    if (!t) continue;
-    // Empathy
-    if (item.empathy_score != null) {
-      if (!topicEmpathy.has(t)) topicEmpathy.set(t, []);
-      topicEmpathy.get(t)!.push(item.empathy_score);
+    for (const item of vldsData?.topic_density ?? []) {
+      const key = (item.topic ?? "").toLowerCase();
+      const existing = topicMap.get(key) || {
+        velocity: 0,
+        longevity: 0,
+        density: 0,
+        scarcity: 0,
+        postCount: 0,
+      };
+      existing.density = item.density_score ?? 0;
+      topicMap.set(key, existing);
     }
-    // Emotions
-    const emo = item.emotion_top_1;
-    if (emo) {
-      if (!topicEmotions.has(t)) topicEmotions.set(t, new Map());
-      const emoMap = topicEmotions.get(t)!;
-      emoMap.set(emo, (emoMap.get(emo) || 0) + 1);
+    for (const item of vldsData?.topic_scarcity ?? []) {
+      const key = (item.topic ?? "").toLowerCase();
+      const existing = topicMap.get(key) || {
+        velocity: 0,
+        longevity: 0,
+        density: 0,
+        scarcity: 0,
+        postCount: 0,
+      };
+      existing.scarcity = item.scarcity_score ?? 0;
+      topicMap.set(key, existing);
     }
-  }
 
-  // Filter to only watchlist topics
-  const watchlistTopics = new Set(
-    (topicWatchlist?.topics ?? []).map((t) => t.topic_name.toLowerCase())
-  );
+    // Build per-topic alert lists
+    const allAlerts = alertsData?.data ?? [];
+    const ta = new Map<string, { severity: string; title: string }[]>();
+    for (const a of allAlerts) {
+      const t = (a.topic ?? "").toLowerCase();
+      if (!t) continue;
+      if (!ta.has(t)) ta.set(t, []);
+      ta.get(t)!.push({ severity: a.severity, title: a.title });
+    }
 
-  const topics = Array.from(topicMap.entries())
-    .filter(([key]) => watchlistTopics.size === 0 || watchlistTopics.has(key))
-    .sort(([, a], [, b]) => b.velocity - a.velocity);
+    // Per-topic empathy and emotions from combined data
+    const te = new Map<string, number[]>();
+    const temo = new Map<string, Map<string, number>>();
+    for (const item of combinedData?.data ?? []) {
+      const t = (item.topic ?? "").toLowerCase();
+      if (!t) continue;
+      // Empathy
+      if (item.empathy_score != null) {
+        if (!te.has(t)) te.set(t, []);
+        te.get(t)!.push(item.empathy_score);
+      }
+      // Emotions
+      const emo = item.emotion_top_1;
+      if (emo) {
+        if (!temo.has(t)) temo.set(t, new Map());
+        const emoMap = temo.get(t)!;
+        emoMap.set(emo, (emoMap.get(emo) || 0) + 1);
+      }
+    }
+
+    // Filter to only watchlist topics
+    const watchlistTopics = new Set(
+      (topicWatchlist?.topics ?? []).map((t) => t.topic_name.toLowerCase())
+    );
+
+    const t = Array.from(topicMap.entries())
+      .filter(([key]) => watchlistTopics.size === 0 || watchlistTopics.has(key))
+      .sort(([, a], [, b]) => b.velocity - a.velocity);
+
+    return { topics: t, topicAlerts: ta, topicEmpathy: te, topicEmotions: temo };
+  }, [vldsData, alertsData, combinedData, topicWatchlist]);
 
   return (
     <div>

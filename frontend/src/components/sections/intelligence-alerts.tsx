@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useAlerts, useAlertPreferences } from "@/lib/hooks/use-api";
 import { AlertCard } from "./alert-card";
@@ -25,29 +25,35 @@ export function IntelligenceAlerts() {
   const { data, isLoading } = useAlerts(username, 7);
   const { data: prefsData } = useAlertPreferences();
 
-  // Filter by user alert preferences
-  const allAlerts = data?.data ?? [];
-  const prefs = prefsData?.preferences;
-  const prefFiltered = prefs
-    ? allAlerts.filter((a) => {
-        const pref = prefs[a.alert_type];
-        return pref === undefined || pref.enabled;
-      })
-    : allAlerts;
+  // Filter by user alert preferences and sort
+  const { prefFiltered, sorted } = useMemo(() => {
+    const allAlerts = data?.data ?? [];
+    const prefs = prefsData?.preferences;
+    const pf = prefs
+      ? allAlerts.filter((a) => {
+          const pref = prefs[a.alert_type];
+          return pref === undefined || pref.enabled;
+        })
+      : allAlerts;
 
-  // Sort: unread first, then by timestamp descending
-  const sorted = [...prefFiltered].sort((a, b) => {
-    if (a.is_read !== b.is_read) return a.is_read ? 1 : -1;
-    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-  });
+    // Sort: unread first, then by timestamp descending
+    const s = [...pf].sort((a, b) => {
+      if (a.is_read !== b.is_read) return a.is_read ? 1 : -1;
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
 
-  // Severity filter
-  const filtered =
-    filter === "all" ? sorted : sorted.filter((a) => a.severity === filter);
+    return { prefFiltered: pf, sorted: s };
+  }, [data, prefsData]);
 
-  const unreadCount = prefFiltered.filter((a) => !a.is_read).length;
-  const visible = filtered.slice(0, showCount);
-  const hasMore = filtered.length > showCount;
+  // Severity filter + pagination
+  const { filtered, unreadCount, visible, hasMore } = useMemo(() => {
+    const f =
+      filter === "all" ? sorted : sorted.filter((a) => a.severity === filter);
+    const uc = prefFiltered.filter((a) => !a.is_read).length;
+    const v = f.slice(0, showCount);
+    const hm = f.length > showCount;
+    return { filtered: f, unreadCount: uc, visible: v, hasMore: hm };
+  }, [sorted, prefFiltered, filter, showCount]);
 
   const handleFilterChange = (f: SeverityFilter) => {
     setFilter(f);

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { ECONOMIC_INDICATORS } from "@/lib/constants";
 import { formatNumber } from "@/lib/utils";
 import type { EconomicIndicator as EconData } from "@/lib/types";
@@ -9,7 +10,7 @@ interface EconomicIndicatorProps {
   previousValue?: number;
 }
 
-export function EconomicIndicator({
+export const EconomicIndicator = memo(function EconomicIndicator({
   indicator,
   previousValue,
 }: EconomicIndicatorProps) {
@@ -85,4 +86,4 @@ export function EconomicIndicator({
       </p>
     </div>
   );
-}
+});

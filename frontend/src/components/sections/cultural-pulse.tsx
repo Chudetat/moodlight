@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useCombinedData } from "@/lib/hooks/use-api";
 import { normalizeEmpathyScore } from "@/lib/utils";
 import { getEmpathyLabel, getEmpathyEmoji } from "@/lib/constants";
@@ -19,19 +20,24 @@ export function CulturalPulse() {
   }
 
   // Calculate global mood from last 24h data
-  const items = data?.data ?? [];
-  const now = Date.now();
-  const oneDayAgo = now - 24 * 60 * 60 * 1000;
-  const recent = items.filter(
-    (d) => new Date(d.created_at).getTime() > oneDayAgo
-  );
-  const rawAvg =
-    recent.length > 0
-      ? recent.reduce((sum, d) => sum + d.empathy_score, 0) / recent.length
-      : 0;
-  const moodScore = normalizeEmpathyScore(rawAvg);
-  const label = getEmpathyLabel(moodScore);
-  const emoji = getEmpathyEmoji(moodScore);
+  const { moodScore, label, emoji, recentCount } = useMemo(() => {
+    const items = data?.data ?? [];
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const recent = items.filter(
+      (d) => new Date(d.created_at).getTime() > oneDayAgo
+    );
+    const rawAvg =
+      recent.length > 0
+        ? recent.reduce((sum, d) => sum + d.empathy_score, 0) / recent.length
+        : 0;
+    const score = normalizeEmpathyScore(rawAvg);
+    return {
+      moodScore: score,
+      label: getEmpathyLabel(score),
+      emoji: getEmpathyEmoji(score),
+      recentCount: recent.length,
+    };
+  }, [data]);
 
   return (
     <div>
@@ -43,7 +49,7 @@ export function CulturalPulse() {
         label="Global Mood Score"
         value={moodScore}
         emoji={emoji}
-        sublabel={`${label} \u00B7 Based on ${recent.length} posts`}
+        sublabel={`${label} \u00B7 Based on ${recentCount} posts`}
         className="max-w-xs"
       />
       <p className="mt-2 text-[10px] text-muted-foreground">

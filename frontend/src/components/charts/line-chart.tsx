@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { ResponsiveLine, type DefaultSeries } from "@nivo/line";
 import { COLORS } from "@/lib/constants";
 
@@ -19,7 +20,7 @@ interface LineChartProps {
   colors?: string[];
 }
 
-export function LineChart({
+export const LineChart = memo(function LineChart({
   data,
   height = 300,
   enableArea = false,
@@ -89,4 +90,4 @@ export function LineChart({
       />
     </div>
   );
-}
+});

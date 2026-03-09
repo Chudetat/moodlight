@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 const ZONES = [
   { label: "Low", min: 0, max: 1.5, color: "#90EE90" },
   { label: "Moderate", min: 1.5, max: 2.5, color: "#FFFF00" },
@@ -13,7 +15,7 @@ interface GaugeChartProps {
   size?: number;
 }
 
-export function GaugeChart({ value, label, size = 180 }: GaugeChartProps) {
+export const GaugeChart = memo(function GaugeChart({ value, label, size = 180 }: GaugeChartProps) {
   const clampedValue = Math.min(5, Math.max(0, value));
   const zone = ZONES.find((z) => clampedValue >= z.min && clampedValue < z.max) || ZONES[3];
   const pct = clampedValue / 5; // 0-1 for arc drawing
@@ -96,4 +98,4 @@ export function GaugeChart({ value, label, size = 180 }: GaugeChartProps) {
       </svg>
     </div>
   );
-}
+});

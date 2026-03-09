@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { ResponsiveScatterPlot } from "@nivo/scatterplot";
 import { COLORS } from "@/lib/constants";
 
@@ -25,7 +26,7 @@ interface ScatterChartProps {
   tooltipLabel?: (point: ScatterDataPoint) => string;
 }
 
-export function ScatterChart({
+export const ScatterChart = memo(function ScatterChart({
   data,
   height = 350,
   xLabel,
@@ -96,6 +97,6 @@ export function ScatterChart({
       />
     </div>
   );
-}
+});
 
 export type { ScatterSeries, ScatterDataPoint };

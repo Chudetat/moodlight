@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { MARKET_SYMBOLS } from "@/lib/constants";
 import { formatPctChange } from "@/lib/utils";
 import type { MarketData } from "@/lib/types";
@@ -8,7 +9,7 @@ interface MarketIndexProps {
   market: MarketData;
 }
 
-export function MarketIndex({ market }: MarketIndexProps) {
+export const MarketIndex = memo(function MarketIndex({ market }: MarketIndexProps) {
   const name = MARKET_SYMBOLS[market.symbol] || market.name || market.symbol;
   const changePct = parseFloat(market.change_percent) || 0;
   const isPositive = changePct > 0;
@@ -36,4 +37,4 @@ export function MarketIndex({ market }: MarketIndexProps) {
       </div>
     </div>
   );
-}
+});

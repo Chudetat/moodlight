@@ -26,7 +26,7 @@ import type {
   Customer,
 } from "../types";
 
-const REFETCH_INTERVAL = 60_000; // 1 minute
+const REFETCH_INTERVAL = 5 * 60_000; // 5 minutes
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api/proxy${path}`, init);

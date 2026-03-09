@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { COMMODITY_NAMES } from "@/lib/constants";
 import type { CommodityPrice as CommodityData } from "@/lib/types";
 
@@ -8,7 +9,7 @@ interface CommodityPriceProps {
   previousPrice?: number;
 }
 
-export function CommodityPrice({
+export const CommodityPrice = memo(function CommodityPrice({
   commodity,
   previousPrice,
 }: CommodityPriceProps) {
@@ -52,4 +53,4 @@ export function CommodityPrice({
       </p>
     </div>
   );
-}
+});

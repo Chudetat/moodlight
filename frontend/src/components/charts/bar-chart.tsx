@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { ResponsiveBar, type BarDatum } from "@nivo/bar";
 import { COLORS } from "@/lib/constants";
 
@@ -16,7 +17,7 @@ interface BarChartProps {
   colors?: string[] | ((datum: { id: string | number; indexValue?: string | number; data?: Record<string, unknown>; [key: string]: unknown }) => string);
 }
 
-export function BarChart({
+export const BarChart = memo(function BarChart({
   data,
   keys,
   indexBy,
@@ -81,4 +82,4 @@ export function BarChart({
       />
     </div>
   );
-}
+});
