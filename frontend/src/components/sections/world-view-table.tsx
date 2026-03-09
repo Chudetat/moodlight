@@ -210,7 +210,7 @@ export function WorldViewTable() {
                   className="group border-b border-border/50 hover:bg-muted/30"
                 >
                   <td className="p-2" title={r.text}>
-                    <span className="block truncate group-hover:whitespace-normal group-hover:break-words">
+                    <span className="block overflow-hidden text-ellipsis whitespace-nowrap group-hover:overflow-visible group-hover:whitespace-normal group-hover:break-words">
                       {r.text}
                     </span>
                   </td>
