@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
 
 export function BriefGenerator() {
   const [product, setProduct] = useState("");
@@ -14,7 +14,8 @@ export function BriefGenerator() {
   const [timeline, setTimeline] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState("");
+  const [statusMsg, setStatusMsg] = useState("");
+  const [briefContent, setBriefContent] = useState<string | null>(null);
 
   // Assemble user_need from fields (matches Streamlit)
   function buildUserNeed(): string {
@@ -33,7 +34,8 @@ export function BriefGenerator() {
     const userNeed = buildUserNeed();
     if (!userNeed) return;
     setLoading(true);
-    setResult("");
+    setStatusMsg("");
+    setBriefContent(null);
     try {
       const res = await fetch("/api/proxy/api/strategic-brief", {
         method: "POST",
@@ -45,13 +47,14 @@ export function BriefGenerator() {
       });
       const data = await res.json();
       if (res.ok) {
-        setResult(
+        setBriefContent(data.brief || null);
+        setStatusMsg(
           data.email_sent
             ? "Brief generated and emailed."
             : "Brief generated."
         );
       } else {
-        setResult(data.detail || "Error generating brief.");
+        setStatusMsg(data.detail || "Error generating brief.");
       }
     } finally {
       setLoading(false);
@@ -114,8 +117,29 @@ export function BriefGenerator() {
           Generate Brief
         </Button>
       </form>
-      {result && (
-        <p className="text-xs text-muted-foreground">{result}</p>
+      {statusMsg && (
+        <p className="text-xs text-muted-foreground">{statusMsg}</p>
+      )}
+      {briefContent && (
+        <div className="space-y-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs"
+            onClick={() => {
+              const blob = new Blob([briefContent], { type: "text/markdown" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "moodlight_strategic_brief.md";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            <Download className="mr-1 h-3 w-3" />
+            Download Brief (Markdown)
+          </Button>
+        </div>
       )}
     </div>
   );

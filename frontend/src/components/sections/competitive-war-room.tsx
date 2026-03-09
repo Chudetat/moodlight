@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useAuth } from "@/lib/hooks/use-auth";
-import { useBrands, useCompetitive } from "@/lib/hooks/use-api";
+import { useBrands, useCompetitive, useChartExplain } from "@/lib/hooks/use-api";
 import { FeatureGate } from "@/components/layout/feature-gate";
 import { BarChart } from "@/components/charts/bar-chart";
 import { MetricCard } from "@/components/charts/metric-card";
 import { HelperButton } from "@/components/shared/helper-button";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 interface BrandWarRoomProps {
   brand: string;
@@ -14,6 +17,9 @@ interface BrandWarRoomProps {
 
 function BrandWarRoom({ brand }: BrandWarRoomProps) {
   const { data: compData, isLoading } = useCompetitive(brand);
+  const chartExplain = useChartExplain();
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [insight, setInsight] = useState<string | null>(null);
 
   if (isLoading) return <ChartSkeleton />;
 
@@ -131,6 +137,45 @@ function BrandWarRoom({ brand }: BrandWarRoomProps) {
           </div>
         </div>
       )}
+
+      {/* AI Competitive Insight */}
+      <div className="mt-3">
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs"
+          onClick={async () => {
+            setInsightLoading(true);
+            try {
+              const compNames = competitorNames.join(", ");
+              const sovSummary = sovData.map((d) => `${d.brand}: ${d.sov}%`).join(", ");
+              const summary = `Brand: ${brand}\nCompetitors: ${compNames}\nSOV: ${sovSummary}\nVelocity gap: ${vGap.toFixed(2)}, Longevity gap: ${lGap.toFixed(2)}, Density gap: ${dGap.toFixed(2)}, Scarcity gap: ${sGap.toFixed(2)}`;
+              const result = await chartExplain.mutateAsync({
+                chart_type: "competitive_war_room",
+                data_summary: summary,
+              });
+              setInsight(result.explanation);
+            } catch {
+              setInsight("Could not generate competitive insight.");
+            } finally {
+              setInsightLoading(false);
+            }
+          }}
+          disabled={insightLoading}
+        >
+          {insightLoading ? (
+            <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Analyzing...</>
+          ) : (
+            "\uD83D\uDD0D Generate AI Competitive Insight"
+          )}
+        </Button>
+        {insight && (
+          <div className="mt-2 rounded-lg border border-border bg-muted p-3">
+            <p className="mb-1 text-sm font-medium">Competitive Insight</p>
+            <p className="whitespace-pre-wrap text-xs">{insight}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

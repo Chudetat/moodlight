@@ -185,12 +185,32 @@ export interface TopicListResponse {
 
 // ── VLDS ──────────────────────────────────────────────
 
+export interface VLDSDetailItem {
+  topic?: string;
+  emotion?: string;
+  percentage: number;
+  count: number;
+}
+
 export interface VLDSScores {
   velocity: number;
   longevity: number;
   density: number;
   scarcity: number;
   _vlds_version: number;
+  velocity_label?: string;
+  longevity_label?: string;
+  density_label?: string;
+  scarcity_label?: string;
+  velocity_insight?: string;
+  longevity_insight?: string;
+  density_insight?: string;
+  emotion_insight?: string;
+  empathy_label?: string;
+  total_posts?: number;
+  top_topics_detailed?: VLDSDetailItem[];
+  top_emotions_detailed?: VLDSDetailItem[];
+  scarce_topics_detailed?: VLDSDetailItem[];
 }
 
 export interface BrandVLDSResponse {

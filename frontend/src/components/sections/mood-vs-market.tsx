@@ -86,10 +86,13 @@ export function MoodVsMarket() {
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-1 flex items-center gap-2">
         <p className="text-sm font-medium">Mood vs Market</p>
         <HelperButton chartType="mood_vs_market" dataSummary={dataSummary} />
       </div>
+      <p className="mb-2 text-xs text-muted-foreground">
+        When mood and markets diverge, that&rsquo;s your signal&mdash;opportunity or risk is coming.
+      </p>
       {chartData.length > 0 && chartData[0].data.length > 0 ? (
         <>
           <LineChart data={chartData} height={300} colors={["#1f77b4", "#2E7D32"]} />

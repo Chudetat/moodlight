@@ -15,15 +15,21 @@ export function ViralityEmpathy() {
     if (items.length === 0)
       return { chartData: [] as ScatterSeries[], dataSummary: "No data" };
 
-    // Compute virality as log(engagement + 1) * intensity
+    // Compute virality as engagement / age_hours (matching Streamlit)
+    const now = Date.now();
     const points = items
       .filter((d) => d.engagement > 0)
-      .map((d) => ({
-        x: Math.log10(d.engagement + 1) * d.intensity,
-        y: normalizeEmpathyScore(d.empathy_score),
-        size: Math.min(20, Math.max(4, Math.log10(d.engagement + 1) * 3)),
-        label: d.text?.slice(0, 200) || "",
-      }))
+      .map((d) => {
+        const ageHours = Math.max(0.1, (now - new Date(d.created_at).getTime()) / 3_600_000);
+        const virality = d.engagement / ageHours;
+        return {
+          x: virality,
+          y: normalizeEmpathyScore(d.empathy_score),
+          size: Math.min(20, Math.max(4, Math.log10(d.engagement + 1) * 3)),
+          label: d.text?.slice(0, 200) || "",
+        };
+      })
+      .sort((a, b) => b.x - a.x)
       .slice(0, 300);
 
     const chartData: ScatterSeries[] = [{ id: "Content", data: points }];
@@ -46,7 +52,7 @@ export function ViralityEmpathy() {
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-1 flex items-center gap-2">
         <p className="text-sm font-medium">Virality x Empathy</p>
         <HelperButton
           chartType="virality_empathy"

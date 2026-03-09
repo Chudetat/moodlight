@@ -23,9 +23,11 @@ import { ViralityEmpathy } from "@/components/sections/virality-empathy";
 import { VelocityLongevity } from "@/components/sections/velocity-longevity";
 import { DensityScarcity } from "@/components/sections/density-scarcity";
 import { BrandVLDS } from "@/components/sections/brand-vlds";
+import { BrandComparison } from "@/components/sections/brand-comparison";
 import { MoodHistory } from "@/components/sections/mood-history";
 import { WorldViewTable } from "@/components/sections/world-view-table";
 import { IntelDashboard } from "@/components/sections/intel-dashboard";
+import { HistoricalTrends } from "@/components/sections/historical-trends";
 import { AskMoodlight } from "@/components/sections/ask-moodlight";
 
 export default function DashboardPage() {
@@ -127,6 +129,11 @@ export default function DashboardPage() {
           <BrandVLDS />
         </LazySection>
 
+        {/* 14b. Brand Comparison */}
+        <LazySection>
+          <BrandComparison />
+        </LazySection>
+
         {/* 15. 7-Day Mood History */}
         <LazySection>
           <MoodHistory />
@@ -142,7 +149,12 @@ export default function DashboardPage() {
           <IntelDashboard />
         </LazySection>
 
-        {/* 18. Ask Moodlight */}
+        {/* 18. Historical Trends (shows only when time range > 7d) */}
+        <LazySection>
+          <HistoricalTrends />
+        </LazySection>
+
+        {/* 19. Ask Moodlight */}
         <LazySection>
           <AskMoodlight />
         </LazySection>

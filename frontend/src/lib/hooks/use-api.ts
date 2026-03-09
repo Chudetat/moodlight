@@ -593,6 +593,25 @@ export function useDeleteCustomer() {
   });
 }
 
+// ── Metrics / Historical Trends ──────────────────────
+
+export function useMetricTrends(
+  scope: string,
+  scopeName?: string,
+  days = 90
+) {
+  const params = new URLSearchParams({ days: String(days) });
+  if (scopeName) params.set("scope_name", scopeName);
+  return useQuery<{
+    data: { snapshot_date: string; metric_name: string; metric_value: number }[];
+    count: number;
+  }>({
+    queryKey: ["metrics", scope, scopeName, days],
+    queryFn: () => apiFetch(`/api/metrics/${scope}?${params}`),
+    enabled: days > 7,
+  });
+}
+
 // ── Pipeline Health ───────────────────────────────────
 
 export function usePipelineHealth() {

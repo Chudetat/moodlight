@@ -1,7 +1,8 @@
 "use client";
 
 import { useAuth } from "@/lib/hooks/use-auth";
-import { useTopicVLDS, useAlerts } from "@/lib/hooks/use-api";
+import { useTopicVLDS, useAlerts, useCombinedData } from "@/lib/hooks/use-api";
+import { normalizeEmpathyScore } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { HelperButton } from "@/components/shared/helper-button";
 import { CardListSkeleton } from "@/components/shared/loading-skeleton";
@@ -39,6 +40,8 @@ function TopicCard({
   scarcity,
   postCount,
   alerts,
+  avgEmpathy,
+  topEmotions,
 }: {
   topicName: string;
   velocity: number;
@@ -47,6 +50,8 @@ function TopicCard({
   scarcity: number;
   postCount: number;
   alerts: { severity: string; title: string }[];
+  avgEmpathy: number | null;
+  topEmotions: { emotion: string; count: number }[];
 }) {
   const { label: strategicLabel, color: labelColor } = getStrategicLabel(
     velocity,
@@ -91,11 +96,23 @@ function TopicCard({
         {postCount} posts analyzed
       </div>
 
+      {/* Empathy + top emotions */}
+      {avgEmpathy !== null && (
+        <div className="mb-2 text-xs text-muted-foreground">
+          Avg empathy: {Math.round(avgEmpathy)}/100
+        </div>
+      )}
+      {topEmotions.length > 0 && (
+        <div className="mb-2 text-xs text-muted-foreground">
+          Top emotions: {topEmotions.map((e) => `${e.emotion} (${e.count})`).join(", ")}
+        </div>
+      )}
+
       {/* Recent alerts */}
       {alerts.length > 0 && (
         <div className="mb-2 space-y-0.5">
           <div className="text-xs text-muted-foreground">Recent Alerts:</div>
-          {alerts.slice(0, 3).map((a, i) => (
+          {alerts.slice(0, 5).map((a, i) => (
             <div key={i} className="text-xs">
               {SEVERITY_ICONS[a.severity] ?? "\uD83D\uDD35"} {a.title}
             </div>
@@ -112,6 +129,7 @@ export function TopicIntelligence() {
   const { username } = useAuth();
   const { data: vldsData, isLoading: vldsLoading } = useTopicVLDS();
   const { data: alertsData } = useAlerts(username, 7);
+  const { data: combinedData } = useCombinedData(7);
 
   if (vldsLoading) {
     return (
@@ -183,6 +201,26 @@ export function TopicIntelligence() {
     topicAlerts.get(t)!.push({ severity: a.severity, title: a.title });
   }
 
+  // Per-topic empathy and emotions from combined data
+  const topicEmpathy = new Map<string, number[]>();
+  const topicEmotions = new Map<string, Map<string, number>>();
+  for (const item of combinedData?.data ?? []) {
+    const t = (item.topic ?? "").toLowerCase();
+    if (!t) continue;
+    // Empathy
+    if (item.empathy_score != null) {
+      if (!topicEmpathy.has(t)) topicEmpathy.set(t, []);
+      topicEmpathy.get(t)!.push(item.empathy_score);
+    }
+    // Emotions
+    const emo = item.emotion_top_1;
+    if (emo) {
+      if (!topicEmotions.has(t)) topicEmotions.set(t, new Map());
+      const emoMap = topicEmotions.get(t)!;
+      emoMap.set(emo, (emoMap.get(emo) || 0) + 1);
+    }
+  }
+
   const topics = Array.from(topicMap.entries()).sort(
     ([, a], [, b]) => b.velocity - a.velocity
   );
@@ -200,18 +238,33 @@ export function TopicIntelligence() {
         </p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {topics.map(([key, scores]) => (
-            <TopicCard
-              key={key}
-              topicName={key}
-              velocity={scores.velocity}
-              longevity={scores.longevity}
-              density={scores.density}
-              scarcity={scores.scarcity}
-              postCount={scores.postCount}
-              alerts={topicAlerts.get(key) ?? []}
-            />
-          ))}
+          {topics.map(([key, scores]) => {
+            const empScores = topicEmpathy.get(key);
+            const avgEmp = empScores && empScores.length > 0
+              ? normalizeEmpathyScore(empScores.reduce((a, b) => a + b, 0) / empScores.length)
+              : null;
+            const emoMap = topicEmotions.get(key);
+            const topEmo = emoMap
+              ? Array.from(emoMap.entries())
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 3)
+                  .map(([emotion, count]) => ({ emotion, count }))
+              : [];
+            return (
+              <TopicCard
+                key={key}
+                topicName={key}
+                velocity={scores.velocity}
+                longevity={scores.longevity}
+                density={scores.density}
+                scarcity={scores.scarcity}
+                postCount={scores.postCount}
+                alerts={topicAlerts.get(key) ?? []}
+                avgEmpathy={avgEmp}
+                topEmotions={topEmo}
+              />
+            );
+          })}
         </div>
       )}
     </div>

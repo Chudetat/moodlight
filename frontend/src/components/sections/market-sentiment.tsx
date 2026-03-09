@@ -41,9 +41,19 @@ export function MarketSentiment() {
     })
     .join("\n");
 
+  // Market sentiment percentage (avg of positive changes)
+  const positiveCount = markets.filter(
+    (m) => (parseFloat(m.change_percent) || 0) > 0
+  ).length;
+  const marketPct = markets.length > 0 ? Math.round((positiveCount / markets.length) * 100) : 50;
+  const sentimentLabel =
+    marketPct < 40 ? "Bearish \uD83D\uDC3B" : marketPct >= 60 ? "Bullish \uD83D\uDC02" : "Neutral \u2696\uFE0F";
+  const sentimentColor =
+    marketPct < 40 ? "text-red-400" : marketPct >= 60 ? "text-green-400" : "text-muted-foreground";
+
   return (
     <div>
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-1 flex items-center gap-2">
         <h2 className="text-lg font-semibold">Market Sentiment</h2>
         {markets.length > 0 && (
           <HelperButton
@@ -52,6 +62,16 @@ export function MarketSentiment() {
           />
         )}
       </div>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Markets respond to mood before they respond to news.
+      </p>
+      {markets.length > 0 && (
+        <div className="mb-3 flex items-baseline gap-3">
+          <span className="text-2xl font-bold tabular-nums">{marketPct}%</span>
+          <span className={`text-sm font-medium ${sentimentColor}`}>{sentimentLabel}</span>
+          <span className="text-xs text-muted-foreground">Based on {markets.length} global indices</span>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {markets.map((m) => (
           <MarketIndex key={m.symbol} market={m} />

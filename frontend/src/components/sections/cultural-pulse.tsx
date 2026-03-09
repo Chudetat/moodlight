@@ -36,13 +36,19 @@ export function CulturalPulse() {
   return (
     <div>
       <h2 className="mb-1 text-lg font-semibold">Cultural Pulse</h2>
+      <p className="mb-3 text-xs text-muted-foreground">
+        The world&rsquo;s emotional temperature&mdash;are audiences receptive or reactive?
+      </p>
       <MetricCard
         label="Global Mood Score"
         value={moodScore}
         emoji={emoji}
-        sublabel={label}
+        sublabel={`${label} \u00B7 Based on ${recent.length} posts`}
         className="max-w-xs"
       />
+      <p className="mt-2 text-[10px] text-muted-foreground">
+        50 = neutral &middot; Above 50 = warm/supportive &middot; Below 50 = hostile/negative
+      </p>
     </div>
   );
 }

@@ -47,16 +47,16 @@ export const SEVERITY_ICONS: Record<string, string> = {
 // ── Empathy labels ────────────────────────────────────
 
 export function getEmpathyLabel(score: number): string {
-  if (score < 35) return "Very Cold/Hostile";
-  if (score < 50) return "Detached/Neutral";
-  if (score < 70) return "Warm/Supportive";
+  if (score < 35) return "Very Cold / Hostile";
+  if (score < 50) return "Detached / Neutral";
+  if (score < 70) return "Warm / Supportive";
   return "Highly Empathetic";
 }
 
 export function getEmpathyEmoji(score: number): string {
-  if (score < 35) return "\u2744\uFE0F";
+  if (score < 35) return "\uD83E\uDD76";
   if (score < 50) return "\uD83D\uDE10";
-  if (score < 70) return "\uD83D\uDE0A";
+  if (score < 70) return "\uD83D\uDE42";
   return "\u2764\uFE0F";
 }
 

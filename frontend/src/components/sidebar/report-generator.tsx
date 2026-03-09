@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useBrands } from "@/lib/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Check } from "lucide-react";
+import { Loader2, Check, Download } from "lucide-react";
 
 const TIME_OPTIONS = [
   { value: 7, label: "Last 7 days" },
@@ -25,7 +25,9 @@ export function ReportGenerator() {
   const [emailMe, setEmailMe] = useState(false);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState("");
+  const [statusMsg, setStatusMsg] = useState("");
+  const [reportContent, setReportContent] = useState<string | null>(null);
+  const [reportSubject, setReportSubject] = useState("");
 
   const subject = selection === "custom" ? customTopic.trim() : selection;
 
@@ -33,7 +35,8 @@ export function ReportGenerator() {
     e.preventDefault();
     if (!subject) return;
     setLoading(true);
-    setResult("");
+    setStatusMsg("");
+    setReportContent(null);
     try {
       const res = await fetch("/api/proxy/api/report", {
         method: "POST",
@@ -47,18 +50,31 @@ export function ReportGenerator() {
       });
       const data = await res.json();
       if (res.ok) {
-        setResult(
+        setReportContent(data.report || null);
+        setReportSubject(subject);
+        setStatusMsg(
           data.email_sent
-            ? "Report generated and emailed."
+            ? `Report generated and emailed.`
             : "Report generated."
         );
       } else {
-        setResult(data.detail || "Error generating report.");
+        setStatusMsg(data.detail || "Error generating report.");
       }
     } finally {
       setLoading(false);
     }
   }
+
+  const handleDownload = useCallback(() => {
+    if (!reportContent) return;
+    const blob = new Blob([reportContent], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `moodlight_report_${reportSubject.replace(/\s+/g, "_")}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [reportContent, reportSubject]);
 
   return (
     <div className="space-y-2">
@@ -144,8 +160,21 @@ export function ReportGenerator() {
           Generate Report
         </Button>
       </form>
-      {result && (
-        <p className="text-xs text-muted-foreground">{result}</p>
+      {statusMsg && (
+        <p className="text-xs text-muted-foreground">{statusMsg}</p>
+      )}
+      {reportContent && (
+        <div className="space-y-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs"
+            onClick={handleDownload}
+          >
+            <Download className="mr-1 h-3 w-3" />
+            Download Report (Markdown)
+          </Button>
+        </div>
       )}
     </div>
   );

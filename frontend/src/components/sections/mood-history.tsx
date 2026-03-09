@@ -50,9 +50,24 @@ export function MoodHistory() {
       .map((p) => `${p.x}: ${p.y}`)
       .join("\n") || "No data";
 
+  // Count days with data and posts per day range
+  const daysWithData = chartData[0]?.data.length ?? 0;
+  const dailyCounts = Array.from(
+    (function () {
+      const byDate = new Map<string, number>();
+      for (const item of data?.data ?? []) {
+        const date = item.created_at.slice(0, 10);
+        byDate.set(date, (byDate.get(date) || 0) + 1);
+      }
+      return byDate;
+    })().values()
+  );
+  const minPosts = dailyCounts.length > 0 ? Math.min(...dailyCounts) : 0;
+  const maxPosts = dailyCounts.length > 0 ? Math.max(...dailyCounts) : 0;
+
   return (
     <div>
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-1 flex items-center gap-2">
         <h2 className="text-lg font-semibold">7-Day Mood History</h2>
         {chartData.length > 0 && (
           <HelperButton
@@ -61,6 +76,11 @@ export function MoodHistory() {
           />
         )}
       </div>
+      {daysWithData > 0 && (
+        <p className="mb-3 text-xs text-muted-foreground">
+          Showing {daysWithData} days with data (posts per day: {minPosts}&ndash;{maxPosts})
+        </p>
+      )}
       {chartData[0]?.data.length ? (
         <div className="rounded-lg border border-border bg-card p-4">
           <LineChart

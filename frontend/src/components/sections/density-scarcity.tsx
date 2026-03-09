@@ -63,9 +63,12 @@ export function DensityScarcity() {
       {/* Density */}
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="mb-2 flex items-center gap-2">
-          <p className="text-sm font-medium">Density (Saturation)</p>
+          <p className="text-sm font-medium">Density: Where Conversations Are Concentrated</p>
           <HelperButton chartType="density" dataSummary={densitySummary} />
         </div>
+        <p className="mb-2 text-xs text-muted-foreground">
+          How crowded is the conversation? High density = be louder or smarter.
+        </p>
         {saturated.length > 0 && (
           <p className="mb-2 text-xs text-muted-foreground">
             Most saturated: {saturated.slice(0, 3).join(", ")}
@@ -95,12 +98,20 @@ export function DensityScarcity() {
       {/* Scarcity */}
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="mb-2 flex items-center gap-2">
-          <p className="text-sm font-medium">Scarcity (Opportunity)</p>
+          <p className="text-sm font-medium">Scarcity: Topic Opportunity Gaps</p>
           <HelperButton chartType="scarcity" dataSummary={scarcitySummary} />
         </div>
+        <p className="mb-2 text-xs text-muted-foreground">
+          White space&mdash;underserved topics where you can own the narrative.
+        </p>
         {highOpportunity.length > 0 && (
           <p className="mb-2 text-xs text-muted-foreground">
             High opportunity: {highOpportunity.slice(0, 3).join(", ")}
+          </p>
+        )}
+        {highOpportunity.length > 0 && (
+          <p className="mb-2 text-xs text-blue-400">
+            {highOpportunity.length} topic{highOpportunity.length !== 1 ? "s" : ""} with HIGH scarcity &mdash; white space opportunities for thought leadership.
           </p>
         )}
         {scarcityData.length > 0 ? (

@@ -72,14 +72,9 @@ export function EmotionalBreakdown() {
     const items = data?.data ?? [];
     const emotionCount = new Map<string, number>();
     for (const item of items) {
-      for (const emotion of [
-        item.emotion_top_1,
-        item.emotion_top_2,
-        item.emotion_top_3,
-      ]) {
-        if (emotion) {
-          emotionCount.set(emotion, (emotionCount.get(emotion) || 0) + 1);
-        }
+      const emotion = item.emotion_top_1;
+      if (emotion) {
+        emotionCount.set(emotion, (emotionCount.get(emotion) || 0) + 1);
       }
     }
     return Array.from(emotionCount.entries())

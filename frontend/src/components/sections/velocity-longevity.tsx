@@ -38,12 +38,23 @@ export function VelocityLongevity() {
       label: r.topic,
     }));
 
-    // Quadrant counts using 0.5 threshold
+    // Median-based thresholds (matching Streamlit)
+    const sortedX = points.map((p) => p.x).sort((a, b) => a - b);
+    const sortedY = points.map((p) => p.y).sort((a, b) => a - b);
+    const midX = Math.floor(sortedX.length / 2);
+    const midY = Math.floor(sortedY.length / 2);
+    const velMedian = sortedX.length % 2 === 0
+      ? (sortedX[midX - 1] + sortedX[midX]) / 2
+      : sortedX[midX];
+    const lonMedian = sortedY.length % 2 === 0
+      ? (sortedY[midY - 1] + sortedY[midY]) / 2
+      : sortedY[midY];
+
     const quadrantCounts = { flash: 0, momentum: 0, fading: 0, stable: 0 };
     for (const p of points) {
-      if (p.x > 0.5 && p.y > 0.5) quadrantCounts.momentum++;
-      else if (p.x > 0.5 && p.y <= 0.5) quadrantCounts.flash++;
-      else if (p.x <= 0.5 && p.y > 0.5) quadrantCounts.stable++;
+      if (p.x > velMedian && p.y > lonMedian) quadrantCounts.momentum++;
+      else if (p.x > velMedian && p.y <= lonMedian) quadrantCounts.flash++;
+      else if (p.x <= velMedian && p.y > lonMedian) quadrantCounts.stable++;
       else quadrantCounts.fading++;
     }
 
@@ -55,9 +66,9 @@ export function VelocityLongevity() {
       "Fading Out": [],
     };
     for (const p of points) {
-      if (p.x > 0.5 && p.y > 0.5) quadrantSeries["Lasting Movement"].push(p);
-      else if (p.x > 0.5 && p.y <= 0.5) quadrantSeries["Flash Trend"].push(p);
-      else if (p.x <= 0.5 && p.y > 0.5) quadrantSeries["Evergreen Topic"].push(p);
+      if (p.x > velMedian && p.y > lonMedian) quadrantSeries["Lasting Movement"].push(p);
+      else if (p.x > velMedian && p.y <= lonMedian) quadrantSeries["Flash Trend"].push(p);
+      else if (p.x <= velMedian && p.y > lonMedian) quadrantSeries["Evergreen Topic"].push(p);
       else quadrantSeries["Fading Out"].push(p);
     }
     const chartData: ScatterSeries[] = Object.entries(quadrantSeries)
@@ -77,13 +88,16 @@ export function VelocityLongevity() {
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <div className="mb-2 flex items-center gap-2">
-        <p className="text-sm font-medium">Velocity x Longevity</p>
+      <div className="mb-1 flex items-center gap-2">
+        <p className="text-sm font-medium">Velocity x Longevity: Topic Strategic Value</p>
         <HelperButton
           chartType="velocity_longevity"
           dataSummary={dataSummary}
         />
       </div>
+      <p className="mb-2 text-xs text-muted-foreground">
+        Is it a flash or a movement? Know before you commit resources.
+      </p>
 
       <div className="mb-3 grid grid-cols-4 gap-2 text-xs">
         <div className="rounded bg-muted/50 p-2 text-center">
