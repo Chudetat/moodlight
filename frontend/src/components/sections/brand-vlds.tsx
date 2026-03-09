@@ -119,10 +119,6 @@ export function BrandVLDS() {
 
           {detailsOpen && (
             <div className="mt-2 rounded-lg border border-border bg-card p-4 space-y-4">
-              <p className="text-xs text-muted-foreground">
-                Based on {vlds.total_posts ?? 0} posts mentioning &ldquo;{focusedBrand}&rdquo;
-              </p>
-
               {/* Key Insights */}
               {(vlds.velocity_insight || vlds.longevity_insight || vlds.density_insight || vlds.emotion_insight) && (
                 <div>
