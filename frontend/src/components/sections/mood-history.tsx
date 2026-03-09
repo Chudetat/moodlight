@@ -6,7 +6,7 @@ import { normalizeEmpathyScore } from "@/lib/utils";
 import { LineChart } from "@/components/charts/line-chart";
 import { HelperButton } from "@/components/shared/helper-button";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
-import type { DefaultSeries } from "@nivo/line";
+import type { DefaultSeries } from "@/components/charts/line-chart";
 
 export function MoodHistory() {
   const { data, isLoading } = useCombinedData(7);

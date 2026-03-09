@@ -61,58 +61,90 @@ export default function DashboardPage() {
         <CommodityPrices />
 
         {/* 5. Mood vs Market */}
-        <MoodVsMarket />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 400px" }}>
+          <MoodVsMarket />
+        </section>
 
         {/* 6. Prediction Markets (tier-gated) */}
-        <PredictionMarkets />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 300px" }}>
+          <PredictionMarkets />
+        </section>
 
         {/* 7. Intelligence Alerts */}
-        <IntelligenceAlerts />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 600px" }}>
+          <IntelligenceAlerts />
+        </section>
 
         {/* 8. Competitive War Room (tier-gated) */}
-        <CompetitiveWarRoom />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 400px" }}>
+          <CompetitiveWarRoom />
+        </section>
 
         {/* 9. Topic Intelligence */}
-        <TopicIntelligence />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 500px" }}>
+          <TopicIntelligence />
+        </section>
 
         {/* 10. Detailed Analysis */}
-        <div>
-          <h2 className="mb-1 text-lg font-semibold">Detailed Analysis</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            <EmpathyByTopic />
-            <EmotionalBreakdown />
-            <EmpathyDistribution />
-            <TopicDistribution />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 700px" }}>
+          <div>
+            <h2 className="mb-1 text-lg font-semibold">Detailed Analysis</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              <EmpathyByTopic />
+              <EmotionalBreakdown />
+              <EmpathyDistribution />
+              <TopicDistribution />
+            </div>
           </div>
-        </div>
+        </section>
 
         {/* 11. Trending Headlines */}
-        <TrendingHeadlines />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 400px" }}>
+          <TrendingHeadlines />
+        </section>
 
         {/* 12. Virality x Empathy */}
-        <ViralityEmpathy />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 400px" }}>
+          <ViralityEmpathy />
+        </section>
 
         {/* 13. Velocity x Longevity + Density + Scarcity */}
-        <VelocityLongevity />
-        <DensityScarcity />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 400px" }}>
+          <VelocityLongevity />
+        </section>
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 400px" }}>
+          <DensityScarcity />
+        </section>
 
         {/* 14. Brand VLDS */}
-        <BrandVLDS />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 400px" }}>
+          <BrandVLDS />
+        </section>
 
         {/* 14b. Brand Comparison */}
-        <BrandComparison />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 300px" }}>
+          <BrandComparison />
+        </section>
 
         {/* 15. 7-Day Mood History */}
-        <MoodHistory />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 400px" }}>
+          <MoodHistory />
+        </section>
 
         {/* 16. World View */}
-        <WorldViewTable />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 500px" }}>
+          <WorldViewTable />
+        </section>
 
         {/* 17. Intelligence Dashboard (tier-gated) */}
-        <IntelDashboard />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 600px" }}>
+          <IntelDashboard />
+        </section>
 
         {/* 18. Historical Trends (shows only when time range > 7d) */}
-        <HistoricalTrends />
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 400px" }}>
+          <HistoricalTrends />
+        </section>
 
         {/* 19. Ask Moodlight */}
         <AskMoodlight />

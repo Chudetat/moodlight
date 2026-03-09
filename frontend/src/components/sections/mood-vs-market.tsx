@@ -7,7 +7,7 @@ import { LineChart } from "@/components/charts/line-chart";
 import { MetricCard } from "@/components/charts/metric-card";
 import { HelperButton } from "@/components/shared/helper-button";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
-import type { DefaultSeries } from "@nivo/line";
+import type { DefaultSeries } from "@/components/charts/line-chart";
 
 export function MoodVsMarket() {
   const { data: combined, isLoading: loadingCombined } = useCombinedData(7);

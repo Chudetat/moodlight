@@ -1,11 +1,28 @@
 "use client";
 
-import { memo } from "react";
-import { ResponsiveLine, type DefaultSeries } from "@nivo/line";
+import { memo, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { COLORS } from "@/lib/constants";
 
+const ReactECharts = dynamic(() => import("echarts-for-react"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full animate-pulse rounded bg-muted/10" />
+  ),
+});
+
+interface LineSeriesData {
+  x: string;
+  y: number;
+}
+
+interface LineSeries {
+  id: string;
+  data: LineSeriesData[];
+}
+
 interface LineChartProps {
-  data: DefaultSeries[];
+  data: LineSeries[];
   height?: number;
   enableArea?: boolean;
   yFormat?: string;
@@ -20,14 +37,26 @@ interface LineChartProps {
   colors?: string[];
 }
 
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
 export const LineChart = memo(function LineChart({
   data,
   height = 300,
   enableArea = false,
-  yFormat,
-  axisBottomFormat,
   axisLeftFormat,
-  axisBottomTickValues,
   axisLeftTickValues,
   yMin = "auto",
   yMax = "auto",
@@ -35,59 +64,113 @@ export const LineChart = memo(function LineChart({
   curve = "monotoneX",
   colors,
 }: LineChartProps) {
+  const option = useMemo(() => {
+    const palette = colors || [...COLORS.chart];
+    const isSmooth = curve === "monotoneX" || curve === "natural";
+
+    const series = data.map((s, i) => {
+      const seriesColor = palette[i % palette.length];
+      return {
+        name: s.id,
+        type: "line" as const,
+        data: s.data.map((d) => [d.x, d.y]),
+        smooth: isSmooth ? 0.4 : false,
+        step: curve === "step" ? ("start" as const) : undefined,
+        symbol: enablePoints ? "circle" : "none",
+        symbolSize: enablePoints ? 6 : 0,
+        lineStyle: { width: 2, color: seriesColor },
+        itemStyle: { color: seriesColor },
+        areaStyle: enableArea
+          ? {
+              color: {
+                type: "linear" as const,
+                x: 0,
+                y: 0,
+                x2: 0,
+                y2: 1,
+                colorStops: [
+                  { offset: 0, color: seriesColor + "40" },
+                  { offset: 1, color: seriesColor + "05" },
+                ],
+              },
+            }
+          : undefined,
+      };
+    });
+
+    return {
+      backgroundColor: "transparent",
+      grid: { left: 60, right: 20, top: 20, bottom: 50, containLabel: false },
+      tooltip: {
+        trigger: "axis" as const,
+        backgroundColor: "#262730",
+        borderColor: "#3B3B4F",
+        textStyle: { color: "#FAFAFA", fontSize: 12 },
+        extraCssText:
+          "border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);",
+        axisPointer: {
+          lineStyle: { color: "#FAFAFA", opacity: 0.5, width: 1 },
+        },
+      },
+      xAxis: {
+        type: "time" as const,
+        axisLabel: {
+          color: "#8B8B9E",
+          fontSize: 10,
+          rotate: 45,
+          formatter: (value: number) => {
+            const d = new Date(value);
+            return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+          },
+        },
+        axisLine: { lineStyle: { color: "#3B3B4F" } },
+        axisTick: { lineStyle: { color: "#3B3B4F" } },
+        splitLine: { show: false },
+      },
+      yAxis: {
+        type: "value" as const,
+        min: yMin === "auto" ? undefined : yMin,
+        max: yMax === "auto" ? undefined : yMax,
+        splitNumber: axisLeftTickValues || undefined,
+        axisLabel: {
+          color: "#8B8B9E",
+          fontSize: 10,
+          formatter: axisLeftFormat?.includes("-.0f")
+            ? (v: number) => Math.round(v).toString()
+            : undefined,
+        },
+        axisLine: { show: false },
+        splitLine: { lineStyle: { color: "#3B3B4F", width: 1 } },
+      },
+      series,
+      animation: true,
+      animationDuration: 800,
+      animationEasing: "cubicOut",
+    };
+  }, [
+    data,
+    enableArea,
+    axisLeftFormat,
+    axisLeftTickValues,
+    yMin,
+    yMax,
+    enablePoints,
+    curve,
+    colors,
+  ]);
+
   return (
     <div style={{ height }}>
-      <ResponsiveLine
-        data={data}
-        margin={{ top: 20, right: 20, bottom: 50, left: 60 }}
-        xScale={{ type: "time", format: "%Y-%m-%d", useUTC: false, precision: "day" }}
-        xFormat="time:%b %d"
-        yScale={{ type: "linear", min: yMin, max: yMax, stacked: false }}
-        yFormat={yFormat}
-        curve={curve}
-        axisBottom={{
-          format: axisBottomFormat || "%b %d",
-          tickValues: axisBottomTickValues || "every 1 day",
-          tickRotation: -45,
-          tickSize: 5,
-          tickPadding: 5,
-        }}
-        axisLeft={{
-          format: axisLeftFormat,
-          tickValues: axisLeftTickValues,
-          tickSize: 5,
-          tickPadding: 5,
-        }}
-        colors={colors || [...COLORS.chart]}
-        lineWidth={2}
-        pointSize={enablePoints ? 6 : 0}
-        pointColor={{ theme: "background" }}
-        pointBorderWidth={2}
-        pointBorderColor={{ from: "serieColor" }}
-        enableArea={enableArea}
-        areaOpacity={0.1}
-        useMesh={true}
-        enableGridX={false}
-        theme={{
-          background: "transparent",
-          text: { fill: "#8B8B9E", fontSize: 11 },
-          axis: {
-            ticks: { text: { fill: "#8B8B9E", fontSize: 10 } },
-            legend: { text: { fill: "#8B8B9E" } },
-          },
-          grid: { line: { stroke: "#3B3B4F", strokeWidth: 1 } },
-          crosshair: { line: { stroke: "#FAFAFA", strokeWidth: 1, strokeOpacity: 0.5 } },
-          tooltip: {
-            container: {
-              background: "#262730",
-              color: "#FAFAFA",
-              fontSize: 12,
-              borderRadius: 6,
-              boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-            },
-          },
-        }}
+      <ReactECharts
+        option={option}
+        style={{ height: "100%", width: "100%" }}
+        opts={{ renderer: "canvas" }}
+        notMerge={true}
+        lazyUpdate={true}
       />
     </div>
   );
 });
+
+// Export type compatible with old Nivo DefaultSeries
+export type { LineSeries as DefaultSeries };

@@ -1,8 +1,17 @@
 "use client";
 
-import { memo } from "react";
-import { ResponsiveBar, type BarDatum } from "@nivo/bar";
+import { memo, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { COLORS } from "@/lib/constants";
+
+const ReactECharts = dynamic(() => import("echarts-for-react"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full animate-pulse rounded bg-muted/10" />
+  ),
+});
+
+type BarDatum = Record<string, string | number>;
 
 interface BarChartProps {
   data: BarDatum[];
@@ -14,7 +23,14 @@ interface BarChartProps {
   enableLabel?: boolean;
   axisBottomLegend?: string;
   axisLeftLegend?: string;
-  colors?: string[] | ((datum: { id: string | number; indexValue?: string | number; data?: Record<string, unknown>; [key: string]: unknown }) => string);
+  colors?:
+    | string[]
+    | ((datum: {
+        id: string | number;
+        indexValue?: string | number;
+        data?: Record<string, unknown>;
+        [key: string]: unknown;
+      }) => string);
 }
 
 export const BarChart = memo(function BarChart({
@@ -25,61 +41,117 @@ export const BarChart = memo(function BarChart({
   layout = "vertical",
   groupMode = "grouped",
   enableLabel = false,
-  axisBottomLegend,
-  axisLeftLegend,
   colors,
 }: BarChartProps) {
+  const option = useMemo(() => {
+    const categories = data.map((d) => String(d[indexBy]));
+    const isHorizontal = layout === "horizontal";
+
+    const series = keys.map((key, keyIndex) => {
+      const values = data.map((d) =>
+        typeof d[key] === "number" ? (d[key] as number) : 0
+      );
+
+      // Pre-compute per-bar colors when colors is a function
+      let colorSpec:
+        | string
+        | ((params: { dataIndex: number }) => string)
+        | undefined;
+
+      if (typeof colors === "function") {
+        const precomputed = data.map((d) =>
+          (colors as Function)({
+            id: key,
+            indexValue: d[indexBy],
+            data: d as Record<string, unknown>,
+          })
+        );
+        colorSpec = (params: { dataIndex: number }) =>
+          precomputed[params.dataIndex];
+      } else if (Array.isArray(colors)) {
+        colorSpec = colors[keyIndex] || colors[0];
+      } else {
+        colorSpec = COLORS.chart[keyIndex % COLORS.chart.length];
+      }
+
+      return {
+        name: key,
+        type: "bar" as const,
+        data: values,
+        stack: groupMode === "stacked" ? "stack" : undefined,
+        label: {
+          show: enableLabel,
+          color: "#FAFAFA",
+          fontSize: 10,
+          position: (isHorizontal ? "right" : "top") as "right" | "top",
+        },
+        itemStyle: {
+          color: colorSpec as string,
+          borderRadius: isHorizontal ? [0, 3, 3, 0] : [3, 3, 0, 0],
+        },
+        barMaxWidth: 40,
+      };
+    });
+
+    const categoryAxis = {
+      type: "category" as const,
+      data: categories,
+      axisLabel: {
+        color: "#8B8B9E",
+        fontSize: 10,
+        rotate: !isHorizontal ? 45 : 0,
+        width: isHorizontal ? 140 : undefined,
+        overflow: "truncate" as const,
+      },
+      axisLine: { lineStyle: { color: "#3B3B4F" } },
+      axisTick: { lineStyle: { color: "#3B3B4F" } },
+    };
+
+    const valueAxis = {
+      type: "value" as const,
+      axisLabel: { color: "#8B8B9E", fontSize: 10 },
+      axisLine: { show: false },
+      splitLine: { lineStyle: { color: "#3B3B4F", width: 1 } },
+    };
+
+    return {
+      backgroundColor: "transparent",
+      grid: {
+        left: 10,
+        right: 20,
+        top: 10,
+        bottom: !isHorizontal ? 60 : 30,
+        containLabel: true,
+      },
+      tooltip: {
+        trigger: "axis" as const,
+        axisPointer: { type: "shadow" as const },
+        backgroundColor: "#262730",
+        borderColor: "#3B3B4F",
+        textStyle: { color: "#FAFAFA", fontSize: 12 },
+        extraCssText:
+          "border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);",
+      },
+      xAxis: isHorizontal ? valueAxis : categoryAxis,
+      yAxis: isHorizontal ? { ...categoryAxis, inverse: true } : valueAxis,
+      series,
+      animation: true,
+      animationDuration: 600,
+      animationEasing: "cubicOut",
+    };
+  }, [data, keys, indexBy, layout, groupMode, enableLabel, colors]);
+
   return (
     <div style={{ height }}>
-      <ResponsiveBar
-        data={data}
-        keys={keys}
-        indexBy={indexBy}
-        layout={layout}
-        groupMode={groupMode}
-        margin={{
-          top: 10,
-          right: 20,
-          bottom: layout === "horizontal" ? 40 : 60,
-          left: layout === "horizontal" ? 150 : 60,
-        }}
-        padding={0.3}
-        colors={colors || [...COLORS.chart]}
-        enableLabel={enableLabel}
-        axisBottom={{
-          tickSize: 5,
-          tickPadding: 5,
-          tickRotation: layout === "vertical" ? -45 : 0,
-          legend: axisBottomLegend,
-          legendPosition: "middle" as const,
-          legendOffset: 50,
-        }}
-        axisLeft={{
-          tickSize: 5,
-          tickPadding: 5,
-          legend: axisLeftLegend,
-          legendPosition: "middle" as const,
-          legendOffset: -50,
-        }}
-        theme={{
-          background: "transparent",
-          text: { fill: "#8B8B9E", fontSize: 11 },
-          axis: {
-            ticks: { text: { fill: "#8B8B9E", fontSize: 10 } },
-            legend: { text: { fill: "#8B8B9E", fontSize: 12 } },
-          },
-          grid: { line: { stroke: "#3B3B4F", strokeWidth: 1 } },
-          tooltip: {
-            container: {
-              background: "#262730",
-              color: "#FAFAFA",
-              fontSize: 12,
-              borderRadius: 6,
-              boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-            },
-          },
-        }}
+      <ReactECharts
+        option={option}
+        style={{ height: "100%", width: "100%" }}
+        opts={{ renderer: "canvas" }}
+        notMerge={true}
+        lazyUpdate={true}
       />
     </div>
   );
 });
+
+export type { BarDatum };

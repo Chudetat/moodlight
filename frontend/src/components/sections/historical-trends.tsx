@@ -7,7 +7,7 @@ import { useBrands, useTopics, useMetricTrends } from "@/lib/hooks/use-api";
 import { LineChart } from "@/components/charts/line-chart";
 import { MetricCard } from "@/components/charts/metric-card";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
-import type { DefaultSeries } from "@nivo/line";
+import type { DefaultSeries } from "@/components/charts/line-chart";
 
 function GlobalMoodTrend({ days }: { days: number }) {
   const { data, isLoading } = useMetricTrends("global", undefined, days);
