@@ -9,22 +9,24 @@ import { HelperButton } from "@/components/shared/helper-button";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
 import type { DefaultSeries } from "@/components/charts/line-chart";
 
+const LOOKBACK_DAYS = 30;
+
 export function MoodVsMarket() {
-  const { data: combined, isLoading: loadingCombined } = useCombinedData(7);
-  const { data: markets, isLoading: loadingMarkets } = useMarkets();
+  const { data: combined, isLoading: loadingCombined } = useCombinedData(LOOKBACK_DAYS);
+  const { data: markets, isLoading: loadingMarkets } = useMarkets(LOOKBACK_DAYS);
 
   const { chartData, latestMood, latestMarket, divergence, divergenceStatus } =
     useMemo(() => {
-      if (!combined?.data?.length)
-        return {
-          chartData: [] as DefaultSeries[],
-          latestMood: 0,
-          latestMarket: 0,
-          divergence: 0,
-          divergenceStatus: "",
-        };
+      const empty = {
+        chartData: [] as DefaultSeries[],
+        latestMood: 0,
+        latestMarket: 0,
+        divergence: 0,
+        divergenceStatus: "",
+      };
+      if (!combined?.data?.length) return empty;
 
-      // Daily mood scores
+      // Daily mood scores (grouped by date)
       const byDate = new Map<string, number[]>();
       for (const item of combined.data) {
         const date = item.created_at.slice(0, 10);
@@ -44,38 +46,99 @@ export function MoodVsMarket() {
 
       const moodLine = { id: "Social Mood", data: moodPoints };
 
-      // Build daily market sentiment from markets data
-      const marketEntries = (markets?.data ?? []).filter(
-        (m) => m.symbol === "SPY"
-      );
+      // Build daily market sentiment from market_sentiment field (matches Streamlit)
+      const marketRows = markets?.data ?? [];
+      const marketByDate = new Map<string, number[]>();
+      for (const row of marketRows) {
+        if (row.latest_trading_day && row.market_sentiment != null) {
+          const date = row.latest_trading_day.slice(0, 10);
+          const list = marketByDate.get(date) || [];
+          list.push(row.market_sentiment);
+          marketByDate.set(date, list);
+        }
+      }
 
-      // Map SPY change_percent to 0-100 scale: 50 + changePct * 5
-      const spy = marketEntries.length > 0
-        ? marketEntries.reduce((a, b) => (a.timestamp > b.timestamp ? a : b))
-        : undefined;
+      const marketPoints = Array.from(marketByDate.entries())
+        .map(([date, sentiments]) => ({
+          x: date,
+          y: Math.round(
+            (sentiments.reduce((a, b) => a + b, 0) / sentiments.length) * 100
+          ),
+        }))
+        .sort((a, b) => a.x.localeCompare(b.x));
 
-      const marketValue = spy
-        ? Math.round(50 + (parseFloat(spy.change_percent) || 0) * 5)
-        : 50;
+      // Merge all dates from both lines, fill gaps with nearest value
+      const allDatesSet = new Set<string>();
+      for (const p of moodPoints) allDatesSet.add(p.x);
+      for (const p of marketPoints) allDatesSet.add(p.x);
+      const allDates = Array.from(allDatesSet).sort();
 
-      // Create market line aligned to same dates as mood
-      const marketLine = {
-        id: "Market Index",
-        data: moodPoints.map((p) => ({ x: p.x, y: marketValue })),
+      const moodMap = new Map(moodPoints.map((p) => [p.x, p.y]));
+      const marketMap = new Map(marketPoints.map((p) => [p.x, p.y]));
+
+      // Forward-fill then back-fill gaps
+      const fillGaps = (map: Map<string, number>, dates: string[]) => {
+        const filled = new Map<string, number>();
+        let lastVal: number | null = null;
+        for (const d of dates) {
+          if (map.has(d)) {
+            lastVal = map.get(d)!;
+          }
+          if (lastVal !== null) filled.set(d, lastVal);
+        }
+        // Back-fill any leading gaps
+        let firstVal: number | null = null;
+        for (const d of dates) {
+          if (filled.has(d)) {
+            firstVal = filled.get(d)!;
+            break;
+          }
+        }
+        if (firstVal !== null) {
+          for (const d of dates) {
+            if (!filled.has(d)) filled.set(d, firstVal);
+            else break;
+          }
+        }
+        return filled;
       };
 
-      const series: DefaultSeries[] = [moodLine, marketLine];
+      const filledMood = fillGaps(moodMap, allDates);
+      const filledMarket = fillGaps(marketMap, allDates);
 
-      // Compute latest values and divergence
-      const latestMood = moodPoints[moodPoints.length - 1]?.y ?? 0;
-      const latestMarket = marketValue;
+      const moodLineFilled = {
+        id: "Social Mood",
+        data: allDates
+          .filter((d) => filledMood.has(d))
+          .map((d) => ({ x: d, y: filledMood.get(d)! })),
+      };
+      const marketLineFilled = {
+        id: "Market Index",
+        data: allDates
+          .filter((d) => filledMarket.has(d))
+          .map((d) => ({ x: d, y: filledMarket.get(d)! })),
+      };
+
+      const series: DefaultSeries[] = [moodLineFilled, marketLineFilled];
+
+      // Latest values and divergence
+      const latestMood =
+        moodLineFilled.data[moodLineFilled.data.length - 1]?.y ?? 0;
+      const latestMarket =
+        marketLineFilled.data[marketLineFilled.data.length - 1]?.y ?? 50;
       const divergence = Math.abs(latestMood - latestMarket);
       let divergenceStatus = "";
       if (divergence > 20) divergenceStatus = "High Divergence";
       else if (divergence > 10) divergenceStatus = "Moderate Divergence";
       else divergenceStatus = "Aligned";
 
-      return { chartData: series, latestMood, latestMarket, divergence, divergenceStatus };
+      return {
+        chartData: series,
+        latestMood,
+        latestMarket,
+        divergence,
+        divergenceStatus,
+      };
     }, [combined, markets]);
 
   if (loadingCombined || loadingMarkets) return <ChartSkeleton />;

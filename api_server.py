@@ -183,10 +183,10 @@ def get_combined_data(days: int = Query(default=7, ge=1, le=30)):
 
 
 @app.get("/api/data/markets")
-def get_markets():
+def get_markets(days: int = Query(default=7, ge=1, le=730)):
     """Return market index data."""
     engine = _require_engine()
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
     try:
         df = pd.read_sql(
             sql_text("SELECT * FROM markets WHERE latest_trading_day >= :cutoff"),

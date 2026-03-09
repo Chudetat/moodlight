@@ -47,10 +47,10 @@ export function useCombinedData(days = 7) {
   });
 }
 
-export function useMarkets() {
+export function useMarkets(days = 7) {
   return useQuery<MarketDataResponse>({
-    queryKey: ["markets"],
-    queryFn: () => apiFetch("/api/data/markets"),
+    queryKey: ["markets", days],
+    queryFn: () => apiFetch(`/api/data/markets?days=${days}`),
     refetchInterval: REFETCH_INTERVAL,
   });
 }
