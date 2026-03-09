@@ -76,7 +76,7 @@ function TopicCard({
       </div>
 
       {/* VLDS metrics */}
-      <div className="mb-2 grid grid-cols-4 gap-2 text-center text-xs">
+      <div className="mb-2 grid grid-cols-2 gap-2 text-center text-xs md:grid-cols-4">
         {[
           { label: "Velocity", value: velocity },
           { label: "Longevity", value: longevity },

@@ -99,7 +99,7 @@ export function VelocityLongevity() {
         Is it a flash or a movement? Know before you commit resources.
       </p>
 
-      <div className="mb-3 grid grid-cols-4 gap-2 text-xs">
+      <div className="mb-3 grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
         <div className="rounded bg-muted/50 p-2 text-center">
           <span className="text-lg font-bold text-green-400">
             {quadrantCounts.momentum}

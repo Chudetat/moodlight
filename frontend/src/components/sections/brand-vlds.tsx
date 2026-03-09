@@ -31,7 +31,7 @@ export function BrandVLDS() {
     return (
       <div>
         <h2 className="mb-1 text-lg font-semibold">Brand VLDS: {focusedBrand}</h2>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <MetricSkeleton key={i} />
           ))}

@@ -39,6 +39,6 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   days: 7,
   setDays: (d) => set({ days: d }),
 
-  sidebarOpen: true,
+  sidebarOpen: false,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
 }));

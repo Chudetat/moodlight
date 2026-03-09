@@ -593,6 +593,19 @@ export function useDeleteCustomer() {
   });
 }
 
+export function useAddCredits() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ username, credits }: { username: string; credits: number }) =>
+      apiFetch(`/api/admin/customers/${username}/credits`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credits }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "customers"] }),
+  });
+}
+
 // ── Metrics / Historical Trends ──────────────────────
 
 export function useMetricTrends(

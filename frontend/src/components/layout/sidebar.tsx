@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LogOut } from "lucide-react";
+import { LogOut, X } from "lucide-react";
 import { BrandWatchlist } from "@/components/sidebar/brand-watchlist";
 import { TopicWatchlist } from "@/components/sidebar/topic-watchlist";
 import { GettingStarted } from "@/components/sidebar/getting-started";
@@ -42,11 +42,13 @@ export function Sidebar() {
   const setCompareBrands = useDashboardStore((s) => s.setCompareBrands);
   const days = useDashboardStore((s) => s.days);
   const setDays = useDashboardStore((s) => s.setDays);
+  const sidebarOpen = useDashboardStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useDashboardStore((s) => s.setSidebarOpen);
 
-  return (
-    <aside className="flex h-screen w-72 flex-col border-r border-border bg-card">
-      {/* Logo */}
-      <div className="flex items-center px-4 py-4">
+  const sidebarContent = (
+    <>
+      {/* Logo + close button (mobile) */}
+      <div className="flex items-center justify-between px-4 py-4">
         <Image
           src="/logo.png"
           alt="Moodlight"
@@ -55,6 +57,14 @@ export function Sidebar() {
           className="h-7 w-auto"
           priority
         />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
       </div>
 
       <Separator />
@@ -212,6 +222,28 @@ export function Sidebar() {
           Log out
         </Button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar — always visible */}
+      <aside className="hidden h-screen w-72 flex-col border-r border-border bg-card lg:flex">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile/tablet sidebar — overlay */}
+      {sidebarOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-card shadow-xl lg:hidden">
+            {sidebarContent}
+          </aside>
+        </>
+      )}
+    </>
   );
 }

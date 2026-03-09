@@ -98,24 +98,32 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label>Plan</Label>
               <div className="flex gap-2">
-                <Button
+                <button
                   type="button"
-                  variant={plan === "monthly" ? "default" : "outline"}
-                  size="sm"
-                  className="flex-1"
+                  className={`flex flex-1 flex-col items-center rounded-lg border p-3 text-sm transition-colors ${
+                    plan === "monthly"
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
                   onClick={() => setPlan("monthly")}
                 >
-                  Monthly
-                </Button>
-                <Button
+                  <span className="font-medium">Monthly</span>
+                  <span className="text-lg font-bold">$899</span>
+                  <span className="text-[10px]">/month</span>
+                </button>
+                <button
                   type="button"
-                  variant={plan === "annually" ? "default" : "outline"}
-                  size="sm"
-                  className="flex-1"
+                  className={`flex flex-1 flex-col items-center rounded-lg border p-3 text-sm transition-colors ${
+                    plan === "annually"
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
                   onClick={() => setPlan("annually")}
                 >
-                  Annual
-                </Button>
+                  <span className="font-medium">Annual</span>
+                  <span className="text-lg font-bold">$8,999</span>
+                  <span className="text-[10px]">/year (save 17%)</span>
+                </button>
               </div>
             </div>
 
