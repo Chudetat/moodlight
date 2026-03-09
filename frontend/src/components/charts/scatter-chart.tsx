@@ -70,11 +70,12 @@ export function ScatterChart({
                 fontSize: 12,
                 borderRadius: 6,
                 padding: "8px 12px",
-                maxWidth: 360,
+                maxWidth: 600,
+                minWidth: 300,
                 boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
               }}
             >
-              <div style={{ marginBottom: 4 }}>{text}</div>
+              <div style={{ marginBottom: 4, lineHeight: 1.4 }}>{text}</div>
               <div style={{ color: "#8B8B9E", fontSize: 10 }}>
                 {xLabel || "X"}: {typeof d.x === "number" ? d.x.toFixed(1) : d.x}
                 {" | "}
