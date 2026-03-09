@@ -90,11 +90,11 @@ export const ECONOMIC_INDICATORS: Record<
 // ── Commodity display ─────────────────────────────────
 
 export const COMMODITY_NAMES: Record<string, string> = {
-  "WTI Crude Oil": "WTI Crude",
-  "Brent Crude Oil": "Brent Crude",
-  Copper: "Copper",
-  Aluminum: "Aluminum",
-  "Natural Gas": "Natural Gas",
+  WTI: "Crude Oil (WTI)",
+  BRENT: "Brent Crude",
+  NATURAL_GAS: "Natural Gas",
+  COPPER: "Copper",
+  ALUMINUM: "Aluminum",
 };
 
 // ── GoEmotions colors (28 emotions, matches app.py) ──
