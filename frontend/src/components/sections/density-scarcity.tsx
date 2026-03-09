@@ -10,32 +10,43 @@ import { OPPORTUNITY_COLORS } from "@/lib/constants";
 export function DensityScarcity() {
   const { data, isLoading } = useTopicVLDS();
 
-  const { densityData, scarcityData, densitySummary, scarcitySummary } =
+  const { densityData, scarcityData, densitySummary, scarcitySummary, highOpportunity, saturated } =
     useMemo(() => {
       const densityData = (data?.topic_density ?? [])
         .map((d) => ({
-          topic: d.scope_name,
-          density: Math.round(d.metric_value * 100) / 100,
+          topic: d.topic,
+          density: Math.round((d.density_score ?? 0) * 100) / 100,
         }))
         .sort((a, b) => b.density - a.density)
         .slice(0, 12);
 
       const scarcityData = (data?.topic_scarcity ?? [])
         .map((d) => ({
-          topic: d.scope_name,
-          scarcity: Math.round(d.metric_value * 100) / 100,
+          topic: d.topic,
+          scarcity: Math.round((d.scarcity_score ?? 0) * 100) / 100,
+          opportunity: d.opportunity_level || (
+            (d.scarcity_score ?? 0) >= 0.7 ? "HIGH" :
+            (d.scarcity_score ?? 0) >= 0.4 ? "MEDIUM" : "LOW"
+          ),
         }))
         .sort((a, b) => b.scarcity - a.scarcity)
         .slice(0, 12);
+
+      const highOpportunity = scarcityData
+        .filter((d) => d.opportunity === "HIGH")
+        .map((d) => d.topic);
+      const saturated = densityData
+        .filter((d) => d.density >= 0.7)
+        .map((d) => d.topic);
 
       const densitySummary = densityData
         .map((d) => `${d.topic}: ${d.density}`)
         .join("\n");
       const scarcitySummary = scarcityData
-        .map((d) => `${d.topic}: ${d.scarcity}`)
+        .map((d) => `${d.topic}: ${d.scarcity} (${d.opportunity})`)
         .join("\n");
 
-      return { densityData, scarcityData, densitySummary, scarcitySummary };
+      return { densityData, scarcityData, densitySummary, scarcitySummary, highOpportunity, saturated };
     }, [data]);
 
   if (isLoading) {
@@ -55,6 +66,11 @@ export function DensityScarcity() {
           <p className="text-sm font-medium">Density (Saturation)</p>
           <HelperButton chartType="density" dataSummary={densitySummary} />
         </div>
+        {saturated.length > 0 && (
+          <p className="mb-2 text-xs text-muted-foreground">
+            Most saturated: {saturated.slice(0, 3).join(", ")}
+          </p>
+        )}
         {densityData.length > 0 ? (
           <BarChart
             data={densityData}
@@ -62,7 +78,12 @@ export function DensityScarcity() {
             indexBy="topic"
             layout="horizontal"
             height={Math.max(200, densityData.length * 28)}
-            colors={["#60A5FA"]}
+            colors={(datum) => {
+              const v = typeof datum.data?.density === "number" ? datum.data.density : 0;
+              if (v >= 0.7) return "#1E3A5F";
+              if (v >= 0.4) return "#3B7DD8";
+              return "#93C5FD";
+            }}
           />
         ) : (
           <p className="py-4 text-center text-sm text-muted-foreground">
@@ -77,6 +98,11 @@ export function DensityScarcity() {
           <p className="text-sm font-medium">Scarcity (Opportunity)</p>
           <HelperButton chartType="scarcity" dataSummary={scarcitySummary} />
         </div>
+        {highOpportunity.length > 0 && (
+          <p className="mb-2 text-xs text-muted-foreground">
+            High opportunity: {highOpportunity.slice(0, 3).join(", ")}
+          </p>
+        )}
         {scarcityData.length > 0 ? (
           <BarChart
             data={scarcityData}

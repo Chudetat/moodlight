@@ -22,7 +22,7 @@ export function ViralityEmpathy() {
         x: Math.log10(d.engagement + 1) * d.intensity,
         y: normalizeEmpathyScore(d.empathy_score),
         size: Math.min(20, Math.max(4, Math.log10(d.engagement + 1) * 3)),
-        label: d.text?.slice(0, 60) || "",
+        label: d.text?.slice(0, 200) || "",
       }))
       .slice(0, 300);
 

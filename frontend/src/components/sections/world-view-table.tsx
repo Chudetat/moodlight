@@ -52,14 +52,16 @@ export function WorldViewTable() {
         emotion: String(r.emotion_top_1 ?? ""),
         engagement: Number(r.engagement ?? 0),
         created_at: String(r.created_at ?? ""),
-        created_display: new Date(
-          String(r.created_at ?? "")
-        ).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+        created_display: (() => {
+          const d = new Date(String(r.created_at ?? ""));
+          const month = d.toLocaleDateString("en-US", { month: "short" });
+          const day = d.getDate();
+          const hour = d.getHours();
+          const min = d.getMinutes().toString().padStart(2, "0");
+          const ampm = hour >= 12 ? "PM" : "AM";
+          const h12 = hour % 12 || 12;
+          return `${month} ${day}, ${h12}:${min} ${ampm}`;
+        })(),
       }))
       .sort((a, b) => {
         const av = a[sortBy];
@@ -164,11 +166,11 @@ export function WorldViewTable() {
         <div className="max-h-[600px] overflow-auto rounded-lg border border-border">
           <table className="w-full table-fixed text-xs">
             <colgroup>
-              <col className="w-[55%]" />
+              <col className="w-[58%]" />
               <col className="w-[10%]" />
               <col className="w-[12%]" />
               <col className="w-[9%]" />
-              <col className="w-[14%]" />
+              <col className="w-[11%]" />
             </colgroup>
             <thead className="sticky top-0 bg-card">
               <tr className="border-b border-border text-left">
@@ -198,10 +200,14 @@ export function WorldViewTable() {
               {rows.map((r, i) => (
                 <tr
                   key={i}
-                  className="border-b border-border/50 hover:bg-muted/30"
-                  title={r.text}
+                  className="group border-b border-border/50 hover:bg-muted/30"
                 >
-                  <td className="truncate p-2">{r.text}</td>
+                  <td className="relative p-2">
+                    <span className="block truncate">{r.text}</span>
+                    <div className="pointer-events-none absolute left-0 top-full z-50 hidden max-w-lg rounded bg-card/95 p-2 text-xs shadow-lg ring-1 ring-border backdrop-blur group-hover:block">
+                      {r.text}
+                    </div>
+                  </td>
                   <td className="truncate p-2">{r.source}</td>
                   <td className="truncate p-2">{r.topic}</td>
                   <td className="truncate p-2 capitalize">

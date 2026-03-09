@@ -135,7 +135,7 @@ export function TopicIntelligence() {
   >();
 
   for (const item of vldsData?.topic_longevity ?? []) {
-    const key = (item.scope_name ?? "").toLowerCase();
+    const key = (item.topic ?? "").toLowerCase();
     const existing = topicMap.get(key) || {
       velocity: 0,
       longevity: 0,
@@ -143,17 +143,13 @@ export function TopicIntelligence() {
       scarcity: 0,
       postCount: 0,
     };
-    if (item.metric_name === "velocity_score")
-      existing.velocity = item.metric_value ?? 0;
-    else if (item.metric_name === "longevity_score")
-      existing.longevity = item.metric_value ?? 0;
-    else if (item.metric_name === "post_count")
-      existing.postCount = item.metric_value ?? 0;
-    else existing.longevity = item.metric_value ?? 0;
+    existing.velocity = item.velocity_score ?? 0;
+    existing.longevity = item.longevity_score ?? 0;
+    existing.postCount = item.post_count ?? 0;
     topicMap.set(key, existing);
   }
   for (const item of vldsData?.topic_density ?? []) {
-    const key = (item.scope_name ?? "").toLowerCase();
+    const key = (item.topic ?? "").toLowerCase();
     const existing = topicMap.get(key) || {
       velocity: 0,
       longevity: 0,
@@ -161,15 +157,11 @@ export function TopicIntelligence() {
       scarcity: 0,
       postCount: 0,
     };
-    if (item.metric_name === "density_score")
-      existing.density = item.metric_value ?? 0;
-    else if (item.metric_name === "post_count")
-      existing.postCount = Math.max(existing.postCount, item.metric_value ?? 0);
-    else existing.density = item.metric_value ?? 0;
+    existing.density = item.density_score ?? 0;
     topicMap.set(key, existing);
   }
   for (const item of vldsData?.topic_scarcity ?? []) {
-    const key = (item.scope_name ?? "").toLowerCase();
+    const key = (item.topic ?? "").toLowerCase();
     const existing = topicMap.get(key) || {
       velocity: 0,
       longevity: 0,
@@ -177,11 +169,7 @@ export function TopicIntelligence() {
       scarcity: 0,
       postCount: 0,
     };
-    if (item.metric_name === "scarcity_score")
-      existing.scarcity = item.metric_value ?? 0;
-    else if (item.metric_name === "post_count")
-      existing.postCount = Math.max(existing.postCount, item.metric_value ?? 0);
-    else existing.scarcity = item.metric_value ?? 0;
+    existing.scarcity = item.scarcity_score ?? 0;
     topicMap.set(key, existing);
   }
 

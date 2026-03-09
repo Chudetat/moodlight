@@ -10,6 +10,7 @@ interface LineChartProps {
   yFormat?: string;
   axisBottomFormat?: string;
   axisLeftFormat?: string;
+  axisBottomTickValues?: string;
   enablePoints?: boolean;
   curve?: "linear" | "monotoneX" | "natural" | "step";
   colors?: string[];
@@ -22,6 +23,7 @@ export function LineChart({
   yFormat,
   axisBottomFormat,
   axisLeftFormat,
+  axisBottomTickValues,
   enablePoints = true,
   curve = "monotoneX",
   colors,
@@ -38,6 +40,7 @@ export function LineChart({
         curve={curve}
         axisBottom={{
           format: axisBottomFormat || "%b %d",
+          tickValues: axisBottomTickValues || "every 1 day",
           tickRotation: -45,
           tickSize: 5,
           tickPadding: 5,

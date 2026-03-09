@@ -199,10 +199,37 @@ export interface BrandVLDSResponse {
   reason?: string;
 }
 
+export interface TopicLongevityRecord {
+  topic: string;
+  longevity_score: number;
+  velocity_score: number;
+  post_count: number;
+  source_count: number;
+  avg_engagement: number;
+  updated_at: string;
+}
+
+export interface TopicDensityRecord {
+  topic: string;
+  density_score: number;
+  primary_region?: string;
+  primary_platform?: string;
+  conversation_depth?: number;
+  post_count?: number;
+  updated_at?: string;
+}
+
+export interface TopicScarcityRecord {
+  topic: string;
+  scarcity_score: number;
+  opportunity_level?: string;
+  updated_at?: string;
+}
+
 export interface TopicVLDSResponse {
-  topic_longevity: MetricSnapshot[];
-  topic_density: MetricSnapshot[];
-  topic_scarcity: MetricSnapshot[];
+  topic_longevity: TopicLongevityRecord[];
+  topic_density: TopicDensityRecord[];
+  topic_scarcity: TopicScarcityRecord[];
 }
 
 // ── Alerts ────────────────────────────────────────────
@@ -411,6 +438,27 @@ export interface AdminAnalytics {
     topic_watchlist_users: number;
     alert_feedback_users: number;
   };
+}
+
+// ── Ask Queries (Widget Analytics) ───────────────────
+
+export interface AskQuery {
+  id: number;
+  question: string;
+  detected_brand: string | null;
+  detected_topic: string | null;
+  is_paid: boolean;
+  ip_hash: string;
+  created_at: string;
+}
+
+export interface AskQueriesResponse {
+  queries: AskQuery[];
+  total: number;
+  paid: number;
+  free: number;
+  unique_visitors: number;
+  top_brands: string[];
 }
 
 // ── Pipeline Health ───────────────────────────────────

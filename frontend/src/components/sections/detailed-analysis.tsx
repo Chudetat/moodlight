@@ -6,7 +6,7 @@ import { normalizeEmpathyScore } from "@/lib/utils";
 import { BarChart } from "@/components/charts/bar-chart";
 import { HelperButton } from "@/components/shared/helper-button";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
-import { EMOTION_COLORS, EMPATHY_COLORS } from "@/lib/constants";
+import { EMOTION_COLORS, EMPATHY_COLORS, EMPATHY_LABELS } from "@/lib/constants";
 
 export function EmpathyByTopic() {
   const { data, isLoading } = useCombinedData(7);
@@ -52,10 +52,10 @@ export function EmpathyByTopic() {
           height={Math.max(250, chartData.length * 30)}
           colors={(datum) => {
             const v = typeof datum.data?.empathy === "number" ? datum.data.empathy : 0;
-            if (v < 35) return EMPATHY_COLORS[0]; // red
-            if (v < 50) return EMPATHY_COLORS[1]; // gold
-            if (v < 70) return EMPATHY_COLORS[2]; // green
-            return EMPATHY_COLORS[3]; // blue
+            if (v < 35) return EMPATHY_COLORS[0];
+            if (v < 50) return EMPATHY_COLORS[1];
+            if (v < 70) return EMPATHY_COLORS[2];
+            return EMPATHY_COLORS[3];
           }}
         />
       ) : (
@@ -106,7 +106,7 @@ export function EmotionalBreakdown() {
             {chartData.slice(0, 3).map((d, i) => (
               <div key={d.emotion} className="text-xs">
                 <span className="text-muted-foreground">
-                  {["🥇", "🥈", "🥉"][i]}
+                  {["\uD83E\uDD47", "\uD83E\uDD48", "\uD83E\uDD49"][i]}
                 </span>{" "}
                 <span className="font-medium">{d.emotion}</span>{" "}
                 <span className="text-muted-foreground">({d.count})</span>
@@ -117,7 +117,8 @@ export function EmotionalBreakdown() {
             data={chartData}
             keys={["count"]}
             indexBy="emotion"
-            height={280}
+            layout="horizontal"
+            height={Math.max(250, chartData.length * 28)}
             colors={(datum) => {
               const emotion = String(datum.indexValue || "").toLowerCase();
               return EMOTION_COLORS[emotion] || "#808080";
@@ -137,23 +138,22 @@ export function EmpathyDistribution() {
   const chartData = useMemo(() => {
     const items = data?.data ?? [];
     const buckets = [
-      { label: "0-20", min: 0, max: 20, count: 0 },
-      { label: "20-40", min: 20, max: 40, count: 0 },
-      { label: "40-60", min: 40, max: 60, count: 0 },
-      { label: "60-80", min: 60, max: 80, count: 0 },
-      { label: "80-100", min: 80, max: 100, count: 0 },
+      { label: EMPATHY_LABELS[0], min: 0, max: 35, count: 0 },
+      { label: EMPATHY_LABELS[1], min: 35, max: 50, count: 0 },
+      { label: EMPATHY_LABELS[2], min: 50, max: 70, count: 0 },
+      { label: EMPATHY_LABELS[3], min: 70, max: 101, count: 0 },
     ];
     for (const item of items) {
       const score = normalizeEmpathyScore(item.empathy_score);
       const bucket = buckets.find((b) => score >= b.min && score < b.max);
       if (bucket) bucket.count++;
-      else if (score === 100) buckets[4].count++;
     }
     return buckets.map((b) => ({ range: b.label, count: b.count }));
   }, [data]);
 
   if (isLoading) return <ChartSkeleton />;
 
+  const total = chartData.reduce((s, d) => s + d.count, 0);
   const dataSummary = chartData
     .map((d) => `${d.range}: ${d.count}`)
     .join("\n");
@@ -164,18 +164,35 @@ export function EmpathyDistribution() {
         <p className="text-sm font-medium">Empathy Distribution</p>
         <HelperButton chartType="empathy_distribution" dataSummary={dataSummary} />
       </div>
+      {total > 0 && (
+        <div className="mb-3 flex gap-3">
+          {chartData
+            .filter((d) => d.count > 0)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 3)
+            .map((d, i) => (
+              <div key={d.range} className="text-xs">
+                <span className="text-muted-foreground">
+                  {["\uD83E\uDD47", "\uD83E\uDD48", "\uD83E\uDD49"][i]}
+                </span>{" "}
+                <span className="font-medium">{d.range}</span>{" "}
+                <span className="text-muted-foreground">
+                  ({total > 0 ? Math.round((d.count / total) * 100) : 0}%)
+                </span>
+              </div>
+            ))}
+        </div>
+      )}
       <BarChart
         data={chartData}
         keys={["count"]}
         indexBy="range"
-        height={250}
+        layout="horizontal"
+        height={200}
         colors={(datum) => {
           const range = String(datum.indexValue || "");
-          if (range === "0-20") return EMPATHY_COLORS[0]; // red
-          if (range === "20-40") return EMPATHY_COLORS[1]; // gold
-          if (range === "40-60") return EMPATHY_COLORS[1]; // gold
-          if (range === "60-80") return EMPATHY_COLORS[2]; // green
-          return EMPATHY_COLORS[3]; // blue
+          const idx = EMPATHY_LABELS.indexOf(range);
+          return idx >= 0 ? EMPATHY_COLORS[idx] : "#808080";
         }}
       />
     </div>
@@ -217,14 +234,21 @@ export function TopicDistribution() {
             {chartData.slice(0, 3).map((d, i) => (
               <div key={d.topic} className="text-xs">
                 <span className="text-muted-foreground">
-                  {["🥇", "🥈", "🥉"][i]}
+                  {["\uD83E\uDD47", "\uD83E\uDD48", "\uD83E\uDD49"][i]}
                 </span>{" "}
                 <span className="font-medium capitalize">{d.topic}</span>{" "}
                 <span className="text-muted-foreground">({d.count})</span>
               </div>
             ))}
           </div>
-          <BarChart data={chartData} keys={["count"]} indexBy="topic" height={300} colors={["#1f77b4"]} />
+          <BarChart
+            data={chartData}
+            keys={["count"]}
+            indexBy="topic"
+            layout="horizontal"
+            height={Math.max(300, chartData.length * 28)}
+            colors={["#1f77b4"]}
+          />
         </>
       ) : (
         <p className="py-4 text-center text-sm text-muted-foreground">No data</p>

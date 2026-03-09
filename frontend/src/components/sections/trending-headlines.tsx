@@ -23,7 +23,7 @@ export function TrendingHeadlines() {
         return {
           x: Math.round(ageHours * 10) / 10,
           y: normalizeEmpathyScore(d.empathy_score),
-          label: d.text.slice(0, 80),
+          label: d.text.slice(0, 200),
         };
       })
       .slice(0, 200);

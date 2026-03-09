@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { useCombinedData } from "@/lib/hooks/use-api";
-import { normalizeEmpathyScore } from "@/lib/utils";
 import { FeatureGate } from "@/components/layout/feature-gate";
 import { GaugeChart } from "@/components/charts/gauge-chart";
 import { BarChart } from "@/components/charts/bar-chart";
@@ -17,17 +16,18 @@ function DashboardContent() {
     if (items.length === 0)
       return { threatIntensity: 0, hotspots: [], topicTrends: [] };
 
-    // Threat intensity: avg intensity of last 24h
-    const now = Date.now();
-    const oneDayAgo = now - 24 * 60 * 60 * 1000;
-    const recent = items.filter(
-      (d) => new Date(d.created_at).getTime() > oneDayAgo
-    );
-    const avgIntensity =
-      recent.length > 0
-        ? recent.reduce((sum, d) => sum + d.intensity, 0) / recent.length
+    // Threat intensity: MEDIAN of all intensity values (raw 0-5 scale, matching Streamlit)
+    const intensities = items
+      .map((d) => d.intensity)
+      .filter((v) => typeof v === "number" && !isNaN(v))
+      .sort((a, b) => a - b);
+    const mid = Math.floor(intensities.length / 2);
+    const threatIntensity =
+      intensities.length > 0
+        ? intensities.length % 2 === 0
+          ? (intensities[mid - 1] + intensities[mid]) / 2
+          : intensities[mid]
         : 0;
-    const threatIntensity = normalizeEmpathyScore(avgIntensity);
 
     // Geographic hotspots: top 10 countries by count
     const countryCount = new Map<string, number>();
@@ -44,7 +44,7 @@ function DashboardContent() {
       .slice(0, 10)
       .map(([country, count]) => ({ country, count }));
 
-    // Topic trends: count per topic
+    // Topic trends: count per topic (top 20 like Streamlit)
     const topicCount = new Map<string, number>();
     for (const item of items) {
       if (item.topic) {
@@ -56,7 +56,7 @@ function DashboardContent() {
     }
     const topicTrends = Array.from(topicCount.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
+      .slice(0, 20)
       .map(([topic, count]) => ({ topic, count }));
 
     return { threatIntensity, hotspots, topicTrends };
@@ -77,48 +77,49 @@ function DashboardContent() {
           />
         </div>
 
-        {/* Geographic hotspots */}
-        {hotspots.length > 0 && (
+        {/* IC Topic Breakdown */}
+        {topicTrends.length > 0 && (
           <div className="flex-1 rounded-lg border border-border bg-card p-4">
-            <div className="mb-2 flex items-center gap-2">
-              <p className="text-sm font-medium">Geographic Hotspots</p>
-              <HelperButton
-                chartType="geographic_hotspots"
-                dataSummary={hotspots
-                  .map((d) => `${d.country}: ${d.count}`)
-                  .join("\n")}
-              />
-            </div>
+            <p className="mb-2 text-sm font-medium">IC Topic Breakdown</p>
             <BarChart
-              data={hotspots}
+              data={topicTrends}
               keys={["count"]}
-              indexBy="country"
+              indexBy="topic"
               layout="horizontal"
-              height={Math.max(200, hotspots.length * 30)}
-              colors={(datum) => {
-                const maxCount = hotspots[0]?.count || 1;
-                const val = typeof datum.data?.count === "number" ? datum.data.count : 0;
-                const intensity = Math.max(0.3, val / maxCount);
-                const r = 220;
-                const g = Math.round(60 * (1 - intensity));
-                const b = Math.round(60 * (1 - intensity));
-                return `rgb(${r},${g},${b})`;
-              }}
+              height={Math.max(300, topicTrends.length * 22)}
+              colors={["#60A5FA"]}
             />
           </div>
         )}
       </div>
 
-      {/* Topic trends */}
-      {topicTrends.length > 0 && (
+      {/* Geographic hotspots */}
+      {hotspots.length > 0 && (
         <div className="rounded-lg border border-border bg-card p-4">
-          <p className="mb-2 text-sm font-medium">Topic Trends</p>
+          <div className="mb-2 flex items-center gap-2">
+            <p className="text-sm font-medium">Geographic Hotspots</p>
+            <HelperButton
+              chartType="geographic_hotspots"
+              dataSummary={hotspots
+                .map((d) => `${d.country}: ${d.count}`)
+                .join("\n")}
+            />
+          </div>
           <BarChart
-            data={topicTrends}
+            data={hotspots}
             keys={["count"]}
-            indexBy="topic"
-            height={300}
-            colors={["#60A5FA"]}
+            indexBy="country"
+            layout="horizontal"
+            height={Math.max(200, hotspots.length * 30)}
+            colors={(datum) => {
+              const maxCount = hotspots[0]?.count || 1;
+              const val = typeof datum.data?.count === "number" ? datum.data.count : 0;
+              const intensity = Math.max(0.3, val / maxCount);
+              const r = 220;
+              const g = Math.round(60 * (1 - intensity));
+              const b = Math.round(60 * (1 - intensity));
+              return `rgb(${r},${g},${b})`;
+            }}
           />
         </div>
       )}

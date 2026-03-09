@@ -18,26 +18,27 @@ export function VelocityLongevity() {
         quadrantCounts: { flash: 0, momentum: 0, fading: 0, stable: 0 },
       };
 
-    // Build per-topic map
-    const topicMap = new Map<string, { velocity: number; longevity: number }>();
-    for (const item of data.topic_longevity ?? []) {
-      const existing = topicMap.get(item.scope_name) || {
-        velocity: 0,
-        longevity: 0,
+    const records = data.topic_longevity ?? [];
+    if (records.length === 0)
+      return {
+        chartData: [] as ScatterSeries[],
+        dataSummary: "No data",
+        quadrantCounts: { flash: 0, momentum: 0, fading: 0, stable: 0 },
       };
-      existing.longevity = item.metric_value ?? 0;
-      topicMap.set(item.scope_name, existing);
-    }
 
-    const points = Array.from(topicMap.entries()).map(
-      ([topic, { velocity, longevity }]) => ({
-        x: velocity,
-        y: longevity,
-        label: topic,
-      })
+    // Normalize velocity by max value (matching Streamlit)
+    const maxVelocity = Math.max(
+      ...records.map((r) => r.velocity_score ?? 0),
+      0.01
     );
 
-    // Quadrant counts
+    const points = records.map((r) => ({
+      x: (r.velocity_score ?? 0) / maxVelocity, // normalized 0-1
+      y: r.longevity_score ?? 0,
+      label: r.topic,
+    }));
+
+    // Quadrant counts using 0.5 threshold
     const quadrantCounts = { flash: 0, momentum: 0, fading: 0, stable: 0 };
     for (const p of points) {
       if (p.x > 0.5 && p.y > 0.5) quadrantCounts.momentum++;
@@ -62,8 +63,11 @@ export function VelocityLongevity() {
     const chartData: ScatterSeries[] = Object.entries(quadrantSeries)
       .filter(([, pts]) => pts.length > 0)
       .map(([name, pts]) => ({ id: name, data: pts }));
-    const dataSummary = points
-      .map((p) => `${p.label}: V=${(p.x ?? 0).toFixed(2)}, L=${(p.y ?? 0).toFixed(2)}`)
+    const dataSummary = records
+      .map(
+        (r) =>
+          `${r.topic}: V=${(r.velocity_score ?? 0).toFixed(2)}, L=${(r.longevity_score ?? 0).toFixed(2)}`
+      )
       .join("\n");
 
     return { chartData, dataSummary, quadrantCounts };
@@ -81,38 +85,38 @@ export function VelocityLongevity() {
         />
       </div>
 
-      <div className="mb-3 flex gap-4 text-xs">
-        <span>
-          <span className="font-medium text-green-400">
+      <div className="mb-3 grid grid-cols-4 gap-2 text-xs">
+        <div className="rounded bg-muted/50 p-2 text-center">
+          <span className="text-lg font-bold text-green-400">
             {quadrantCounts.momentum}
-          </span>{" "}
-          Momentum
-        </span>
-        <span>
-          <span className="font-medium text-yellow-400">
+          </span>
+          <p className="text-muted-foreground">Lasting Movement</p>
+        </div>
+        <div className="rounded bg-muted/50 p-2 text-center">
+          <span className="text-lg font-bold text-yellow-400">
             {quadrantCounts.flash}
-          </span>{" "}
-          Flash Trends
-        </span>
-        <span>
-          <span className="font-medium text-blue-400">
+          </span>
+          <p className="text-muted-foreground">Flash Trends</p>
+        </div>
+        <div className="rounded bg-muted/50 p-2 text-center">
+          <span className="text-lg font-bold text-blue-400">
             {quadrantCounts.stable}
-          </span>{" "}
-          Stable
-        </span>
-        <span>
-          <span className="font-medium text-muted-foreground">
+          </span>
+          <p className="text-muted-foreground">Evergreen</p>
+        </div>
+        <div className="rounded bg-muted/50 p-2 text-center">
+          <span className="text-lg font-bold text-gray-400">
             {quadrantCounts.fading}
-          </span>{" "}
-          Fading
-        </span>
+          </span>
+          <p className="text-muted-foreground">Fading</p>
+        </div>
       </div>
 
-      {chartData.length > 0 && chartData[0].data.length > 0 ? (
+      {chartData.length > 0 ? (
         <ScatterChart
           data={chartData}
           height={350}
-          xLabel="Velocity"
+          xLabel="Velocity (normalized)"
           yLabel="Longevity"
           colors={chartData.map((s) => QUADRANT_COLORS[s.id] || "#808080")}
         />

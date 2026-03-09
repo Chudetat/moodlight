@@ -3,13 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, Trash2 } from "lucide-react";
 import { FeatureGate } from "@/components/layout/feature-gate";
 import { useChatStore } from "@/store/chat-store";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 function ChatContent() {
-  const { messages, addMessage } = useChatStore();
+  const { username } = useAuth();
+  const { messages, addMessage, clearMessages } = useChatStore();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -36,6 +37,7 @@ function ChatContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userMsg,
+          username: username || "admin",
           conversation_history: messages.map((m) => ({
             role: m.role,
             content: m.content,
@@ -64,6 +66,10 @@ function ChatContent() {
         {messages.length === 0 && (
           <p className="text-center text-sm text-muted-foreground">
             Ask anything about your intelligence data.
+            <br />
+            <span className="text-xs">
+              e.g. &ldquo;What&rsquo;s happening with NVIDIA?&rdquo;
+            </span>
           </p>
         )}
         {messages.map((msg, i) => (
@@ -73,14 +79,19 @@ function ChatContent() {
               msg.role === "user" ? "justify-end" : "justify-start"
             }`}
           >
-            <div
-              className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                msg.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted"
-              }`}
-            >
-              <p className="whitespace-pre-wrap">{msg.content}</p>
+            <div className="flex flex-col gap-0.5" style={{ maxWidth: "80%" }}>
+              <span className="text-[10px] text-muted-foreground">
+                {msg.role === "user" ? "You" : "Moodlight"}
+              </span>
+              <div
+                className={`rounded-lg px-3 py-2 text-sm ${
+                  msg.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted"
+                }`}
+              >
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+              </div>
             </div>
           </div>
         ))}
@@ -99,13 +110,24 @@ function ChatContent() {
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask Moodlight..."
+          placeholder="e.g. What's happening with NVIDIA?"
           className="flex-1"
           disabled={loading}
         />
         <Button type="submit" size="icon" disabled={loading || !input.trim()}>
           <Send className="h-4 w-4" />
         </Button>
+        {messages.length > 0 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={clearMessages}
+            title="Clear chat"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </form>
     </div>
   );

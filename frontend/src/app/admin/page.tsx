@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { MetricCard } from "@/components/charts/metric-card";
 import { redirect } from "next/navigation";
-import type { Customer, AdminAnalytics } from "@/lib/types";
+import type { Customer, AdminAnalytics, AskQueriesResponse } from "@/lib/types";
 
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`/api/proxy${path}`);
@@ -109,6 +109,88 @@ function Analytics() {
   );
 }
 
+function AskQueries() {
+  const { data } = useQuery<AskQueriesResponse>({
+    queryKey: ["admin-ask-queries"],
+    queryFn: () => apiFetch("/api/admin/ask-queries"),
+  });
+
+  if (!data) return null;
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-base font-semibold">Ask Moodlight Widget</h3>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <MetricCard label="Total Queries" value={data.total} />
+        <MetricCard label="Free" value={data.free} />
+        <MetricCard label="Paid" value={data.paid} />
+        <MetricCard label="Unique Visitors" value={data.unique_visitors} />
+      </div>
+
+      {data.top_brands.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs font-medium text-muted-foreground">
+            Top Brands Asked About
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {data.top_brands.map((brand) => (
+              <Badge key={brand} variant="secondary" className="text-[10px]">
+                {brand}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.queries.length > 0 && (
+        <div className="max-h-80 overflow-y-auto rounded-lg border border-border">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-card">
+              <tr className="border-b border-border text-left">
+                <th className="p-2 font-medium text-muted-foreground">Time</th>
+                <th className="p-2 font-medium text-muted-foreground">Question</th>
+                <th className="p-2 font-medium text-muted-foreground">Brand</th>
+                <th className="p-2 font-medium text-muted-foreground">Topic</th>
+                <th className="p-2 font-medium text-muted-foreground">Paid</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.queries.map((q) => (
+                <tr key={q.id} className="border-b border-border/50">
+                  <td className="whitespace-nowrap p-2 text-muted-foreground">
+                    {new Date(q.created_at).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}{" "}
+                    {new Date(q.created_at).toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </td>
+                  <td className="max-w-xs truncate p-2">{q.question}</td>
+                  <td className="p-2 text-muted-foreground">
+                    {q.detected_brand || "—"}
+                  </td>
+                  <td className="p-2 text-muted-foreground">
+                    {q.detected_topic || "—"}
+                  </td>
+                  <td className="p-2">
+                    {q.is_paid ? (
+                      <span className="text-green-400">Yes</span>
+                    ) : (
+                      <span className="text-muted-foreground">No</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PipelineHealth() {
   const { data } = usePipelineHealth();
 
@@ -161,6 +243,7 @@ export default function AdminPage() {
         <h2 className="text-xl font-bold">Admin Panel</h2>
         <Customers />
         <Analytics />
+        <AskQueries />
         <PipelineHealth />
       </div>
     </DashboardShell>

@@ -10,7 +10,8 @@ function PredictionMarketsContent() {
 
   if (isLoading) return <ChartSkeleton />;
 
-  const markets = data?.markets ?? [];
+  // Show up to 10 highest volume markets
+  const markets = (data?.markets ?? []).slice(0, 10);
   const divergence = data?.divergence;
 
   if (markets.length === 0) {
