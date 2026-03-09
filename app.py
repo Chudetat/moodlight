@@ -65,7 +65,7 @@ def _sync_completed_signups():
         with _sc_engine.connect() as conn:
             rows = conn.execute(_sc_text(
                 "SELECT signup_token, name, email, username, password_hash, tier "
-                "FROM pending_signups WHERE status = 'completed'"
+                "FROM pending_signups WHERE status IN ('completed', 'synced')"
             )).fetchall()
             if not rows:
                 return
@@ -1069,7 +1069,7 @@ from vlds_helper import calculate_brand_vlds
 # UI
 # -------------------------------
 st.image("logo.png", width=300)
-st.caption("Where culture is heading. What audiences feel. How to show up.")
+st.caption("Real-time intelligence for what moves markets, culture, and minds.")
 
 
 # Force scroll to top on load
