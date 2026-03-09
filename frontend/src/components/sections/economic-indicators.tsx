@@ -10,19 +10,6 @@ import type { EconomicIndicator as EconData } from "@/lib/types";
 export function EconomicIndicators() {
   const { data, isLoading } = useEconomicData(730);
 
-  if (isLoading) {
-    return (
-      <div>
-        <h2 className="mb-1 text-lg font-semibold">Economic Indicators</h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <MetricSkeleton key={i} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   const { latestByName, dataSummary } = useMemo(() => {
     const allIndicators = data?.data ?? [];
 
@@ -62,6 +49,19 @@ export function EconomicIndicators() {
 
     return { latestByName: latest, dataSummary: summary };
   }, [data]);
+
+  if (isLoading) {
+    return (
+      <div>
+        <h2 className="mb-1 text-lg font-semibold">Economic Indicators</h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <MetricSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

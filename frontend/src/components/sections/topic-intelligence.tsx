@@ -133,15 +133,6 @@ export function TopicIntelligence() {
   const { data: alertsData } = useAlerts(username, 7);
   const { data: combinedData } = useCombinedData(7);
 
-  if (vldsLoading) {
-    return (
-      <div>
-        <h2 className="mb-1 text-lg font-semibold">Topic Intelligence</h2>
-        <CardListSkeleton count={4} />
-      </div>
-    );
-  }
-
   const { topics, topicAlerts, topicEmpathy, topicEmotions } = useMemo(() => {
     // Build per-topic VLDS map from separate arrays
     const topicMap = new Map<
@@ -235,6 +226,15 @@ export function TopicIntelligence() {
 
     return { topics: t, topicAlerts: ta, topicEmpathy: te, topicEmotions: temo };
   }, [vldsData, alertsData, combinedData, topicWatchlist]);
+
+  if (vldsLoading) {
+    return (
+      <div>
+        <h2 className="mb-1 text-lg font-semibold">Topic Intelligence</h2>
+        <CardListSkeleton count={4} />
+      </div>
+    );
+  }
 
   return (
     <div>

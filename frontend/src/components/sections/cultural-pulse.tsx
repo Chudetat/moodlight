@@ -10,15 +10,6 @@ import { MetricSkeleton } from "@/components/shared/loading-skeleton";
 export function CulturalPulse() {
   const { data, isLoading } = useCombinedData(7);
 
-  if (isLoading) {
-    return (
-      <div>
-        <h2 className="mb-1 text-lg font-semibold">Cultural Pulse</h2>
-        <MetricSkeleton />
-      </div>
-    );
-  }
-
   // Calculate global mood from last 24h data
   const { moodScore, label, emoji, recentCount } = useMemo(() => {
     const items = data?.data ?? [];
@@ -38,6 +29,15 @@ export function CulturalPulse() {
       recentCount: recent.length,
     };
   }, [data]);
+
+  if (isLoading) {
+    return (
+      <div>
+        <h2 className="mb-1 text-lg font-semibold">Cultural Pulse</h2>
+        <MetricSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div>

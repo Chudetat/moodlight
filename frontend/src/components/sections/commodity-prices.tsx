@@ -10,19 +10,6 @@ import type { CommodityPrice as CommodityData } from "@/lib/types";
 export function CommodityPrices() {
   const { data, isLoading } = useCommodities(90);
 
-  if (isLoading) {
-    return (
-      <div>
-        <h2 className="mb-1 text-lg font-semibold">Commodity Prices</h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <MetricSkeleton key={i} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   const { latestByName, dataSummary } = useMemo(() => {
     const allCommodities = data?.data ?? [];
 
@@ -66,6 +53,19 @@ export function CommodityPrices() {
 
     return { latestByName: latest, dataSummary: summary };
   }, [data]);
+
+  if (isLoading) {
+    return (
+      <div>
+        <h2 className="mb-1 text-lg font-semibold">Commodity Prices</h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <MetricSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
