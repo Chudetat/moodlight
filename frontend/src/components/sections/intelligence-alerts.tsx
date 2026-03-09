@@ -45,10 +45,17 @@ export function IntelligenceAlerts() {
     return { prefFiltered: pf, sorted: s };
   }, [data, prefsData]);
 
+  const isPrediction = (a: { alert_type: string }) =>
+    a.alert_type.startsWith("predictive_");
+
   // Severity filter + pagination
   const { filtered, unreadCount, visible, hasMore } = useMemo(() => {
     const f =
-      filter === "all" ? sorted : sorted.filter((a) => a.severity === filter);
+      filter === "all"
+        ? sorted
+        : filter === "prediction"
+          ? sorted.filter(isPrediction)
+          : sorted.filter((a) => a.severity === filter);
     const uc = prefFiltered.filter((a) => !a.is_read).length;
     const v = f.slice(0, showCount);
     const hm = f.length > showCount;
@@ -147,7 +154,9 @@ export function IntelligenceAlerts() {
           const count =
             sev === "all"
               ? prefFiltered.length
-              : prefFiltered.filter((a) => a.severity === sev).length;
+              : sev === "prediction"
+                ? prefFiltered.filter(isPrediction).length
+                : prefFiltered.filter((a) => a.severity === sev).length;
           return (
             <button
               key={sev}
