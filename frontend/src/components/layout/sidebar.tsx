@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -60,7 +59,7 @@ export function Sidebar() {
 
       <Separator />
 
-      <ScrollArea className="flex-1 px-4 py-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4">
         {/* User info */}
         {isLoading ? (
           <div className="space-y-2">
@@ -181,7 +180,7 @@ export function Sidebar() {
 
         {/* Contact Support */}
         <ContactSupport />
-      </ScrollArea>
+      </div>
 
       {/* Footer */}
       <div className="space-y-1 border-t border-border p-4">

@@ -40,7 +40,7 @@ export function BarChart({
           top: 10,
           right: 20,
           bottom: layout === "horizontal" ? 40 : 60,
-          left: layout === "horizontal" ? 120 : 60,
+          left: layout === "horizontal" ? 150 : 60,
         }}
         padding={0.3}
         colors={colors || [...COLORS.chart]}

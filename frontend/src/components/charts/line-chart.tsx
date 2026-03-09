@@ -11,6 +11,7 @@ interface LineChartProps {
   axisBottomFormat?: string;
   axisLeftFormat?: string;
   axisBottomTickValues?: string;
+  axisLeftTickValues?: number;
   enablePoints?: boolean;
   curve?: "linear" | "monotoneX" | "natural" | "step";
   colors?: string[];
@@ -24,6 +25,7 @@ export function LineChart({
   axisBottomFormat,
   axisLeftFormat,
   axisBottomTickValues,
+  axisLeftTickValues,
   enablePoints = true,
   curve = "monotoneX",
   colors,
@@ -47,6 +49,7 @@ export function LineChart({
         }}
         axisLeft={{
           format: axisLeftFormat,
+          tickValues: axisLeftTickValues,
           tickSize: 5,
           tickPadding: 5,
         }}
