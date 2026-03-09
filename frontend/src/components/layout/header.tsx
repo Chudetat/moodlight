@@ -1,20 +1,18 @@
 "use client";
 
-import { useAuth } from "@/lib/hooks/use-auth";
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"];
 
 export function Header() {
-  const { session } = useAuth();
+  const now = new Date();
+  const dateStr = `${MONTHS[now.getMonth()]} ${now.getDate()} - ${DAYS[now.getDay()]}`;
 
   return (
     <header className="flex h-14 items-center border-b border-border px-6">
       <h1 className="text-lg font-semibold">
-        Intelligence Dashboard
+        {dateStr}
       </h1>
-      {session?.is_admin && (
-        <span className="ml-2 rounded bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
-          Admin
-        </span>
-      )}
     </header>
   );
 }
