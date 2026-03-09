@@ -183,6 +183,71 @@ def _inline_format(text):
 
 
 # ---------------------------------------------------------------------------
+# Chart Image Insertion
+# ---------------------------------------------------------------------------
+
+def insert_chart_images(html, chart_urls):
+    """Insert QuickChart.io chart images into newsletter HTML after sections.
+
+    Finds section badge <span> elements by text and inserts <img> tags
+    before the next section. Gracefully skips missing charts.
+    """
+    if not chart_urls:
+        return html
+
+    # Chart key → section it follows, processed in reverse to preserve positions.
+    # For charts sharing a section, list bottom-first so reversed order inserts top one last.
+    chart_placements = [
+        ("market_performance", "MOOD DASHBOARD"),
+        ("empathy_trend", "MOOD DASHBOARD"),
+        ("emotion_distribution", "EMOTION MAP"),
+        ("commodity_changes", "WHAT MOVED"),
+    ]
+
+    img_style = "max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0;"
+
+    for chart_key, section_name in reversed(chart_placements):
+        url = chart_urls.get(chart_key)
+        if not url:
+            continue
+
+        # Find the section badge span
+        pattern = re.escape(f">{section_name}</span>")
+        match = re.search(pattern, html)
+        if not match:
+            continue
+
+        # Find the next section div after this one
+        rest_start = match.end()
+        next_section = re.search(
+            r'<div style="margin: 25px 0 10px 0;">',
+            html[rest_start:],
+        )
+
+        img_tag = (
+            f'<div style="text-align: center; margin: 15px 0;">'
+            f'<img src="{url}" '
+            f'alt="{chart_key.replace("_", " ").title()}" '
+            f'style="{img_style}" />'
+            f"</div>"
+        )
+
+        if next_section:
+            insert_pos = rest_start + next_section.start()
+        else:
+            # Insert before the <hr> footer or at end
+            hr_match = re.search(r"<hr ", html[rest_start:])
+            if hr_match:
+                insert_pos = rest_start + hr_match.start()
+            else:
+                insert_pos = len(html)
+
+        html = html[:insert_pos] + img_tag + html[insert_pos:]
+
+    return html
+
+
+# ---------------------------------------------------------------------------
 # Beehiiv Publishing
 # ---------------------------------------------------------------------------
 

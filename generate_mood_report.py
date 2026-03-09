@@ -15,6 +15,8 @@ Publishing channels:
 
 import os
 import sys
+import json
+from urllib.parse import quote
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 from anthropic import Anthropic
@@ -381,6 +383,176 @@ def build_newsletter_context(data):
 
 
 # ---------------------------------------------------------------------------
+# 2b. Chart URL Building (QuickChart.io)
+# ---------------------------------------------------------------------------
+
+def _quickchart_url(config, width=540, height=280):
+    """Build a QuickChart.io URL from a Chart.js v2 config."""
+    config_json = json.dumps(config, separators=(",", ":"))
+    encoded = quote(config_json, safe="")
+    return f"https://quickchart.io/chart?c={encoded}&w={width}&h={height}&bkg=white"
+
+
+def build_chart_urls(data):
+    """Build QuickChart.io image URLs for newsletter visuals from raw data."""
+    charts = {}
+
+    # 1. 7-Day Empathy Trend (line chart)
+    news_st = data.get("sentiment_trend", pd.DataFrame())
+    social_st = data.get("social_sentiment_trend", pd.DataFrame())
+    if not news_st.empty or not social_st.empty:
+        all_days = set()
+        if not news_st.empty:
+            all_days.update(str(d) for d in news_st["day"])
+        if not social_st.empty:
+            all_days.update(str(d) for d in social_st["day"])
+        labels = sorted(all_days)
+
+        formatted_labels = []
+        for d in labels:
+            try:
+                formatted_labels.append(pd.Timestamp(d).strftime("%b %d"))
+            except Exception:
+                formatted_labels.append(d)
+
+        datasets = []
+        if not news_st.empty:
+            news_map = {str(r["day"]): round(float(r["avg_empathy"]), 4)
+                        for _, r in news_st.iterrows()}
+            datasets.append({
+                "label": "News",
+                "data": [news_map.get(d) for d in labels],
+                "borderColor": "#1976D2",
+                "backgroundColor": "rgba(25,118,210,0.1)",
+                "fill": True,
+                "lineTension": 0.3,
+                "pointRadius": 4,
+            })
+        if not social_st.empty:
+            social_map = {str(r["day"]): round(float(r["avg_empathy"]), 4)
+                          for _, r in social_st.iterrows()}
+            datasets.append({
+                "label": "Social",
+                "data": [social_map.get(d) for d in labels],
+                "borderColor": "#E65100",
+                "backgroundColor": "rgba(230,81,0,0.1)",
+                "fill": True,
+                "lineTension": 0.3,
+                "pointRadius": 4,
+            })
+
+        if datasets:
+            config = {
+                "type": "line",
+                "data": {"labels": formatted_labels, "datasets": datasets},
+                "options": {
+                    "title": {"display": True, "text": "7-Day Empathy Trend",
+                              "fontSize": 16},
+                    "legend": {"position": "bottom"},
+                    "scales": {
+                        "yAxes": [{"scaleLabel": {"display": True,
+                                                  "labelString": "Empathy Score"}}],
+                    },
+                },
+            }
+            charts["empathy_trend"] = _quickchart_url(config)
+
+    # 2. Market Performance (horizontal bar)
+    mkt = data.get("markets", pd.DataFrame())
+    if not mkt.empty:
+        symbols = []
+        changes = []
+        colors = []
+        for _, row in mkt.iterrows():
+            pct_str = str(row.get("change_percent", "0%")).replace("%", "")
+            try:
+                pct = float(pct_str)
+            except (ValueError, TypeError):
+                pct = 0.0
+            symbols.append(str(row["symbol"]))
+            changes.append(round(pct, 2))
+            colors.append("#2E7D32" if pct >= 0 else "#DC143C")
+
+        config = {
+            "type": "horizontalBar",
+            "data": {
+                "labels": symbols,
+                "datasets": [{"data": changes, "backgroundColor": colors}],
+            },
+            "options": {
+                "title": {"display": True, "text": "Market Performance (%)",
+                          "fontSize": 16},
+                "legend": {"display": False},
+                "scales": {
+                    "xAxes": [{"ticks": {"beginAtZero": True}}],
+                },
+            },
+        }
+        charts["market_performance"] = _quickchart_url(config)
+
+    # 3. Emotion Distribution (doughnut)
+    emo = data.get("emotions", pd.DataFrame())
+    if not emo.empty and len(emo) >= 2:
+        emotion_labels = [str(e) for e in emo["emotion_top_1"]]
+        counts = [int(c) for c in emo["cnt"]]
+        palette = ["#1976D2", "#E65100", "#7B1FA2", "#00897B", "#2E7D32",
+                   "#C62828", "#F57F17", "#1565C0", "#AD1457", "#4E342E"]
+        bg_colors = [palette[i % len(palette)] for i in range(len(emotion_labels))]
+
+        config = {
+            "type": "doughnut",
+            "data": {
+                "labels": emotion_labels,
+                "datasets": [{"data": counts, "backgroundColor": bg_colors}],
+            },
+            "options": {
+                "title": {"display": True, "text": "Emotion Distribution (3d)",
+                          "fontSize": 16},
+                "legend": {"position": "right"},
+            },
+        }
+        charts["emotion_distribution"] = _quickchart_url(config, width=540, height=300)
+
+    # 4. Commodity Price Changes (horizontal bar)
+    comm = data.get("commodities", pd.DataFrame())
+    if not comm.empty and "metric_value_7d_ago" in comm.columns:
+        comm_with_delta = comm.dropna(subset=["metric_value_7d_ago"])
+        if not comm_with_delta.empty:
+            c_labels = []
+            c_changes = []
+            c_colors = []
+            for _, row in comm_with_delta.iterrows():
+                prev = float(row["metric_value_7d_ago"])
+                if prev != 0:
+                    pct = ((float(row["metric_value"]) - prev) / prev) * 100
+                    c_labels.append(str(row["scope_name"]))
+                    c_changes.append(round(pct, 2))
+                    c_colors.append("#2E7D32" if pct >= 0 else "#DC143C")
+
+            if c_labels:
+                config = {
+                    "type": "horizontalBar",
+                    "data": {
+                        "labels": c_labels,
+                        "datasets": [{"data": c_changes,
+                                      "backgroundColor": c_colors}],
+                    },
+                    "options": {
+                        "title": {"display": True,
+                                  "text": "Commodity 7d Change (%)",
+                                  "fontSize": 16},
+                        "legend": {"display": False},
+                        "scales": {
+                            "xAxes": [{"ticks": {"beginAtZero": True}}],
+                        },
+                    },
+                }
+                charts["commodity_changes"] = _quickchart_url(config)
+
+    return charts
+
+
+# ---------------------------------------------------------------------------
 # 3. Newsletter Generation (Claude)
 # ---------------------------------------------------------------------------
 
@@ -489,7 +661,7 @@ def save_x_thread(thread_text):
     return filename
 
 
-def email_report(newsletter_md, x_thread):
+def email_report(newsletter_md, x_thread, chart_urls=None):
     """Email the generated report to Daniel for review."""
     sender = os.getenv("EMAIL_ADDRESS")
     password = os.getenv("EMAIL_PASSWORD")
@@ -502,8 +674,10 @@ def email_report(newsletter_md, x_thread):
     date_str = datetime.now(timezone.utc).strftime("%B %d, %Y")
 
     # Build HTML from newsletter markdown
-    from mood_report_publisher import markdown_to_newsletter_html
+    from mood_report_publisher import markdown_to_newsletter_html, insert_chart_images
     newsletter_html = markdown_to_newsletter_html(newsletter_md)
+    if chart_urls:
+        newsletter_html = insert_chart_images(newsletter_html, chart_urls)
 
     # Build email body with newsletter + X thread preview
     html_body = f"""
@@ -574,10 +748,14 @@ def main():
         print("No data available. Cannot generate report.")
         return
 
-    # 3. Build context
+    # 3. Build context + chart URLs
     print("[2/6] Building newsletter context...")
     context = build_newsletter_context(data)
     print(f"  Context length: {len(context)} chars")
+
+    print("  Building chart URLs...")
+    chart_urls = build_chart_urls(data)
+    print(f"  Charts generated: {list(chart_urls.keys()) if chart_urls else 'none'}")
 
     # 4. Generate newsletter
     print("[3/6] Generating newsletter via Claude Opus...")
@@ -594,9 +772,13 @@ def main():
     beehiiv_api_key = os.getenv("BEEHIIV_API_KEY")
     if beehiiv_api_key:
         try:
-            from mood_report_publisher import publish_to_beehiiv, markdown_to_newsletter_html
+            from mood_report_publisher import (
+                publish_to_beehiiv, markdown_to_newsletter_html, insert_chart_images,
+            )
             date_str = datetime.now(timezone.utc).strftime("%B %d, %Y")
             html = markdown_to_newsletter_html(newsletter_md)
+            if chart_urls:
+                html = insert_chart_images(html, chart_urls)
             publish_to_beehiiv(
                 html=html,
                 title=f"The Mood Report — {date_str}",
@@ -612,7 +794,7 @@ def main():
 
     # 7. Email report to Daniel
     print("[6/6] Emailing report...")
-    email_report(newsletter_md, x_thread)
+    email_report(newsletter_md, x_thread, chart_urls=chart_urls)
 
     # Print the newsletter to stdout
     print("\n" + "=" * 60)
