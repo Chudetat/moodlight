@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/hooks/use-auth";
-import { useTopicVLDS, useAlerts, useCombinedData } from "@/lib/hooks/use-api";
+import { useTopicVLDS, useAlerts, useCombinedData, useTopics } from "@/lib/hooks/use-api";
 import { normalizeEmpathyScore } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { HelperButton } from "@/components/shared/helper-button";
@@ -128,6 +128,7 @@ function TopicCard({
 export function TopicIntelligence() {
   const { username } = useAuth();
   const { data: vldsData, isLoading: vldsLoading } = useTopicVLDS();
+  const { data: topicWatchlist } = useTopics(username);
   const { data: alertsData } = useAlerts(username, 7);
   const { data: combinedData } = useCombinedData(7);
 
@@ -221,9 +222,14 @@ export function TopicIntelligence() {
     }
   }
 
-  const topics = Array.from(topicMap.entries()).sort(
-    ([, a], [, b]) => b.velocity - a.velocity
+  // Filter to only watchlist topics
+  const watchlistTopics = new Set(
+    (topicWatchlist?.topics ?? []).map((t) => t.topic_name.toLowerCase())
   );
+
+  const topics = Array.from(topicMap.entries())
+    .filter(([key]) => watchlistTopics.size === 0 || watchlistTopics.has(key))
+    .sort(([, a], [, b]) => b.velocity - a.velocity);
 
   return (
     <div>
