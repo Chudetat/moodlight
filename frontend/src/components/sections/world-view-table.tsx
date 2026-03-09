@@ -218,7 +218,7 @@ export function WorldViewTable() {
                       </span>
                     ) : (
                       <>
-                        <span className="block truncate">
+                        <span className="line-clamp-2 block">
                           {r.text}
                         </span>
                         <div className="pointer-events-none absolute left-0 top-0 z-50 hidden max-w-[700px] rounded border border-border bg-card p-2.5 text-xs leading-relaxed shadow-lg group-hover:block">
