@@ -438,6 +438,51 @@ Total Articles Analyzed: {len(news_df)}
     except Exception:
         pass
 
+    # Add predictive signals from statistical trend analysis
+    try:
+        from sqlalchemy import create_engine, text as sql_text
+        db_url = os.getenv("DATABASE_URL", "")
+        if db_url:
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+            engine = create_engine(db_url)
+            cutoff_pred = (now - pd.Timedelta(hours=48)).strftime("%Y-%m-%d %H:%M:%S")
+            pred_df = pd.read_sql(
+                sql_text("""
+                    SELECT alert_type, severity, title, summary, confidence, brand_name, topic, timestamp
+                    FROM alerts
+                    WHERE alert_type LIKE 'predictive_%%'
+                      AND timestamp >= :cutoff
+                    ORDER BY timestamp DESC
+                    LIMIT 20
+                """),
+                engine,
+                params={"cutoff": cutoff_pred},
+            )
+            if not pred_df.empty:
+                pred_lines = []
+                for _, row in pred_df.iterrows():
+                    scope = ""
+                    if row.get("brand_name"):
+                        scope = f" [{row['brand_name']}]"
+                    elif row.get("topic"):
+                        scope = f" [{row['topic']}]"
+                    sev = row.get("severity", "info").upper()
+                    conf = f" (confidence: {row['confidence']}%)" if pd.notna(row.get("confidence")) else ""
+                    pred_lines.append(f"  [{sev}]{scope} {row['title']}: {row['summary']}{conf}")
+                pred_block = "\n".join(pred_lines)
+                context += f"""
+
+PREDICTIVE SIGNALS (Statistical Trend Analysis — last 48h)
+==========================================
+These are statistically detected trends from Moodlight's predictive engine (7-day linear regression + momentum analysis).
+Use these to STRENGTHEN your FORWARD LOOK section with data-backed projections.
+
+{pred_block}
+"""
+                print(f"  Added {len(pred_df)} predictive signals to brief context")
+    except Exception as e:
+        print(f"  Could not load predictive signals: {e}")
+
     # Add social data if available
     if social_df is not None and not social_df.empty:
         # Top social topics
@@ -520,8 +565,10 @@ EMERGING PATTERNS
 • Pattern Name [UNCERTAIN]: One sentence
 
 FORWARD LOOK
+If PREDICTIVE SIGNALS data is provided, LEAD with those — they are statistically detected trends with measured confidence. Combine them with your own pattern analysis for maximum insight.
+
 1. Projection statement - [HIGH/MODERATE/LOW] probability
-   Data points: Cite 2-3 specific signals from the data
+   Data points: Cite specific predictive signals AND/OR news patterns
    Projection: What happens next and timeframe
 
 2. Next projection - [PROBABILITY] probability
@@ -562,7 +609,7 @@ DATA INTEGRITY — NON-NEGOTIABLE:
 - Strategic reasoning about actor motivations is welcome when grounded in the pattern of events. Do not attribute specific insider knowledge or conspiratorial coordination without evidence.
 - Confidence levels (HIGH/MODERATE/LIMITED) must reflect actual source count in the data, not how confident the narrative sounds.
 - Strategic inference is valuable — connecting real signals into forward-looking assessments is the point. But ground every inference in specific data points from the brief. "These three energy signals suggest supply risk" is good. "This is likely orchestrated by [actor]" with no source evidence is not.
-- FORWARD LOOK predictions must be grounded in multiple converging signals from the data. Rate each as HIGH/MODERATE/LOW probability. Frame as analytical projections, not guarantees.
+- FORWARD LOOK predictions must be grounded in multiple converging signals from the data. Rate each as HIGH/MODERATE/LOW probability. Frame as analytical projections, not guarantees. When PREDICTIVE SIGNALS are available, cite them explicitly — these are statistically measured trends, not speculation.
 - The brief goes directly to customers via email. Factual claims must be defensible against the source data. Strategic projections should be clearly framed as analysis, not reported as fact.
 
 EMPATHY / MOOD SCORE INTERPRETATION:
