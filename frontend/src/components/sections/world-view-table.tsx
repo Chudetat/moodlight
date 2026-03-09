@@ -54,13 +54,13 @@ export function WorldViewTable() {
         created_at: String(r.created_at ?? ""),
         created_display: (() => {
           const d = new Date(String(r.created_at ?? ""));
-          const month = d.toLocaleDateString("en-US", { month: "short" });
+          const mo = d.getMonth() + 1;
           const day = d.getDate();
           const hour = d.getHours();
           const min = d.getMinutes().toString().padStart(2, "0");
-          const ampm = hour >= 12 ? "PM" : "AM";
           const h12 = hour % 12 || 12;
-          return `${month} ${day}, ${h12}:${min} ${ampm}`;
+          const ap = hour >= 12 ? "p" : "a";
+          return `${mo}/${day} ${h12}:${min}${ap}`;
         })(),
       }))
       .sort((a, b) => {
@@ -166,12 +166,12 @@ export function WorldViewTable() {
         <div className="max-h-[600px] overflow-auto rounded-lg border border-border">
           <table className="w-full table-fixed text-xs">
             <colgroup>
-              <col className="w-[48%]" />
-              <col className="w-[9%]" />
-              <col className="w-[11%]" />
+              <col className="w-[53%]" />
+              <col className="w-[8%]" />
               <col className="w-[10%]" />
-              <col className="w-[11%]" />
-              <col className="w-[11%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
+              <col className="w-[9%]" />
             </colgroup>
             <thead className="sticky top-0 bg-card">
               <tr className="border-b border-border text-left">
@@ -209,11 +209,10 @@ export function WorldViewTable() {
                   key={i}
                   className="group border-b border-border/50 hover:bg-muted/30"
                 >
-                  <td className="relative p-2">
-                    <span className="block truncate">{r.text}</span>
-                    <div className="pointer-events-none absolute left-0 top-full z-50 hidden max-w-lg rounded bg-card/95 p-2 text-xs shadow-lg ring-1 ring-border backdrop-blur group-hover:block">
+                  <td className="p-2" title={r.text}>
+                    <span className="block truncate group-hover:whitespace-normal group-hover:break-words">
                       {r.text}
-                    </div>
+                    </span>
                   </td>
                   <td className="truncate p-2">{r.source}</td>
                   <td className="truncate p-2">{r.topic}</td>

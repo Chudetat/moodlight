@@ -79,11 +79,12 @@ export const ScatterChart = memo(function ScatterChart({
       },
       tooltip: {
         trigger: "item" as const,
+        confine: true,
         backgroundColor: "#262730",
         borderColor: "#3B3B4F",
         textStyle: { color: "#FAFAFA", fontSize: 12 },
         extraCssText:
-          "border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 600px; min-width: 300px; white-space: normal;",
+          "border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 500px; white-space: normal; word-wrap: break-word;",
         formatter: (params: {
           data: {
             value: [number, number];

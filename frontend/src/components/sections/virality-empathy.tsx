@@ -22,11 +22,16 @@ export function ViralityEmpathy() {
       .map((d) => {
         const ageHours = Math.max(0.1, (now - new Date(d.created_at).getTime()) / 3_600_000);
         const virality = d.engagement / ageHours;
+        const ageLabel = ageHours < 1
+          ? `${Math.round(ageHours * 60)}m ago`
+          : ageHours < 24
+            ? `${Math.round(ageHours)}h ago`
+            : `${Math.round(ageHours / 24)}d ago`;
         return {
           x: virality,
           y: normalizeEmpathyScore(d.empathy_score),
           size: Math.min(20, Math.max(4, Math.log10(d.engagement + 1) * 3)),
-          label: d.text?.slice(0, 200) || "",
+          label: `${ageLabel} \u00B7 ${d.text?.slice(0, 200) || ""}`,
         };
       })
       .sort((a, b) => b.x - a.x)
