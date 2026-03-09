@@ -7,7 +7,7 @@ import { MetricSkeleton } from "@/components/shared/loading-skeleton";
 import type { CommodityPrice as CommodityData } from "@/lib/types";
 
 export function CommodityPrices() {
-  const { data, isLoading } = useCommodities(7);
+  const { data, isLoading } = useCommodities(90);
 
   if (isLoading) {
     return (

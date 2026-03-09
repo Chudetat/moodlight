@@ -41,11 +41,9 @@ export function MarketSentiment() {
     })
     .join("\n");
 
-  // Market sentiment percentage (avg of positive changes)
-  const positiveCount = markets.filter(
-    (m) => (parseFloat(m.change_percent) || 0) > 0
-  ).length;
-  const marketPct = markets.length > 0 ? Math.round((positiveCount / markets.length) * 100) : 50;
+  // Market sentiment: use market_sentiment field from API (0-1 scale), display as integer
+  const marketScore = markets.length > 0 ? markets[0].market_sentiment ?? 0 : 0;
+  const marketPct = Math.round(marketScore * 100);
   const sentimentLabel =
     marketPct < 40 ? "Bearish \uD83D\uDC3B" : marketPct >= 60 ? "Bullish \uD83D\uDC02" : "Neutral \u2696\uFE0F";
   const sentimentColor =
@@ -67,7 +65,7 @@ export function MarketSentiment() {
       </p>
       {markets.length > 0 && (
         <div className="mb-3 flex items-baseline gap-3">
-          <span className="text-2xl font-bold tabular-nums">{marketPct}%</span>
+          <span className="text-2xl font-bold tabular-nums">{marketPct}</span>
           <span className={`text-sm font-medium ${sentimentColor}`}>{sentimentLabel}</span>
           <span className="text-xs text-muted-foreground">Based on {markets.length} global indices</span>
         </div>

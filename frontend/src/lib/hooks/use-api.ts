@@ -63,7 +63,7 @@ export function useEconomicData(days = 730) {
   });
 }
 
-export function useCommodities(days = 7) {
+export function useCommodities(days = 90) {
   return useQuery<CommodityDataResponse>({
     queryKey: ["commodities", days],
     queryFn: () => apiFetch(`/api/commodities?days=${days}`),
