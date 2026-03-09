@@ -44,20 +44,33 @@ export function EmpathyByTopic() {
         <HelperButton chartType="empathy_by_topic" dataSummary={dataSummary} />
       </div>
       {chartData.length > 0 ? (
-        <BarChart
-          data={chartData}
-          keys={["empathy"]}
-          indexBy="topic"
-          layout="horizontal"
-          height={Math.max(250, chartData.length * 30)}
-          colors={(datum) => {
-            const v = typeof datum.data?.empathy === "number" ? datum.data.empathy : 0;
-            if (v < 35) return EMPATHY_COLORS[0];
-            if (v < 50) return EMPATHY_COLORS[1];
-            if (v < 70) return EMPATHY_COLORS[2];
-            return EMPATHY_COLORS[3];
-          }}
-        />
+        <>
+          <div className="mb-2 flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+            {EMPATHY_LABELS.map((label, i) => (
+              <span key={label} className="flex items-center gap-1">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-sm"
+                  style={{ backgroundColor: EMPATHY_COLORS[i] }}
+                />
+                {label}
+              </span>
+            ))}
+          </div>
+          <BarChart
+            data={chartData}
+            keys={["empathy"]}
+            indexBy="topic"
+            layout="horizontal"
+            height={Math.max(250, chartData.length * 30)}
+            colors={(datum) => {
+              const v = typeof datum.data?.empathy === "number" ? datum.data.empathy : 0;
+              if (v < 35) return EMPATHY_COLORS[0];
+              if (v < 50) return EMPATHY_COLORS[1];
+              if (v < 70) return EMPATHY_COLORS[2];
+              return EMPATHY_COLORS[3];
+            }}
+          />
+        </>
       ) : (
         <p className="py-4 text-center text-sm text-muted-foreground">No data</p>
       )}
