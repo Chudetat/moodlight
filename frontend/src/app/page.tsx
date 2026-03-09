@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { LazySection } from "@/components/layout/lazy-section";
 import { CulturalPulse } from "@/components/sections/cultural-pulse";
 import { MarketSentiment } from "@/components/sections/market-sentiment";
 import { EconomicIndicators } from "@/components/sections/economic-indicators";
@@ -50,52 +49,34 @@ export default function DashboardPage() {
         </div>
 
         {/* 1. Cultural Pulse */}
-        <LazySection>
-          <CulturalPulse />
-        </LazySection>
+        <CulturalPulse />
 
         {/* 2. Market Sentiment */}
-        <LazySection>
-          <MarketSentiment />
-        </LazySection>
+        <MarketSentiment />
 
         {/* 3. Economic Indicators */}
-        <LazySection>
-          <EconomicIndicators />
-        </LazySection>
+        <EconomicIndicators />
 
         {/* 4. Commodity Prices */}
-        <LazySection>
-          <CommodityPrices />
-        </LazySection>
+        <CommodityPrices />
 
         {/* 5. Mood vs Market */}
-        <LazySection>
-          <MoodVsMarket />
-        </LazySection>
+        <MoodVsMarket />
 
         {/* 6. Prediction Markets (tier-gated) */}
-        <LazySection>
-          <PredictionMarkets />
-        </LazySection>
+        <PredictionMarkets />
 
         {/* 7. Intelligence Alerts */}
-        <LazySection>
-          <IntelligenceAlerts />
-        </LazySection>
+        <IntelligenceAlerts />
 
         {/* 8. Competitive War Room (tier-gated) */}
-        <LazySection>
-          <CompetitiveWarRoom />
-        </LazySection>
+        <CompetitiveWarRoom />
 
         {/* 9. Topic Intelligence */}
-        <LazySection>
-          <TopicIntelligence />
-        </LazySection>
+        <TopicIntelligence />
 
         {/* 10. Detailed Analysis */}
-        <LazySection>
+        <div>
           <h2 className="mb-1 text-lg font-semibold">Detailed Analysis</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <EmpathyByTopic />
@@ -103,61 +84,38 @@ export default function DashboardPage() {
             <EmpathyDistribution />
             <TopicDistribution />
           </div>
-        </LazySection>
+        </div>
 
         {/* 11. Trending Headlines */}
-        <LazySection>
-          <TrendingHeadlines />
-        </LazySection>
+        <TrendingHeadlines />
 
         {/* 12. Virality x Empathy */}
-        <LazySection>
-          <ViralityEmpathy />
-        </LazySection>
+        <ViralityEmpathy />
 
         {/* 13. Velocity x Longevity + Density + Scarcity */}
-        <LazySection>
-          <VelocityLongevity />
-        </LazySection>
-
-        <LazySection>
-          <DensityScarcity />
-        </LazySection>
+        <VelocityLongevity />
+        <DensityScarcity />
 
         {/* 14. Brand VLDS */}
-        <LazySection>
-          <BrandVLDS />
-        </LazySection>
+        <BrandVLDS />
 
         {/* 14b. Brand Comparison */}
-        <LazySection>
-          <BrandComparison />
-        </LazySection>
+        <BrandComparison />
 
         {/* 15. 7-Day Mood History */}
-        <LazySection>
-          <MoodHistory />
-        </LazySection>
+        <MoodHistory />
 
         {/* 16. World View */}
-        <LazySection>
-          <WorldViewTable />
-        </LazySection>
+        <WorldViewTable />
 
         {/* 17. Intelligence Dashboard (tier-gated) */}
-        <LazySection>
-          <IntelDashboard />
-        </LazySection>
+        <IntelDashboard />
 
         {/* 18. Historical Trends (shows only when time range > 7d) */}
-        <LazySection>
-          <HistoricalTrends />
-        </LazySection>
+        <HistoricalTrends />
 
         {/* 19. Ask Moodlight */}
-        <LazySection>
-          <AskMoodlight />
-        </LazySection>
+        <AskMoodlight />
       </div>
     </DashboardShell>
   );
