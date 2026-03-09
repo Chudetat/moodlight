@@ -770,6 +770,9 @@ If not: skip this section entirely. Do NOT fabricate data.]
 ## WHAT TO WATCH
 [2-3 things to monitor. Not predictions — things the data says are worth watching. Ground each in a specific data point or trend.]
 
+## THE MOVE
+[2-3 concrete, specific actions that a professional in this space could take THIS WEEK based on the data. Not generic advice — tie each move directly to a signal or finding from the data above. Think: "The data says X, so the smart play is Y." Be bold but grounded.]
+
 ---
 *The Mood Report: Special Edition is powered by Moodlight Intelligence. Data is measured, not predicted.*
 """
