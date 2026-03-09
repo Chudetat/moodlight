@@ -44,7 +44,7 @@ export default function DashboardPage() {
             priority
           />
           <p className="text-sm text-muted-foreground">
-            Where culture is heading. What audiences feel. How to show up.
+            Real-time intelligence for what moves markets, culture, and minds.
           </p>
         </div>
 
