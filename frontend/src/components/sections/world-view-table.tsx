@@ -30,6 +30,7 @@ export function WorldViewTable() {
   const { data, isLoading } = useCombinedData(7);
   const [sortBy, setSortBy] = useState<SortKey>("created_at");
   const [sortAsc, setSortAsc] = useState(false);
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
   const rows = useMemo<RowData[]>(() => {
     const raw = data?.data ?? [];
@@ -207,15 +208,24 @@ export function WorldViewTable() {
               {rows.map((r, i) => (
                 <tr
                   key={i}
-                  className="group border-b border-border/50 hover:bg-muted/30"
+                  className="group cursor-pointer border-b border-border/50 hover:bg-muted/30"
+                  onClick={() => setExpandedRow(expandedRow === i ? null : i)}
                 >
                   <td className="relative p-2">
-                    <span className="block truncate">
-                      {r.text}
-                    </span>
-                    <div className="pointer-events-none absolute left-0 top-0 z-50 hidden max-w-[700px] rounded border border-border bg-card p-2.5 text-xs leading-relaxed shadow-lg group-hover:block">
-                      {r.text}
-                    </div>
+                    {expandedRow === i ? (
+                      <span className="block whitespace-normal break-words leading-relaxed">
+                        {r.text}
+                      </span>
+                    ) : (
+                      <>
+                        <span className="block truncate">
+                          {r.text}
+                        </span>
+                        <div className="pointer-events-none absolute left-0 top-0 z-50 hidden max-w-[700px] rounded border border-border bg-card p-2.5 text-xs leading-relaxed shadow-lg group-hover:block">
+                          {r.text}
+                        </div>
+                      </>
+                    )}
                   </td>
                   <td className="truncate p-2">{r.source}</td>
                   <td className="truncate p-2">{r.topic}</td>
