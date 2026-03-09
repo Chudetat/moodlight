@@ -12,6 +12,8 @@ interface LineChartProps {
   axisLeftFormat?: string;
   axisBottomTickValues?: string;
   axisLeftTickValues?: number;
+  yMin?: number | "auto";
+  yMax?: number | "auto";
   enablePoints?: boolean;
   curve?: "linear" | "monotoneX" | "natural" | "step";
   colors?: string[];
@@ -26,6 +28,8 @@ export function LineChart({
   axisLeftFormat,
   axisBottomTickValues,
   axisLeftTickValues,
+  yMin = "auto",
+  yMax = "auto",
   enablePoints = true,
   curve = "monotoneX",
   colors,
@@ -37,7 +41,7 @@ export function LineChart({
         margin={{ top: 20, right: 20, bottom: 50, left: 60 }}
         xScale={{ type: "time", format: "%Y-%m-%d", useUTC: false, precision: "day" }}
         xFormat="time:%b %d"
-        yScale={{ type: "linear", min: "auto", max: "auto", stacked: false }}
+        yScale={{ type: "linear", min: yMin, max: yMax, stacked: false }}
         yFormat={yFormat}
         curve={curve}
         axisBottom={{

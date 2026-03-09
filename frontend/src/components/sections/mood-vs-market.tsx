@@ -95,15 +95,15 @@ export function MoodVsMarket() {
       </p>
       {chartData.length > 0 && chartData[0].data.length > 0 ? (
         <>
-          <LineChart data={chartData} height={300} colors={["#1f77b4", "#2E7D32"]} />
+          <LineChart data={chartData} height={300} yMin={0} yMax={100} colors={["#1f77b4", "#2E7D32"]} />
           <div className="mt-3 grid grid-cols-3 gap-3">
             <MetricCard
-              label="Social Mood"
+              label={<><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#1f77b4" }} />Social Mood</>}
               value={Math.round(latestMood)}
               sublabel="/100"
             />
             <MetricCard
-              label="Market Index"
+              label={<><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#2E7D32" }} />Market Index</>}
               value={Math.round(latestMarket)}
               sublabel="/100"
             />

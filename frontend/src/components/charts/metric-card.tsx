@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 
 interface MetricCardProps {
-  label: string;
+  label: React.ReactNode;
   value: string | number;
   delta?: string;
   deltaColor?: "green" | "red" | "neutral";
