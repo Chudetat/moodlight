@@ -15,11 +15,12 @@ import json
 import secrets
 import pandas as pd
 import bcrypt
+import stripe
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text as sql_text
@@ -54,6 +55,9 @@ from alert_feedback import record_feedback
 from competitor_discovery import ensure_competitor_tables, ensure_competitors_cached
 
 load_dotenv()
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+_stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 app = FastAPI(title="Moodlight Data API", docs_url="/api/docs", redoc_url=None)
 
@@ -1886,6 +1890,135 @@ def get_signal_log(days: int = Query(default=90, ge=1, le=730)):
         if "does not exist" in str(e).lower():
             return {"data": [], "count": 0}
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Stripe Webhooks (migrated from webhook_server.py)
+# ---------------------------------------------------------------------------
+
+# Map Stripe price IDs to tiers
+_STRIPE_PRICE_TO_TIER = {
+    "price_1SyI3P1OGs3ZkUZa8IwdSO85": "monthly",     # $899/mo
+    "price_1Szgi81OGs3ZkUZaZlFrKOAw": "annually",     # $8,999/yr
+}
+
+
+def _activate_pending_signup(signup_token: str, customer_id: str = None, subscription_id: str = None):
+    """Activate a self-service signup: create user in DB from pending_signups."""
+    engine = _require_engine()
+    with engine.connect() as conn:
+        row = conn.execute(sql_text(
+            "SELECT name, email, username, password_hash, tier FROM pending_signups "
+            "WHERE signup_token = :token AND status = 'pending'"
+        ), {"token": signup_token}).fetchone()
+        if not row:
+            print(f"No pending signup found for token {signup_token[:8]}...")
+            return
+
+        name, email, username, password_hash, tier = row
+
+        existing = conn.execute(sql_text(
+            "SELECT id FROM users WHERE email = :email OR username = :username"
+        ), {"email": email, "username": username}).fetchone()
+        if existing:
+            print(f"User {email} already exists, skipping creation")
+            conn.execute(sql_text(
+                "UPDATE pending_signups SET status = 'completed' WHERE signup_token = :token"
+            ), {"token": signup_token})
+            conn.commit()
+            return
+
+        conn.execute(sql_text("""
+            INSERT INTO users (username, email, password_hash, tier, stripe_customer_id, stripe_subscription_id)
+            VALUES (:username, :email, :password_hash, :tier, :customer_id, :subscription_id)
+        """), {
+            "username": username, "email": email, "password_hash": password_hash,
+            "tier": tier, "customer_id": customer_id, "subscription_id": subscription_id,
+        })
+
+        conn.execute(sql_text(
+            "UPDATE pending_signups SET status = 'completed' WHERE signup_token = :token"
+        ), {"token": signup_token})
+        conn.commit()
+        print(f"Self-service signup activated: {email} ({tier})")
+
+
+@app.post("/webhook")
+async def stripe_webhook(request: Request):
+    """Handle Stripe webhook events."""
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, _stripe_webhook_secret
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        customer_email = session.get("customer_email") or session.get("customer_details", {}).get("email")
+        customer_id = session.get("customer")
+        subscription_id = session.get("subscription")
+        client_ref = session.get("client_reference_id")
+
+        if client_ref:
+            _activate_pending_signup(client_ref, customer_id, subscription_id)
+
+        if subscription_id:
+            subscription = stripe.Subscription.retrieve(subscription_id)
+            price_id = subscription["items"]["data"][0]["price"]["id"]
+            tier = _STRIPE_PRICE_TO_TIER.get(price_id, "monthly")
+
+            if customer_email:
+                engine = _require_engine()
+                with engine.connect() as conn:
+                    conn.execute(sql_text("""
+                        UPDATE users
+                        SET tier = :tier, stripe_customer_id = :customer_id,
+                            stripe_subscription_id = :subscription_id,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE email = :email
+                    """), {
+                        "email": customer_email, "tier": tier,
+                        "customer_id": customer_id, "subscription_id": subscription_id,
+                    })
+                    conn.commit()
+                print(f"Updated {customer_email} to {tier}")
+
+    elif event["type"] == "customer.subscription.updated":
+        subscription = event["data"]["object"]
+        subscription_id = subscription["id"]
+        price_id = subscription["items"]["data"][0]["price"]["id"]
+        tier = _STRIPE_PRICE_TO_TIER.get(price_id, "monthly")
+
+        engine = _require_engine()
+        with engine.connect() as conn:
+            conn.execute(sql_text("""
+                UPDATE users SET tier = :tier, updated_at = CURRENT_TIMESTAMP
+                WHERE stripe_subscription_id = :subscription_id
+            """), {"tier": tier, "subscription_id": subscription_id})
+            conn.commit()
+        print(f"Updated subscription {subscription_id} to {tier}")
+
+    elif event["type"] == "customer.subscription.deleted":
+        subscription = event["data"]["object"]
+        subscription_id = subscription["id"]
+        engine = _require_engine()
+        with engine.connect() as conn:
+            conn.execute(sql_text("""
+                UPDATE users
+                SET tier = 'cancelled', stripe_subscription_id = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE stripe_subscription_id = :subscription_id
+            """), {"subscription_id": subscription_id})
+            conn.commit()
+        print(f"Downgraded subscription {subscription_id}")
+
+    return {"status": "success"}
 
 
 if __name__ == "__main__":
