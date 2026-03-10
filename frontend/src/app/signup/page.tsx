@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,8 +65,15 @@ export default function SignupPage() {
     <div className="flex min-h-screen items-center justify-center bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="mb-2 text-2xl font-bold tracking-tight">
-            Moodlight
+          <div className="mb-2 flex justify-center">
+            <Image
+              src="/logo.png"
+              alt="Moodlight"
+              width={180}
+              height={36}
+              className="h-9 w-auto"
+              priority
+            />
           </div>
           <CardTitle className="text-lg font-normal text-muted-foreground">
             Create your account
