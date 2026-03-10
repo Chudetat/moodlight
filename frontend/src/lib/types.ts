@@ -528,6 +528,41 @@ export type ChartType =
   | "competitive_war_room"
   | "brand_comparison";
 
+// ── Signal Log ───────────────────────────────────────
+
+export interface SignalLogEntry {
+  id: number;
+  alert_id: number;
+  alert_type: string;
+  severity: string;
+  brand: string | null;
+  topic: string | null;
+  title: string;
+  summary: string;
+  signal_date: string;
+  spy_price_at_signal: number | null;
+  brand_ticker: string | null;
+  brand_price_at_signal: number | null;
+  spy_price_1d: number | null;
+  spy_price_3d: number | null;
+  spy_price_5d: number | null;
+  spy_change_1d: number | null;
+  spy_change_3d: number | null;
+  spy_change_5d: number | null;
+  brand_price_1d: number | null;
+  brand_price_3d: number | null;
+  brand_price_5d: number | null;
+  brand_change_1d: number | null;
+  brand_change_3d: number | null;
+  brand_change_5d: number | null;
+  created_at: string;
+}
+
+export interface SignalLogResponse {
+  data: SignalLogEntry[];
+  count: number;
+}
+
 // ── API Error ─────────────────────────────────────────
 
 export interface ApiError {

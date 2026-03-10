@@ -211,6 +211,46 @@ export const TOPIC_CATEGORIES = [
   "entertainment",
 ];
 
+// ── Signal direction classification ──────────────────
+
+export type SignalDirection = "bullish" | "bearish" | "volatility";
+
+export const SIGNAL_DIRECTION: Record<string, SignalDirection> = {
+  brand_velocity_spike: "bullish",
+  predictive_brand_velocity_spike: "bullish",
+  predictive_compound_signal: "bearish",
+  brand_white_space: "bearish",
+  predictive_brand_white_space: "bearish",
+  market_mood_divergence: "bearish",
+  predictive_market_mood_divergence: "bearish",
+  predictive_brand_saturation: "bearish",
+  predictive_topic_saturation: "bearish",
+  // Everything else defaults to volatility
+};
+
+export const SIGNAL_TYPE_LABELS: Record<string, string> = {
+  brand_velocity_spike: "Brand Velocity Spike",
+  predictive_brand_velocity_spike: "Pred. Brand Velocity",
+  predictive_compound_signal: "Compound Signal",
+  brand_white_space: "Brand White Space",
+  predictive_brand_white_space: "Pred. White Space",
+  market_mood_divergence: "Market-Mood Divergence",
+  predictive_market_mood_divergence: "Pred. Mood Divergence",
+  predictive_brand_saturation: "Pred. Brand Saturation",
+  predictive_topic_saturation: "Pred. Topic Saturation",
+  trend_extrapolation: "Trend Extrapolation",
+  density_spike: "Density Spike",
+  scarcity_flip: "Scarcity Flip",
+  sentiment_reversal: "Sentiment Reversal",
+  velocity_acceleration: "Velocity Acceleration",
+  mood_shift: "Mood Shift",
+  intensity_cluster: "Intensity Cluster",
+  topic_velocity_spike: "Topic Velocity Spike",
+  predictive_mood_shift: "Pred. Mood Shift",
+  predictive_intensity_cluster: "Pred. Intensity Cluster",
+  predictive_topic_velocity_spike: "Pred. Topic Velocity",
+};
+
 // ── Alert type categories ─────────────────────────────
 
 export const ALERT_TYPE_CATEGORIES: Record<string, string[]> = {

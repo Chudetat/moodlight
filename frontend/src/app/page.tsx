@@ -27,6 +27,7 @@ import { MoodHistory } from "@/components/sections/mood-history";
 import { WorldViewTable } from "@/components/sections/world-view-table";
 import { IntelDashboard } from "@/components/sections/intel-dashboard";
 import { HistoricalTrends } from "@/components/sections/historical-trends";
+import { SignalTrackRecord } from "@/components/sections/signal-track-record";
 import { AskMoodlight } from "@/components/sections/ask-moodlight";
 
 export default function DashboardPage() {
@@ -68,6 +69,11 @@ export default function DashboardPage() {
         {/* 6. Prediction Markets (tier-gated) */}
         <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 300px" }}>
           <PredictionMarkets />
+        </section>
+
+        {/* 6b. Signal Track Record */}
+        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 600px" }}>
+          <SignalTrackRecord />
         </section>
 
         {/* 7. Intelligence Alerts */}

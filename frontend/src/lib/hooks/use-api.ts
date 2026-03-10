@@ -17,6 +17,7 @@ import type {
   ChartExplainResponse,
   AlertFeedbackAction,
   PredictionMarketsResponse,
+  SignalLogResponse,
   UserPreferences,
   AlertPreferencesResponse,
   PipelineHealthResponse,
@@ -192,6 +193,16 @@ export function usePredictionMarkets() {
   return useQuery<PredictionMarketsResponse>({
     queryKey: ["prediction-markets"],
     queryFn: () => apiFetch("/api/prediction-markets"),
+    refetchInterval: REFETCH_INTERVAL,
+  });
+}
+
+// ── Signal Log ───────────────────────────────────────
+
+export function useSignalLog(days = 90) {
+  return useQuery<SignalLogResponse>({
+    queryKey: ["signal-log", days],
+    queryFn: () => apiFetch(`/api/signal-log?days=${days}`),
     refetchInterval: REFETCH_INTERVAL,
   });
 }
