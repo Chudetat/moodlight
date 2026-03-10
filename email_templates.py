@@ -69,7 +69,7 @@ def render_email(badge_text, badge_color, title, body_html,
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
         <p style="color: #999; font-size: 12px;">
           {footer_text}<br>
-          <a href="https://moodlight.up.railway.app" style="color: #1976D2;">View Dashboard</a>
+          <a href="https://moodlight.app" style="color: #1976D2;">View Dashboard</a>
         </p>
       </body>
     </html>

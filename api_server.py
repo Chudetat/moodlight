@@ -57,12 +57,10 @@ load_dotenv()
 
 app = FastAPI(title="Moodlight Data API", docs_url="/api/docs", redoc_url=None)
 
-# CORS — allow Streamlit dashboard, Next.js frontend, and localhost dev
+# CORS — allow Next.js frontend and localhost dev
 ALLOWED_ORIGINS = [
-    "https://moodlight.up.railway.app",
     "https://moodlight.app",
     "http://localhost:3000",
-    "http://localhost:8501",
     "http://localhost:8001",
 ]
 

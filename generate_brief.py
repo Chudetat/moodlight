@@ -99,7 +99,7 @@ def _build_brief_html(brief_text):
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
         <p style="color: #999; font-size: 12px;">
           Moodlight Intelligence Platform — Executive Brief<br>
-          <a href="https://moodlight.up.railway.app" style="color: #1976D2;">View Dashboard</a>
+          <a href="https://moodlight.app" style="color: #1976D2;">View Dashboard</a>
         </p>
       </body>
     </html>
