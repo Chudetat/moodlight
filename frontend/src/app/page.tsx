@@ -29,10 +29,12 @@ import { IntelDashboard } from "@/components/sections/intel-dashboard";
 import { HistoricalTrends } from "@/components/sections/historical-trends";
 import { SignalTrackRecord } from "@/components/sections/signal-track-record";
 import { AskMoodlight } from "@/components/sections/ask-moodlight";
+import { GuidedTour } from "@/components/onboarding/guided-tour";
 
 export default function DashboardPage() {
   return (
     <DashboardShell>
+      <GuidedTour />
       <div className="mx-auto max-w-4xl space-y-6">
         {/* Logo + tagline */}
         <div>
@@ -50,10 +52,14 @@ export default function DashboardPage() {
         </div>
 
         {/* 1. Cultural Pulse */}
-        <CulturalPulse />
+        <div id="section-cultural-pulse">
+          <CulturalPulse />
+        </div>
 
         {/* 2. Market Sentiment */}
-        <MarketSentiment />
+        <div id="section-market-sentiment">
+          <MarketSentiment />
+        </div>
 
         {/* 3. Economic Indicators */}
         <EconomicIndicators />
@@ -77,12 +83,12 @@ export default function DashboardPage() {
         </section>
 
         {/* 7. Intelligence Alerts */}
-        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 600px" }}>
+        <section id="section-intelligence-alerts" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 600px" }}>
           <IntelligenceAlerts />
         </section>
 
         {/* 8. Competitive War Room (tier-gated) */}
-        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 400px" }}>
+        <section id="section-competitive-war-room" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 400px" }}>
           <CompetitiveWarRoom />
         </section>
 
@@ -153,7 +159,9 @@ export default function DashboardPage() {
         </section>
 
         {/* 19. Ask Moodlight */}
-        <AskMoodlight />
+        <div id="section-ask-moodlight">
+          <AskMoodlight />
+        </div>
       </div>
     </DashboardShell>
   );
