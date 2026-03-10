@@ -8,7 +8,7 @@ import {
   useCreateCustomer,
   useUpdateCustomer,
   useDeleteCustomer,
-  useAddCredits,
+
   useAdminTeams,
   useCreateUserTeam,
 } from "@/lib/hooks/use-api";
@@ -75,10 +75,7 @@ function Customers() {
                 <span className="text-xs text-muted-foreground">
                   {c.extra_seats} seat{c.extra_seats !== 1 ? "s" : ""}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {c.brief_credits} credits
-                </span>
-                <Button
+<Button
                   variant="ghost"
                   size="sm"
                   className="h-6 text-xs text-destructive"
@@ -301,93 +298,6 @@ function EditCustomer() {
           )}
         </form>
       )}
-    </div>
-  );
-}
-
-// ── Add Credits ─────────────────────────────────────
-
-function AddCredits() {
-  const { data } = useAdminCustomers();
-  const creditsMutation = useAddCredits();
-  const [selectedUsername, setSelectedUsername] = useState("");
-  const [credits, setCredits] = useState("10");
-  const [success, setSuccess] = useState(false);
-
-  const customers = data?.customers ?? [];
-
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedUsername || !credits) return;
-    setSuccess(false);
-    try {
-      await creditsMutation.mutateAsync({
-        username: selectedUsername,
-        credits: Number(credits),
-      });
-      setSuccess(true);
-    } catch {
-      // error shown via mutation state
-    }
-  }
-
-  return (
-    <div className="space-y-3">
-      <h3 className="text-base font-semibold">Add Credits</h3>
-      <form onSubmit={handleAdd} className="space-y-3">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="space-y-1">
-            <Label className="text-xs">Customer</Label>
-            <Select
-              value={selectedUsername}
-              onValueChange={(v) => {
-                if (!v) return;
-                setSelectedUsername(v);
-                setSuccess(false);
-              }}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Choose a customer..." />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => (
-                  <SelectItem key={c.username} value={c.username}>
-                    {c.username} — {c.brief_credits} credits
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Credits to Add</Label>
-            <Input
-              type="number"
-              value={credits}
-              onChange={(e) => setCredits(e.target.value)}
-              className="h-8 text-xs"
-              min={1}
-            />
-          </div>
-        </div>
-        <Button
-          type="submit"
-          size="sm"
-          disabled={creditsMutation.isPending}
-          className="text-xs"
-        >
-          {creditsMutation.isPending ? "Adding..." : "Add Credits"}
-        </Button>
-        {creditsMutation.isError && (
-          <p className="text-xs text-destructive">
-            {creditsMutation.error?.message || "Failed to add credits."}
-          </p>
-        )}
-        {success && (
-          <p className="text-xs text-green-400">
-            Added {credits} credits to {selectedUsername}.
-          </p>
-        )}
-      </form>
     </div>
   );
 }
@@ -672,7 +582,7 @@ export default function AdminPage() {
         <Customers />
         <CreateCustomer />
         <EditCustomer />
-        <AddCredits />
+
         <Teams />
         <Analytics />
         <AskQueries />
