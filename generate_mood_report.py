@@ -129,19 +129,24 @@ def load_mood_data(engine):
             engine,
             params={"cutoff": cutoff_30d},
         )
-        # Latest per commodity + 7d ago for delta
+        # Latest per commodity + previous data point for delta
         if not commodities.empty:
             commodities["snapshot_date"] = pd.to_datetime(
                 commodities["snapshot_date"]
             ).dt.tz_localize(None)
             latest = commodities.groupby("scope_name").first().reset_index()
-            cutoff_7d_dt = pd.Timestamp(now.replace(tzinfo=None) - timedelta(days=7))
-            week_ago = commodities[commodities["snapshot_date"] <= cutoff_7d_dt]
-            if not week_ago.empty:
-                prev = week_ago.groupby("scope_name").first().reset_index()
+            # Get 2nd-most-recent entry per commodity for change calc
+            # (handles API data lag — commodity data can be 5-10 days behind)
+            prev_rows = []
+            for name, grp in commodities.groupby("scope_name"):
+                unique_dates = grp.drop_duplicates(subset=["snapshot_date"])
+                if len(unique_dates) >= 2:
+                    prev_rows.append(unique_dates.iloc[1])
+            if prev_rows:
+                prev = pd.DataFrame(prev_rows)
                 latest = latest.merge(
                     prev[["scope_name", "metric_value"]],
-                    on="scope_name", how="left", suffixes=("", "_7d_ago"),
+                    on="scope_name", how="left", suffixes=("", "_prev"),
                 )
             data["commodities"] = latest
         else:
@@ -312,10 +317,11 @@ def build_newsletter_context(data):
         lines = ["COMMODITY PRICES:"]
         for _, row in comm.iterrows():
             delta_str = ""
-            if "metric_value_7d_ago" in row and pd.notna(row.get("metric_value_7d_ago")):
-                delta = row["metric_value"] - row["metric_value_7d_ago"]
-                pct = (delta / row["metric_value_7d_ago"]) * 100
-                delta_str = f" (7d: {delta:+.2f}, {pct:+.1f}%)"
+            prev_col = "metric_value_prev" if "metric_value_prev" in row else "metric_value_7d_ago"
+            if prev_col in row and pd.notna(row.get(prev_col)):
+                delta = row["metric_value"] - row[prev_col]
+                pct = (delta / row[prev_col]) * 100
+                delta_str = f" (prev: {delta:+.2f}, {pct:+.1f}%)"
             lines.append(f"  {row['scope_name']}: ${row['metric_value']:.2f}{delta_str}")
         sections.append("\n".join(lines))
 
@@ -512,42 +518,6 @@ def build_chart_urls(data):
             },
         }
         charts["emotion_distribution"] = _quickchart_url(config, width=540, height=300)
-
-    # 4. Commodity Price Changes (horizontal bar)
-    comm = data.get("commodities", pd.DataFrame())
-    if not comm.empty and "metric_value_7d_ago" in comm.columns:
-        comm_with_delta = comm.dropna(subset=["metric_value_7d_ago"])
-        if not comm_with_delta.empty:
-            c_labels = []
-            c_changes = []
-            c_colors = []
-            for _, row in comm_with_delta.iterrows():
-                prev = float(row["metric_value_7d_ago"])
-                if prev != 0:
-                    pct = ((float(row["metric_value"]) - prev) / prev) * 100
-                    c_labels.append(str(row["scope_name"]))
-                    c_changes.append(round(pct, 2))
-                    c_colors.append("#2E7D32" if pct >= 0 else "#DC143C")
-
-            if c_labels:
-                config = {
-                    "type": "horizontalBar",
-                    "data": {
-                        "labels": c_labels,
-                        "datasets": [{"data": c_changes,
-                                      "backgroundColor": c_colors}],
-                    },
-                    "options": {
-                        "title": {"display": True,
-                                  "text": "Commodity 7d Change (%)",
-                                  "fontSize": 16},
-                        "legend": {"display": False},
-                        "scales": {
-                            "xAxes": [{"ticks": {"beginAtZero": True}}],
-                        },
-                    },
-                }
-                charts["commodity_changes"] = _quickchart_url(config)
 
     return charts
 

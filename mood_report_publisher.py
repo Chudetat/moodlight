@@ -201,7 +201,6 @@ def insert_chart_images(html, chart_urls):
         ("market_performance", "MOOD DASHBOARD"),
         ("empathy_trend", "MOOD DASHBOARD"),
         ("emotion_distribution", "EMOTION MAP"),
-        ("commodity_changes", "WHAT MOVED"),
     ]
 
     img_style = "max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0;"
