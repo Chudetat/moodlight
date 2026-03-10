@@ -164,7 +164,7 @@ export function WorldViewTable() {
         </p>
       ) : (
         <div className="max-h-[600px] overflow-auto rounded-lg border border-border">
-          <table className="w-full table-fixed text-xs">
+          <table className="w-full min-w-[640px] table-fixed text-xs">
             <colgroup>
               <col className="w-[53%]" />
               <col className="w-[8%]" />
