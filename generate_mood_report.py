@@ -574,6 +574,9 @@ OUTPUT FORMAT — use this exact structure with markdown:
 # THE MOOD REPORT
 *[Full date]*
 
+## [PROVOCATIVE HEADLINE]
+Write a sharp, attention-grabbing headline (8-12 words) that captures the day's key tension, surprise, or contradiction in the data. Think newspaper front page, not corporate memo. Examples of the tone: "Markets Celebrate While Fear Quietly Builds", "The Calm Before What Exactly?", "Wall Street's Optimism Has a Shelf Life Problem".
+
 ## BOTTOM LINE
 [One paragraph. What the mood data says today in plain English.]
 
@@ -600,6 +603,9 @@ Note: Early data — [N] total signals tracked. Statistical significance require
 
 ## FORWARD LOOK
 [2-3 things to watch. Not predictions — things the data says are worth monitoring. Ground each in a specific data point.]
+
+## WHAT TO DO ABOUT IT
+[2-3 concrete, actionable items for the reader. Be specific — not "stay informed" but "watch the 10Y yield this week" or "if you're exposed to energy, the sentiment divergence suggests caution." Frame as smart moves, not financial advice. End with one sentence that makes the reader feel like they have an edge.]
 
 ---
 *The Mood Report is powered by Moodlight Intelligence. Data is measured, not predicted.*
