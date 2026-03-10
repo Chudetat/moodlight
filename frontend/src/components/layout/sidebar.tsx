@@ -151,11 +151,9 @@ export function Sidebar() {
         <Separator className="my-4" />
 
         {/* Watchlists */}
-        <div id="sidebar-watchlists">
-          <BrandWatchlist />
-          <Separator className="my-3" />
-          <TopicWatchlist />
-        </div>
+        <BrandWatchlist />
+        <Separator className="my-3" />
+        <TopicWatchlist />
         <Separator className="my-3" />
 
         {/* Getting Started */}

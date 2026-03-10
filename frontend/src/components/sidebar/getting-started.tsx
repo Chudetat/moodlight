@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useBrands, useTopics } from "@/lib/hooks/use-api";
-import { restartTour } from "@/components/onboarding/guided-tour";
 
 export function GettingStarted() {
   const { username } = useAuth();
@@ -26,18 +25,7 @@ export function GettingStarted() {
     localStorage.getItem("onboarding_chat") === "true";
   const done = [hasBrands, hasTopics, hasReport, hasChat].filter(Boolean).length;
 
-  if (done >= 4) {
-    return (
-      <div>
-        <button
-          className="text-xs text-muted-foreground hover:text-foreground"
-          onClick={restartTour}
-        >
-          Take the guided tour
-        </button>
-      </div>
-    );
-  }
+  if (done >= 4) return null;
 
   return (
     <div className="space-y-2">
@@ -55,12 +43,6 @@ export function GettingStarted() {
           Dismiss
         </button>
       </div>
-      <button
-        className="text-xs text-primary hover:underline"
-        onClick={restartTour}
-      >
-        Take the guided tour
-      </button>
       <div className="space-y-1 text-sm">
         <div className="flex items-center gap-2">
           <span>{hasBrands ? "\u2705" : "\u2B1C"}</span>
