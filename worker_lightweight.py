@@ -42,6 +42,10 @@ JOBS = {
         "module": "generate_mood_report",
         "label": "The Mood Report (Daily Newsletter)",
     },
+    "trending": {
+        "module": "generate_trending_report",
+        "label": "Trending Brands Report (Weekly)",
+    },
 }
 
 
