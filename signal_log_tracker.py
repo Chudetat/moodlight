@@ -249,9 +249,9 @@ def fill_outcomes(engine):
 
     for _, row in pending.iterrows():
         sig_date = pd.Timestamp(row["signal_date"]).date()
-        spy_entry = row["spy_price_at_signal"]
-        brand_ticker = row["brand_ticker"]
-        brand_entry = row["brand_price_at_signal"]
+        spy_entry = row["spy_price_at_signal"] if pd.notna(row["spy_price_at_signal"]) else None
+        brand_ticker = row["brand_ticker"] if pd.notna(row["brand_ticker"]) else None
+        brand_entry = row["brand_price_at_signal"] if pd.notna(row["brand_price_at_signal"]) else None
 
         updates = {}
 
