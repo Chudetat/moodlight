@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { useDashboardStore } from "@/store/dashboard-store";
 import { useTopicVLDS, useAlerts, useCombinedData, useTopics } from "@/lib/hooks/use-api";
 import { normalizeEmpathyScore } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -128,6 +129,7 @@ function TopicCard({
 
 export function TopicIntelligence() {
   const { username } = useAuth();
+  const searchQuery = useDashboardStore((s) => s.searchQuery);
   const { data: vldsData, isLoading: vldsLoading } = useTopicVLDS();
   const { data: topicWatchlist } = useTopics(username);
   const { data: alertsData } = useAlerts(username, 7);
@@ -220,12 +222,18 @@ export function TopicIntelligence() {
       (topicWatchlist?.topics ?? []).map((t) => t.topic_name.toLowerCase())
     );
 
-    const t = Array.from(topicMap.entries())
+    let t = Array.from(topicMap.entries())
       .filter(([key]) => watchlistTopics.size === 0 || watchlistTopics.has(key))
       .sort(([, a], [, b]) => b.velocity - a.velocity);
 
+    // Apply search query filter
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      t = t.filter(([key]) => key.includes(q));
+    }
+
     return { topics: t, topicAlerts: ta, topicEmpathy: te, topicEmotions: temo };
-  }, [vldsData, alertsData, combinedData, topicWatchlist]);
+  }, [vldsData, alertsData, combinedData, topicWatchlist, searchQuery]);
 
   if (vldsLoading) {
     return (

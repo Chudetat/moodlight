@@ -128,7 +128,7 @@ export default function DashboardPage() {
         </section>
 
         {/* 14b. Brand Comparison */}
-        <section style={{ contentVisibility: "auto", containIntrinsicSize: "auto 300px" }}>
+        <section id="brand-comparison" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 300px" }}>
           <BrandComparison />
         </section>
 

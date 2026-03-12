@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { useDashboardStore } from "@/store/dashboard-store";
 import { useAlerts, useAlertPreferences } from "@/lib/hooks/use-api";
 import { AlertCard } from "./alert-card";
 import { Button } from "@/components/ui/button";
@@ -20,21 +21,32 @@ const PAGE_SIZE = 20;
 
 export function IntelligenceAlerts() {
   const { username } = useAuth();
+  const searchQuery = useDashboardStore((s) => s.searchQuery);
   const [filter, setFilter] = useState<SeverityFilter>("all");
   const [showCount, setShowCount] = useState(PAGE_SIZE);
   const { data, isLoading } = useAlerts(username, 7);
   const { data: prefsData } = useAlertPreferences();
 
-  // Filter by user alert preferences and sort
+  // Filter by user alert preferences, search query, and sort
   const { prefFiltered, sorted } = useMemo(() => {
     const allAlerts = data?.data ?? [];
     const prefs = prefsData?.preferences;
-    const pf = prefs
+    let pf = prefs
       ? allAlerts.filter((a) => {
           const pref = prefs[a.alert_type];
           return pref === undefined || pref.enabled;
         })
       : allAlerts;
+
+    // Apply search query filter
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      pf = pf.filter((a) =>
+        [a.title, a.summary, a.description, a.brand, a.brand_name, a.topic, a.alert_type]
+          .filter(Boolean)
+          .some((field) => String(field).toLowerCase().includes(q))
+      );
+    }
 
     // Sort: unread first, then by timestamp descending
     const s = [...pf].sort((a, b) => {
@@ -43,7 +55,7 @@ export function IntelligenceAlerts() {
     });
 
     return { prefFiltered: pf, sorted: s };
-  }, [data, prefsData]);
+  }, [data, prefsData, searchQuery]);
 
   const isPrediction = (a: { alert_type: string }) =>
     a.alert_type.startsWith("predictive_");

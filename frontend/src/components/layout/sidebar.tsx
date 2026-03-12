@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LogOut, X } from "lucide-react";
+import { LogOut, Search, X } from "lucide-react";
 import { BrandWatchlist } from "@/components/sidebar/brand-watchlist";
 import { TopicWatchlist } from "@/components/sidebar/topic-watchlist";
 import { GettingStarted } from "@/components/sidebar/getting-started";
@@ -93,12 +93,23 @@ export function Sidebar() {
           Controls
         </p>
         <div className="space-y-3">
-          <Input
-            placeholder='Search for a topic, e.g. "student loans"'
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 text-sm"
-          />
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder='Search topics, brands, alerts...'
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 pl-7 pr-7 text-sm"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
           <div className="flex items-center justify-between">
             <Label htmlFor="compare-mode" className="text-sm">
               Compare Brands
@@ -106,7 +117,16 @@ export function Sidebar() {
             <Switch
               id="compare-mode"
               checked={compareMode}
-              onCheckedChange={setCompareMode}
+              onCheckedChange={(checked) => {
+                setCompareMode(checked);
+                if (checked) {
+                  setTimeout(() => {
+                    document
+                      .getElementById("brand-comparison")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 100);
+                }
+              }}
             />
           </div>
           {compareMode && (

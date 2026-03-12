@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useDashboardStore } from "@/store/dashboard-store";
 import { useCombinedData } from "@/lib/hooks/use-api";
 import { normalizeEmpathyScore } from "@/lib/utils";
 import { ScatterChart, type ScatterSeries } from "@/components/charts/scatter-chart";
@@ -8,15 +9,18 @@ import { HelperButton } from "@/components/shared/helper-button";
 import { ChartSkeleton } from "@/components/shared/loading-skeleton";
 
 export function TrendingHeadlines() {
+  const searchQuery = useDashboardStore((s) => s.searchQuery);
   const { data, isLoading } = useCombinedData(7);
 
   const { chartData, insights } = useMemo(() => {
     const items = data?.data ?? [];
     if (items.length === 0) return { chartData: [] as ScatterSeries[], insights: [] };
 
+    const q = searchQuery.trim().toLowerCase();
     const now = Date.now();
     const points = items
       .filter((d) => d._source_table === "news_scored" && d.text)
+      .filter((d) => !q || d.text.toLowerCase().includes(q))
       .map((d) => {
         const ageHours =
           (now - new Date(d.created_at).getTime()) / (1000 * 60 * 60);
@@ -37,7 +41,7 @@ export function TrendingHeadlines() {
       .map((p) => p.label);
 
     return { chartData, insights };
-  }, [data]);
+  }, [data, searchQuery]);
 
   if (isLoading) return <ChartSkeleton />;
 
