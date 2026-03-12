@@ -29,6 +29,7 @@ import { IntelDashboard } from "@/components/sections/intel-dashboard";
 import { HistoricalTrends } from "@/components/sections/historical-trends";
 import { SignalTrackRecord } from "@/components/sections/signal-track-record";
 import { AskMoodlight } from "@/components/sections/ask-moodlight";
+import { SearchResults } from "@/components/sections/search-results";
 
 export default function DashboardPage() {
   return (
@@ -48,6 +49,9 @@ export default function DashboardPage() {
             Real-time intelligence for what moves markets, culture, and minds.
           </p>
         </div>
+
+        {/* Search Results (appears when search is active) */}
+        <SearchResults />
 
         {/* 1. Cultural Pulse */}
         <CulturalPulse />
