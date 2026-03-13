@@ -30,6 +30,7 @@ export function WorldViewTable() {
   const { data, isLoading } = useCombinedData(7);
   const [sortBy, setSortBy] = useState<SortKey>("created_at");
   const [sortAsc, setSortAsc] = useState(false);
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
   const rows = useMemo<RowData[]>(() => {
     const raw = data?.data ?? [];
@@ -44,7 +45,7 @@ export function WorldViewTable() {
         return !isNaN(createdAt) && now - createdAt < seventyTwoHoursMs;
       })
       .map((r) => ({
-        text: String(r.text ?? "").slice(0, 200),
+        text: String(r.text ?? ""),
         source: cleanSourceName(String(r.source ?? "unknown")),
         topic: String(r.topic ?? ""),
         empathy_label: empathyLabel(Number(r.empathy_score ?? 0)),
@@ -166,9 +167,8 @@ export function WorldViewTable() {
         <div className="max-h-[600px] overflow-auto rounded-lg border border-border">
           <table className="w-full min-w-[640px] table-fixed text-xs">
             <colgroup>
-              <col className="w-[53%]" />
+              <col className="w-[63%]" />
               <col className="w-[8%]" />
-              <col className="w-[10%]" />
               <col className="w-[10%]" />
               <col className="w-[10%]" />
               <col className="w-[9%]" />
@@ -193,12 +193,6 @@ export function WorldViewTable() {
                 >
                   Topic{sortArrow("topic")}
                 </th>
-                <th
-                  className="cursor-pointer p-2 hover:text-foreground"
-                  onClick={() => handleSort("empathy_score")}
-                >
-                  Empathy{sortArrow("empathy_score")}
-                </th>
                 <th className="p-2">Emotion</th>
                 <th className="p-2 text-right">Posted</th>
               </tr>
@@ -207,16 +201,16 @@ export function WorldViewTable() {
               {rows.map((r, i) => (
                 <tr
                   key={i}
-                  className="border-b border-border/50 hover:bg-muted/30"
+                  className="cursor-pointer border-b border-border/50 hover:bg-muted/30"
+                  onClick={() => setExpandedRow(expandedRow === i ? null : i)}
                 >
                   <td className="p-2">
-                    <span className="line-clamp-4 leading-relaxed">
+                    <span className={`leading-relaxed ${expandedRow === i ? "" : "line-clamp-2"}`}>
                       {r.text}
                     </span>
                   </td>
                   <td className="truncate p-2">{r.source}</td>
                   <td className="truncate p-2">{r.topic}</td>
-                  <td className="truncate p-2">{r.empathy_label}</td>
                   <td className="truncate p-2 capitalize">
                     {r.emotion || "\u2014"}
                   </td>
