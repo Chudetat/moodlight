@@ -166,9 +166,8 @@ export function WorldViewTable() {
         <div className="max-h-[600px] overflow-auto rounded-lg border border-border">
           <table className="w-full min-w-[640px] table-fixed text-xs">
             <colgroup>
-              <col className="w-[53%]" />
+              <col className="w-[63%]" />
               <col className="w-[8%]" />
-              <col className="w-[10%]" />
               <col className="w-[10%]" />
               <col className="w-[10%]" />
               <col className="w-[9%]" />
@@ -193,12 +192,6 @@ export function WorldViewTable() {
                 >
                   Topic{sortArrow("topic")}
                 </th>
-                <th
-                  className="cursor-pointer p-2 hover:text-foreground"
-                  onClick={() => handleSort("empathy_score")}
-                >
-                  Empathy{sortArrow("empathy_score")}
-                </th>
                 <th className="p-2">Emotion</th>
                 <th className="p-2 text-right">Posted</th>
               </tr>
@@ -216,7 +209,6 @@ export function WorldViewTable() {
                   </td>
                   <td className="truncate p-2">{r.source}</td>
                   <td className="truncate p-2">{r.topic}</td>
-                  <td className="truncate p-2">{r.empathy_label}</td>
                   <td className="truncate p-2 capitalize">
                     {r.emotion || "\u2014"}
                   </td>
