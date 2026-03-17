@@ -148,7 +148,7 @@ def discover_competitors(brand_name):
 
         client = anthropic.Anthropic(api_key=api_key)
         response = client.messages.create(
-            model="claude-opus-4-6",
+            model="claude-sonnet-4-5-20250929",
             max_tokens=1024,
             messages=[
                 {

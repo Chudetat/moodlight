@@ -260,7 +260,7 @@ not correlation. Only escalate when the combination reveals something no individ
 
     try:
         response = client.messages.create(
-            model="claude-opus-4-6",
+            model="claude-sonnet-4-5-20250929",
             max_tokens=1000,
             system=(
                 "You are a senior intelligence analyst specializing in connecting "

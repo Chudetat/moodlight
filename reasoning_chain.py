@@ -83,7 +83,7 @@ DEFAULT_CHAIN = ["situation", "causal", "confidence"]
 
 STEP_DISPATCH = {}  # Populated after function definitions
 
-MODEL = "claude-opus-4-6"
+MODEL = "claude-sonnet-4-5-20250929"
 MAX_TOKENS_PER_STEP = 600
 
 # Identity preamble — prevents the model from confusing Moodlight (the platform)

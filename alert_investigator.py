@@ -35,7 +35,7 @@ def investigate_alert(alert, df_news=None, df_social=None, df_markets=None):
 
     try:
         response = client.messages.create(
-            model="claude-opus-4-6",
+            model="claude-sonnet-4-5-20250929",
             max_tokens=800,
             messages=[{"role": "user", "content": prompt}],
         )
