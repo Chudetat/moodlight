@@ -190,22 +190,27 @@ def insert_chart_images(html, chart_urls):
     """Insert QuickChart.io chart images into newsletter HTML after sections.
 
     Finds section badge <span> elements by text and inserts <img> tags
-    before the next section. Gracefully skips missing charts.
+    before the next section. Supports dynamic placements via _placements key,
+    falling back to legacy hardcoded positions.
     """
     if not chart_urls:
         return html
 
-    # Chart key → section it follows, processed in reverse to preserve positions.
-    # For charts sharing a section, list bottom-first so reversed order inserts top one last.
-    chart_placements = [
-        ("market_performance", "MOOD DASHBOARD"),
-        ("empathy_trend", "MOOD DASHBOARD"),
-        ("emotion_distribution", "EMOTION MAP"),
-    ]
+    # Dynamic placements from build_chart_urls, or legacy fallback
+    placements = chart_urls.get("_placements", {})
+    if not placements:
+        placements = {
+            "market_performance": "MARKETS & MOOD",
+            "empathy_trend": "WHAT'S INTERESTING",
+            "emotion_distribution": "ALSO WORTH NOTICING",
+        }
+
+    # Build (key, section) pairs, process in reverse to preserve insert positions
+    chart_list = [(k, placements[k]) for k in placements if k in chart_urls]
 
     img_style = "max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0;"
 
-    for chart_key, section_name in reversed(chart_placements):
+    for chart_key, section_name in reversed(chart_list):
         url = chart_urls.get(chart_key)
         if not url:
             continue

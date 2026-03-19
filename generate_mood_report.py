@@ -244,7 +244,7 @@ def load_mood_data(engine):
         print(f"  Could not load emotions: {e}")
         data["emotions"] = pd.DataFrame()
 
-    # --- Top headlines (highest intensity, last 3d) ---
+    # --- Top headlines (highest intensity, last 3d) — economics ---
     try:
         cutoff_3d = (now - timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
         headlines = pd.read_sql(
@@ -263,6 +263,46 @@ def load_mood_data(engine):
     except Exception as e:
         print(f"  Could not load headlines: {e}")
         data["headlines"] = pd.DataFrame()
+
+    # --- All-topics headlines (24h) — for cross-domain observations ---
+    try:
+        cutoff_24h = (now - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+        all_headlines = pd.read_sql(
+            sql_text("""
+                SELECT text, topic, intensity, empathy_score, emotion_top_1,
+                       source, created_at
+                FROM news_scored
+                WHERE created_at >= :cutoff
+                ORDER BY intensity DESC
+                LIMIT 20
+            """),
+            engine,
+            params={"cutoff": cutoff_24h},
+        )
+        data["all_headlines"] = all_headlines
+    except Exception as e:
+        print(f"  Could not load all-topics headlines: {e}")
+        data["all_headlines"] = pd.DataFrame()
+
+    # --- All-topics social posts (24h) ---
+    try:
+        cutoff_24h = (now - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+        all_social = pd.read_sql(
+            sql_text("""
+                SELECT text, topic, intensity, empathy_score, emotion_top_1,
+                       source, created_at
+                FROM social_scored
+                WHERE created_at >= :cutoff
+                ORDER BY intensity DESC
+                LIMIT 15
+            """),
+            engine,
+            params={"cutoff": cutoff_24h},
+        )
+        data["all_social"] = all_social
+    except Exception as e:
+        print(f"  Could not load all-topics social: {e}")
+        data["all_social"] = pd.DataFrame()
 
     return data
 
@@ -373,7 +413,7 @@ def build_newsletter_context(data):
             lines.append(f"  {row['emotion_top_1']}: {row['cnt']} ({pct:.0f}%)")
         sections.append("\n".join(lines))
 
-    # Headlines
+    # Economic headlines
     hdl = data.get("headlines", pd.DataFrame())
     if not hdl.empty:
         lines = ["TOP ECONOMIC HEADLINES BY INTENSITY (3d):"]
@@ -383,6 +423,30 @@ def build_newsletter_context(data):
                 f"  [{ts}] (intensity: {row['intensity']}, empathy: {row['empathy_score']:.4f}) "
                 f"{str(row['text'])[:250]}"
             )
+        sections.append("\n".join(lines))
+
+    # All-topics headlines (cross-domain material)
+    all_hdl = data.get("all_headlines", pd.DataFrame())
+    if not all_hdl.empty:
+        lines = ["TOP HEADLINES ACROSS ALL TOPICS (24h):"]
+        for _, row in all_hdl.iterrows():
+            topic = row.get("topic", "N/A")
+            emotion = row.get("emotion_top_1", "N/A")
+            intensity = row.get("intensity", 0)
+            text = str(row.get("text", ""))[:200]
+            lines.append(f"  [{topic}] {text} | emotion: {emotion} | intensity: {intensity:.1f}")
+        sections.append("\n".join(lines))
+
+    # All-topics social posts
+    all_social = data.get("all_social", pd.DataFrame())
+    if not all_social.empty:
+        lines = ["TOP SOCIAL POSTS ACROSS ALL TOPICS (24h):"]
+        for _, row in all_social.iterrows():
+            topic = row.get("topic", "N/A")
+            emotion = row.get("emotion_top_1", "N/A")
+            intensity = row.get("intensity", 0)
+            text = str(row.get("text", ""))[:200]
+            lines.append(f"  [{topic}] {text} | emotion: {emotion} | intensity: {intensity:.1f}")
         sections.append("\n".join(lines))
 
     return "\n\n".join(sections)
@@ -399,11 +463,131 @@ def _quickchart_url(config, width=540, height=280):
     return f"https://quickchart.io/chart?c={encoded}&w={width}&h={height}&bkg=white"
 
 
-def build_chart_urls(data):
-    """Build QuickChart.io image URLs for newsletter visuals from raw data."""
-    charts = {}
+def _build_top_movers_chart(data):
+    """Build the Top Movers snapshot — the 6 biggest % changes across all data.
 
-    # 1. 7-Day Empathy Trend (line chart)
+    Always included as the anchor visual. Shows normalized % change so
+    sentiment shifts, market moves, and commodity spikes are comparable.
+    """
+    movers = []  # (label, pct_change)
+
+    # Sentiment: news empathy % change (latest day vs previous day)
+    news_st = data.get("sentiment_trend", pd.DataFrame())
+    if not news_st.empty and len(news_st) >= 2:
+        latest = float(news_st.iloc[-1]["avg_empathy"])
+        prev = float(news_st.iloc[-2]["avg_empathy"])
+        if prev != 0:
+            movers.append(("News Empathy", ((latest - prev) / prev) * 100))
+
+    # Sentiment: news intensity % change
+    if not news_st.empty and len(news_st) >= 2:
+        latest = float(news_st.iloc[-1]["avg_intensity"])
+        prev = float(news_st.iloc[-2]["avg_intensity"])
+        if prev != 0:
+            movers.append(("News Intensity", ((latest - prev) / prev) * 100))
+
+    # Sentiment: social empathy % change
+    social_st = data.get("social_sentiment_trend", pd.DataFrame())
+    if not social_st.empty and len(social_st) >= 2:
+        latest = float(social_st.iloc[-1]["avg_empathy"])
+        prev = float(social_st.iloc[-2]["avg_empathy"])
+        if prev != 0:
+            movers.append(("Social Empathy", ((latest - prev) / prev) * 100))
+
+    # Social intensity
+    if not social_st.empty and len(social_st) >= 2:
+        latest = float(social_st.iloc[-1]["avg_intensity"])
+        prev = float(social_st.iloc[-2]["avg_intensity"])
+        if prev != 0:
+            movers.append(("Social Intensity", ((latest - prev) / prev) * 100))
+
+    # Markets: SPY, QQQ, DIA
+    mkt = data.get("markets", pd.DataFrame())
+    if not mkt.empty:
+        for _, row in mkt.iterrows():
+            pct_str = str(row.get("change_percent", "0%")).replace("%", "")
+            try:
+                pct = float(pct_str)
+            except (ValueError, TypeError):
+                pct = 0.0
+            movers.append((str(row["symbol"]), pct))
+
+    # Commodities
+    comm = data.get("commodities", pd.DataFrame())
+    if not comm.empty and "metric_value_prev" in comm.columns:
+        for _, row in comm.dropna(subset=["metric_value_prev"]).iterrows():
+            prev_val = float(row["metric_value_prev"])
+            if prev_val != 0:
+                delta_pct = ((float(row["metric_value"]) - prev_val) / prev_val) * 100
+                movers.append((str(row["scope_name"]).title(), delta_pct))
+
+    if len(movers) < 3:
+        return None
+
+    # Sort by absolute magnitude, take top 6
+    movers.sort(key=lambda x: abs(x[1]), reverse=True)
+    top = movers[:6]
+
+    # Build horizontal bar chart
+    labels = [m[0] for m in top]
+    values = [round(m[1], 1) for m in top]
+    colors = ["#2E7D32" if v >= 0 else "#DC143C" for v in values]
+
+    config = {
+        "type": "horizontalBar",
+        "data": {
+            "labels": labels,
+            "datasets": [{
+                "data": values,
+                "backgroundColor": colors,
+            }],
+        },
+        "options": {
+            "title": {"display": True, "text": "Top Movers (% Change, 24h)",
+                      "fontSize": 16, "fontColor": "#333"},
+            "legend": {"display": False},
+            "scales": {
+                "xAxes": [{"ticks": {"beginAtZero": True, "callback": "PERCENT_CB"},
+                           "scaleLabel": {"display": True, "labelString": "% Change"}}],
+            },
+        },
+    }
+
+    # QuickChart doesn't support JS callbacks, so add % via plugin annotation
+    # Instead, embed the % in the labels
+    config["options"]["plugins"] = {
+        "datalabels": {
+            "display": True,
+            "anchor": "end",
+            "align": "end",
+            "formatter": "PERCENT_FMT",
+            "color": "#333",
+            "font": {"weight": "bold"},
+        }
+    }
+
+    # Clean up — QuickChart can't run JS, so remove callback placeholders
+    config["options"]["scales"]["xAxes"][0]["ticks"].pop("callback", None)
+    config["options"].pop("plugins", None)
+
+    config_json = json.dumps(config, separators=(",", ":"))
+    encoded = quote(config_json, safe="")
+    return f"https://quickchart.io/chart?c={encoded}&w=540&h=280&bkg=white"
+
+
+def build_chart_urls(data):
+    """Build QuickChart.io image URLs for newsletter visuals.
+
+    Always includes the Top Movers snapshot, plus the 2 most relevant
+    charts from a scored pool of options.
+    """
+    palette = ["#1976D2", "#E65100", "#7B1FA2", "#00897B", "#2E7D32",
+               "#C62828", "#F57F17", "#1565C0", "#AD1457", "#4E342E"]
+
+    # Pool: (key, score, config_or_None)
+    pool = []
+
+    # --- 1. Empathy Trend (line) — score by variance ---
     news_st = data.get("sentiment_trend", pd.DataFrame())
     social_st = data.get("social_sentiment_trend", pd.DataFrame())
     if not news_st.empty or not social_st.empty:
@@ -413,7 +597,6 @@ def build_chart_urls(data):
         if not social_st.empty:
             all_days.update(str(d) for d in social_st["day"])
         labels = sorted(all_days)
-
         formatted_labels = []
         for d in labels:
             try:
@@ -422,53 +605,52 @@ def build_chart_urls(data):
                 formatted_labels.append(d)
 
         datasets = []
+        all_values = []
         if not news_st.empty:
             news_map = {str(r["day"]): round(float(r["avg_empathy"]), 4)
                         for _, r in news_st.iterrows()}
+            vals = [news_map.get(d) for d in labels]
+            all_values.extend(v for v in vals if v is not None)
             datasets.append({
                 "label": "News",
-                "data": [news_map.get(d) for d in labels],
+                "data": vals,
                 "borderColor": "#1976D2",
                 "backgroundColor": "rgba(25,118,210,0.1)",
-                "fill": True,
-                "lineTension": 0.3,
-                "pointRadius": 4,
+                "fill": True, "lineTension": 0.3, "pointRadius": 4,
             })
         if not social_st.empty:
             social_map = {str(r["day"]): round(float(r["avg_empathy"]), 4)
                           for _, r in social_st.iterrows()}
+            vals = [social_map.get(d) for d in labels]
+            all_values.extend(v for v in vals if v is not None)
             datasets.append({
                 "label": "Social",
-                "data": [social_map.get(d) for d in labels],
+                "data": vals,
                 "borderColor": "#E65100",
                 "backgroundColor": "rgba(230,81,0,0.1)",
-                "fill": True,
-                "lineTension": 0.3,
-                "pointRadius": 4,
+                "fill": True, "lineTension": 0.3, "pointRadius": 4,
             })
 
         if datasets:
+            # Score: higher variance = more interesting trend
+            variance = max(all_values) - min(all_values) if len(all_values) >= 2 else 0
+            score = min(variance * 100, 10)  # normalize to ~0-10
             config = {
                 "type": "line",
                 "data": {"labels": formatted_labels, "datasets": datasets},
                 "options": {
-                    "title": {"display": True, "text": "7-Day Empathy Trend",
-                              "fontSize": 16},
+                    "title": {"display": True, "text": "7-Day Empathy Trend", "fontSize": 16},
                     "legend": {"position": "bottom"},
-                    "scales": {
-                        "yAxes": [{"scaleLabel": {"display": True,
-                                                  "labelString": "Empathy Score"}}],
-                    },
+                    "scales": {"yAxes": [{"scaleLabel": {"display": True,
+                                                         "labelString": "Empathy Score"}}]},
                 },
             }
-            charts["empathy_trend"] = _quickchart_url(config)
+            pool.append(("empathy_trend", score, config, "WHAT'S INTERESTING"))
 
-    # 2. Market Performance (horizontal bar)
+    # --- 2. Market Performance (horizontal bar) — score by magnitude ---
     mkt = data.get("markets", pd.DataFrame())
     if not mkt.empty:
-        symbols = []
-        changes = []
-        colors = []
+        symbols, changes, colors = [], [], []
         for _, row in mkt.iterrows():
             pct_str = str(row.get("change_percent", "0%")).replace("%", "")
             try:
@@ -479,46 +661,147 @@ def build_chart_urls(data):
             changes.append(round(pct, 2))
             colors.append("#2E7D32" if pct >= 0 else "#DC143C")
 
+        max_move = max(abs(c) for c in changes) if changes else 0
+        score = min(max_move * 3, 10)  # 1% move = score 3, 3%+ = 10
         config = {
             "type": "horizontalBar",
-            "data": {
-                "labels": symbols,
-                "datasets": [{"data": changes, "backgroundColor": colors}],
-            },
+            "data": {"labels": symbols, "datasets": [{"data": changes, "backgroundColor": colors}]},
             "options": {
-                "title": {"display": True, "text": "Market Performance (%)",
-                          "fontSize": 16},
+                "title": {"display": True, "text": "Market Performance (%)", "fontSize": 16},
                 "legend": {"display": False},
-                "scales": {
-                    "xAxes": [{"ticks": {"beginAtZero": True}}],
-                },
+                "scales": {"xAxes": [{"ticks": {"beginAtZero": True}}]},
             },
         }
-        charts["market_performance"] = _quickchart_url(config)
+        pool.append(("market_performance", score, config, "MARKETS & MOOD"))
 
-    # 3. Emotion Distribution (doughnut)
+    # --- 3. Emotion Distribution (doughnut) — score by skewness ---
     emo = data.get("emotions", pd.DataFrame())
     if not emo.empty and len(emo) >= 2:
         emotion_labels = [str(e) for e in emo["emotion_top_1"]]
         counts = [int(c) for c in emo["cnt"]]
-        palette = ["#1976D2", "#E65100", "#7B1FA2", "#00897B", "#2E7D32",
-                   "#C62828", "#F57F17", "#1565C0", "#AD1457", "#4E342E"]
         bg_colors = [palette[i % len(palette)] for i in range(len(emotion_labels))]
+
+        # Score: if top emotion dominates >60%, it's interesting (skewed)
+        total = sum(counts)
+        top_pct = counts[0] / total if total else 0
+        score = top_pct * 8  # 75% dominance = score 6, 50% = score 4
 
         config = {
             "type": "doughnut",
-            "data": {
-                "labels": emotion_labels,
-                "datasets": [{"data": counts, "backgroundColor": bg_colors}],
-            },
+            "data": {"labels": emotion_labels, "datasets": [{"data": counts, "backgroundColor": bg_colors}]},
             "options": {
-                "title": {"display": True, "text": "Emotion Distribution (3d)",
-                          "fontSize": 16},
+                "title": {"display": True, "text": "Emotion Distribution (3d)", "fontSize": 16},
                 "legend": {"position": "right"},
             },
         }
-        charts["emotion_distribution"] = _quickchart_url(config, width=540, height=300)
+        pool.append(("emotion_distribution", score, config, "ALSO WORTH NOTICING"))
 
+    # --- 4. Topic Intensity (bar) — what topics are hottest today ---
+    all_hdl = data.get("all_headlines", pd.DataFrame())
+    if not all_hdl.empty and "topic" in all_hdl.columns and "intensity" in all_hdl.columns:
+        topic_avg = all_hdl.groupby("topic")["intensity"].mean().sort_values(ascending=False).head(8)
+        if len(topic_avg) >= 3:
+            t_labels = [str(t).title() for t in topic_avg.index]
+            t_values = [round(float(v), 1) for v in topic_avg.values]
+            t_colors = [palette[i % len(palette)] for i in range(len(t_labels))]
+
+            # Score: higher if spread between top and bottom topic is large
+            spread = t_values[0] - t_values[-1] if len(t_values) >= 2 else 0
+            score = min(spread * 2, 10)
+
+            config = {
+                "type": "horizontalBar",
+                "data": {"labels": t_labels, "datasets": [{"data": t_values, "backgroundColor": t_colors}]},
+                "options": {
+                    "title": {"display": True, "text": "Topic Intensity (24h)", "fontSize": 16},
+                    "legend": {"display": False},
+                    "scales": {"xAxes": [{"ticks": {"beginAtZero": True}}]},
+                },
+            }
+            pool.append(("topic_intensity", score, config, "WHAT'S INTERESTING"))
+
+    # --- 5. Commodity Moves (bar) — score by magnitude of changes ---
+    comm = data.get("commodities", pd.DataFrame())
+    if not comm.empty and "metric_value_prev" in comm.columns:
+        comm_with_delta = comm.dropna(subset=["metric_value_prev"])
+        if not comm_with_delta.empty:
+            c_labels, c_values, c_colors = [], [], []
+            for _, row in comm_with_delta.iterrows():
+                delta_pct = ((row["metric_value"] - row["metric_value_prev"])
+                             / row["metric_value_prev"]) * 100
+                c_labels.append(str(row["scope_name"]))
+                c_values.append(round(delta_pct, 1))
+                c_colors.append("#2E7D32" if delta_pct >= 0 else "#DC143C")
+
+            max_commodity_move = max(abs(v) for v in c_values) if c_values else 0
+            score = min(max_commodity_move * 2, 10)  # 2% move = score 4, 5%+ = 10
+
+            if len(c_labels) >= 2:
+                config = {
+                    "type": "horizontalBar",
+                    "data": {"labels": c_labels, "datasets": [{"data": c_values, "backgroundColor": c_colors}]},
+                    "options": {
+                        "title": {"display": True, "text": "Commodity Price Changes (%)", "fontSize": 16},
+                        "legend": {"display": False},
+                        "scales": {"xAxes": [{"ticks": {"beginAtZero": True}}]},
+                    },
+                }
+                pool.append(("commodity_moves", score, config, "MARKETS & MOOD"))
+
+    # --- 6. News vs Social Empathy (grouped bar) — score by divergence ---
+    if not news_st.empty and not social_st.empty:
+        news_map = {str(r["day"]): round(float(r["avg_empathy"]), 4) for _, r in news_st.iterrows()}
+        social_map = {str(r["day"]): round(float(r["avg_empathy"]), 4) for _, r in social_st.iterrows()}
+        common_days = sorted(set(news_map.keys()) & set(social_map.keys()))
+        if len(common_days) >= 3:
+            divergences = [abs(news_map[d] - social_map[d]) for d in common_days]
+            avg_div = sum(divergences) / len(divergences)
+            score = min(avg_div * 200, 10)  # 0.05 avg divergence = score 10
+
+            formatted = []
+            for d in common_days:
+                try:
+                    formatted.append(pd.Timestamp(d).strftime("%b %d"))
+                except Exception:
+                    formatted.append(d)
+
+            config = {
+                "type": "bar",
+                "data": {
+                    "labels": formatted,
+                    "datasets": [
+                        {"label": "News", "data": [news_map[d] for d in common_days],
+                         "backgroundColor": "#1976D2"},
+                        {"label": "Social", "data": [social_map[d] for d in common_days],
+                         "backgroundColor": "#E65100"},
+                    ],
+                },
+                "options": {
+                    "title": {"display": True, "text": "News vs Social Empathy (7d)", "fontSize": 16},
+                    "legend": {"position": "bottom"},
+                    "scales": {"yAxes": [{"scaleLabel": {"display": True,
+                                                         "labelString": "Empathy Score"}}]},
+                },
+            }
+            pool.append(("news_vs_social", score, config, "WHAT'S INTERESTING"))
+
+    # --- Always include Top Movers ---
+    charts = {}
+    chart_placements = {}
+
+    top_movers_url = _build_top_movers_chart(data)
+    if top_movers_url:
+        charts["top_movers"] = top_movers_url
+        chart_placements["top_movers"] = "BOTTOM LINE"
+
+    # --- Select top 2 from pool (top movers is the anchor) ---
+    pool.sort(key=lambda x: x[1], reverse=True)
+    for key, _score, config, section in pool[:2]:
+        charts[key] = _quickchart_url(config, width=540, height=300 if key == "emotion_distribution" else 280)
+        chart_placements[key] = section
+
+    # Stash placements for insert_chart_images
+    charts["_placements"] = chart_placements
     return charts
 
 
@@ -526,59 +809,58 @@ def build_chart_urls(data):
 # 3. Newsletter Generation (Claude)
 # ---------------------------------------------------------------------------
 
-NEWSLETTER_SYSTEM_PROMPT = """You are the editor of The Mood Report — a daily data intelligence newsletter that measures economic sentiment before the markets price it in.
+NEWSLETTER_SYSTEM_PROMPT = """You are the writer behind The Mood Report — a daily newsletter that tells you what the world is feeling and why it matters.
 
-Your voice: Authoritative but accessible. Data-first. You don't predict — you measure. You let the numbers speak and point out what they're saying. Think Bloomberg Terminal meets morning coffee.
+You have access to sentiment data, market data, economic indicators, headlines across every topic, and social posts. Your job is to find the most interesting observations in today's data and write about them in a way that makes people feel smarter.
+
+Your reader might be a portfolio manager or a curious parent. Write for both. No jargon unless you explain it. Sharp observations, not data dumps.
+
+VOICE: Warm, sharp, curious. Like a smart friend who reads everything and texts you the interesting parts. Conversational, not performative. Funny when it's natural, never forced. Never breathless, never preachy. If it sounds like a Bloomberg terminal or a LinkedIn post, start over.
 
 RULES:
-1. Every claim must be grounded in the data provided. No training data. No made-up statistics.
-2. The BOTTOM LINE should be one paragraph that a busy executive reads and gets the picture.
-3. The MOOD DASHBOARD table must use exact numbers from the data.
-4. SIGNAL TRACKER must include sample size and accuracy disclaimers when <50 signals.
-5. FORWARD LOOK should identify 2-3 things to watch, not predict outcomes.
-6. Empathy scores: 0.04 = cold/hostile, 0.10 = detached/neutral, 0.30 = warm, 0.30+ = highly empathetic.
-7. Keep it under 1,000 words. Dense, not padded.
+
+1. EVERY CLAIM MUST BE GROUNDED IN THE DATA PROVIDED. No training data. No made-up statistics. Wear the data lightly — one well-placed number is worth more than five.
+
+2. OBSERVATIONS OVER METRICS. Don't just report that empathy went up 0.02. Tell the reader what's interesting — the contradiction, the second-order effect, the thing hiding in plain sight. The numbers support the story, they aren't the story.
+
+3. GO CROSS-DOMAIN. You have headlines from every topic — economics, entertainment, tech, labor, sports. The best observations sit at the intersection of two unrelated trends. A market move + a cultural shift. An economic indicator + how people are talking online. Find those collisions.
+
+4. EMPATHY FIRST, ECONOMICS SECOND. This is the rule that defines Moodlight. Do NOT lead with markets, oil prices, or Fed decisions — every other newsletter does that and your reader already saw it. Lead with the most emotionally resonant human observation in the data — how people are actually feeling, behaving, withdrawing, or surprising each other — and THEN connect it to the economic and global forces driving it. "Two-thirds of Americans stopped going to weddings because they can't afford it" is a Moodlight lead. "SPY dropped 1.4%" is not. Start with empathy, then show the machinery. That's what makes someone screenshot your newsletter instead of skimming it.
+
+5. NO REPETITIVE STRUCTURE. Every issue should feel different because every day IS different. Some days the lead is a market divergence. Some days it's a social media pattern. Some days it's a single buried headline that reveals something bigger. Follow the data, not a template.
+
+6. THE MARKET SNAPSHOT SHOULD BE BRIEF. Include SPY/QQQ/DIA and any notable commodity moves, but keep it to a few lines. Don't build the whole newsletter around market numbers — they're context, not the main event.
+
+7. EMPATHY SCORE REFERENCE: 0.04 = cold/hostile, 0.10 = detached/neutral, 0.30 = warm, 0.30+ = highly empathetic.
+
+8. KEEP IT UNDER 800 WORDS. Every sentence should earn its spot. If you can cut a sentence without losing meaning, cut it.
+
+9. EVEN WHEN THE NEWS IS HEAVY, FIND THE HUMAN ANGLE. You're not ignoring hard things — you're finding the part of the story about how people respond, adapt, and surprise each other.
 
 OUTPUT FORMAT — use this exact structure with markdown:
 
 # THE MOOD REPORT
 *[Full date]*
 
-## [PROVOCATIVE HEADLINE]
-Write a sharp, attention-grabbing headline (8-12 words) that captures the day's key tension, surprise, or contradiction in the data. Think newspaper front page, not corporate memo. Examples of the tone: "Markets Celebrate While Fear Quietly Builds", "The Calm Before What Exactly?", "Wall Street's Optimism Has a Shelf Life Problem".
+## [Sharp, specific headline that earns curiosity — not clickbait, not corporate]
 
 ## BOTTOM LINE
-[One paragraph. What the mood data says today in plain English.]
+[One paragraph. The single most important thing in today's data, in plain English. What should the reader walk away knowing?]
 
-## MOOD DASHBOARD
-| Metric | Value | 7d Trend |
-|--------|-------|----------|
-| Economic Empathy (news) | [latest value] | [direction] |
-| Economic Intensity (news) | [latest value] | [direction] |
-| Social Empathy | [latest value] | [direction] |
-| SPY | [price] | [change] |
-| QQQ | [price] | [change] |
-| DIA | [price] | [change] |
+## WHAT'S INTERESTING
+[This is the heart of the newsletter. 3-4 paragraphs. Lead with the most emotionally resonant human observation — how people are feeling, behaving, or being affected in ways that aren't obvious. Then connect it to the economic and global forces driving it. The reader should feel something before they learn something. Reference specific headlines, data points, and social posts. Cross-domain connections are your superpower.]
 
-## WHAT MOVED
-[2-3 short paragraphs on the biggest movers — connect sentiment data to headlines and market action. What stories drove the mood? Did markets align with sentiment or diverge?]
+## ALSO WORTH NOTICING
+[2-3 brief observations (2-3 sentences each) from different parts of the data. Different topics, different angles. These should each deliver a small "huh" moment.]
 
-## SIGNAL TRACKER
-[Report on prediction signal track record. Be transparent about sample size. Format:
-- Signal type: X/Y correct (Z%), avg move +/-N%
-Note: Early data — [N] total signals tracked. Statistical significance requires 100+.]
+## MARKETS & MOOD
+[Brief market snapshot — SPY, QQQ, DIA with prices and changes. Any notable commodity or economic indicator moves. Then 1-2 sentences connecting market action to sentiment. Do markets and mood agree or diverge today?]
 
-## EMOTION MAP
-[What emotions dominated economic coverage? What does that tell us? 2-3 sentences connecting emotion distribution to market psychology.]
-
-## FORWARD LOOK
-[2-3 things to watch. Not predictions — things the data says are worth monitoring. Ground each in a specific data point.]
-
-## WHAT TO DO ABOUT IT
-[2-3 concrete, actionable items for the reader. Be specific — not "stay informed" but "watch the 10Y yield this week" or "if you're exposed to energy, the sentiment divergence suggests caution." Frame as smart moves, not financial advice. End with one sentence that makes the reader feel like they have an edge.]
+## WHAT TO WATCH
+[2-3 specific things the data says are worth monitoring. Not predictions — observations that suggest something is building. Ground each in a data point.]
 
 ---
-*The Mood Report is powered by Moodlight Intelligence. Data is measured, not predicted.*
+*The Mood Report — daily from Moodlight Intelligence.*
 """
 
 X_THREAD_SYSTEM_PROMPT = """Condense this newsletter into a 3-4 tweet thread (280 chars each).
