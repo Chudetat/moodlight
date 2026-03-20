@@ -1897,25 +1897,34 @@ def get_signal_log(days: int = Query(default=90, ge=1, le=730)):
 # ---------------------------------------------------------------------------
 
 def _read_vlds_csvs():
-    """Read VLDS CSV files and merge into a single DataFrame."""
-    import math
+    """Read VLDS data from PostgreSQL tables (longevity, density, scarcity)."""
+    engine = _require_engine()
 
     try:
-        vel_df = pd.read_csv("topic_longevity.csv")
+        vel_df = pd.read_sql(
+            sql_text("SELECT topic, velocity_score, longevity_score FROM topic_longevity"),
+            engine,
+        )
     except Exception:
         vel_df = pd.DataFrame()
 
     try:
-        den_df = pd.read_csv("topic_density.csv")
+        den_df = pd.read_sql(
+            sql_text("SELECT topic, density_score FROM topic_density"),
+            engine,
+        )
     except Exception:
         den_df = pd.DataFrame()
 
     try:
-        scar_df = pd.read_csv("topic_scarcity.csv")
+        scar_df = pd.read_sql(
+            sql_text("SELECT topic, scarcity_score FROM topic_scarcity"),
+            engine,
+        )
     except Exception:
         scar_df = pd.DataFrame()
 
-    # Start with whichever has topic column
+    # Collect all topics
     topics = set()
     for df in [vel_df, den_df, scar_df]:
         if not df.empty and "topic" in df.columns:
