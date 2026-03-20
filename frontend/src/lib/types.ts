@@ -563,6 +563,80 @@ export interface SignalLogResponse {
   count: number;
 }
 
+// ── Cultural Signal API ──────────────────────────────
+
+export interface TopicSignal {
+  topic: string;
+  velocity: number | null;
+  longevity: number | null;
+  density: number | null;
+  scarcity: number | null;
+  velocity_label: string;
+  density_label: string;
+  scarcity_label: string;
+  longevity_label: string;
+  opportunity_score: number | null;
+}
+
+export interface TopicSignalsResponse {
+  topics: TopicSignal[];
+  count: number;
+  updated_at: string;
+}
+
+export interface EmotionBreakdown {
+  emotion: string;
+  count: number;
+  percentage: number;
+}
+
+export interface EmotionalClimateResponse {
+  emotions: EmotionBreakdown[];
+  empathy: {
+    raw: number;
+    normalized: number;
+    label: string;
+  };
+  window_hours: number;
+  total_posts: number;
+}
+
+export interface OpportunityTopic {
+  topic: string;
+  velocity: number | null;
+  longevity: number | null;
+  density: number | null;
+  scarcity: number | null;
+  opportunity_score: number | null;
+  label: string;
+}
+
+export interface OpportunitiesResponse {
+  opportunities: OpportunityTopic[];
+  rising_edges: OpportunityTopic[];
+  saturated: OpportunityTopic[];
+}
+
+export interface PredictiveAlert {
+  id: number;
+  alert_type: string;
+  severity: string;
+  title: string;
+  summary: string;
+  timestamp: string;
+  topic: string | null;
+  brand: string | null;
+  confidence: number | null;
+  spy_change_1d: number | null;
+  spy_change_3d: number | null;
+  spy_change_5d: number | null;
+}
+
+export interface PredictiveAlertsResponse {
+  alerts: PredictiveAlert[];
+  count: number;
+}
+
 // ── API Error ─────────────────────────────────────────
 
 export interface ApiError {

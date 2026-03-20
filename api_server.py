@@ -1893,6 +1893,462 @@ def get_signal_log(days: int = Query(default=90, ge=1, le=730)):
 
 
 # ---------------------------------------------------------------------------
+# Cultural Signal API (Phase 1 — Proof of Value)
+# ---------------------------------------------------------------------------
+
+def _read_vlds_csvs():
+    """Read VLDS CSV files and merge into a single DataFrame."""
+    import math
+
+    try:
+        vel_df = pd.read_csv("topic_longevity.csv")
+    except Exception:
+        vel_df = pd.DataFrame()
+
+    try:
+        den_df = pd.read_csv("topic_density.csv")
+    except Exception:
+        den_df = pd.DataFrame()
+
+    try:
+        scar_df = pd.read_csv("topic_scarcity.csv")
+    except Exception:
+        scar_df = pd.DataFrame()
+
+    # Start with whichever has topic column
+    topics = set()
+    for df in [vel_df, den_df, scar_df]:
+        if not df.empty and "topic" in df.columns:
+            topics.update(df["topic"].tolist())
+
+    if not topics:
+        return pd.DataFrame()
+
+    merged = pd.DataFrame({"topic": list(topics)})
+
+    if not vel_df.empty and "topic" in vel_df.columns:
+        if "velocity_score" in vel_df.columns:
+            merged = merged.merge(
+                vel_df[["topic", "velocity_score"]].rename(columns={"velocity_score": "velocity"}),
+                on="topic", how="left",
+            )
+        if "longevity_score" in vel_df.columns:
+            merged = merged.merge(
+                vel_df[["topic", "longevity_score"]].rename(columns={"longevity_score": "longevity"}),
+                on="topic", how="left",
+            )
+
+    if not den_df.empty and "topic" in den_df.columns and "density_score" in den_df.columns:
+        merged = merged.merge(
+            den_df[["topic", "density_score"]].rename(columns={"density_score": "density"}),
+            on="topic", how="left",
+        )
+
+    if not scar_df.empty and "topic" in scar_df.columns and "scarcity_score" in scar_df.columns:
+        merged = merged.merge(
+            scar_df[["topic", "scarcity_score"]].rename(columns={"scarcity_score": "scarcity"}),
+            on="topic", how="left",
+        )
+
+    # Ensure columns exist
+    for col in ["velocity", "longevity", "density", "scarcity"]:
+        if col not in merged.columns:
+            merged[col] = None
+
+    # Labels
+    merged["velocity_label"] = merged["velocity"].apply(
+        lambda v: "Accelerating" if pd.notna(v) and v > 0.7 else "Stable" if pd.notna(v) and v > 0.4 else "Declining"
+    )
+    merged["longevity_label"] = merged["longevity"].apply(
+        lambda v: "Sustained" if pd.notna(v) and v > 0.7 else "Moderate" if pd.notna(v) and v > 0.4 else "Flash"
+    )
+    merged["density_label"] = merged["density"].apply(
+        lambda v: "Saturated" if pd.notna(v) and v > 0.7 else "Moderate" if pd.notna(v) and v > 0.3 else "White Space"
+    )
+    merged["scarcity_label"] = merged["scarcity"].apply(
+        lambda v: "High Opportunity" if pd.notna(v) and v > 0.7 else "Some Coverage" if pd.notna(v) and v > 0.4 else "Well Covered"
+    )
+
+    # Opportunity score
+    merged["opportunity_score"] = merged.apply(
+        lambda r: (r["scarcity"] or 0) * (r["velocity"] or 0) / max(r["density"] or 0.1, 0.1)
+        if pd.notna(r.get("scarcity")) and pd.notna(r.get("velocity"))
+        else None,
+        axis=1,
+    )
+
+    return merged
+
+
+@app.get("/api/signals/topics")
+def get_signal_topics():
+    """Current VLDS scores for all tracked topics with strategic labels."""
+    merged = _read_vlds_csvs()
+    if merged.empty:
+        return {"topics": [], "count": 0, "updated_at": datetime.now(timezone.utc).isoformat()}
+
+    merged = merged.sort_values("opportunity_score", ascending=False, na_position="last")
+    records = _df_to_records(merged)
+    return {
+        "topics": records,
+        "count": len(records),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/api/signals/emotions")
+def get_signal_emotions(hours: int = Query(default=48, ge=1, le=168)):
+    """Real-time emotional climate — emotion distribution + empathy score."""
+    engine = _require_engine()
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        # Emotion distribution
+        emo_df = pd.read_sql(
+            sql_text("""
+                SELECT emotion_top_1 AS emotion, COUNT(*) AS count
+                FROM news_scored
+                WHERE created_at >= :cutoff AND emotion_top_1 IS NOT NULL
+                GROUP BY emotion_top_1
+                ORDER BY count DESC
+            """),
+            engine,
+            params={"cutoff": cutoff},
+        )
+
+        # Empathy score
+        emp_df = pd.read_sql(
+            sql_text("""
+                SELECT AVG(empathy_score) AS avg_empathy, COUNT(*) AS total
+                FROM news_scored
+                WHERE created_at >= :cutoff
+            """),
+            engine,
+            params={"cutoff": cutoff},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Emotion breakdown
+    total_posts = int(emp_df["total"].iloc[0]) if not emp_df.empty else 0
+    emotions = []
+    if not emo_df.empty:
+        emo_total = emo_df["count"].sum()
+        for _, row in emo_df.iterrows():
+            emotions.append({
+                "emotion": row["emotion"],
+                "count": int(row["count"]),
+                "percentage": round(float(row["count"]) / emo_total * 100, 1),
+            })
+
+    # Piecewise empathy normalization
+    raw_empathy = float(emp_df["avg_empathy"].iloc[0]) if not emp_df.empty and pd.notna(emp_df["avg_empathy"].iloc[0]) else 0
+    if raw_empathy <= 0.04:
+        normalized = 50
+    elif raw_empathy <= 0.10:
+        normalized = 50 + (raw_empathy - 0.04) / (0.10 - 0.04) * (65 - 50)
+    elif raw_empathy <= 0.30:
+        normalized = 65 + (raw_empathy - 0.10) / (0.30 - 0.10) * (85 - 65)
+    else:
+        normalized = min(95, 85 + (raw_empathy - 0.30) / 0.20 * 10)
+
+    if normalized >= 75:
+        empathy_label = "High Empathy"
+    elif normalized >= 60:
+        empathy_label = "Moderate"
+    elif normalized >= 45:
+        empathy_label = "Low"
+    else:
+        empathy_label = "Very Low"
+
+    return {
+        "emotions": emotions,
+        "empathy": {
+            "raw": round(raw_empathy, 4),
+            "normalized": round(normalized, 1),
+            "label": empathy_label,
+        },
+        "window_hours": hours,
+        "total_posts": total_posts,
+    }
+
+
+@app.get("/api/signals/opportunities")
+def get_signal_opportunities():
+    """Cultural opportunity zones, rising edges, and saturated topics."""
+    merged = _read_vlds_csvs()
+    if merged.empty:
+        return {"opportunities": [], "rising_edges": [], "saturated": []}
+
+    def _to_list(df_slice):
+        records = []
+        for _, r in df_slice.iterrows():
+            records.append({
+                "topic": r["topic"],
+                "velocity": r.get("velocity"),
+                "longevity": r.get("longevity"),
+                "density": r.get("density"),
+                "scarcity": r.get("scarcity"),
+                "opportunity_score": r.get("opportunity_score"),
+                "label": r.get("density_label", ""),
+            })
+        return records
+
+    # Opportunities: high scarcity + low density
+    opps = merged.dropna(subset=["scarcity", "density"])
+    opps = opps[(opps["scarcity"] > 0.5) & (opps["density"] < 0.5)]
+    opps = opps.sort_values("scarcity", ascending=False).head(10)
+
+    # Rising edges: high velocity + low density
+    edges = merged.dropna(subset=["velocity", "density"])
+    edges = edges[(edges["velocity"] > 0.5) & (edges["density"] < 0.5)]
+    edges = edges.sort_values("velocity", ascending=False).head(10)
+
+    # Saturated: high density
+    sat = merged.dropna(subset=["density"])
+    sat = sat[sat["density"] > 0.7].sort_values("density", ascending=False).head(10)
+
+    return {
+        "opportunities": _to_list(opps),
+        "rising_edges": _to_list(edges),
+        "saturated": _to_list(sat),
+    }
+
+
+@app.get("/api/signals/alerts")
+def get_signal_alerts(days: int = Query(default=7, ge=1, le=30)):
+    """Active predictive signals with outcome data."""
+    engine = _require_engine()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+
+    try:
+        df = pd.read_sql(
+            sql_text("""
+                SELECT a.id, a.alert_type, a.severity, a.title, a.summary,
+                       a.timestamp, a.topic, a.brand, a.data,
+                       sl.spy_change_1d, sl.spy_change_3d, sl.spy_change_5d
+                FROM alerts a
+                LEFT JOIN signal_log sl ON sl.alert_id = a.id
+                WHERE (a.alert_type LIKE 'predictive_%%' OR a.alert_type = 'market_mood_divergence')
+                  AND a.timestamp >= :cutoff
+                ORDER BY a.timestamp DESC
+            """),
+            engine,
+            params={"cutoff": cutoff},
+        )
+    except Exception as e:
+        if "does not exist" in str(e).lower():
+            return {"alerts": [], "count": 0}
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Extract confidence from data JSON
+    records = _df_to_records(df)
+    for rec in records:
+        data_field = rec.get("data")
+        confidence = None
+        if isinstance(data_field, str):
+            try:
+                data_field = json.loads(data_field)
+            except Exception:
+                data_field = {}
+        if isinstance(data_field, dict):
+            confidence = data_field.get("confidence")
+        rec["confidence"] = confidence
+        rec.pop("data", None)
+
+    return {"alerts": records, "count": len(records)}
+
+
+# ---------------------------------------------------------------------------
+# Case Study Generator
+# ---------------------------------------------------------------------------
+
+class CaseStudyRequest(BaseModel):
+    topic: str
+    lookback_days: int = 30
+
+
+@app.post("/api/case-study/generate")
+def generate_case_study(req: CaseStudyRequest, payload: dict = Depends(require_auth)):
+    """Generate a retrospective case study for a cultural moment."""
+    from anthropic import Anthropic
+
+    engine = _require_engine()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=req.lookback_days)).strftime("%Y-%m-%d")
+    topic = req.topic
+
+    # 1. Headlines about this topic
+    try:
+        headlines_df = pd.read_sql(
+            sql_text("""
+                SELECT text, empathy_score, emotion_top_1, intensity, source, created_at
+                FROM news_scored
+                WHERE topic ILIKE :topic AND created_at >= :cutoff
+                ORDER BY intensity DESC LIMIT 20
+            """),
+            engine,
+            params={"topic": f"%{topic}%", "cutoff": cutoff},
+        )
+    except Exception:
+        headlines_df = pd.DataFrame()
+
+    # 2. Emotion distribution
+    try:
+        emotions_df = pd.read_sql(
+            sql_text("""
+                SELECT emotion_top_1, COUNT(*) as cnt
+                FROM news_scored
+                WHERE topic ILIKE :topic AND created_at >= :cutoff AND emotion_top_1 IS NOT NULL
+                GROUP BY emotion_top_1
+                ORDER BY cnt DESC LIMIT 5
+            """),
+            engine,
+            params={"topic": f"%{topic}%", "cutoff": cutoff},
+        )
+    except Exception:
+        emotions_df = pd.DataFrame()
+
+    # 3. Related alerts
+    try:
+        alerts_df = pd.read_sql(
+            sql_text("""
+                SELECT alert_type, severity, title, summary, timestamp
+                FROM alerts
+                WHERE (topic ILIKE :topic OR title ILIKE :topic_title)
+                  AND timestamp >= :cutoff
+                ORDER BY timestamp DESC LIMIT 10
+            """),
+            engine,
+            params={"topic": f"%{topic}%", "topic_title": f"%{topic}%", "cutoff": cutoff},
+        )
+    except Exception:
+        alerts_df = pd.DataFrame()
+
+    # 4. Signal log entries with outcomes
+    try:
+        signals_df = pd.read_sql(
+            sql_text("""
+                SELECT alert_type, title, summary, signal_date,
+                       spy_change_1d, spy_change_3d, spy_change_5d,
+                       brand_ticker, brand_change_1d
+                FROM signal_log
+                WHERE (topic ILIKE :topic OR title ILIKE :topic_title)
+                  AND signal_date >= :cutoff
+                ORDER BY signal_date DESC LIMIT 10
+            """),
+            engine,
+            params={"topic": f"%{topic}%", "topic_title": f"%{topic}%", "cutoff": cutoff},
+        )
+    except Exception:
+        signals_df = pd.DataFrame()
+
+    # Build context
+    context_parts = [f"TOPIC: {topic}", f"PERIOD: Last {req.lookback_days} days", ""]
+
+    if not headlines_df.empty:
+        context_parts.append(f"HEADLINES ({len(headlines_df)} stories):")
+        for _, row in headlines_df.head(10).iterrows():
+            context_parts.append(
+                f"  - {row.get('text', '')[:200]} | emotion: {row.get('emotion_top_1', 'N/A')} | "
+                f"intensity: {row.get('intensity', 0):.1f} | empathy: {row.get('empathy_score', 0):.3f}"
+            )
+        avg_emp = headlines_df["empathy_score"].mean() if "empathy_score" in headlines_df.columns else 0
+        avg_int = headlines_df["intensity"].mean() if "intensity" in headlines_df.columns else 0
+        context_parts.append(f"  Average empathy: {avg_emp:.3f} | Average intensity: {avg_int:.1f}")
+        context_parts.append("")
+
+    if not emotions_df.empty:
+        context_parts.append("EMOTION DISTRIBUTION:")
+        total = emotions_df["cnt"].sum()
+        for _, row in emotions_df.iterrows():
+            pct = row["cnt"] / total * 100
+            context_parts.append(f"  - {row['emotion_top_1']}: {pct:.0f}%")
+        context_parts.append("")
+
+    if not alerts_df.empty:
+        context_parts.append(f"MOODLIGHT ALERTS ({len(alerts_df)}):")
+        for _, row in alerts_df.iterrows():
+            context_parts.append(
+                f"  - [{row.get('severity', 'info')}] {row.get('title', '')} ({row.get('timestamp', '')})"
+            )
+            context_parts.append(f"    {row.get('summary', '')[:200]}")
+        context_parts.append("")
+
+    if not signals_df.empty:
+        context_parts.append(f"PREDICTION SIGNALS WITH OUTCOMES ({len(signals_df)}):")
+        for _, row in signals_df.iterrows():
+            outcome = ""
+            if pd.notna(row.get("spy_change_1d")):
+                outcome = f" | SPY 1d: {row['spy_change_1d']:+.2f}%, 3d: {row.get('spy_change_3d', 'pending')}, 5d: {row.get('spy_change_5d', 'pending')}"
+            context_parts.append(
+                f"  - {row.get('title', '')} ({row.get('signal_date', '')}){outcome}"
+            )
+        context_parts.append("")
+
+    context = "\n".join(context_parts)
+
+    if headlines_df.empty and alerts_df.empty:
+        raise HTTPException(status_code=404, detail=f"No data found for topic '{topic}' in the last {req.lookback_days} days.")
+
+    # Generate via Claude
+    client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    response = client.messages.create(
+        model="claude-sonnet-4-5-20250929",
+        max_tokens=2000,
+        system="""You write concise, data-backed retrospective case studies for Moodlight, a cultural intelligence platform.
+
+Your output must follow this exact structure with these section headers:
+
+## THE MOMENT
+What happened culturally — 2-3 sentences setting the scene. Be specific about what shifted in public conversation.
+
+## WHAT MOODLIGHT SAW
+What signals Moodlight detected, when, and at what intensity/confidence. Reference specific alert types, empathy scores, and emotion distributions from the data. Be precise with numbers.
+
+## THE OPPORTUNITY
+What a brand could have done if they'd acted on these signals — 2-3 concrete, specific actions (not vague "engage with the conversation" advice). Reference the emotional register and timing.
+
+## THE NUMBERS
+3-5 key data points from the context in a bullet list. Include empathy scores, emotion percentages, intensity levels, and market outcomes if available.
+
+## THE TAKEAWAY
+One sentence — the strategic lesson a media planner should remember.
+
+Be concise. No filler. Every sentence must contain a data point or a specific insight.""",
+        messages=[{
+            "role": "user",
+            "content": f"Generate a retrospective case study from this Moodlight data:\n\n{context}",
+        }],
+    )
+
+    raw_text = response.content[0].text
+
+    # Parse sections
+    sections = {}
+    current_section = None
+    current_lines = []
+    for line in raw_text.split("\n"):
+        if line.startswith("## "):
+            if current_section:
+                sections[current_section] = "\n".join(current_lines).strip()
+            current_section = line[3:].strip()
+            current_lines = []
+        else:
+            current_lines.append(line)
+    if current_section:
+        sections[current_section] = "\n".join(current_lines).strip()
+
+    return {
+        "case_study": {
+            "topic": topic,
+            "period": f"Last {req.lookback_days} days",
+            "sections": sections,
+        },
+        "raw_text": raw_text,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Stripe Webhooks (migrated from webhook_server.py)
 # ---------------------------------------------------------------------------
 

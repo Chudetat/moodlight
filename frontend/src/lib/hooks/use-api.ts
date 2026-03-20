@@ -18,6 +18,10 @@ import type {
   AlertFeedbackAction,
   PredictionMarketsResponse,
   SignalLogResponse,
+  TopicSignalsResponse,
+  EmotionalClimateResponse,
+  OpportunitiesResponse,
+  PredictiveAlertsResponse,
   UserPreferences,
   AlertPreferencesResponse,
   PipelineHealthResponse,
@@ -203,6 +207,40 @@ export function useSignalLog(days = 90) {
   return useQuery<SignalLogResponse>({
     queryKey: ["signal-log", days],
     queryFn: () => apiFetch(`/api/signal-log?days=${days}`),
+    refetchInterval: REFETCH_INTERVAL,
+  });
+}
+
+// ── Cultural Signal API ──────────────────────────────
+
+export function useTopicSignals() {
+  return useQuery<TopicSignalsResponse>({
+    queryKey: ["signals-topics"],
+    queryFn: () => apiFetch("/api/signals/topics"),
+    refetchInterval: REFETCH_INTERVAL,
+  });
+}
+
+export function useEmotionalClimate(hours = 48) {
+  return useQuery<EmotionalClimateResponse>({
+    queryKey: ["signals-emotions", hours],
+    queryFn: () => apiFetch(`/api/signals/emotions?hours=${hours}`),
+    refetchInterval: REFETCH_INTERVAL,
+  });
+}
+
+export function useOpportunities() {
+  return useQuery<OpportunitiesResponse>({
+    queryKey: ["signals-opportunities"],
+    queryFn: () => apiFetch("/api/signals/opportunities"),
+    refetchInterval: REFETCH_INTERVAL,
+  });
+}
+
+export function usePredictiveAlerts(days = 7) {
+  return useQuery<PredictiveAlertsResponse>({
+    queryKey: ["signals-alerts", days],
+    queryFn: () => apiFetch(`/api/signals/alerts?days=${days}`),
     refetchInterval: REFETCH_INTERVAL,
   });
 }
