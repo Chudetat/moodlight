@@ -2090,18 +2090,11 @@ def get_signal_opportunities():
         return {"opportunities": [], "rising_edges": [], "saturated": []}
 
     def _to_list(df_slice):
-        records = []
-        for _, r in df_slice.iterrows():
-            records.append({
-                "topic": r["topic"],
-                "velocity": r.get("velocity"),
-                "longevity": r.get("longevity"),
-                "density": r.get("density"),
-                "scarcity": r.get("scarcity"),
-                "opportunity_score": r.get("opportunity_score"),
-                "label": r.get("density_label", ""),
-            })
-        return records
+        cols = [c for c in ["topic", "velocity", "longevity", "density", "scarcity", "opportunity_score", "density_label"] if c in df_slice.columns]
+        out = df_slice[cols].copy()
+        if "density_label" in out.columns:
+            out = out.rename(columns={"density_label": "label"})
+        return _df_to_records(out)
 
     # Opportunities: high scarcity + low density
     opps = merged.dropna(subset=["scarcity", "density"])
