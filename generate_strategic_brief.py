@@ -254,6 +254,102 @@ def _build_enrichment(engine, username: str, user_need: str, df: pd.DataFrame) -
     return ""
 
 
+def _load_campaign_precedents(user_need: str, df: pd.DataFrame) -> str:
+    """Retrieve the most relevant campaign precedents for the current cultural moment.
+
+    Scores each campaign in the database by keyword overlap with today's headlines,
+    topics, emotions, and the client's request. Returns formatted context for the
+    top 5 matches.
+    """
+    db_path = os.path.join(os.path.dirname(__file__), "campaign_database.json")
+    try:
+        with open(db_path) as f:
+            campaigns = json.load(f)
+    except Exception:
+        return ""
+
+    if not campaigns:
+        return ""
+
+    # Build matching context from today's data
+    headline_text = ""
+    topics = []
+    emotions = []
+    if "text" in df.columns:
+        headline_text = " ".join(df["text"].astype(str).tolist()).lower()
+    if "topic" in df.columns:
+        topics = df["topic"].value_counts().head(5).index.tolist()
+    if "emotion_top_1" in df.columns:
+        emotions = df["emotion_top_1"].value_counts().head(3).index.tolist()
+
+    user_need_lower = user_need.lower()
+
+    def score_campaign(camp):
+        score = 0
+        tension = camp.get("cultural_tension", "").lower()
+        insight = camp.get("insight", "").lower()
+        why = camp.get("why_it_worked", "").lower()
+        tags = [t.lower() for t in camp.get("category_tags", [])]
+        emo_reg = camp.get("emotional_register", "").lower()
+
+        # Topic match
+        for topic in topics:
+            t = topic.lower()
+            if t in tension or t in insight:
+                score += 3
+
+        # Emotion match
+        for emo in emotions:
+            if emo.lower() in emo_reg:
+                score += 2
+
+        # User need keyword match
+        need_words = [w for w in user_need_lower.split() if len(w) > 4]
+        for w in need_words:
+            if w in tension or w in insight or w in why:
+                score += 1.5
+
+        # Headline keyword overlap
+        tension_words = [w for w in tension.split() if len(w) > 5]
+        for w in tension_words:
+            if w in headline_text:
+                score += 0.3
+
+        # Tag bonuses for common strategic needs
+        tag_bonuses = {
+            "empathy": 2, "social impact": 1.5, "revelation": 1.5,
+            "cultural moment": 2, "crisis response": 1.5, "subversion": 1,
+            "provocation": 1, "reframe": 1.5, "authenticity": 1,
+            "brand platform": 1, "long-running": 1,
+        }
+        for tag in tags:
+            score += tag_bonuses.get(tag, 0)
+
+        return score
+
+    scored = [(c, score_campaign(c)) for c in campaigns]
+    scored.sort(key=lambda x: x[1], reverse=True)
+    top = scored[:5]
+
+    if top[0][1] < 3:
+        return ""  # No strong matches
+
+    lines = [
+        "CREATIVE PRECEDENTS — Award-winning campaigns that worked in similar cultural conditions:\n"
+    ]
+    for i, (camp, _sc) in enumerate(top, 1):
+        lines.append(f"PRECEDENT {i}: {camp['campaign']} ({camp['brand']}, {camp['year']})")
+        lines.append(f"  Cultural tension: {camp['cultural_tension']}")
+        lines.append(f"  Insight: {camp['insight']}")
+        lines.append(f"  What they did: {camp['what_they_did']}")
+        lines.append(f"  Why it worked: {camp['why_it_worked']}")
+        lines.append(f"  Emotional register: {camp.get('emotional_register', 'N/A')}")
+        lines.append(f"  Tags: {', '.join(camp.get('category_tags', []))}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 def generate_strategic_brief(user_need: str, df: pd.DataFrame, username: str = None) -> tuple:
     """Generate strategic campaign brief using AI and Moodlight data"""
 
@@ -265,6 +361,10 @@ def generate_strategic_brief(user_need: str, df: pd.DataFrame, username: str = N
     geo_dist = df['country'].value_counts().head(10).to_string() if 'country' in df.columns else "No geographic data"
     source_dist = df['source'].value_counts().head(10).to_string() if 'source' in df.columns else "No source data"
     avg_empathy = f"{df['empathy_score'].mean():.1f}/100" if 'empathy_score' in df.columns else "N/A"
+
+    velocity_df = pd.DataFrame()
+    density_df = pd.DataFrame()
+    scarcity_df = pd.DataFrame()
 
     try:
         velocity_df = pd.read_csv('topic_longevity.csv')
@@ -283,6 +383,51 @@ def generate_strategic_brief(user_need: str, df: pd.DataFrame, username: str = N
         scarcity_data = scarcity_df[['topic', 'scarcity_score', 'mention_count', 'opportunity']].head(10).to_string()
     except Exception:
         scarcity_data = "No scarcity data available"
+
+    # Build Creative Opportunity Map — anti-repetition: deprioritize saturated topics
+    creative_opp_map = "No opportunity map available"
+    try:
+        if not density_df.empty and 'density_score' in density_df.columns:
+            opp_df = density_df[['topic', 'density_score']].copy()
+
+            # Merge velocity
+            if not velocity_df.empty and 'velocity_score' in velocity_df.columns:
+                vel_map = dict(zip(velocity_df['topic'], velocity_df['velocity_score']))
+                opp_df['velocity'] = opp_df['topic'].map(vel_map).fillna(0)
+            else:
+                opp_df['velocity'] = 0
+
+            # Merge scarcity
+            if not scarcity_df.empty and 'scarcity_score' in scarcity_df.columns:
+                scar_map = dict(zip(scarcity_df['topic'], scarcity_df['scarcity_score']))
+                opp_df['scarcity'] = opp_df['topic'].map(scar_map).fillna(0)
+            else:
+                opp_df['scarcity'] = 0
+
+            # Opportunity score: scarcity * velocity / max(density, 0.1)
+            opp_df['opp_score'] = (
+                opp_df['scarcity'] * opp_df['velocity'] / opp_df['density_score'].clip(lower=0.1)
+            )
+
+            # Label saturated vs opportunity
+            opp_df['label'] = opp_df.apply(
+                lambda r: 'SATURATED' if r['density_score'] > 0.8
+                else ('OPPORTUNITY' if r['scarcity'] > 0.5 else ''),
+                axis=1,
+            )
+
+            opp_df = opp_df.sort_values('opp_score', ascending=False)
+            lines = []
+            for _, r in opp_df.head(10).iterrows():
+                tag = f" [{r['label']}]" if r['label'] else ""
+                lines.append(
+                    f"  {r['topic']}{tag}: opp_score={r['opp_score']:.2f} "
+                    f"(scarcity={r['scarcity']:.2f}, velocity={r['velocity']:.2f}, "
+                    f"density={r['density_score']:.2f})"
+                )
+            creative_opp_map = "\n".join(lines)
+    except Exception:
+        creative_opp_map = "No opportunity map available"
 
     # Get actual headlines for real-time grounding with full metadata
     recent_headlines = ""
@@ -345,6 +490,11 @@ DENSITY (Topic saturation - high means crowded, low means opportunity):
 SCARCITY (Underserved topics - high scarcity = white space opportunity):
 {scarcity_data}
 
+CREATIVE OPPORTUNITY MAP (Ranked by opportunity score = scarcity * velocity / density):
+Topics marked [SATURATED] have density > 0.8 — avoid anchoring creative ideas here.
+Topics marked [OPPORTUNITY] have scarcity > 0.5 — underserved creative white space.
+{creative_opp_map}
+
 RECENT HEADLINES (What just happened - with source, empathy, emotion):
 {recent_headlines if recent_headlines else "No recent headlines available"}
 
@@ -359,6 +509,9 @@ Total Posts Analyzed: {len(df)}
     selected_frameworks = select_frameworks(user_need)
     framework_guidance = get_framework_prompt(selected_frameworks)
 
+    # Retrieve campaign precedents
+    campaign_precedents = _load_campaign_precedents(user_need, df)
+
     prompt = f"""You are a senior strategist who believes most brand strategy is cowardice dressed as caution. You've built your reputation on the ideas that made clients nervous before making them successful. You find the uncomfortable truth competitors are too polite to say. You never recommend what a competitor could also do - if it's obvious, it's worthless. Your best work comes from tension, not consensus.
 
 A client has come to you with this request:
@@ -371,6 +524,8 @@ Based on the following real-time intelligence data from Moodlight (which tracks 
 {context}
 
 {framework_guidance}
+
+{campaign_precedents}
 
 If BRAND INTELLIGENCE or RELEVANT INTELLIGENCE ALERTS data is included in the intelligence snapshot, weave those insights into your analysis: brand VLDS into territorial mapping (Section 1), competitive gaps into your unexpected angle (Section 4), and recent alerts as real-time triggers (Section 5). Do not repeat raw numbers — interpret them strategically.
 
@@ -429,7 +584,22 @@ This is where you earn your fee. Include ALL of the following:
 
 - **Creative Spark**: One bold campaign idea or hook that ONLY works in this specific cultural moment. Not generic. Not safe. Something that makes the client lean forward.
 
+ANTI-STALENESS CHECK: Do NOT anchor your creative idea on the highest-velocity topic unless you can prove a genuinely novel angle that nobody else would find. The obvious trending topic is where lazy strategists go. Your job is to find the edge. If your idea could appear in any other strategic brief this week, it's not unexpected enough. Delete it and dig deeper. Use the CREATIVE OPPORTUNITY MAP above — topics marked [OPPORTUNITY] are your hunting ground; topics marked [SATURATED] are where you should NOT start.
+
 End with: "The non-obvious move: [one sentence summary of the unexpected angle]"
+
+## 4.5 🎓 CREATIVE PRECEDENT LENS
+
+If CREATIVE PRECEDENTS are provided above, select the 3 most relevant to this brief and present them as follows. If no precedents are provided, skip this section entirely.
+
+For each precedent:
+- **[Campaign Name] ([Brand], [Year])** — [One sentence on the cultural tension it addressed]
+  *Applies because:* [One sentence explaining the structural parallel to today's moment — NOT the surface similarity, but the underlying pattern]
+
+After the 3 precedents, identify:
+- **Structural pattern to steal:** [Name the underlying mechanic that connects the best precedents to this brief — e.g., "absence as message," "the audience convicts themselves," "give away your advantage to prove values," "reframe the weakness as mythology." This pattern should directly inform the Campaign Concept in Section 6.]
+
+Do NOT recommend recreating any precedent campaign. The value is the THINKING behind them — the structural patterns, the emotional calibration, the way they attached to cultural tension. Use them to calibrate ambition and find analogies.
 
 ## 5. 🔥 WHY NOW: The Real-Time Trigger
 
@@ -453,7 +623,7 @@ Based on the above analysis, provide:
 - One that's provocative/contrarian
 
 **Campaign Concept (1 paragraph):**
-A single activatable idea—name it, describe it in 2-3 sentences, explain why it fits this cultural moment.
+A single activatable idea—name it, describe it in 2-3 sentences, explain why it fits this cultural moment. The Campaign Concept must feel like it could ONLY exist this week. If you could run this campaign next month with no changes, it's not timely enough. If CREATIVE PRECEDENTS were provided, the concept should be informed by the structural pattern identified in Section 4.5 — not copying a precedent, but applying the same underlying mechanic to today's data.
 
 **Platform Play:**
 Which platform (X, LinkedIn, TikTok, OOH, etc.) is best suited for this moment and why? One sentence.
@@ -462,7 +632,7 @@ Which platform (X, LinkedIn, TikTok, OOH, etc.) is best suited for this moment a
 If the client said "go" right now, what's the single most important action in the next 48 hours? Be specific.
 
 **Steal This Line:**
-One sentence the client can use verbatim in a deck, ad, or pitch tomorrow.
+One sentence the client can use verbatim in a deck, ad, or pitch tomorrow. It must make someone uncomfortable to say out loud. If it's safe, it's forgettable.
 
 End with: "This is your starting point, not your ceiling."
 
