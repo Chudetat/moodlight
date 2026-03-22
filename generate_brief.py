@@ -443,17 +443,24 @@ HIGH-ENGAGEMENT CONTENT:
             mkt_df = pd.read_sql(sql_text("""
                 SELECT symbol, name, price, change, change_percent, volume, market_sentiment, timestamp
                 FROM markets
-                WHERE timestamp >= NOW() - INTERVAL '24 hours'
+                WHERE timestamp::timestamptz >= NOW() - INTERVAL '24 hours'
                 ORDER BY timestamp DESC
             """), engine)
             if not mkt_df.empty:
                 latest = mkt_df.drop_duplicates(subset=['symbol'], keep='first')
                 mkt_lines = []
                 for _, row in latest.iterrows():
-                    chg = row.get('change_percent', 0) or 0
+                    try:
+                        chg = float(row.get('change_percent', 0) or 0)
+                        price = float(row.get('price', 0) or 0)
+                    except (ValueError, TypeError):
+                        chg, price = 0, 0
                     direction = "UP" if chg > 0 else "DOWN" if chg < 0 else "FLAT"
-                    mkt_lines.append(f"  {row['name']} ({row['symbol']}): ${row['price']:.2f} {direction} {abs(chg):.2f}%")
-                avg_sentiment = latest['market_sentiment'].mean()
+                    mkt_lines.append(f"  {row['name']} ({row['symbol']}): ${price:,.2f} {direction} {abs(chg):.2f}%")
+                try:
+                    avg_sentiment = latest['market_sentiment'].astype(float).mean()
+                except (ValueError, TypeError):
+                    avg_sentiment = 0.5
                 mood = "BULLISH" if avg_sentiment > 0.55 else "BEARISH" if avg_sentiment < 0.45 else "NEUTRAL"
                 context += f"""
 SIGNAL SOURCE 3: GLOBAL MARKETS
@@ -574,7 +581,7 @@ market odds and social sentiment/news tone is a powerful signal.
             cutoff_pred = (now - pd.Timedelta(hours=48)).strftime("%Y-%m-%d %H:%M:%S")
             pred_df = pd.read_sql(
                 sql_text("""
-                    SELECT alert_type, severity, title, summary, confidence, brand_name, topic, timestamp
+                    SELECT alert_type, severity, title, summary, brand, topic, timestamp
                     FROM alerts
                     WHERE alert_type LIKE 'predictive_%%'
                       AND timestamp >= :cutoff
@@ -587,10 +594,9 @@ market odds and social sentiment/news tone is a powerful signal.
             if not pred_df.empty:
                 pred_lines = []
                 for _, row in pred_df.iterrows():
-                    scope = f" [{row['brand_name']}]" if row.get("brand_name") else f" [{row['topic']}]" if row.get("topic") else ""
+                    scope = f" [{row['brand']}]" if row.get("brand") else f" [{row['topic']}]" if row.get("topic") else ""
                     sev = row.get("severity", "info").upper()
-                    conf = f" (confidence: {row['confidence']}%)" if pd.notna(row.get("confidence")) else ""
-                    pred_lines.append(f"  [{sev}]{scope} {row['title']}: {row['summary']}{conf}")
+                    pred_lines.append(f"  [{sev}]{scope} {row['title']}: {row['summary']}")
                 context += f"""
 SIGNAL SOURCE 8: MOODLIGHT PREDICTIVE SIGNALS (last 48h)
 ==========================================
