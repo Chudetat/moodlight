@@ -366,3 +366,10 @@ if __name__ == "__main__":
     # Save CSV as fallback
     results.to_csv('topic_density.csv', index=False)
     print(f"\n✓ Saved {len(results)} topics to topic_density.csv")
+
+    # Save VLDS snapshot for delta computation
+    try:
+        from topic_intelligence import save_vlds_snapshot
+        save_vlds_snapshot(engine)
+    except Exception as e:
+        print(f"  VLDS snapshot failed (non-fatal): {e}")

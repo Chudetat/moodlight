@@ -119,6 +119,12 @@ def _format_brief_section(title, lines):
         "EMERGING PATTERNS": "#1976D2",
         "FORWARD LOOK": "#7B1FA2",
         "RECOMMENDED ACTIONS": "#2E7D32",
+        "WHAT NOBODY'S WATCHING": "#DC143C",
+        "WHAT CHANGED IN 12 HOURS": "#FFB300",
+        "THE EMOTIONAL UNDERCURRENT": "#7B1FA2",
+        "WHAT THE MONEY SAYS": "#1976D2",
+        "KNOWN SITUATIONS": "#546E7A",
+        "ONE PREDICTION": "#2E7D32",
     }
     color = section_colors.get(title, "#1976D2")
 
@@ -346,29 +352,34 @@ def load_social_data():
     print("⚠️ No social data available")
     return pd.DataFrame()
 
-def prepare_intelligence_context(news_df, social_df=None):
-    """Prepare context for AI briefing"""
+def _get_db_engine():
+    """Get a shared DB engine."""
+    db_url = os.getenv("DATABASE_URL", "")
+    if not db_url:
+        return None
+    from sqlalchemy import create_engine, text as sql_text
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+    return create_engine(db_url)
 
-    # Split into fresh (48h) and background (7d) windows
+
+def prepare_intelligence_context(news_df, social_df=None):
+    """Prepare comprehensive context from ALL data sources for AI briefing."""
+
     now = datetime.now(timezone.utc)
     cutoff_48h = now - pd.Timedelta(hours=48)
+    engine = _get_db_engine()
+
+    # ── 1. NEWS HEADLINES (fresh vs background) ──
     fresh_df = news_df[news_df['created_at'] >= cutoff_48h] if 'created_at' in news_df.columns else news_df
     fresh_count = len(fresh_df)
 
-    # Top topics by volume (full 7d for trend context)
-    topic_counts = news_df['topic'].value_counts().head(5)
-
-    # Critical articles from last 48h, sorted newest first with dates
     critical_fresh = fresh_df[fresh_df['intensity'] >= 4].sort_values('created_at', ascending=False) if 'created_at' in fresh_df.columns else fresh_df[fresh_df['intensity'] >= 4]
-
-    # Format critical articles with timestamps so Claude can prioritize by recency
     critical_lines = []
     for _, row in critical_fresh.head(15).iterrows():
         date_str = row['created_at'].strftime('%Y-%m-%d %H:%M') if pd.notna(row.get('created_at')) else 'unknown'
         critical_lines.append(f"  [{date_str}] [{row.get('country', '?')}] (intensity: {row.get('intensity', '?')}) {row.get('text', '')[:300]}")
     critical_block = "\n".join(critical_lines) if critical_lines else "  No critical articles in last 48 hours."
 
-    # Background: older high-intensity stories (48h-7d) for ONGOING context
     older_df = news_df[news_df['created_at'] < cutoff_48h] if 'created_at' in news_df.columns else pd.DataFrame()
     ongoing_lines = []
     if not older_df.empty:
@@ -378,37 +389,121 @@ def prepare_intelligence_context(news_df, social_df=None):
             ongoing_lines.append(f"  [{date_str}] [{row.get('country', '?')}] {row.get('text', '')[:200]}")
     ongoing_block = "\n".join(ongoing_lines) if ongoing_lines else "  None."
 
-    # Geographic distribution
+    topic_counts = news_df['topic'].value_counts().head(5)
+    topic_intensity = news_df.groupby('topic')['intensity'].mean().sort_values(ascending=False).head(5)
     country_counts = fresh_df['country'].value_counts().head(5) if not fresh_df.empty else news_df['country'].value_counts().head(5)
 
-    # Average intensity by topic
-    topic_intensity = news_df.groupby('topic')['intensity'].mean().sort_values(ascending=False).head(5)
-
     context = f"""
-INTELLIGENCE DATA SUMMARY
+SIGNAL SOURCE 1: NEWS HEADLINES
 ==========================================
 Fresh articles (last 48 hours): {fresh_count}
 Background articles (48h-7d): {len(news_df) - fresh_count}
 
-TOP TOPICS BY VOLUME (7 days):
-{topic_counts.to_string()}
+TOP TOPICS BY VOLUME: {topic_counts.to_string()}
+HIGHEST INTENSITY: {topic_intensity.round(2).to_string()}
+GEOGRAPHIC SPREAD: {country_counts.to_string()}
 
-HIGHEST INTENSITY TOPICS (7 days):
-{topic_intensity.round(2).to_string()}
-
-NEW/RECENT CRITICAL ARTICLES (last 48 hours, newest first):
+FRESH CRITICAL ARTICLES (48h, newest first):
 {critical_block}
 
-OLDER ONGOING STORIES (for context only — do NOT lead with these):
+OLDER ONGOING (context only):
 {ongoing_block}
-
-GEOGRAPHIC DISTRIBUTION (48h):
-{country_counts.to_string()}
-
-Total Articles Analyzed: {len(news_df)}
 """
 
-    # Add economic indicators if available
+    # ── 2. SOCIAL PULSE (X/Twitter + NewsAPI social) ──
+    if social_df is not None and not social_df.empty:
+        social_topics = social_df['topic'].value_counts().head(5)
+        emotion_dist = social_df['emotion_top_1'].value_counts().head(8)
+        empathy_dist = social_df['empathy_label'].value_counts()
+        topic_empathy = social_df.groupby('topic')['empathy_score'].mean().sort_values(ascending=False).head(5)
+
+        if 'engagement' in social_df.columns:
+            top_engagement = social_df.nlargest(5, 'engagement')[['text', 'engagement', 'emotion_top_1', 'source']]
+        else:
+            top_engagement = social_df.head(5)[['text', 'emotion_top_1', 'source']]
+
+        context += f"""
+SIGNAL SOURCE 2: SOCIAL MEDIA (X/Twitter + NewsAPI)
+==========================================
+Total posts analyzed: {len(social_df)}
+
+TRENDING SOCIAL TOPICS: {social_topics.to_string()}
+DOMINANT EMOTIONS: {emotion_dist.to_string()}
+EMPATHY TEMPERATURE: {empathy_dist.to_string()}
+CULTURAL HEAT BY TOPIC: {topic_empathy.round(4).to_string()}
+
+HIGH-ENGAGEMENT CONTENT:
+{top_engagement.to_string()}
+"""
+
+    # ── 3. MARKET INDICES & SENTIMENT ──
+    if engine:
+        try:
+            from sqlalchemy import text as sql_text
+            mkt_df = pd.read_sql(sql_text("""
+                SELECT symbol, name, price, change, change_percent, volume, market_sentiment, timestamp
+                FROM markets
+                WHERE timestamp >= NOW() - INTERVAL '24 hours'
+                ORDER BY timestamp DESC
+            """), engine)
+            if not mkt_df.empty:
+                latest = mkt_df.drop_duplicates(subset=['symbol'], keep='first')
+                mkt_lines = []
+                for _, row in latest.iterrows():
+                    chg = row.get('change_percent', 0) or 0
+                    direction = "UP" if chg > 0 else "DOWN" if chg < 0 else "FLAT"
+                    mkt_lines.append(f"  {row['name']} ({row['symbol']}): ${row['price']:.2f} {direction} {abs(chg):.2f}%")
+                avg_sentiment = latest['market_sentiment'].mean()
+                mood = "BULLISH" if avg_sentiment > 0.55 else "BEARISH" if avg_sentiment < 0.45 else "NEUTRAL"
+                context += f"""
+SIGNAL SOURCE 3: GLOBAL MARKETS
+==========================================
+Overall market mood: {mood} (sentiment: {avg_sentiment:.2f}/1.0)
+{chr(10).join(mkt_lines)}
+"""
+                print(f"  Added {len(latest)} market indices to context")
+        except Exception as e:
+            print(f"  Could not load market data: {e}")
+
+    # ── 4. BRAND STOCK SIGNALS ──
+    if engine:
+        try:
+            from sqlalchemy import text as sql_text
+            stock_df = pd.read_sql(sql_text("""
+                SELECT scope_name AS brand, metric_name, metric_value, snapshot_date
+                FROM metric_snapshots
+                WHERE scope = 'brand' AND snapshot_date >= CURRENT_DATE - INTERVAL '3 days'
+                ORDER BY snapshot_date DESC
+            """), engine)
+            if not stock_df.empty:
+                stock_lines = []
+                for brand in stock_df['brand'].unique():
+                    brand_data = stock_df[stock_df['brand'] == brand]
+                    latest_price = brand_data[brand_data['metric_name'] == 'stock_price']
+                    latest_change = brand_data[brand_data['metric_name'] == 'stock_change_pct']
+                    latest_vol = brand_data[brand_data['metric_name'] == 'stock_intraday_volatility']
+                    price = latest_price.iloc[0]['metric_value'] if not latest_price.empty else None
+                    change = latest_change.iloc[0]['metric_value'] if not latest_change.empty else None
+                    volatility = latest_vol.iloc[0]['metric_value'] if not latest_vol.empty else None
+                    parts = [f"{brand}:"]
+                    if price is not None:
+                        parts.append(f"${price:.2f}")
+                    if change is not None:
+                        direction = "up" if change > 0 else "down"
+                        parts.append(f"({direction} {abs(change):.2f}%)")
+                    if volatility is not None and volatility > 1.5:
+                        parts.append(f"[HIGH VOLATILITY: {volatility:.2f}%]")
+                    stock_lines.append("  " + " ".join(parts))
+                context += f"""
+SIGNAL SOURCE 4: BRAND STOCKS (Watchlist)
+==========================================
+{chr(10).join(stock_lines)}
+"""
+                print(f"  Added {len(stock_df['brand'].unique())} brand stock signals to context")
+        except Exception as e:
+            print(f"  Could not load brand stocks: {e}")
+
+    # ── 5. ECONOMIC INDICATORS ──
     try:
         from db_helper import load_economic_data
         econ_df = load_economic_data(days=7)
@@ -417,34 +512,65 @@ Total Articles Analyzed: {len(news_df)}
             econ_lines = []
             for _, row in latest.iterrows():
                 econ_lines.append(f"  {row['metric_name']}: {row['metric_value']:.2f}")
-            econ_block = "\n".join(econ_lines)
-            context += f"\n\nECONOMIC INDICATORS:\n{econ_block}\n"
+            context += f"""
+SIGNAL SOURCE 5: ECONOMIC INDICATORS
+==========================================
+{chr(10).join(econ_lines)}
+"""
     except Exception:
         pass
 
-    # Add commodity prices if available
+    # ── 6. COMMODITY PRICES ──
     try:
         from db_helper import load_commodity_data
         comm_df = load_commodity_data(days=7)
         if not comm_df.empty:
             price_df = comm_df[comm_df["metric_name"] == "price"]
+            change_df = comm_df[comm_df["metric_name"] == "daily_change_pct"]
             if not price_df.empty:
-                latest = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                latest_price = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                latest_change = change_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index() if not change_df.empty else pd.DataFrame()
                 comm_lines = []
-                for _, row in latest.iterrows():
-                    comm_lines.append(f"  {row['scope_name']}: ${row['metric_value']:.2f}")
-                comm_block = "\n".join(comm_lines)
-                context += f"\n\nCOMMODITY PRICES:\n{comm_block}\n"
+                for _, row in latest_price.iterrows():
+                    line = f"  {row['scope_name']}: ${row['metric_value']:.2f}"
+                    if not latest_change.empty:
+                        chg_row = latest_change[latest_change['scope_name'] == row['scope_name']]
+                        if not chg_row.empty:
+                            chg = chg_row.iloc[0]['metric_value']
+                            line += f" ({'up' if chg > 0 else 'down'} {abs(chg):.2f}%)"
+                    comm_lines.append(line)
+                context += f"""
+SIGNAL SOURCE 6: COMMODITY PRICES
+==========================================
+{chr(10).join(comm_lines)}
+"""
     except Exception:
         pass
 
-    # Add predictive signals from statistical trend analysis
+    # ── 7. PREDICTION MARKETS (Polymarket) ──
     try:
-        from sqlalchemy import create_engine, text as sql_text
-        db_url = os.getenv("DATABASE_URL", "")
-        if db_url:
-            db_url = db_url.replace("postgres://", "postgresql://", 1)
-            engine = create_engine(db_url)
+        from polymarket_helper import fetch_polymarket_markets, filter_markets_by_topic
+        markets = fetch_polymarket_markets(limit=15, min_volume=50000)
+        if markets:
+            poly_lines = []
+            for m in markets[:10]:
+                poly_lines.append(f"  \"{m['question']}\" — {m['yes_odds']:.0f}% YES (${m['volume']:,.0f} wagered)")
+            context += f"""
+SIGNAL SOURCE 7: PREDICTION MARKETS (Polymarket — real money bets)
+==========================================
+These represent where people are putting REAL MONEY on outcomes. Divergence between prediction
+market odds and social sentiment/news tone is a powerful signal.
+
+{chr(10).join(poly_lines)}
+"""
+            print(f"  Added {len(markets)} Polymarket signals to context")
+    except Exception as e:
+        print(f"  Could not load Polymarket data: {e}")
+
+    # ── 8. PREDICTIVE SIGNALS (Moodlight's own detectors) ──
+    if engine:
+        try:
+            from sqlalchemy import text as sql_text
             cutoff_pred = (now - pd.Timedelta(hours=48)).strftime("%Y-%m-%d %H:%M:%S")
             pred_df = pd.read_sql(
                 sql_text("""
@@ -461,135 +587,99 @@ Total Articles Analyzed: {len(news_df)}
             if not pred_df.empty:
                 pred_lines = []
                 for _, row in pred_df.iterrows():
-                    scope = ""
-                    if row.get("brand_name"):
-                        scope = f" [{row['brand_name']}]"
-                    elif row.get("topic"):
-                        scope = f" [{row['topic']}]"
+                    scope = f" [{row['brand_name']}]" if row.get("brand_name") else f" [{row['topic']}]" if row.get("topic") else ""
                     sev = row.get("severity", "info").upper()
                     conf = f" (confidence: {row['confidence']}%)" if pd.notna(row.get("confidence")) else ""
                     pred_lines.append(f"  [{sev}]{scope} {row['title']}: {row['summary']}{conf}")
-                pred_block = "\n".join(pred_lines)
+                context += f"""
+SIGNAL SOURCE 8: MOODLIGHT PREDICTIVE SIGNALS (last 48h)
+==========================================
+Statistical trends detected by Moodlight's 7-day regression + momentum engine.
+{chr(10).join(pred_lines)}
+"""
+                print(f"  Added {len(pred_df)} predictive signals to context")
+        except Exception as e:
+            print(f"  Could not load predictive signals: {e}")
+
+    # ── 9. TOPIC INTELLIGENCE (VLDS deltas, staleness, white space) ──
+    if engine:
+        try:
+            from topic_intelligence import compute_topic_intelligence, format_intelligence_context
+            topics = compute_topic_intelligence(engine, output_type="brief")
+            if topics:
                 context += f"""
 
-PREDICTIVE SIGNALS (Statistical Trend Analysis — last 48h)
+SIGNAL SOURCE 9: TOPIC INTELLIGENCE (VLDS deltas + staleness analysis)
 ==========================================
-These are statistically detected trends from Moodlight's predictive engine (7-day linear regression + momentum analysis).
-Use these to STRENGTHEN your FORWARD LOOK section with data-backed projections.
-
-{pred_block}
+{format_intelligence_context(topics)}
 """
-                print(f"  Added {len(pred_df)} predictive signals to brief context")
-    except Exception as e:
-        print(f"  Could not load predictive signals: {e}")
-
-    # Add social data if available
-    if social_df is not None and not social_df.empty:
-        # Top social topics
-        social_topics = social_df['topic'].value_counts().head(5)
-
-        # Emotional sentiment distribution
-        emotion_dist = social_df['emotion_top_1'].value_counts().head(5)
-
-        # Empathy score distribution
-        empathy_dist = social_df['empathy_label'].value_counts()
-
-        # High engagement posts (top by engagement score)
-        if 'engagement' in social_df.columns:
-            top_engagement = social_df.nlargest(5, 'engagement')[['text', 'engagement', 'emotion_top_1', 'source']]
-        else:
-            top_engagement = social_df.head(5)[['text', 'emotion_top_1', 'source']]
-
-        # Average empathy by topic (cultural temperature)
-        topic_empathy = social_df.groupby('topic')['empathy_score'].mean().sort_values(ascending=False).head(5)
-
-        context += f"""
-
-SOCIAL PULSE & CULTURAL MOMENTUM
-==========================================
-
-TRENDING SOCIAL TOPICS:
-{social_topics.to_string()}
-
-DOMINANT EMOTIONS:
-{emotion_dist.to_string()}
-
-EMPATHY TEMPERATURE:
-{empathy_dist.to_string()}
-
-CULTURAL HEAT BY TOPIC (Empathy Score):
-{topic_empathy.round(2).to_string()}
-
-HIGH-ENGAGEMENT CONTENT:
-{top_engagement.to_string()}
-
-Total Social Posts Analyzed: {len(social_df)}
-"""
+                print(f"  Added topic intelligence for {len(topics)} topics")
+        except Exception as e:
+            print(f"  Could not load topic intelligence: {e}")
 
     return context
 
 def generate_brief(context):
-    """Generate executive brief using Claude AI"""
+    """Generate executive brief using Claude AI — insight-driven, not headline-driven."""
 
-    prompt = f"""You are an intelligence analyst preparing a daily intelligence brief.
+    prompt = f"""Based on the following data from 9 signal sources, write today's intelligence brief.
 
-Based on the following intelligence data, create a concise executive summary.
+You have access to: news headlines, social media sentiment, global market indices, brand stock data,
+economic indicators, commodity prices, Polymarket prediction markets, Moodlight's predictive signals,
+and topic intelligence (VLDS scores with 24h deltas showing what changed).
 
-IMPORTANT GUIDELINES:
-- LEAD WITH WHAT'S NEW: The "NEW/RECENT CRITICAL ARTICLES" section contains the last 48 hours of data with timestamps. These MUST be the basis of your KEY THREATS. Only reference "OLDER ONGOING STORIES" for context — never lead with them.
-- Consolidate related stories: If multiple articles cover the same event, group them into ONE threat entry, not separate items
-- Prioritize by RECENCY + INTENSITY: A moderate-intensity story from today outranks a high-intensity story from 5 days ago
-- For each threat, include the "SO WHAT?" - why it matters, not just what happened
-- Flag each threat as [NEW] (first appeared in last 48h) or [ONGOING] (continuing situation). If ALL your threats are ONGOING, something is wrong — look harder at the fresh data.
-- Add confidence indicator based on data volume: [HIGH CONFIDENCE] = 10+ sources, [MODERATE] = 3-9 sources, [LIMITED] = 1-2 sources
-- DO NOT repeat the same lead stories across consecutive briefs. If a story has been ongoing for days, only include it if there is a NEW development.
+CRITICAL RULES:
+1. EVERY SECTION must contain at least one insight that REQUIRES multiple signal sources to produce.
+   If a human could write it from reading headlines alone, it doesn't belong. Cross-reference signals.
+2. DO NOT lead with the biggest headline. Lead with the thing nobody else sees.
+3. Topics marked as STALE in the Topic Intelligence section must NOT lead any section unless there's
+   a measurable delta (velocity change, empathy shift, prediction market move) proving something new happened.
+4. When prediction markets disagree with social sentiment or news tone, that divergence IS the story.
+5. When empathy shifts (up or down) on a topic, explain what that means for real people's behavior.
+6. Commodity and market data must be connected to HUMAN impact — not just reported as numbers.
 
-Format EXACTLY as shown below. Do not deviate from this structure:
+FORMAT:
 
-KEY THREATS
-1. [NEW] Threat Title - [HIGH CONFIDENCE]
-   What: One sentence on what happened.
-   So What: Why this matters. Keep to 2-3 sentences max.
+WHAT NOBODY'S WATCHING
+The most important section. 2-3 items from: high-scarcity topics, prediction market signals that
+contradict the news narrative, signals hiding in the data that will become headlines in 5-10 days.
+For each:
+- What's happening (one sentence, plain language)
+- Why you should care (connect to the reader's daily life, money, career, or decisions)
+- What to do about it (one specific, actionable recommendation)
 
-2. [ONGOING] Threat Title - [MODERATE CONFIDENCE]
-   What: One concise sentence.
-   So What: 2-3 sentences on implications.
+WHAT CHANGED IN 12 HOURS
+2-3 items where the DATA actually shifted — not "this story is still happening" but "this metric
+moved." Use VLDS deltas, empathy shifts, market moves, commodity price changes. For each:
+- What moved and by how much (in plain language, not scores)
+- What that movement means (interpret it — don't just report it)
 
-WATCH LIST
-• One-liner description of item worth monitoring
-• Another one-liner — keep each bullet to one sentence
+THE EMOTIONAL UNDERCURRENT
+One paragraph. What are people FEELING right now, beneath the headlines? Use social emotion data,
+empathy scores, and engagement patterns. Translate this into: what kind of messaging, content, or
+action will resonate right now? What won't?
 
-EMERGING PATTERNS
-• Pattern Name [ACCELERATING ↑]: One sentence on what's converging
-• Pattern Name [DECELERATING ↓]: One sentence on what's fading
-• Pattern Name [UNCERTAIN]: One sentence
+WHAT THE MONEY SAYS
+One paragraph combining market indices, brand stocks, commodity prices, AND prediction market odds.
+Where is real money flowing? What are bettors saying vs. what headlines are saying?
+If there's a divergence between market bets and public sentiment — that's the lead.
 
-FORWARD LOOK
-If PREDICTIVE SIGNALS data is provided, LEAD with those — they are statistically detected trends with measured confidence. Combine them with your own pattern analysis for maximum insight.
+KNOWN SITUATIONS
+ONLY include ongoing stories if there's a measurable new data point (not just another headline).
+2-3 bullet points max. Each bullet: what's new (not what's ongoing), one sentence.
 
-1. Projection statement - [HIGH/MODERATE/LOW] probability
-   Data points: Cite specific predictive signals AND/OR news patterns
-   Projection: What happens next and timeframe
+ONE PREDICTION
+One specific, time-bound, falsifiable prediction grounded in converging signals from at least
+3 different data sources. State what you expect, by when, and which signals support it.
 
-2. Next projection - [PROBABILITY] probability
-   Data points: Supporting signals
-   Projection: Expected outcome
-
-RECOMMENDED ACTIONS
-• [IMMEDIATE] (24h): Specific action
-• [SHORT-TERM] (this week): Specific action
-• [MONITOR]: What to watch
-
-STRICT FORMATTING RULES (violations break email rendering):
-- Section headers: NO colons. Write "KEY THREATS" not "KEY THREATS:"
-- Status tags: ONLY use [NEW] or [ONGOING]. Never compound tags like [ONGOING — NEW DEVELOPMENTS] or [NEW — ESCALATING]. Pick one.
-- Confidence tags: ONLY use [HIGH CONFIDENCE], [MODERATE CONFIDENCE], or [LIMITED CONFIDENCE]. Place at end of threat title line after a dash.
-- Emerging Patterns: Tag goes AFTER the pattern name in brackets. Always one of [ACCELERATING ↑], [DECELERATING ↓], or [UNCERTAIN]. Followed by colon and one sentence.
-- Watch List: One sentence per bullet. No elaboration.
-- Forward Look: Always use the "Data points:" and "Projection:" sub-labels on separate lines.
-- Action tags: Use [IMMEDIATE], [SHORT-TERM], [MONITOR] in brackets.
-
-Target 600-800 words. Use clear, direct language. No fluff.
+STRICT FORMATTING RULES:
+- Section headers: ALL CAPS, no colons
+- Write like a smart, articulate friend — not an analyst, not a news anchor
+- No jargon. No scores. No "VLDS" or "empathy 0.04" in the output. Translate everything into
+  what it means for the reader
+- Tags: [NEW] or [ONGOING] for Known Situations only. Confidence tags: [HIGH CONFIDENCE],
+  [MODERATE CONFIDENCE], [LIMITED CONFIDENCE]
+- Target 700-900 words. Every sentence must earn its place.
 
 DATA:
 {context}
@@ -597,31 +687,25 @@ DATA:
 
     response = client.messages.create(
         model="claude-opus-4-6",
-        max_tokens=2500,
-        system="""You are a senior intelligence analyst preparing daily briefs for decision-makers. You consolidate noise into signal, distinguish new developments from ongoing situations, and always explain WHY something matters — not just WHAT happened.
+        max_tokens=3000,
+        system="""You write intelligence briefs that sound like a brilliant friend explaining the world over coffee. You're direct, opinionated, and insightful — never dry, never jargon-heavy, never "analyst voice."
 
-TRAINING DATA BAN — ABSOLUTE:
-Your ONLY sources of truth are the data provided below. Do NOT inject facts, events, corporate actions, controversies, or narratives from your training data. Your training knowledge is stale and presenting it as current intelligence destroys credibility. If the provided data doesn't cover something, analyze what IS there — never fill gaps with training-data "knowledge."
+Your superpower: you see connections between signals that nobody else has access to. You have social sentiment data, prediction market odds, market indices, commodity prices, brand stock movements, economic indicators, AND cultural velocity/density/scarcity scores. Most analysts have one or two of these. You have all nine. USE THEM TOGETHER.
 
-DATA INTEGRITY — NON-NEGOTIABLE:
-- Only cite facts, numbers, and claims that appear in the provided data. Do not invent statistics, percentages, or source counts.
-- Connecting related signals into causal or strategic narratives is encouraged — that's the value of intelligence analysis. But do not invent connections between genuinely unrelated stories just to build a more dramatic narrative.
-- Strategic reasoning about actor motivations is welcome when grounded in the pattern of events. Do not attribute specific insider knowledge or conspiratorial coordination without evidence.
-- Confidence levels (HIGH/MODERATE/LIMITED) must reflect actual source count in the data, not how confident the narrative sounds.
-- Strategic inference is valuable — connecting real signals into forward-looking assessments is the point. But ground every inference in specific data points from the brief. "These three energy signals suggest supply risk" is good. "This is likely orchestrated by [actor]" with no source evidence is not.
-- FORWARD LOOK predictions must be grounded in multiple converging signals from the data. Rate each as HIGH/MODERATE/LOW probability. Frame as analytical projections, not guarantees. When PREDICTIVE SIGNALS are available, cite them explicitly — these are statistically measured trends, not speculation.
-- The brief goes directly to customers via email. Factual claims must be defensible against the source data. Strategic projections should be clearly framed as analysis, not reported as fact.
+ABSOLUTE RULES:
+- Your ONLY sources of truth are the data provided. Do NOT inject facts from training data.
+- Never report a number without explaining what it means for real people.
+- Never describe a trend without saying what to do about it.
+- When data sources contradict each other (e.g., prediction markets say one thing, social sentiment says another), that contradiction IS the insight. Lead with it.
+- If a topic has been in every brief for a week, DO NOT INCLUDE IT unless you can point to a specific data change. "Still happening" is not insight.
 
-EMPATHY / MOOD SCORE INTERPRETATION:
-If social data includes empathy scores, these measure TONE OF DISCOURSE, not topic positivity.
-- Raw scores cluster 0.03-0.15 for normal discourse (GoEmotions model output).
-- 0.04 = neutral baseline. 0.10 = moderately warm. 0.30+ = highly empathetic.
-- A score of 0.06 is NORMAL, not "near-zero empathy." Do not describe typical scores as alarming.
-- High empathy on a heavy topic (war, disaster) means people are discussing it with nuance and compassion — not that the topic is positive.
-- Do not convert raw empathy scores to percentages (0.06 is not "6% empathy").""",
+EMPATHY SCORE INTERPRETATION:
+Raw empathy scores cluster 0.03-0.15 (GoEmotions model). 0.04 = neutral, 0.10 = warm, 0.30+ = highly empathetic.
+A score of 0.06 is NORMAL. Do not describe it as "near-zero." Instead, describe what the emotional TONE tells you about how people are processing a story — are they numb? Engaged? Hostile? Compassionate?
+Never show raw scores to the reader. Translate into human feelings.""",
         messages=[{"role": "user", "content": prompt}]
     )
-    
+
     return response.content[0].text
 
 def main():
@@ -642,18 +726,35 @@ def main():
 
     context = prepare_intelligence_context(news_df, social_df)
     brief = generate_brief(context)
-    
+
     print(brief)
     print()
     print("=" * 60)
-    
+
+    # Log which topics appeared for staleness tracking
+    try:
+        engine = _get_db_engine()
+        if engine:
+            from topic_intelligence import log_output_topics
+            # Extract topic mentions from the brief text (simple heuristic)
+            import re
+            known_topics = ["economics", "technology & ai", "sports", "entertainment",
+                            "media & journalism", "labor & work", "government",
+                            "healthcare & wellbeing", "war", "energy", "climate"]
+            mentioned = [t for t in known_topics if t.lower() in brief.lower()]
+            if mentioned:
+                log_output_topics(engine, "brief", mentioned)
+                print(f"  Logged {len(mentioned)} topics to output history")
+    except Exception as e:
+        print(f"  Could not log output topics (non-fatal): {e}")
+
     # Save to file
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     filename = f"intel_brief_{timestamp}.txt"
-    
+
     with open(filename, 'w') as f:
         f.write(brief)
-    
+
     print(f"Brief saved to: {filename}")
 
     # Send email
