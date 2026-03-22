@@ -532,7 +532,7 @@ HIGH-ENGAGEMENT CONTENT (What's resonating now - with engagement scores):
             mkt_df = pd.read_sql(_sb_text("""
                 SELECT symbol, name, price, change_percent, market_sentiment
                 FROM markets
-                WHERE timestamp >= NOW() - INTERVAL '24 hours'
+                WHERE timestamp::timestamptz >= NOW() - INTERVAL '24 hours'
                 ORDER BY timestamp DESC
             """), _sb_engine)
             if not mkt_df.empty:
@@ -572,8 +572,12 @@ HIGH-ENGAGEMENT CONTENT (What's resonating now - with engagement scores):
             print(f"  Commodities failed (non-fatal): {e}")
 
         try:
-            from db_helper import load_brand_stock_data
-            brand_df = load_brand_stock_data(days=3)
+            brand_df = pd.read_sql(_sb_text("""
+                SELECT scope_name, metric_name, metric_value, snapshot_date
+                FROM metric_snapshots
+                WHERE scope = 'brand' AND snapshot_date >= CURRENT_DATE - INTERVAL '3 days'
+                ORDER BY snapshot_date DESC
+            """), _sb_engine)
             if not brand_df.empty:
                 price_df = brand_df[brand_df["metric_name"] == "stock_price"]
                 chg_df = brand_df[brand_df["metric_name"] == "stock_change_pct"]

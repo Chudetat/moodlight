@@ -104,7 +104,7 @@ def build_radar_context(engine):
         mkt_df = pd.read_sql(sql_text("""
             SELECT symbol, name, price, change_percent, market_sentiment
             FROM markets
-            WHERE timestamp >= NOW() - INTERVAL '24 hours'
+            WHERE timestamp::timestamptz >= NOW() - INTERVAL '24 hours'
             ORDER BY timestamp DESC
         """), engine)
         if not mkt_df.empty:
@@ -166,7 +166,7 @@ def build_radar_context(engine):
     # ── 8. Predictive signals ──
     try:
         pred_df = pd.read_sql(sql_text("""
-            SELECT alert_type, title, summary, brand_name, topic
+            SELECT alert_type, title, summary, brand, topic
             FROM alerts
             WHERE alert_type LIKE 'predictive_%%' AND timestamp >= :cutoff
             ORDER BY timestamp DESC LIMIT 10
@@ -175,7 +175,7 @@ def build_radar_context(engine):
             lines = ["MOODLIGHT SIGNALS (last 48h)"]
             lines.append("=" * 50)
             for _, row in pred_df.iterrows():
-                scope = row.get('brand_name') or row.get('topic') or ''
+                scope = row.get('brand') or row.get('topic') or ''
                 lines.append(f"  [{scope}] {row['title']}")
             sections.append("\n".join(lines))
     except Exception as e:
@@ -183,16 +183,20 @@ def build_radar_context(engine):
 
     # ── 9. Brand stocks ──
     try:
-        from db_helper import load_brand_stock_data
-        brand_df = load_brand_stock_data(days=3)
+        brand_df = pd.read_sql(sql_text("""
+            SELECT scope_name, metric_name, metric_value, snapshot_date
+            FROM metric_snapshots
+            WHERE scope = 'brand' AND snapshot_date >= CURRENT_DATE - INTERVAL '3 days'
+            ORDER BY snapshot_date DESC
+        """), engine)
         if not brand_df.empty:
             price_df = brand_df[brand_df["metric_name"] == "stock_price"]
             chg_df = brand_df[brand_df["metric_name"] == "stock_change_pct"]
             if not price_df.empty:
-                latest = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                latest = price_df.drop_duplicates(subset=["scope_name"], keep="first")
                 chg_map = {}
                 if not chg_df.empty:
-                    chg_latest = chg_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                    chg_latest = chg_df.drop_duplicates(subset=["scope_name"], keep="first")
                     chg_map = dict(zip(chg_latest["scope_name"], chg_latest["metric_value"]))
                 lines = ["BRAND STOCKS (watchlist companies)"]
                 lines.append("=" * 50)
