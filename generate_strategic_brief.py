@@ -668,11 +668,11 @@ End with: "Territory Recommendation: [specific territory] because [data-backed r
 
 ## 2. WHEN TO MOVE: Momentum Timing
 
-Based on the current Mood Score, identify the timing zone:
-- **Strike Zone (60-80)**: Optimal engagement window — audiences receptive but not oversaturated. Recommendation: ENGAGE NOW
-- **Caution Zone (40-59)**: Wait for positive shift or proceed with extra sensitivity
-- **Storm Zone (<40)**: Defensive positioning only
-- **Peak Zone (80+)**: High competition, premium content required
+Based on the empathy distribution and emotional climate in the data, identify the timing zone:
+- **Warm / Highly Empathetic dominant**: Optimal engagement window — audiences are receptive and emotionally open. Recommendation: ENGAGE NOW
+- **Detached / Neutral dominant**: Audiences are disengaged; wait for a positive emotional shift or proceed with extra sensitivity and compelling hooks
+- **Cold / Hostile dominant**: Defensive positioning only — high negativity means campaigns risk backlash
+- **Mixed with strong positive emotions (joy, hope, excitement)**: Good window despite mixed empathy — lean into the dominant positive emotion as your entry point
 
 Factor in Velocity (how fast topics are moving) and Longevity (how long they'll last).
 

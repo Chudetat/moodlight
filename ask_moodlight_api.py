@@ -631,6 +631,108 @@ def load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
     except Exception as e:
         print(f"  Intelligence context - Polymarket failed: {e}")
 
+    # Market indices (last 24 hours)
+    try:
+        from sqlalchemy import text as _mkt_text
+        mkt_df = pd.read_sql(
+            _mkt_text(
+                "SELECT symbol, name, price, change_percent, market_sentiment "
+                "FROM markets WHERE timestamp::timestamptz >= NOW() - INTERVAL '24 hours' "
+                "ORDER BY timestamp DESC"
+            ),
+            engine,
+        )
+        if not mkt_df.empty:
+            # Deduplicate to latest per symbol
+            mkt_df = mkt_df.drop_duplicates(subset=["symbol"], keep="first")
+            mkt_lines = ["Market Indices (last 24h):"]
+            for _, row in mkt_df.iterrows():
+                sym = row.get("symbol", "")
+                name = row.get("name", sym)
+                price = row.get("price", 0)
+                chg = row.get("change_percent", 0)
+                sent = row.get("market_sentiment", "")
+                direction = "+" if chg and chg > 0 else ""
+                mkt_lines.append(f"  {name} ({sym}): ${price:,.2f} ({direction}{chg:.2f}%) — sentiment: {sent}")
+            parts.append("\n".join(mkt_lines))
+            print(f"  Intelligence context - markets: {len(mkt_df)} indices loaded")
+    except Exception as e:
+        print(f"  Intelligence context - markets failed: {e}")
+
+    # Economic indicators
+    try:
+        from sqlalchemy import text as _econ_text
+        econ_df = pd.read_sql(
+            _econ_text(
+                "SELECT scope_name, metric_name, metric_value, snapshot_date "
+                "FROM metric_snapshots WHERE scope = 'economic' "
+                "ORDER BY snapshot_date DESC LIMIT 50"
+            ),
+            engine,
+        )
+        if not econ_df.empty:
+            econ_lines = ["Economic Indicators:"]
+            for indicator in econ_df["scope_name"].unique():
+                ind_rows = econ_df[econ_df["scope_name"] == indicator]
+                latest = ind_rows.iloc[0]
+                val = latest["metric_value"]
+                date = str(latest["snapshot_date"])[:10]
+                econ_lines.append(f"  {indicator}: {val:.4f} (as of {date})")
+            parts.append("\n".join(econ_lines))
+            print(f"  Intelligence context - economic indicators: {len(econ_df['scope_name'].unique())} loaded")
+    except Exception as e:
+        print(f"  Intelligence context - economic indicators failed: {e}")
+
+    # Commodity prices
+    try:
+        from sqlalchemy import text as _cmd_text
+        cmd_df = pd.read_sql(
+            _cmd_text(
+                "SELECT scope_name, metric_name, metric_value, snapshot_date "
+                "FROM metric_snapshots WHERE scope = 'commodity' "
+                "ORDER BY snapshot_date DESC LIMIT 50"
+            ),
+            engine,
+        )
+        if not cmd_df.empty:
+            cmd_lines = ["Commodity Prices:"]
+            for commodity in cmd_df["scope_name"].unique():
+                c_rows = cmd_df[cmd_df["scope_name"] == commodity]
+                latest = c_rows.iloc[0]
+                val = latest["metric_value"]
+                date = str(latest["snapshot_date"])[:10]
+                cmd_lines.append(f"  {commodity}: ${val:,.2f} (as of {date})")
+            parts.append("\n".join(cmd_lines))
+            print(f"  Intelligence context - commodities: {len(cmd_df['scope_name'].unique())} loaded")
+    except Exception as e:
+        print(f"  Intelligence context - commodities failed: {e}")
+
+    # Brand stock prices (last 3 days)
+    try:
+        from sqlalchemy import text as _stk_text
+        stk_df = pd.read_sql(
+            _stk_text(
+                "SELECT scope_name, metric_name, metric_value, snapshot_date "
+                "FROM metric_snapshots WHERE scope = 'brand' "
+                "AND snapshot_date >= CURRENT_DATE - INTERVAL '3 days' "
+                "ORDER BY snapshot_date DESC"
+            ),
+            engine,
+        )
+        if not stk_df.empty:
+            stk_lines = ["Brand Stock Prices (last 3 days):"]
+            for brand_name_stk in stk_df["scope_name"].unique():
+                b_rows = stk_df[stk_df["scope_name"] == brand_name_stk]
+                latest = b_rows.iloc[0]
+                val = latest["metric_value"]
+                metric = latest["metric_name"]
+                date = str(latest["snapshot_date"])[:10]
+                stk_lines.append(f"  {brand_name_stk} ({metric}): ${val:,.2f} (as of {date})")
+            parts.append("\n".join(stk_lines))
+            print(f"  Intelligence context - brand stocks: {len(stk_df['scope_name'].unique())} brands loaded")
+    except Exception as e:
+        print(f"  Intelligence context - brand stocks failed: {e}")
+
     if not parts:
         return ""
 

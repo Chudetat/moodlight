@@ -385,6 +385,104 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
     except Exception as e:
         print(f"  Intelligence context - Polymarket failed: {e}")
 
+    # --- Market Indices (last 24h) ---
+    try:
+        markets_df = pd.read_sql(
+            sql_text(
+                "SELECT symbol, name, price, change_percent, market_sentiment "
+                "FROM markets WHERE timestamp::timestamptz >= NOW() - INTERVAL '24 hours' "
+                "ORDER BY timestamp DESC"
+            ),
+            engine,
+        )
+        if not markets_df.empty:
+            # Deduplicate to latest per symbol
+            markets_df = markets_df.drop_duplicates(subset=["symbol"], keep="first")
+            mkt_lines = ["Market Indices (last 24h):"]
+            for _, row in markets_df.iterrows():
+                symbol = row.get("symbol", "")
+                name = row.get("name", symbol)
+                price = row.get("price")
+                chg = row.get("change_percent")
+                sentiment = row.get("market_sentiment", "")
+                price_str = f"${price:,.2f}" if pd.notna(price) else "N/A"
+                chg_str = f"{chg:+.2f}%" if pd.notna(chg) else "N/A"
+                sent_str = f" [{sentiment}]" if pd.notna(sentiment) and sentiment else ""
+                mkt_lines.append(f"  {symbol} ({name}): {price_str} ({chg_str}){sent_str}")
+            parts.append("\n".join(mkt_lines))
+    except Exception as e:
+        print(f"  Intelligence context - markets failed: {e}")
+
+    # --- Economic Indicators ---
+    try:
+        econ_df = pd.read_sql(
+            sql_text(
+                "SELECT scope_name, metric_name, metric_value, snapshot_date "
+                "FROM metric_snapshots WHERE scope = 'economic' "
+                "ORDER BY snapshot_date DESC LIMIT 50"
+            ),
+            engine,
+        )
+        if not econ_df.empty:
+            econ_lines = ["Economic Indicators:"]
+            for _, row in econ_df.iterrows():
+                indicator = row.get("scope_name", "")
+                metric = row.get("metric_name", "")
+                value = row.get("metric_value")
+                date = str(row.get("snapshot_date", ""))[:10]
+                val_str = f"{value:,.4f}" if pd.notna(value) else "N/A"
+                econ_lines.append(f"  {indicator} — {metric}: {val_str} ({date})")
+            parts.append("\n".join(econ_lines))
+    except Exception as e:
+        print(f"  Intelligence context - economic indicators failed: {e}")
+
+    # --- Commodities ---
+    try:
+        comm_df = pd.read_sql(
+            sql_text(
+                "SELECT scope_name, metric_name, metric_value, snapshot_date "
+                "FROM metric_snapshots WHERE scope = 'commodity' "
+                "ORDER BY snapshot_date DESC LIMIT 50"
+            ),
+            engine,
+        )
+        if not comm_df.empty:
+            comm_lines = ["Commodities:"]
+            for _, row in comm_df.iterrows():
+                commodity = row.get("scope_name", "")
+                metric = row.get("metric_name", "")
+                value = row.get("metric_value")
+                date = str(row.get("snapshot_date", ""))[:10]
+                val_str = f"${value:,.2f}" if pd.notna(value) else "N/A"
+                comm_lines.append(f"  {commodity} — {metric}: {val_str} ({date})")
+            parts.append("\n".join(comm_lines))
+    except Exception as e:
+        print(f"  Intelligence context - commodities failed: {e}")
+
+    # --- Brand Stocks (last 3 days) ---
+    try:
+        stocks_df = pd.read_sql(
+            sql_text(
+                "SELECT scope_name, metric_name, metric_value, snapshot_date "
+                "FROM metric_snapshots WHERE scope = 'brand' "
+                "AND snapshot_date >= CURRENT_DATE - INTERVAL '3 days' "
+                "ORDER BY snapshot_date DESC"
+            ),
+            engine,
+        )
+        if not stocks_df.empty:
+            stock_lines = ["Brand Stocks (last 3 days):"]
+            for _, row in stocks_df.iterrows():
+                brand_label = row.get("scope_name", "")
+                metric = row.get("metric_name", "")
+                value = row.get("metric_value")
+                date = str(row.get("snapshot_date", ""))[:10]
+                val_str = f"${value:,.2f}" if pd.notna(value) else "N/A"
+                stock_lines.append(f"  {brand_label} — {metric}: {val_str} ({date})")
+            parts.append("\n".join(stock_lines))
+    except Exception as e:
+        print(f"  Intelligence context - brand stocks failed: {e}")
+
     if not parts:
         return ""
 

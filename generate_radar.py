@@ -69,6 +69,27 @@ def build_radar_context(engine):
     except Exception as e:
         print(f"  Headlines failed: {e}")
 
+    # ── 2b. Social posts (what people are actually saying) ──
+    try:
+        social_df = pd.read_sql(sql_text("""
+            SELECT text, topic, source, emotion_top_1, empathy_score, created_at
+            FROM social_scored
+            WHERE created_at >= NOW() - INTERVAL '24 hours'
+            ORDER BY engagement DESC NULLS LAST
+            LIMIT 15
+        """), engine)
+        if not social_df.empty:
+            lines = ["SOCIAL MEDIA (what people are actually saying)"]
+            lines.append("=" * 50)
+            for _, row in social_df.iterrows():
+                emotion = row.get('emotion_top_1', '?') or '?'
+                source = row.get('source', '?') or '?'
+                topic = row.get('topic', '?') or '?'
+                lines.append(f"  [{topic}] \"{row['text'][:200]}...\" | emotion: {emotion} | source: {source}")
+            sections.append("\n".join(lines))
+    except Exception as e:
+        print(f"  Social posts failed: {e}")
+
     # ── 3. Social emotional temperature ──
     try:
         emo_df = pd.read_sql(sql_text("""
@@ -168,7 +189,10 @@ def build_radar_context(engine):
         pred_df = pd.read_sql(sql_text("""
             SELECT alert_type, title, summary, brand, topic
             FROM alerts
-            WHERE alert_type LIKE 'predictive_%%' AND timestamp >= :cutoff
+            WHERE (alert_type LIKE 'predictive_%%'
+                   OR alert_type IN ('market_mood_divergence', 'brand_crisis', 'mood_shift',
+                                     'brand_stock_divergence', 'commodity_spike', 'economic_stress'))
+              AND timestamp >= :cutoff
             ORDER BY timestamp DESC LIMIT 10
         """), engine, params={"cutoff": cutoff_48h})
         if not pred_df.empty:

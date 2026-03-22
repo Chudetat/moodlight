@@ -369,11 +369,73 @@ def compute_topic_intelligence(engine, output_type="brief"):
     return results
 
 
+def _label_velocity(score):
+    """Translate velocity score (0-1) to human-readable label."""
+    if score >= 0.6:
+        return "accelerating"
+    elif score >= 0.3:
+        return "building"
+    else:
+        return "quiet"
+
+
+def _label_longevity(score):
+    """Translate longevity score (0-1) to human-readable label."""
+    if score >= 0.6:
+        return "enduring"
+    elif score >= 0.3:
+        return "moderate staying power"
+    else:
+        return "fading quickly"
+
+
+def _label_density(score):
+    """Translate density score (0-1) to human-readable label."""
+    if score >= 0.6:
+        return "saturated"
+    elif score >= 0.3:
+        return "moderate coverage"
+    else:
+        return "uncrowded"
+
+
+def _label_scarcity(score):
+    """Translate scarcity score (0-1) to human-readable label."""
+    if score >= 0.6:
+        return "high opportunity"
+    elif score >= 0.3:
+        return "moderate opportunity"
+    else:
+        return "low opportunity"
+
+
+def _label_empathy(score):
+    """Translate empathy score (RoBERTa 0.03-0.15 range) to human-readable label."""
+    if score >= 0.10:
+        return "warm/empathetic"
+    elif score >= 0.07:
+        return "warming"
+    elif score >= 0.04:
+        return "detached/neutral"
+    else:
+        return "cold/hostile"
+
+
+def _label_delta(delta):
+    """Translate a numeric delta to a directional label."""
+    if abs(delta) < 0.02:
+        return "steady"
+    elif delta > 0:
+        return "rising"
+    else:
+        return "falling"
+
+
 def format_intelligence_context(topics, top_n=10):
     """Format topic intelligence into a context string for Claude prompts.
 
-    Returns human-readable context about what's interesting and why,
-    without exposing raw scores — Claude should translate into plain language.
+    Returns human-readable context about what's interesting and why.
+    Leads with plain-language labels; raw scores in parentheses for reference.
     """
     if not topics:
         return "No topic intelligence available.\n"
@@ -389,12 +451,13 @@ def format_intelligence_context(topics, top_n=10):
         for t in interesting:
             reason_str = ", ".join(t["reasons"])
             line = f"\n{t['topic'].upper()} [{reason_str}]"
-            line += f"\n  Velocity: {t['velocity']:.2f} (delta: {t['velocity_delta']:+.3f})"
-            line += f"\n  Density: {t['density']:.2f} (delta: {t['density_delta']:+.3f})"
-            line += f"\n  Scarcity: {t['scarcity']:.2f} (delta: {t['scarcity_delta']:+.3f})"
-            line += f"\n  Longevity: {t['longevity']:.2f}"
+            line += f"\n  Velocity: {_label_velocity(t['velocity'])} ({_label_delta(t['velocity_delta'])}) [raw: {t['velocity']:.2f}, delta: {t['velocity_delta']:+.3f}]"
+            line += f"\n  Density: {_label_density(t['density'])} ({_label_delta(t['density_delta'])}) [raw: {t['density']:.2f}, delta: {t['density_delta']:+.3f}]"
+            line += f"\n  Scarcity: {_label_scarcity(t['scarcity'])} ({_label_delta(t['scarcity_delta'])}) [raw: {t['scarcity']:.2f}, delta: {t['scarcity_delta']:+.3f}]"
+            line += f"\n  Longevity: {_label_longevity(t['longevity'])} [raw: {t['longevity']:.2f}]"
             if t["empathy_recent"] is not None:
-                line += f"\n  Empathy: {t['empathy_recent']:.4f} (delta: {t['empathy_delta']:+.4f})"
+                emp_delta = t["empathy_delta"] or 0
+                line += f"\n  Empathy: {_label_empathy(t['empathy_recent'])} ({_label_delta(emp_delta)}) [raw: {t['empathy_recent']:.4f}, delta: {emp_delta:+.4f}]"
             if t["consecutive_days_appeared"] > 0:
                 line += f"\n  WARNING: Appeared in {t['consecutive_days_appeared']} consecutive previous outputs — only include if there's a genuinely new angle"
             lines.append(line)
@@ -407,7 +470,7 @@ def format_intelligence_context(topics, top_n=10):
         lines.append("\n\nWHITE SPACE (high scarcity, low density — nobody's covering these)")
         lines.append("-" * 50)
         for t in white_space[:5]:
-            lines.append(f"  {t['topic']}: scarcity {t['scarcity']:.2f}, density {t['density']:.2f}")
+            lines.append(f"  {t['topic']}: {_label_scarcity(t['scarcity'])} scarcity, {_label_density(t['density'])} density [raw: scarcity {t['scarcity']:.2f}, density {t['density']:.2f}]")
 
     # Saturated (mention briefly for "avoid" signals)
     saturated = [t for t in topics if "saturated" in t["reasons"]]
@@ -415,7 +478,7 @@ def format_intelligence_context(topics, top_n=10):
         lines.append("\n\nSATURATED (everyone's here — adding more is noise)")
         lines.append("-" * 50)
         for t in saturated[:5]:
-            lines.append(f"  {t['topic']}: density {t['density']:.2f}, velocity {t['velocity']:.2f}")
+            lines.append(f"  {t['topic']}: {_label_density(t['density'])} density, {_label_velocity(t['velocity'])} velocity [raw: density {t['density']:.2f}, velocity {t['velocity']:.2f}]")
 
     # Stale topics — explicitly tell Claude what NOT to lead with
     stale = [t for t in topics if t["consecutive_days_appeared"] >= 2]
