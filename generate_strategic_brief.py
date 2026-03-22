@@ -526,6 +526,97 @@ HIGH-ENGAGEMENT CONTENT (What's resonating now - with engagement scores):
     except Exception as e:
         print(f"  Polymarket data failed (non-fatal): {e}")
 
+    # Add market indices, economic indicators, commodities, brand stocks
+    if _sb_engine:
+        try:
+            mkt_df = pd.read_sql(_sb_text("""
+                SELECT symbol, name, price, change_percent, market_sentiment
+                FROM markets
+                WHERE timestamp >= NOW() - INTERVAL '24 hours'
+                ORDER BY timestamp DESC
+            """), _sb_engine)
+            if not mkt_df.empty:
+                latest = mkt_df.drop_duplicates(subset=['symbol'], keep='first')
+                mkt_lines = ["MARKET INDICES (last 24h):"]
+                for _, row in latest.iterrows():
+                    chg = row.get('change_percent', 0) or 0
+                    mkt_lines.append(f"  {row['name']}: {'up' if chg > 0 else 'down'} {abs(chg):.2f}%")
+                context += "\n".join(mkt_lines) + "\n\n"
+        except Exception as e:
+            print(f"  Market indices failed (non-fatal): {e}")
+
+        try:
+            from db_helper import load_economic_data
+            econ_df = load_economic_data(days=7)
+            if not econ_df.empty:
+                latest_econ = econ_df.sort_values("snapshot_date").groupby("metric_name").last().reset_index()
+                econ_lines = ["ECONOMIC INDICATORS:"]
+                for _, row in latest_econ.iterrows():
+                    econ_lines.append(f"  {row['metric_name']}: {row['metric_value']:.2f}")
+                context += "\n".join(econ_lines) + "\n\n"
+        except Exception as e:
+            print(f"  Economic indicators failed (non-fatal): {e}")
+
+        try:
+            from db_helper import load_commodity_data
+            comm_df = load_commodity_data(days=7)
+            if not comm_df.empty:
+                price_df = comm_df[comm_df["metric_name"] == "price"]
+                if not price_df.empty:
+                    latest_comm = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                    comm_lines = ["COMMODITY PRICES:"]
+                    for _, row in latest_comm.iterrows():
+                        comm_lines.append(f"  {row['scope_name']}: ${row['metric_value']:.2f}")
+                    context += "\n".join(comm_lines) + "\n\n"
+        except Exception as e:
+            print(f"  Commodities failed (non-fatal): {e}")
+
+        try:
+            from db_helper import load_brand_stock_data
+            brand_df = load_brand_stock_data(days=3)
+            if not brand_df.empty:
+                price_df = brand_df[brand_df["metric_name"] == "stock_price"]
+                chg_df = brand_df[brand_df["metric_name"] == "stock_change_pct"]
+                if not price_df.empty:
+                    latest_brands = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                    chg_map = {}
+                    if not chg_df.empty:
+                        chg_latest = chg_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                        chg_map = dict(zip(chg_latest["scope_name"], chg_latest["metric_value"]))
+                    brand_lines = ["BRAND STOCKS:"]
+                    for _, row in latest_brands.iterrows():
+                        chg = chg_map.get(row["scope_name"], 0)
+                        brand_lines.append(f"  {row['scope_name']}: ${row['metric_value']:.2f} ({chg:+.2f}%)")
+                    context += "\n".join(brand_lines) + "\n\n"
+        except Exception as e:
+            print(f"  Brand stocks failed (non-fatal): {e}")
+
+        # Signal track record
+        try:
+            sig_df = pd.read_sql(_sb_text("""
+                SELECT alert_type,
+                       COUNT(*) AS total_signals,
+                       COUNT(spy_change_1d) AS has_1d,
+                       AVG(spy_change_1d) AS avg_spy_1d,
+                       SUM(CASE WHEN spy_change_1d > 0 THEN 1 ELSE 0 END)::float
+                           / NULLIF(COUNT(spy_change_1d), 0) AS up_rate_1d
+                FROM signal_log
+                GROUP BY alert_type
+                ORDER BY total_signals DESC
+            """), _sb_engine)
+            if not sig_df.empty:
+                sig_lines = ["MOODLIGHT SIGNAL TRACK RECORD:"]
+                for _, row in sig_df.iterrows():
+                    up_rate = f"{row['up_rate_1d']*100:.0f}%" if pd.notna(row.get("up_rate_1d")) else "N/A"
+                    avg_1d = f"{row['avg_spy_1d']:+.2f}%" if pd.notna(row.get("avg_spy_1d")) else "N/A"
+                    sig_lines.append(
+                        f"  {row['alert_type']}: {int(row['total_signals'])} signals, "
+                        f"SPY up rate: {up_rate}, avg 1d move: {avg_1d}"
+                    )
+                context += "\n".join(sig_lines) + "\n\n"
+        except Exception as e:
+            print(f"  Signal track record failed (non-fatal): {e}")
+
     context += f"Total Posts Analyzed: {len(df)}\n"
 
     # Select best frameworks for this request

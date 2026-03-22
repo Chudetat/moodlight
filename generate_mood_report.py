@@ -97,13 +97,13 @@ def load_mood_data(engine):
         print(f"  Could not load social sentiment: {e}")
         data["social_sentiment_trend"] = pd.DataFrame()
 
-    # --- Market data (SPY, QQQ, DIA) ---
+    # --- Market data (all 7 indices) ---
     try:
         markets = pd.read_sql(
             sql_text("""
-                SELECT symbol, price, change, change_percent, latest_trading_day, timestamp
+                SELECT symbol, name, price, change, change_percent,
+                       market_sentiment, latest_trading_day, timestamp
                 FROM markets
-                WHERE symbol IN ('SPY', 'QQQ', 'DIA')
                 ORDER BY timestamp DESC
             """),
             engine,
@@ -222,15 +222,14 @@ def load_mood_data(engine):
         print(f"  Could not load signal track record: {e}")
         data["signal_track_record"] = pd.DataFrame()
 
-    # --- Dominant emotions (last 3d) ---
+    # --- Dominant emotions (last 3d) — all topics ---
     try:
         cutoff_3d = (now - timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
         emotions = pd.read_sql(
             sql_text("""
                 SELECT emotion_top_1, COUNT(*) AS cnt
                 FROM news_scored
-                WHERE topic = 'economics'
-                  AND created_at >= :cutoff
+                WHERE created_at >= :cutoff
                   AND emotion_top_1 IS NOT NULL
                 GROUP BY emotion_top_1
                 ORDER BY cnt DESC
@@ -240,9 +239,25 @@ def load_mood_data(engine):
             params={"cutoff": cutoff_3d},
         )
         data["emotions"] = emotions
+
+        # Also get per-topic emotion breakdown for cross-domain observations
+        emotions_by_topic = pd.read_sql(
+            sql_text("""
+                SELECT topic, emotion_top_1, COUNT(*) AS cnt
+                FROM news_scored
+                WHERE created_at >= :cutoff
+                  AND emotion_top_1 IS NOT NULL
+                GROUP BY topic, emotion_top_1
+                ORDER BY topic, cnt DESC
+            """),
+            engine,
+            params={"cutoff": cutoff_3d},
+        )
+        data["emotions_by_topic"] = emotions_by_topic
     except Exception as e:
         print(f"  Could not load emotions: {e}")
         data["emotions"] = pd.DataFrame()
+        data["emotions_by_topic"] = pd.DataFrame()
 
     # --- Top headlines (highest intensity, last 3d) — economics ---
     try:
@@ -313,6 +328,38 @@ def load_mood_data(engine):
         print(f"  Could not load Polymarket data: {e}")
         data["polymarket"] = []
 
+    # --- Brand stocks ---
+    try:
+        from db_helper import load_brand_stock_data
+        brand_df = load_brand_stock_data(days=3)
+        if not brand_df.empty:
+            price_df = brand_df[brand_df["metric_name"] == "stock_price"]
+            chg_df = brand_df[brand_df["metric_name"] == "stock_change_pct"]
+            if not price_df.empty:
+                latest = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                chg_map = {}
+                if not chg_df.empty:
+                    chg_latest = chg_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                    chg_map = dict(zip(chg_latest["scope_name"], chg_latest["metric_value"]))
+                latest["change_pct"] = latest["scope_name"].map(chg_map).fillna(0)
+                data["brand_stocks"] = latest
+            else:
+                data["brand_stocks"] = pd.DataFrame()
+        else:
+            data["brand_stocks"] = pd.DataFrame()
+    except Exception as e:
+        print(f"  Could not load brand stocks: {e}")
+        data["brand_stocks"] = pd.DataFrame()
+
+    # --- VLDS / Topic intelligence ---
+    try:
+        from topic_intelligence import compute_topic_intelligence, format_intelligence_context
+        topics = compute_topic_intelligence(engine, output_type="mood-report")
+        data["topic_intelligence"] = topics or []
+    except Exception as e:
+        print(f"  Could not load topic intelligence: {e}")
+        data["topic_intelligence"] = []
+
     return data
 
 
@@ -350,14 +397,19 @@ def build_newsletter_context(data):
             )
         sections.append("\n".join(lines))
 
-    # Markets
+    # Markets (all indices)
     mkt = data.get("markets", pd.DataFrame())
     if not mkt.empty:
         lines = ["MARKET DATA:"]
         for _, row in mkt.iterrows():
+            name = row.get("name", row["symbol"])
             chg = row.get("change", 0) or 0
             pct = row.get("change_percent", "0%")
-            lines.append(f"  {row['symbol']}: ${row['price']:.2f} ({chg:+.2f}, {pct})")
+            sent = row.get("market_sentiment", None)
+            sent_str = ""
+            if pd.notna(sent):
+                sent_str = f" | sentiment: {'bullish' if sent > 0.55 else 'bearish' if sent < 0.45 else 'neutral'}"
+            lines.append(f"  {name} ({row['symbol']}): ${row['price']:.2f} ({chg:+.2f}, {pct}){sent_str}")
         sections.append("\n".join(lines))
 
     # Commodities
@@ -412,14 +464,25 @@ def build_newsletter_context(data):
             )
         sections.append("\n".join(lines))
 
-    # Emotions
+    # Emotions (all topics)
     emo = data.get("emotions", pd.DataFrame())
     if not emo.empty:
-        lines = ["DOMINANT EMOTIONS IN ECONOMIC COVERAGE (3d):"]
+        lines = ["DOMINANT EMOTIONS ACROSS ALL COVERAGE (3d):"]
         total = emo["cnt"].sum()
         for _, row in emo.iterrows():
             pct = (row["cnt"] / total) * 100
             lines.append(f"  {row['emotion_top_1']}: {row['cnt']} ({pct:.0f}%)")
+        sections.append("\n".join(lines))
+
+    # Per-topic emotion breakdown (cross-domain observations)
+    emo_by_topic = data.get("emotions_by_topic", pd.DataFrame())
+    if not emo_by_topic.empty:
+        lines = ["EMOTION BY TOPIC (3d — top emotion per topic):"]
+        for topic in emo_by_topic["topic"].unique():
+            topic_emo = emo_by_topic[emo_by_topic["topic"] == topic].head(1)
+            if not topic_emo.empty:
+                row = topic_emo.iloc[0]
+                lines.append(f"  {topic}: {row['emotion_top_1']} ({int(row['cnt'])} posts)")
         sections.append("\n".join(lines))
 
     # Economic headlines
@@ -465,6 +528,26 @@ def build_newsletter_context(data):
         for m in poly_markets[:8]:
             lines.append(f"  \"{m['question']}\" — {m['yes_odds']:.0f}% YES (${m['volume']:,.0f} wagered)")
         sections.append("\n".join(lines))
+
+    # Brand stocks
+    brand_stocks = data.get("brand_stocks", pd.DataFrame())
+    if not brand_stocks.empty:
+        lines = ["BRAND STOCKS (watchlist companies):"]
+        for _, row in brand_stocks.iterrows():
+            chg = row.get("change_pct", 0) or 0
+            lines.append(f"  {row['scope_name']}: ${row['metric_value']:.2f} ({chg:+.2f}%)")
+        sections.append("\n".join(lines))
+
+    # Topic intelligence (VLDS deltas + staleness)
+    topic_intel = data.get("topic_intelligence", [])
+    if topic_intel:
+        try:
+            from topic_intelligence import format_intelligence_context
+            intel_text = format_intelligence_context(topic_intel, top_n=10)
+            if intel_text:
+                sections.append(intel_text)
+        except Exception:
+            pass
 
     return "\n\n".join(sections)
 
@@ -834,19 +917,22 @@ Your reader might be a portfolio manager or a curious parent. Write for both. No
 
 VOICE: Warm, sharp, curious. Like a smart friend who reads everything and texts you the interesting parts. Conversational, not performative. Funny when it's natural, never forced. Never breathless, never preachy. If it sounds like a Bloomberg terminal or a LinkedIn post, start over.
 
+ABSOLUTE RULE — HUMAN SPEAK ONLY:
+Never show raw scores, internal system numbers, or jargon. No "VLDS", no "density 0.86", no "empathy 0.04", no "velocity score." Translate EVERYTHING into plain human language. "People are talking about this differently than last week" not "empathy delta +0.03." "This topic is everywhere and hard to stand out in" not "density score 0.92." Every insight must connect to the reader's life, money, career, or decisions.
+
 RULES:
 
 1. EVERY CLAIM MUST BE GROUNDED IN THE DATA PROVIDED. No training data. No made-up statistics. Wear the data lightly — one well-placed number is worth more than five.
 
 2. OBSERVATIONS OVER METRICS. Don't just report that empathy went up 0.02. Tell the reader what's interesting — the contradiction, the second-order effect, the thing hiding in plain sight. The numbers support the story, they aren't the story.
 
-3. GO CROSS-DOMAIN. You have headlines from every topic — economics, entertainment, tech, labor, sports. The best observations sit at the intersection of two unrelated trends. A market move + a cultural shift. An economic indicator + how people are talking online. Find those collisions.
+3. GO CROSS-DOMAIN. You have headlines from every topic — economics, entertainment, tech, labor, sports, and prediction markets showing what people are betting real money on. Brand stock moves, commodity prices, and VLDS topic intelligence showing what's genuinely new vs. stale. The best observations sit at the intersection of two unrelated signals. A market move + a cultural shift. A prediction market bet + how people are talking online. A brand stock diverging from sentiment. Find those collisions.
 
 4. EMPATHY FIRST, ECONOMICS SECOND. This is the rule that defines Moodlight. Do NOT lead with markets, oil prices, or Fed decisions — every other newsletter does that and your reader already saw it. Lead with the most emotionally resonant human observation in the data — how people are actually feeling, behaving, withdrawing, or surprising each other — and THEN connect it to the economic and global forces driving it. "Two-thirds of Americans stopped going to weddings because they can't afford it" is a Moodlight lead. "SPY dropped 1.4%" is not. Start with empathy, then show the machinery. That's what makes someone screenshot your newsletter instead of skimming it.
 
 5. NO REPETITIVE STRUCTURE. Every issue should feel different because every day IS different. Some days the lead is a market divergence. Some days it's a social media pattern. Some days it's a single buried headline that reveals something bigger. Follow the data, not a template.
 
-6. THE MARKET SNAPSHOT SHOULD BE BRIEF. Include SPY/QQQ/DIA and any notable commodity moves, but keep it to a few lines. Don't build the whole newsletter around market numbers — they're context, not the main event.
+6. THE MARKET SNAPSHOT SHOULD BE BRIEF. Include all major indices and any notable commodity or brand stock moves, but keep it to a few lines. Don't build the whole newsletter around market numbers — they're context, not the main event. When prediction markets disagree with social sentiment or market moves, that divergence IS the story.
 
 7. EMPATHY SCORE REFERENCE: 0.04 = cold/hostile, 0.10 = detached/neutral, 0.30 = warm, 0.30+ = highly empathetic.
 
@@ -871,7 +957,7 @@ OUTPUT FORMAT — use this exact structure with markdown:
 [2-3 brief observations (2-3 sentences each) from different parts of the data. Different topics, different angles. These should each deliver a small "huh" moment.]
 
 ## MARKETS & MOOD
-[Brief market snapshot — SPY, QQQ, DIA with prices and changes. Any notable commodity or economic indicator moves. Then 1-2 sentences connecting market action to sentiment. Do markets and mood agree or diverge today?]
+[Brief market snapshot — all major indices with prices and changes. Any notable commodity, brand stock, or economic indicator moves. Include prediction market signals when they tell a story. Then 1-2 sentences connecting market action to sentiment. Do markets and mood agree or diverge today?]
 
 ## WHAT TO WATCH
 [2-3 specific things the data says are worth monitoring. Not predictions — observations that suggest something is building. Ground each in a data point.]

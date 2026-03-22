@@ -181,6 +181,55 @@ def build_radar_context(engine):
     except Exception as e:
         print(f"  Signals failed: {e}")
 
+    # ── 9. Brand stocks ──
+    try:
+        from db_helper import load_brand_stock_data
+        brand_df = load_brand_stock_data(days=3)
+        if not brand_df.empty:
+            price_df = brand_df[brand_df["metric_name"] == "stock_price"]
+            chg_df = brand_df[brand_df["metric_name"] == "stock_change_pct"]
+            if not price_df.empty:
+                latest = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                chg_map = {}
+                if not chg_df.empty:
+                    chg_latest = chg_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
+                    chg_map = dict(zip(chg_latest["scope_name"], chg_latest["metric_value"]))
+                lines = ["BRAND STOCKS (watchlist companies)"]
+                lines.append("=" * 50)
+                for _, row in latest.iterrows():
+                    chg = chg_map.get(row["scope_name"], 0)
+                    lines.append(f"  {row['scope_name']}: ${row['metric_value']:.2f} ({chg:+.2f}%)")
+                sections.append("\n".join(lines))
+    except Exception as e:
+        print(f"  Brand stocks failed: {e}")
+
+    # ── 10. Signal track record ──
+    try:
+        sig_df = pd.read_sql(sql_text("""
+            SELECT alert_type,
+                   COUNT(*) AS total_signals,
+                   COUNT(spy_change_1d) AS has_1d,
+                   AVG(spy_change_1d) AS avg_spy_1d,
+                   SUM(CASE WHEN spy_change_1d > 0 THEN 1 ELSE 0 END)::float
+                       / NULLIF(COUNT(spy_change_1d), 0) AS up_rate_1d
+            FROM signal_log
+            GROUP BY alert_type
+            ORDER BY total_signals DESC
+        """), engine)
+        if not sig_df.empty:
+            lines = ["MOODLIGHT SIGNAL TRACK RECORD"]
+            lines.append("=" * 50)
+            for _, row in sig_df.iterrows():
+                up_rate = f"{row['up_rate_1d']*100:.0f}%" if pd.notna(row.get("up_rate_1d")) else "N/A"
+                avg_1d = f"{row['avg_spy_1d']:+.2f}%" if pd.notna(row.get("avg_spy_1d")) else "N/A"
+                lines.append(
+                    f"  {row['alert_type']}: {int(row['total_signals'])} signals, "
+                    f"SPY up rate: {up_rate}, avg 1d move: {avg_1d}"
+                )
+            sections.append("\n".join(lines))
+    except Exception as e:
+        print(f"  Signal track record failed: {e}")
+
     return "\n\n".join(sections)
 
 

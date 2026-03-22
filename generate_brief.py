@@ -617,6 +617,40 @@ SIGNAL SOURCE 9: TOPIC INTELLIGENCE (VLDS deltas + staleness analysis)
         except Exception as e:
             print(f"  Could not load topic intelligence: {e}")
 
+    # ── 10. SIGNAL TRACK RECORD ──
+    if engine:
+        try:
+            sig_df = pd.read_sql(sql_text("""
+                SELECT alert_type,
+                       COUNT(*) AS total_signals,
+                       COUNT(spy_change_1d) AS has_1d,
+                       AVG(spy_change_1d) AS avg_spy_1d,
+                       SUM(CASE WHEN spy_change_1d > 0 THEN 1 ELSE 0 END)::float
+                           / NULLIF(COUNT(spy_change_1d), 0) AS up_rate_1d
+                FROM signal_log
+                GROUP BY alert_type
+                ORDER BY total_signals DESC
+            """), engine)
+            if not sig_df.empty:
+                sig_lines = []
+                for _, row in sig_df.iterrows():
+                    up_rate = f"{row['up_rate_1d']*100:.0f}%" if pd.notna(row.get("up_rate_1d")) else "N/A"
+                    avg_1d = f"{row['avg_spy_1d']:+.2f}%" if pd.notna(row.get("avg_spy_1d")) else "N/A"
+                    sig_lines.append(
+                        f"  {row['alert_type']}: {int(row['total_signals'])} signals, "
+                        f"SPY up rate: {up_rate}, avg 1d move: {avg_1d}"
+                    )
+                context += f"""
+
+SIGNAL SOURCE 10: MOODLIGHT SIGNAL TRACK RECORD
+==========================================
+How our predictive signals have performed historically:
+{chr(10).join(sig_lines)}
+"""
+                print(f"  Added signal track record ({len(sig_df)} alert types)")
+        except Exception as e:
+            print(f"  Could not load signal track record: {e}")
+
     return context
 
 def generate_brief(context):
