@@ -225,8 +225,7 @@ def main():
         sys.exit(0)
 
     if not is_market_hours():
-        print("Outside US market hours — skipping brand stock fetch")
-        sys.exit(0)
+        print("Outside US market hours — fetching most recent available data")
 
     ensure_brand_stocks_table(engine)
 
