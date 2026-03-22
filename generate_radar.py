@@ -133,9 +133,15 @@ def build_radar_context(engine):
             lines = ["MARKETS (last 24h)"]
             lines.append("=" * 50)
             for _, row in latest.iterrows():
-                chg = row.get('change_percent', 0) or 0
+                try:
+                    chg = float(row.get('change_percent', 0) or 0)
+                except (ValueError, TypeError):
+                    chg = 0
                 lines.append(f"  {row['name']}: {'up' if chg > 0 else 'down'} {abs(chg):.2f}%")
-            avg_sent = latest['market_sentiment'].mean()
+            try:
+                avg_sent = latest['market_sentiment'].astype(float).mean()
+            except (ValueError, TypeError):
+                avg_sent = 0.5
             lines.append(f"  Overall mood: {'bullish' if avg_sent > 0.55 else 'bearish' if avg_sent < 0.45 else 'neutral'} ({avg_sent:.2f})")
             sections.append("\n".join(lines))
     except Exception as e:

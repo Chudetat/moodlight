@@ -402,13 +402,14 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
             for _, row in markets_df.iterrows():
                 symbol = row.get("symbol", "")
                 name = row.get("name", symbol)
-                price = row.get("price")
-                chg = row.get("change_percent")
+                try:
+                    price = float(row.get("price", 0) or 0)
+                    chg = float(row.get("change_percent", 0) or 0)
+                except (ValueError, TypeError):
+                    price, chg = 0, 0
                 sentiment = row.get("market_sentiment", "")
-                price_str = f"${price:,.2f}" if pd.notna(price) else "N/A"
-                chg_str = f"{chg:+.2f}%" if pd.notna(chg) else "N/A"
                 sent_str = f" [{sentiment}]" if pd.notna(sentiment) and sentiment else ""
-                mkt_lines.append(f"  {symbol} ({name}): {price_str} ({chg_str}){sent_str}")
+                mkt_lines.append(f"  {symbol} ({name}): ${price:,.2f} ({chg:+.2f}%){sent_str}")
             parts.append("\n".join(mkt_lines))
     except Exception as e:
         print(f"  Intelligence context - markets failed: {e}")
@@ -425,13 +426,13 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
         )
         if not econ_df.empty:
             econ_lines = ["Economic Indicators:"]
-            for _, row in econ_df.iterrows():
-                indicator = row.get("scope_name", "")
-                metric = row.get("metric_name", "")
+            latest = econ_df.sort_values("snapshot_date", ascending=False).drop_duplicates(subset=["metric_name"], keep="first")
+            for _, row in latest.iterrows():
+                indicator = row.get("metric_name", "")
                 value = row.get("metric_value")
                 date = str(row.get("snapshot_date", ""))[:10]
                 val_str = f"{value:,.4f}" if pd.notna(value) else "N/A"
-                econ_lines.append(f"  {indicator} — {metric}: {val_str} ({date})")
+                econ_lines.append(f"  {indicator}: {val_str} ({date})")
             parts.append("\n".join(econ_lines))
     except Exception as e:
         print(f"  Intelligence context - economic indicators failed: {e}")
@@ -447,15 +448,17 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
             engine,
         )
         if not comm_df.empty:
-            comm_lines = ["Commodities:"]
-            for _, row in comm_df.iterrows():
-                commodity = row.get("scope_name", "")
-                metric = row.get("metric_name", "")
-                value = row.get("metric_value")
-                date = str(row.get("snapshot_date", ""))[:10]
-                val_str = f"${value:,.2f}" if pd.notna(value) else "N/A"
-                comm_lines.append(f"  {commodity} — {metric}: {val_str} ({date})")
-            parts.append("\n".join(comm_lines))
+            price_df = comm_df[comm_df["metric_name"] == "price"]
+            if not price_df.empty:
+                comm_lines = ["Commodity Prices:"]
+                for commodity in price_df["scope_name"].unique():
+                    c_rows = price_df[price_df["scope_name"] == commodity]
+                    latest = c_rows.iloc[0]
+                    value = latest["metric_value"]
+                    date = str(latest["snapshot_date"])[:10]
+                    val_str = f"${value:,.2f}" if pd.notna(value) else "N/A"
+                    comm_lines.append(f"  {commodity}: {val_str} ({date})")
+                parts.append("\n".join(comm_lines))
     except Exception as e:
         print(f"  Intelligence context - commodities failed: {e}")
 
@@ -472,13 +475,15 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
         )
         if not stocks_df.empty:
             stock_lines = ["Brand Stocks (last 3 days):"]
-            for _, row in stocks_df.iterrows():
-                brand_label = row.get("scope_name", "")
-                metric = row.get("metric_name", "")
-                value = row.get("metric_value")
-                date = str(row.get("snapshot_date", ""))[:10]
-                val_str = f"${value:,.2f}" if pd.notna(value) else "N/A"
-                stock_lines.append(f"  {brand_label} — {metric}: {val_str} ({date})")
+            for brand_label in stocks_df["scope_name"].unique():
+                b_rows = stocks_df[stocks_df["scope_name"] == brand_label]
+                price_row = b_rows[b_rows["metric_name"] == "stock_price"]
+                chg_row = b_rows[b_rows["metric_name"] == "stock_change_pct"]
+                if not price_row.empty:
+                    price_val = price_row.iloc[0]["metric_value"]
+                    chg_val = chg_row.iloc[0]["metric_value"] if not chg_row.empty else 0
+                    date = str(price_row.iloc[0]["snapshot_date"])[:10]
+                    stock_lines.append(f"  {brand_label}: ${price_val:,.2f} ({chg_val:+.2f}%) ({date})")
             parts.append("\n".join(stock_lines))
     except Exception as e:
         print(f"  Intelligence context - brand stocks failed: {e}")

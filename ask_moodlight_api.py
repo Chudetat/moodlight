@@ -649,10 +649,13 @@ def load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
             for _, row in mkt_df.iterrows():
                 sym = row.get("symbol", "")
                 name = row.get("name", sym)
-                price = row.get("price", 0)
-                chg = row.get("change_percent", 0)
+                try:
+                    price = float(row.get("price", 0) or 0)
+                    chg = float(row.get("change_percent", 0) or 0)
+                except (ValueError, TypeError):
+                    price, chg = 0, 0
                 sent = row.get("market_sentiment", "")
-                direction = "+" if chg and chg > 0 else ""
+                direction = "+" if chg > 0 else ""
                 mkt_lines.append(f"  {name} ({sym}): ${price:,.2f} ({direction}{chg:.2f}%) — sentiment: {sent}")
             parts.append("\n".join(mkt_lines))
             print(f"  Intelligence context - markets: {len(mkt_df)} indices loaded")
@@ -672,14 +675,14 @@ def load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
         )
         if not econ_df.empty:
             econ_lines = ["Economic Indicators:"]
-            for indicator in econ_df["scope_name"].unique():
-                ind_rows = econ_df[econ_df["scope_name"] == indicator]
+            for indicator in econ_df["metric_name"].unique():
+                ind_rows = econ_df[econ_df["metric_name"] == indicator]
                 latest = ind_rows.iloc[0]
                 val = latest["metric_value"]
                 date = str(latest["snapshot_date"])[:10]
                 econ_lines.append(f"  {indicator}: {val:.4f} (as of {date})")
             parts.append("\n".join(econ_lines))
-            print(f"  Intelligence context - economic indicators: {len(econ_df['scope_name'].unique())} loaded")
+            print(f"  Intelligence context - economic indicators: {len(econ_df['metric_name'].unique())} loaded")
     except Exception as e:
         print(f"  Intelligence context - economic indicators failed: {e}")
 
@@ -720,14 +723,16 @@ def load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
             engine,
         )
         if not stk_df.empty:
-            stk_lines = ["Brand Stock Prices (last 3 days):"]
+            stk_lines = ["Brand Stocks (last 3 days):"]
             for brand_name_stk in stk_df["scope_name"].unique():
                 b_rows = stk_df[stk_df["scope_name"] == brand_name_stk]
-                latest = b_rows.iloc[0]
-                val = latest["metric_value"]
-                metric = latest["metric_name"]
-                date = str(latest["snapshot_date"])[:10]
-                stk_lines.append(f"  {brand_name_stk} ({metric}): ${val:,.2f} (as of {date})")
+                price_row = b_rows[b_rows["metric_name"] == "stock_price"]
+                chg_row = b_rows[b_rows["metric_name"] == "stock_change_pct"]
+                if not price_row.empty:
+                    price_val = price_row.iloc[0]["metric_value"]
+                    chg_val = chg_row.iloc[0]["metric_value"] if not chg_row.empty else 0
+                    date = str(price_row.iloc[0]["snapshot_date"])[:10]
+                    stk_lines.append(f"  {brand_name_stk}: ${price_val:,.2f} ({chg_val:+.2f}%) (as of {date})")
             parts.append("\n".join(stk_lines))
             print(f"  Intelligence context - brand stocks: {len(stk_df['scope_name'].unique())} brands loaded")
     except Exception as e:
