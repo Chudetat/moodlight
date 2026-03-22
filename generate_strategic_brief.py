@@ -119,10 +119,10 @@ def _build_enrichment(engine, username: str, user_need: str, df: pd.DataFrame) -
                     sections.append(
                         f"BRAND INTELLIGENCE — {matched_brand.upper()}:\n"
                         f"---\n"
-                        f"  Velocity: {v:.2f} ({v_label}) — {v_insight}\n"
-                        f"  Longevity: {l:.2f} ({l_label}) — {l_insight}\n"
-                        f"  Density: {d:.2f} ({d_label}) — {d_insight}\n"
-                        f"  Scarcity: {sc:.2f} ({sc_label})\n"
+                        f"  Velocity: {v_label} [raw: {v:.2f}] — {v_insight}\n"
+                        f"  Longevity: {l_label} [raw: {l:.2f}] — {l_insight}\n"
+                        f"  Density: {d_label} [raw: {d:.2f}] — {d_insight}\n"
+                        f"  Scarcity: {sc_label} [raw: {sc:.2f}]\n"
                         f"  Top Emotions: {emo_str}\n"
                         f"  Empathy: {emp_label}\n"
                         f"---"
@@ -428,10 +428,12 @@ def generate_strategic_brief(user_need: str, df: pd.DataFrame, username: str = N
             lines = []
             for _, r in opp_df.head(10).iterrows():
                 tag = f" [{r['label']}]" if r['label'] else ""
+                sc_l = "high opportunity" if r['scarcity'] > 0.6 else "moderate" if r['scarcity'] > 0.3 else "low"
+                v_l = "accelerating" if r['velocity'] > 0.6 else "building" if r['velocity'] > 0.3 else "quiet"
+                d_l = "saturated" if r['density_score'] > 0.6 else "moderate" if r['density_score'] > 0.3 else "uncrowded"
                 lines.append(
-                    f"  {r['topic']}{tag}: opp_score={r['opp_score']:.2f} "
-                    f"(scarcity={r['scarcity']:.2f}, velocity={r['velocity']:.2f}, "
-                    f"density={r['density_score']:.2f})"
+                    f"  {r['topic']}{tag}: scarcity: {sc_l}, velocity: {v_l}, density: {d_l} "
+                    f"[raw: opp={r['opp_score']:.2f}, sc={r['scarcity']:.2f}, v={r['velocity']:.2f}, d={r['density_score']:.2f}]"
                 )
             creative_opp_map = "\n".join(lines)
     except Exception:

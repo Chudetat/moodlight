@@ -575,10 +575,19 @@ def load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
                 vlds_comp = snap.get("vlds_comparison", {})
                 if vlds_comp:
                     comp_lines.append("  VLDS Comparison:")
+                    _vlds_labels = {
+                        "velocity": lambda v: "accelerating" if v > 0.6 else "building" if v > 0.3 else "quiet",
+                        "longevity": lambda v: "enduring" if v > 0.6 else "moderate" if v > 0.3 else "fading",
+                        "density": lambda v: "saturated" if v > 0.6 else "moderate" if v > 0.3 else "uncrowded",
+                        "scarcity": lambda v: "high opportunity" if v > 0.6 else "moderate" if v > 0.3 else "low opportunity",
+                    }
                     for comp_name, metrics in vlds_comp.items():
                         if isinstance(metrics, dict):
-                            metric_parts = [f"{k}={v:.2f}" for k, v in metrics.items()
-                                            if isinstance(v, (int, float))]
+                            metric_parts = [
+                                f"{k}: {_vlds_labels.get(k, lambda x: f'{x:.2f}')(v)} [{v:.2f}]"
+                                for k, v in metrics.items()
+                                if isinstance(v, (int, float))
+                            ]
                             if metric_parts:
                                 comp_lines.append(f"    {comp_name}: {', '.join(metric_parts)}")
 
@@ -769,11 +778,17 @@ def build_verified_data(df_all: pd.DataFrame) -> str:
         for t_name, count in topic_counts.items():
             line = f"- {t_name}: {count} posts"
             if t_name in topic_density_map:
-                line += f", density {topic_density_map[t_name]}"
+                d = topic_density_map[t_name]
+                d_label = "saturated" if d > 0.6 else "moderate coverage" if d > 0.3 else "uncrowded"
+                line += f", density: {d_label} [{d:.2f}]"
             if t_name in topic_velocity_map:
-                line += f", velocity {topic_velocity_map[t_name]}"
+                v = topic_velocity_map[t_name]
+                v_label = "accelerating" if v > 0.6 else "building" if v > 0.3 else "quiet"
+                line += f", velocity: {v_label} [{v:.2f}]"
             if t_name in topic_longevity_map:
-                line += f", longevity {topic_longevity_map[t_name]}"
+                l = topic_longevity_map[t_name]
+                l_label = "enduring" if l > 0.6 else "moderate staying power" if l > 0.3 else "fading"
+                line += f", longevity: {l_label} [{l:.2f}]"
             topic_lines.append(line)
         verified_parts.append("Topic Breakdown:\n" + "\n".join(topic_lines))
 
@@ -782,7 +797,9 @@ def build_verified_data(df_all: pd.DataFrame) -> str:
     if not _scar_df.empty and "topic" in _scar_df.columns and "scarcity_score" in _scar_df.columns:
         scarcity_lines = []
         for _, row in _scar_df.head(10).iterrows():
-            line = f"- {row['topic']}: scarcity {row['scarcity_score']}"
+            sc = row['scarcity_score']
+            sc_label = "high opportunity" if sc > 0.6 else "moderate opportunity" if sc > 0.3 else "low opportunity"
+            line = f"- {row['topic']}: scarcity: {sc_label} [{sc:.2f}]"
             if "mention_count" in _scar_df.columns:
                 line += f", mentions {row['mention_count']}"
             if "opportunity" in _scar_df.columns:
