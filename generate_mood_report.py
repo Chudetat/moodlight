@@ -304,6 +304,15 @@ def load_mood_data(engine):
         print(f"  Could not load all-topics social: {e}")
         data["all_social"] = pd.DataFrame()
 
+    # --- Prediction markets (Polymarket) ---
+    try:
+        from polymarket_helper import fetch_polymarket_markets
+        poly_markets = fetch_polymarket_markets(limit=10, min_volume=50000)
+        data["polymarket"] = poly_markets or []
+    except Exception as e:
+        print(f"  Could not load Polymarket data: {e}")
+        data["polymarket"] = []
+
     return data
 
 
@@ -447,6 +456,14 @@ def build_newsletter_context(data):
             intensity = row.get("intensity", 0)
             text = str(row.get("text", ""))[:200]
             lines.append(f"  [{topic}] {text} | emotion: {emotion} | intensity: {intensity:.1f}")
+        sections.append("\n".join(lines))
+
+    # Prediction markets (Polymarket)
+    poly_markets = data.get("polymarket", [])
+    if poly_markets:
+        lines = ["PREDICTION MARKETS (Polymarket — real money bets):"]
+        for m in poly_markets[:8]:
+            lines.append(f"  \"{m['question']}\" — {m['yes_odds']:.0f}% YES (${m['volume']:,.0f} wagered)")
         sections.append("\n".join(lines))
 
     return "\n\n".join(sections)

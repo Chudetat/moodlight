@@ -587,6 +587,50 @@ def load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
         except Exception as e:
             print(f"  Intelligence context - competitive failed: {e}")
 
+    # Signal log (prediction track record)
+    try:
+        from sqlalchemy import text as _sig_text
+        sig_df = pd.read_sql(
+            _sig_text("""
+                SELECT alert_type,
+                       COUNT(*) AS total_signals,
+                       COUNT(spy_change_1d) AS has_1d,
+                       AVG(spy_change_1d) AS avg_spy_1d,
+                       SUM(CASE WHEN spy_change_1d > 0 THEN 1 ELSE 0 END)::float
+                           / NULLIF(COUNT(spy_change_1d), 0) AS up_rate_1d
+                FROM signal_log
+                GROUP BY alert_type
+                ORDER BY total_signals DESC
+            """),
+            engine,
+        )
+        if not sig_df.empty:
+            sig_lines = ["Prediction Track Record:"]
+            for _, row in sig_df.iterrows():
+                up_rate = f"{row['up_rate_1d']*100:.0f}%" if pd.notna(row.get("up_rate_1d")) else "N/A"
+                avg_1d = f"{row['avg_spy_1d']:+.2f}%" if pd.notna(row.get("avg_spy_1d")) else "N/A"
+                sig_lines.append(
+                    f"  {row['alert_type']}: {int(row['total_signals'])} signals, "
+                    f"SPY up rate: {up_rate}, avg 1d move: {avg_1d}"
+                )
+            parts.append("\n".join(sig_lines))
+    except Exception as e:
+        print(f"  Intelligence context - signal log failed: {e}")
+
+    # Prediction markets (Polymarket)
+    try:
+        from polymarket_helper import fetch_polymarket_markets
+        poly_markets = fetch_polymarket_markets(limit=8, min_volume=50000)
+        if poly_markets:
+            poly_lines = ["Prediction Markets (Polymarket — real money bets):"]
+            for m in poly_markets[:6]:
+                poly_lines.append(
+                    f"  \"{m['question']}\" — {m['yes_odds']:.0f}% YES (${m['volume']:,.0f} wagered)"
+                )
+            parts.append("\n".join(poly_lines))
+    except Exception as e:
+        print(f"  Intelligence context - Polymarket failed: {e}")
+
     if not parts:
         return ""
 

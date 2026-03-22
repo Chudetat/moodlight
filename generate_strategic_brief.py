@@ -366,22 +366,30 @@ def generate_strategic_brief(user_need: str, df: pd.DataFrame, username: str = N
     density_df = pd.DataFrame()
     scarcity_df = pd.DataFrame()
 
-    try:
-        velocity_df = pd.read_csv('topic_longevity.csv')
-        velocity_data = velocity_df[['topic', 'velocity_score', 'longevity_score']].head(10).to_string()
-    except Exception:
+    # Read VLDS from PostgreSQL (not CSVs — those don't exist on Railway)
+    _sb_engine = get_engine()
+    if _sb_engine:
+        from sqlalchemy import text as _sb_text
+        try:
+            velocity_df = pd.read_sql(_sb_text("SELECT topic, velocity_score, longevity_score FROM topic_longevity"), _sb_engine)
+            velocity_data = velocity_df[['topic', 'velocity_score', 'longevity_score']].head(10).to_string()
+        except Exception:
+            velocity_data = "No velocity/longevity data available"
+
+        try:
+            density_df = pd.read_sql(_sb_text("SELECT topic, density_score, post_count, primary_platform FROM topic_density"), _sb_engine)
+            density_data = density_df[['topic', 'density_score', 'post_count', 'primary_platform']].head(10).to_string()
+        except Exception:
+            density_data = "No density data available"
+
+        try:
+            scarcity_df = pd.read_sql(_sb_text("SELECT topic, scarcity_score, mention_count, opportunity FROM topic_scarcity"), _sb_engine)
+            scarcity_data = scarcity_df[['topic', 'scarcity_score', 'mention_count', 'opportunity']].head(10).to_string()
+        except Exception:
+            scarcity_data = "No scarcity data available"
+    else:
         velocity_data = "No velocity/longevity data available"
-
-    try:
-        density_df = pd.read_csv('topic_density.csv')
-        density_data = density_df[['topic', 'density_score', 'post_count', 'primary_platform']].head(10).to_string()
-    except Exception:
         density_data = "No density data available"
-
-    try:
-        scarcity_df = pd.read_csv('topic_scarcity.csv')
-        scarcity_data = scarcity_df[['topic', 'scarcity_score', 'mention_count', 'opportunity']].head(10).to_string()
-    except Exception:
         scarcity_data = "No scarcity data available"
 
     # Build Creative Opportunity Map — anti-repetition: deprioritize saturated topics
@@ -502,8 +510,23 @@ HIGH-ENGAGEMENT CONTENT (What's resonating now - with engagement scores):
 {viral_headlines if viral_headlines else "No engagement data available"}
 
 {brand_context}
-Total Posts Analyzed: {len(df)}
 """
+
+    # Add Polymarket data
+    try:
+        from polymarket_helper import fetch_polymarket_markets
+        poly_markets = fetch_polymarket_markets(limit=8, min_volume=50000)
+        if poly_markets:
+            poly_lines = ["PREDICTION MARKETS (Polymarket — real money bets):"]
+            for m in poly_markets[:6]:
+                poly_lines.append(
+                    f"  \"{m['question']}\" — {m['yes_odds']:.0f}% YES (${m['volume']:,.0f} wagered)"
+                )
+            context += "\n".join(poly_lines) + "\n\n"
+    except Exception as e:
+        print(f"  Polymarket data failed (non-fatal): {e}")
+
+    context += f"Total Posts Analyzed: {len(df)}\n"
 
     # Select best frameworks for this request
     selected_frameworks = select_frameworks(user_need)

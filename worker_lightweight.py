@@ -46,6 +46,14 @@ JOBS = {
         "module": "generate_trending_report",
         "label": "Trending Brands Report (Weekly)",
     },
+    "signal": {
+        "module": "generate_signal_newsletter",
+        "label": "Signal Newsletter (Daily)",
+    },
+    "spark": {
+        "module": "generate_spark",
+        "label": "Spark (Daily Creative Intelligence)",
+    },
 }
 
 
