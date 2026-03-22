@@ -150,7 +150,7 @@ def build_radar_context(engine):
     # ── 5. Commodity prices ──
     try:
         from db_helper import load_commodity_data
-        comm_df = load_commodity_data(days=3)
+        comm_df = load_commodity_data(days=14)
         if not comm_df.empty:
             price_df = comm_df[comm_df["metric_name"] == "price"]
             if not price_df.empty:

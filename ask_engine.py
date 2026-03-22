@@ -427,7 +427,7 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
             sql_text(
                 "SELECT scope_name, metric_name, metric_value, snapshot_date "
                 "FROM metric_snapshots WHERE scope = 'economic' "
-                "ORDER BY snapshot_date DESC LIMIT 50"
+                "ORDER BY snapshot_date DESC"
             ),
             engine,
         )

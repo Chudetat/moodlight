@@ -513,7 +513,7 @@ SIGNAL SOURCE 4: BRAND STOCKS (Watchlist)
     # ── 5. ECONOMIC INDICATORS ──
     try:
         from db_helper import load_economic_data
-        econ_df = load_economic_data(days=7)
+        econ_df = load_economic_data(days=730)
         if not econ_df.empty:
             latest = econ_df.sort_values("snapshot_date").groupby("metric_name").last().reset_index()
             econ_lines = []
@@ -530,7 +530,7 @@ SIGNAL SOURCE 5: ECONOMIC INDICATORS
     # ── 6. COMMODITY PRICES ──
     try:
         from db_helper import load_commodity_data
-        comm_df = load_commodity_data(days=7)
+        comm_df = load_commodity_data(days=14)
         if not comm_df.empty:
             price_df = comm_df[comm_df["metric_name"] == "price"]
             change_df = comm_df[comm_df["metric_name"] == "daily_change_pct"]

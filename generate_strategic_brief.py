@@ -549,7 +549,7 @@ HIGH-ENGAGEMENT CONTENT (What's resonating now - with engagement scores):
 
         try:
             from db_helper import load_economic_data
-            econ_df = load_economic_data(days=7)
+            econ_df = load_economic_data(days=730)
             if not econ_df.empty:
                 latest_econ = econ_df.sort_values("snapshot_date").groupby("metric_name").last().reset_index()
                 econ_lines = ["ECONOMIC INDICATORS:"]
@@ -561,7 +561,7 @@ HIGH-ENGAGEMENT CONTENT (What's resonating now - with engagement scores):
 
         try:
             from db_helper import load_commodity_data
-            comm_df = load_commodity_data(days=7)
+            comm_df = load_commodity_data(days=14)
             if not comm_df.empty:
                 price_df = comm_df[comm_df["metric_name"] == "price"]
                 if not price_df.empty:
