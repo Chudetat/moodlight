@@ -268,6 +268,9 @@ CRITICAL RULES:
 - Cross-reference signals: commodity price + social empathy + market move = a story nobody else can tell.
 - Target 500-700 words. Tight. Every sentence earns its place.
 
+DATA DISCIPLINE:
+Only reference a data source when it is directly and obviously relevant to the story you're telling. Never force a metric into an insight just to prove the data exists. If prediction markets, brand stocks, signal track record, or commodity prices don't connect to today's topics — leave them out entirely. A tight email with 3 data sources beats a bloated one with 12.
+
 TRAINING DATA BAN:
 Your ONLY sources of truth are the data provided. Do NOT inject facts, events, or claims from training data. If the data doesn't cover something, skip it — never fill gaps with training knowledge."""
 
