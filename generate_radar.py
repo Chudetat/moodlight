@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """
 generate_radar.py
-Generates "Radar by Moodlight" — a daily consumer intelligence email.
+Generates "Radar by Moodlight" — a daily email that surfaces societal patterns
+hiding in plain sight.
 
-Each topic hits three beats: What's happening? Why it matters to me? What's my move?
-Uses VLDS deltas, empathy shifts, prediction markets, and staleness scoring
-to surface only what's genuinely new and interesting.
+Uses empathy scoring, emotion clustering, and cross-topic pattern detection
+to find the human stories that reveal where we are as a society.
 """
 
 import os
@@ -35,102 +35,209 @@ def _get_engine():
 
 
 def build_radar_context(engine):
-    """Build context from all signal sources for Radar generation."""
+    """Build empathy-weighted, pattern-clustered context for Radar."""
     from sqlalchemy import text as sql_text
-    now = datetime.now(timezone.utc)
-    cutoff_24h = (now - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
-    cutoff_48h = (now - timedelta(hours=48)).strftime("%Y-%m-%d %H:%M:%S")
     sections = []
 
-    # ── 1. Topic Intelligence (the core — what's interesting and why) ──
+    # ── 1. Emotional patterns by topic (clustered signals, not individual stories) ──
     try:
-        from topic_intelligence import compute_topic_intelligence, format_intelligence_context
-        topics = compute_topic_intelligence(engine, output_type="radar")
-        if topics:
-            sections.append(format_intelligence_context(topics, top_n=15))
-    except Exception as e:
-        print(f"  Topic intelligence failed: {e}")
-
-    # ── 2. Fresh headlines (24h only — must be genuinely new) ──
-    try:
-        news_df = pd.read_sql(sql_text("""
-            SELECT text, topic, intensity, created_at, country
+        pattern_df = pd.read_sql(sql_text("""
+            SELECT topic, emotion_top_1,
+                   COUNT(*) AS story_count,
+                   AVG(empathy_score) AS avg_empathy,
+                   MAX(empathy_score) AS peak_empathy,
+                   AVG(intensity) AS avg_intensity
             FROM news_scored
-            WHERE created_at >= :cutoff AND intensity >= 3
-            ORDER BY intensity DESC, created_at DESC
+            WHERE created_at >= NOW() - INTERVAL '72 hours'
+              AND empathy_score IS NOT NULL
+              AND emotion_top_1 IS NOT NULL
+            GROUP BY topic, emotion_top_1
+            HAVING COUNT(*) >= 3
+            ORDER BY avg_empathy DESC
             LIMIT 20
-        """), engine, params={"cutoff": cutoff_24h})
-        if not news_df.empty:
-            lines = ["FRESH HEADLINES (last 24h, high intensity only)"]
+        """), engine)
+        if not pattern_df.empty:
+            lines = ["EMOTIONAL PATTERNS BY TOPIC (clustered signals, not individual stories)"]
             lines.append("=" * 50)
-            for _, row in news_df.iterrows():
-                lines.append(f"  [{row.get('topic', '?')}] {row['text'][:250]}")
+            for _, row in pattern_df.iterrows():
+                lines.append(
+                    f"  [{row['topic']}] emotion: {row['emotion_top_1']}, "
+                    f"stories: {int(row['story_count'])}, "
+                    f"avg empathy: {row['avg_empathy']:.4f}, "
+                    f"peak: {row['peak_empathy']:.4f}"
+                )
             sections.append("\n".join(lines))
     except Exception as e:
-        print(f"  Headlines failed: {e}")
+        print(f"  Emotional patterns failed: {e}")
 
-    # ── 2b. Social posts (what people are actually saying) ──
+    # ── 2. High-empathy stories (the headlines behind the patterns) ──
+    try:
+        top_stories = pd.read_sql(sql_text("""
+            SELECT text, topic, empathy_score, emotion_top_1, intensity, created_at
+            FROM news_scored
+            WHERE created_at >= NOW() - INTERVAL '72 hours'
+              AND empathy_score > 0.08
+            ORDER BY empathy_score DESC
+            LIMIT 40
+        """), engine)
+        if not top_stories.empty:
+            lines = ["HIGH-EMPATHY STORIES (the headlines behind the patterns)"]
+            lines.append("=" * 50)
+            for _, row in top_stories.iterrows():
+                lines.append(
+                    f"  [{row['topic']}] [{row.get('emotion_top_1', '?')}] "
+                    f"[empathy: {row['empathy_score']:.4f}] "
+                    f"{row['text'][:300]}"
+                )
+            sections.append("\n".join(lines))
+    except Exception as e:
+        print(f"  High-empathy stories failed: {e}")
+
+    # ── 3. Social posts ranked by empathy (what people are processing) ──
     try:
         social_df = pd.read_sql(sql_text("""
-            SELECT text, topic, source, emotion_top_1, empathy_score, created_at
+            SELECT text, topic, source, emotion_top_1, empathy_score
             FROM social_scored
-            WHERE created_at >= NOW() - INTERVAL '24 hours'
-            ORDER BY engagement DESC NULLS LAST
-            LIMIT 15
+            WHERE created_at >= NOW() - INTERVAL '48 hours'
+              AND empathy_score IS NOT NULL
+            ORDER BY empathy_score DESC
+            LIMIT 25
         """), engine)
         if not social_df.empty:
-            lines = ["SOCIAL MEDIA (what people are actually saying)"]
+            lines = ["SOCIAL — WHAT PEOPLE ARE PROCESSING"]
             lines.append("=" * 50)
             for _, row in social_df.iterrows():
-                emotion = row.get('emotion_top_1', '?') or '?'
-                source = row.get('source', '?') or '?'
-                topic = row.get('topic', '?') or '?'
-                lines.append(f"  [{topic}] \"{row['text'][:200]}...\" | emotion: {emotion} | source: {source}")
+                lines.append(
+                    f"  [{row.get('topic', '?')}] [{row.get('emotion_top_1', '?')}] "
+                    f"[{row.get('source', '?')}] "
+                    f"\"{row['text'][:250]}\""
+                )
             sections.append("\n".join(lines))
     except Exception as e:
         print(f"  Social posts failed: {e}")
 
-    # ── 3. Social emotional temperature ──
+    # ── 4. Emotion shifts (what changed in 24h vs prior 24h) ──
     try:
-        emo_df = pd.read_sql(sql_text("""
-            SELECT emotion_top_1 AS emotion, COUNT(*) AS cnt
-            FROM news_scored
-            WHERE created_at >= :cutoff AND emotion_top_1 IS NOT NULL
-            GROUP BY emotion_top_1
-            ORDER BY cnt DESC
-            LIMIT 10
-        """), engine, params={"cutoff": cutoff_24h})
-        emp_df = pd.read_sql(sql_text("""
-            SELECT AVG(empathy_score) AS avg_empathy, COUNT(*) AS total
-            FROM news_scored
-            WHERE created_at >= :cutoff AND empathy_score IS NOT NULL
-        """), engine, params={"cutoff": cutoff_24h})
-
-        if not emo_df.empty:
-            total = emo_df['cnt'].sum()
-            lines = ["EMOTIONAL TEMPERATURE (last 24h)"]
+        shift_df = pd.read_sql(sql_text("""
+            WITH recent AS (
+                SELECT emotion_top_1, COUNT(*) AS cnt
+                FROM news_scored
+                WHERE created_at >= NOW() - INTERVAL '24 hours' AND emotion_top_1 IS NOT NULL
+                GROUP BY emotion_top_1
+            ),
+            prior AS (
+                SELECT emotion_top_1, COUNT(*) AS cnt
+                FROM news_scored
+                WHERE created_at >= NOW() - INTERVAL '48 hours'
+                  AND created_at < NOW() - INTERVAL '24 hours'
+                  AND emotion_top_1 IS NOT NULL
+                GROUP BY emotion_top_1
+            )
+            SELECT COALESCE(r.emotion_top_1, p.emotion_top_1) AS emotion,
+                   COALESCE(r.cnt, 0) AS recent_count,
+                   COALESCE(p.cnt, 0) AS prior_count,
+                   COALESCE(r.cnt, 0) - COALESCE(p.cnt, 0) AS shift
+            FROM recent r
+            FULL OUTER JOIN prior p ON r.emotion_top_1 = p.emotion_top_1
+            ORDER BY ABS(COALESCE(r.cnt, 0) - COALESCE(p.cnt, 0)) DESC
+        """), engine)
+        if not shift_df.empty:
+            lines = ["EMOTION SHIFTS (last 24h vs prior 24h — what changed)"]
             lines.append("=" * 50)
-            for _, row in emo_df.head(5).iterrows():
-                pct = row['cnt'] / total * 100
-                lines.append(f"  {row['emotion']}: {pct:.1f}%")
-            if not emp_df.empty:
-                avg_emp = emp_df.iloc[0]['avg_empathy']
-                lines.append(f"  Average empathy: {avg_emp:.4f} (0.04=neutral, 0.10=warm, 0.30+=highly empathetic)")
+            for _, row in shift_df.iterrows():
+                direction = "UP" if row['shift'] > 0 else "DOWN" if row['shift'] < 0 else "FLAT"
+                lines.append(
+                    f"  {row['emotion']}: {direction} "
+                    f"({row['prior_count']} -> {row['recent_count']}, shift: {row['shift']:+d})"
+                )
             sections.append("\n".join(lines))
     except Exception as e:
-        print(f"  Emotions failed: {e}")
+        print(f"  Emotion shifts failed: {e}")
 
-    # ── 4. Market indices ──
+    # ── 5. Empathy outliers (outsized emotional response vs topic average) ──
+    try:
+        outlier_df = pd.read_sql(sql_text("""
+            WITH topic_avg AS (
+                SELECT topic, AVG(empathy_score) AS avg_emp
+                FROM news_scored
+                WHERE created_at >= NOW() - INTERVAL '72 hours' AND empathy_score IS NOT NULL
+                GROUP BY topic
+            )
+            SELECT n.text, n.topic, n.empathy_score, n.emotion_top_1,
+                   n.empathy_score - t.avg_emp AS empathy_above_avg
+            FROM news_scored n
+            JOIN topic_avg t ON n.topic = t.topic
+            WHERE n.created_at >= NOW() - INTERVAL '72 hours'
+              AND n.empathy_score IS NOT NULL
+            ORDER BY empathy_above_avg DESC
+            LIMIT 10
+        """), engine)
+        if not outlier_df.empty:
+            lines = ["EMPATHY OUTLIERS (outsized emotional response vs topic average)"]
+            lines.append("=" * 50)
+            for _, row in outlier_df.iterrows():
+                above = row.get('empathy_above_avg', 0) or 0
+                lines.append(
+                    f"  [+{above:.4f} above avg] [{row.get('emotion_top_1', '?')}] "
+                    f"{row['text'][:300]}"
+                )
+            sections.append("\n".join(lines))
+    except Exception as e:
+        print(f"  Empathy outliers failed: {e}")
+
+    # ── 6. Quiet but deeply felt (high empathy, low news intensity) ──
+    try:
+        quiet_df = pd.read_sql(sql_text("""
+            SELECT text, topic, empathy_score, emotion_top_1, intensity
+            FROM news_scored
+            WHERE created_at >= NOW() - INTERVAL '72 hours'
+              AND empathy_score > 0.10
+              AND intensity <= 3
+            ORDER BY empathy_score DESC
+            LIMIT 10
+        """), engine)
+        if not quiet_df.empty:
+            lines = ["QUIET BUT DEEPLY FELT (high empathy, low news intensity)"]
+            lines.append("=" * 50)
+            for _, row in quiet_df.iterrows():
+                lines.append(
+                    f"  [empathy: {row['empathy_score']:.4f}] "
+                    f"[{row.get('emotion_top_1', '?')}] "
+                    f"{row['text'][:300]}"
+                )
+            sections.append("\n".join(lines))
+    except Exception as e:
+        print(f"  Quiet stories failed: {e}")
+
+    # ── 7. Recurring societal themes (multi-week arcs via Haiku) ──
+    try:
+        from theme_detector import detect_and_persist_themes, format_themes_context
+        themes = detect_and_persist_themes(engine)
+        if themes:
+            sections.append(format_themes_context(themes, top_n=5))
+    except Exception as e:
+        print(f"  Theme detection failed (non-fatal): {e}")
+
+    # ── 7b. Topic intelligence (freshness/staleness context) ──
+    try:
+        from topic_intelligence import compute_topic_intelligence, format_intelligence_context
+        topics = compute_topic_intelligence(engine, output_type="radar")
+        if topics:
+            sections.append(format_intelligence_context(topics, top_n=10))
+    except Exception as e:
+        print(f"  Topic intelligence failed: {e}")
+
+    # ── 8. Light economic/market context (forces underneath the human stories) ──
     try:
         mkt_df = pd.read_sql(sql_text("""
-            SELECT symbol, name, price, change_percent, market_sentiment
+            SELECT symbol, name, price, change_percent
             FROM markets
             WHERE timestamp::timestamptz >= NOW() - INTERVAL '24 hours'
             ORDER BY timestamp DESC
         """), engine)
         if not mkt_df.empty:
             latest = mkt_df.drop_duplicates(subset=['symbol'], keep='first')
-            lines = ["MARKETS (last 24h)"]
+            lines = ["BACKGROUND: ECONOMIC FORCES (use only when they explain a human pattern)"]
             lines.append("=" * 50)
             for _, row in latest.iterrows():
                 try:
@@ -138,16 +245,10 @@ def build_radar_context(engine):
                 except (ValueError, TypeError):
                     chg = 0
                 lines.append(f"  {row['name']}: {'up' if chg > 0 else 'down'} {abs(chg):.2f}%")
-            try:
-                avg_sent = latest['market_sentiment'].astype(float).mean()
-            except (ValueError, TypeError):
-                avg_sent = 0.5
-            lines.append(f"  Overall mood: {'bullish' if avg_sent > 0.55 else 'bearish' if avg_sent < 0.45 else 'neutral'} ({avg_sent:.2f})")
             sections.append("\n".join(lines))
     except Exception as e:
         print(f"  Markets failed: {e}")
 
-    # ── 5. Commodity prices ──
     try:
         from db_helper import load_commodity_data
         comm_df = load_commodity_data(days=14)
@@ -155,7 +256,7 @@ def build_radar_context(engine):
             price_df = comm_df[comm_df["metric_name"] == "price"]
             if not price_df.empty:
                 latest = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
-                lines = ["COMMODITY PRICES"]
+                lines = ["BACKGROUND: COMMODITY PRICES"]
                 lines.append("=" * 50)
                 for _, row in latest.iterrows():
                     lines.append(f"  {row['scope_name']}: ${row['metric_value']:.2f}")
@@ -163,13 +264,12 @@ def build_radar_context(engine):
     except Exception as e:
         print(f"  Commodities failed: {e}")
 
-    # ── 6. Economic indicators ──
     try:
         from db_helper import load_economic_data
-        econ_df = load_economic_data(days=7)
+        econ_df = load_economic_data(days=730)
         if not econ_df.empty:
             latest = econ_df.sort_values("snapshot_date").groupby("metric_name").last().reset_index()
-            lines = ["ECONOMIC INDICATORS"]
+            lines = ["BACKGROUND: ECONOMIC INDICATORS"]
             lines.append("=" * 50)
             for _, row in latest.iterrows():
                 lines.append(f"  {row['metric_name']}: {row['metric_value']:.2f}")
@@ -177,132 +277,60 @@ def build_radar_context(engine):
     except Exception as e:
         print(f"  Economic indicators failed: {e}")
 
-    # ── 7. Prediction markets ──
-    try:
-        from polymarket_helper import fetch_polymarket_markets
-        markets = fetch_polymarket_markets(limit=10, min_volume=50000)
-        if markets:
-            lines = ["PREDICTION MARKETS (Polymarket — real money bets)"]
-            lines.append("=" * 50)
-            for m in markets[:8]:
-                lines.append(f"  \"{m['question']}\" — {m['yes_odds']:.0f}% YES (${m['volume']:,.0f} wagered)")
-            sections.append("\n".join(lines))
-    except Exception as e:
-        print(f"  Polymarket failed: {e}")
-
-    # ── 8. Predictive signals ──
-    try:
-        pred_df = pd.read_sql(sql_text("""
-            SELECT alert_type, title, summary, brand, topic
-            FROM alerts
-            WHERE (alert_type LIKE 'predictive_%%'
-                   OR alert_type IN ('market_mood_divergence', 'brand_crisis', 'mood_shift',
-                                     'brand_stock_divergence', 'commodity_spike', 'economic_stress'))
-              AND timestamp >= :cutoff
-            ORDER BY timestamp DESC LIMIT 10
-        """), engine, params={"cutoff": cutoff_48h})
-        if not pred_df.empty:
-            lines = ["MOODLIGHT SIGNALS (last 48h)"]
-            lines.append("=" * 50)
-            for _, row in pred_df.iterrows():
-                scope = row.get('brand') or row.get('topic') or ''
-                lines.append(f"  [{scope}] {row['title']}")
-            sections.append("\n".join(lines))
-    except Exception as e:
-        print(f"  Signals failed: {e}")
-
-    # ── 9. Brand stocks ──
-    try:
-        brand_df = pd.read_sql(sql_text("""
-            SELECT scope_name, metric_name, metric_value, snapshot_date
-            FROM metric_snapshots
-            WHERE scope = 'brand' AND snapshot_date >= CURRENT_DATE - INTERVAL '3 days'
-            ORDER BY snapshot_date DESC
-        """), engine)
-        if not brand_df.empty:
-            price_df = brand_df[brand_df["metric_name"] == "stock_price"]
-            chg_df = brand_df[brand_df["metric_name"] == "stock_change_pct"]
-            if not price_df.empty:
-                latest = price_df.drop_duplicates(subset=["scope_name"], keep="first")
-                chg_map = {}
-                if not chg_df.empty:
-                    chg_latest = chg_df.drop_duplicates(subset=["scope_name"], keep="first")
-                    chg_map = dict(zip(chg_latest["scope_name"], chg_latest["metric_value"]))
-                lines = ["BRAND STOCKS (watchlist companies)"]
-                lines.append("=" * 50)
-                for _, row in latest.iterrows():
-                    chg = chg_map.get(row["scope_name"], 0)
-                    lines.append(f"  {row['scope_name']}: ${row['metric_value']:.2f} ({chg:+.2f}%)")
-                sections.append("\n".join(lines))
-    except Exception as e:
-        print(f"  Brand stocks failed: {e}")
-
-    # ── 10. Signal track record ──
-    try:
-        sig_df = pd.read_sql(sql_text("""
-            SELECT alert_type,
-                   COUNT(*) AS total_signals,
-                   COUNT(spy_change_1d) AS has_1d,
-                   AVG(spy_change_1d) AS avg_spy_1d,
-                   SUM(CASE WHEN spy_change_1d > 0 THEN 1 ELSE 0 END)::float
-                       / NULLIF(COUNT(spy_change_1d), 0) AS up_rate_1d
-            FROM signal_log
-            GROUP BY alert_type
-            ORDER BY total_signals DESC
-        """), engine)
-        if not sig_df.empty:
-            lines = ["MOODLIGHT SIGNAL TRACK RECORD"]
-            lines.append("=" * 50)
-            for _, row in sig_df.iterrows():
-                up_rate = f"{row['up_rate_1d']*100:.0f}%" if pd.notna(row.get("up_rate_1d")) else "N/A"
-                avg_1d = f"{row['avg_spy_1d']:+.2f}%" if pd.notna(row.get("avg_spy_1d")) else "N/A"
-                lines.append(
-                    f"  {row['alert_type']}: {int(row['total_signals'])} signals, "
-                    f"SPY up rate: {up_rate}, avg 1d move: {avg_1d}"
-                )
-            sections.append("\n".join(lines))
-    except Exception as e:
-        print(f"  Signal track record failed: {e}")
-
     return "\n\n".join(sections)
 
 
-RADAR_SYSTEM_PROMPT = """You write "Radar by Moodlight" — a daily email that tells people what they need to know about the world today, written like a brilliant friend who happens to have access to 9 real-time data feeds that nobody else can see.
+RADAR_SYSTEM_PROMPT = """You write "Radar by Moodlight" — a daily email that surfaces the societal patterns hiding in plain sight.
 
-Your voice: Direct. Warm. Occasionally funny. Never dry. Never corporate. Never "analyst." You're the friend who texts someone "hey, fill your tank today, gas is about to spike" — not the friend who says "commodity indicators suggest upward pressure on refined petroleum products."
+Not individual feel-good stories. Not LinkedIn inspiration. Not news roundups. You find the SOCIETAL-LEVEL shifts that reveal something true about how we're living right now — and you tell them as human stories, not data reports.
 
-STRUCTURE (follow exactly):
+The loneliness epidemic. The erosion of institutional trust. A generation's broken relationship with money. Crisis fatigue rewiring how people process information. Remote work reshaping what "community" means. These are the stories you find — the tectonic plates moving underneath daily life.
 
-Start with a greeting: "Good morning. Here's what your radar is picking up."
+Your voice: Clear-eyed. Warm but never sentimental. You write like a great magazine feature compressed into a paragraph — the kind of piece someone reads and then sits with for an hour. You never exploit pain. You never moralize. You observe, you connect, you illuminate.
 
-Then 3-4 TOPICS — chosen by what's GENUINELY INTERESTING TODAY, not what's been in the news for weeks. Each topic gets:
-1. A bold headline that's conversational (not a news headline)
-2. A paragraph explaining what's happening in plain language
-3. "Why this matters to you:" — connect it to the reader's daily life, money, career, or decisions
-4. "Your move:" — one specific, actionable thing to do or avoid
+Your reader is smart. Many work in branding, communications, or strategy — but this is NOT a branding newsletter. You never say "brands should..." or "this means for marketers..." You just tell the human story so well that anyone who communicates with humans for a living can't help but rethink their assumptions.
 
-Then: "THE THING NOBODY SEES YET" — one item from the high-scarcity/white-space data or a prediction market signal that contradicts conventional wisdom. This is the section that makes people forward the email.
+STRUCTURE:
 
-Then: "THE VIBE" — one short paragraph about the emotional temperature of the internet right now. What are people feeling? What kind of content/messaging will cut through vs. get ignored?
+Open with 1-2 sentences that name the pattern you're seeing today. Not a feeling — a PATTERN. "Something is shifting in how people talk about money." or "There's a trust fracture running through three completely unrelated stories today."
 
-Then: "ONE SIGNAL" — one prediction from Moodlight's signal data, framed as a pattern worth watching. Not financial advice.
+Then 2-3 STORIES — each one is a window into a SOCIETAL PATTERN, not an individual anecdote. Each gets:
+1. A topic label on its own line — just the pattern name in ALL CAPS, like "THE LONELINESS EPIDEMIC" or "THE NESTING ECONOMY" or "CAREER VERTIGO". No numbers, no markdown headers, no "###". Just the label.
+2. A subtitle in bold — one sentence that captures the pattern.
+3. The evidence — multiple data points that reveal the pattern (cluster of headlines, emotion shifts, social signals). Not one story — a PATTERN of stories.
+4. "What this is really about:" — the deeper societal shift underneath. Loneliness, trust, identity, security, belonging, exhaustion.
+5. One sentence connecting this pattern to another one in today's edition, if a connection exists.
+
+FORMAT RULES:
+- Do NOT use markdown headers (no #, ##, ###). Use ALL CAPS labels for topic names.
+- Do NOT number the topics (no "1.", "2.", "3."). Each topic label speaks for itself.
+- Use --- between sections for visual separation.
+
+Then: "THE UNDERCURRENT" — the single deepest thread connecting today's patterns. What does today's data say about where we are as a society? This is the paragraph people screenshot and send to someone.
 
 End with: "Your radar updates every morning at 6am."
 
 CRITICAL RULES:
-- NEVER show scores, percentages from internal systems, or jargon. No "VLDS", no "density 0.86", no "empathy 0.04". Translate EVERYTHING into plain human language.
-- NEVER lead with the biggest headline of the day. That's what every other newsletter does. Lead with the thing that's interesting, counterintuitive, or about to matter.
-- Topics marked STALE in the data MUST be skipped unless you can point to a specific data change.
-- Every topic must pass the "so what?" test — if the reader can't do something with this information, cut it.
-- When prediction markets disagree with social sentiment, that divergence IS the story.
-- Cross-reference signals: commodity price + social empathy + market move = a story nobody else can tell.
-- Target 500-700 words. Tight. Every sentence earns its place.
+- PATTERNS over anecdotes. Always. If you can't point to multiple signals confirming a societal trend, don't include it.
+- Individual stories are EVIDENCE of patterns, not the point themselves. A house fire is not a story. A house fire + a spike in grief-related social posts + declining community safety metrics = a story about fraying social infrastructure.
+- NEVER mention scores, system metrics, VLDS, or any internal jargon.
+- NEVER give branding advice. Never say "brands should" or "marketers need to." The reader will connect those dots themselves.
+- High-empathy + low-volume signals are more interesting than high-volume stories everyone already knows.
+- Emotion SHIFTS matter more than absolute levels. What CHANGED tells you more than what IS.
+- Target 500-700 words. Dense with meaning, not words.
+- Do NOT inject facts from training data. Only use what the data provides.
+
+RECURRING THEMES:
+When societal themes data is provided, PREFER patterns that have been building over multiple days. A theme that has persisted for 7+ days across multiple topics is more significant than a brand-new spike. Use growth rate to spot which patterns are accelerating vs plateauing. You don't need to use every theme — pick the 2-3 most resonant and weave them into your stories. Evidence headlines under each theme are your raw material.
+
+FRESHNESS RULE:
+Every edition of Radar MUST feature different themes than recent editions. Never repeat the same theme two days in a row. If the data marks themes as suppressed or recently featured, find something new — there is always a pattern hiding in the data that hasn't been told yet.
+
+SLOW DAYS:
+If the data says it's a slow day with fewer strong themes, do NOT pad with weak stories. Instead: go DEEP on 1-2 stories. One rich, deeply-reported pattern with layered evidence is better than three thin ones. Use "quiet but deeply felt" stories — high empathy, low coverage — as your raw material on slow days. These are often the best editions.
 
 DATA DISCIPLINE:
-Only reference a data source when it is directly and obviously relevant to the story you're telling. Never force a metric into an insight just to prove the data exists. If prediction markets, brand stocks, signal track record, or commodity prices don't connect to today's topics — leave them out entirely. A tight email with 3 data sources beats a bloated one with 12.
-
-TRAINING DATA BAN:
-Your ONLY sources of truth are the data provided. Do NOT inject facts, events, or claims from training data. If the data doesn't cover something, skip it — never fill gaps with training knowledge."""
+Only reference a data source when directly and obviously relevant. Never force economic data into an insight just to prove it exists. Markets and commodities are BACKGROUND FORCES that explain human patterns — never lead with them. If they don't connect to a human story, leave them out entirely."""
 
 
 def generate_radar_email(context):
@@ -326,24 +354,48 @@ def radar_to_html(radar_md):
 
     date_str = datetime.now(timezone.utc).strftime("%B %d, %Y")
 
-    # Basic markdown → HTML
     html_body = radar_md
+
+    # Remove markdown headers (###, ##, #) — we use ALL CAPS labels instead
+    html_body = re.sub(r'^#{1,3}\s+', '', html_body, flags=re.MULTILINE)
 
     # Bold
     html_body = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_body)
 
-    # Section headers (lines that are all caps or start with specific phrases)
-    for header in ["THE THING NOBODY SEES YET", "THE VIBE", "ONE SIGNAL",
-                    "ON YOUR RADAR", "WHAT NOBODY SEES", "THE THING NOBODY",
-                    "YOUR RADAR"]:
+    # Topic labels: ALL CAPS lines (3+ words, all uppercase/spaces/punctuation)
+    # These become large styled visual blocks with left orange border
+    html_body = re.sub(
+        r'^([A-Z][A-Z\s\'\'\-&,]{6,})$',
+        r'<div style="margin-top: 35px; margin-bottom: 14px; padding: 14px 18px; '
+        r'border-left: 4px solid #F97316; background: #1a1a1a;">'
+        r'<span style="color: #F97316; font-size: 20px; font-weight: bold; '
+        r'letter-spacing: 2px;">\1</span></div>',
+        html_body,
+        flags=re.MULTILINE
+    )
+
+    # Special section: THE UNDERCURRENT (distinct styling — full orange background)
+    for header in ["THE UNDERCURRENT", "THE THREAD"]:
+        styled = (
+            f'<div style="margin-top: 40px; margin-bottom: 14px; padding: 14px 18px; '
+            f'background: #F97316; border-radius: 4px;">'
+            f'<span style="color: white; font-size: 18px; font-weight: bold; '
+            f'letter-spacing: 2px;">{header}</span></div>'
+        )
         html_body = html_body.replace(
-            header,
-            f'<div style="margin-top: 25px; margin-bottom: 8px;">'
-            f'<span style="background: #F97316; color: white; padding: 4px 12px; border-radius: 4px; '
-            f'font-size: 11px; font-weight: bold; letter-spacing: 1px;">{header}</span></div>'
+            f'<div style="margin-top: 35px; margin-bottom: 14px; padding: 14px 18px; '
+            f'border-left: 4px solid #F97316; background: #1a1a1a;">'
+            f'<span style="color: #F97316; font-size: 20px; font-weight: bold; '
+            f'letter-spacing: 2px;">{header}</span></div>',
+            styled
         )
 
-    # "Why this matters to you:" and "Your move:" labels
+    # Inline labels
+    html_body = re.sub(
+        r'(What this is really about:)',
+        r'<strong style="color: #F97316;">\1</strong>',
+        html_body
+    )
     html_body = re.sub(
         r'(Why this matters to you:)',
         r'<strong style="color: #F97316;">\1</strong>',
@@ -354,6 +406,9 @@ def radar_to_html(radar_md):
         r'<strong style="color: #22C55E;">\1</strong>',
         html_body
     )
+
+    # Horizontal rules
+    html_body = html_body.replace('---', '<hr style="border: none; border-top: 1px solid #333; margin: 20px 0;">')
 
     # Paragraphs
     html_body = re.sub(r'\n\s*\n', '</p><p style="margin: 12px 0; line-height: 1.6;">', html_body)
@@ -418,14 +473,14 @@ def send_radar_email(radar_md):
 
 def main():
     print("=" * 60)
-    print("RADAR by Moodlight — Daily Intelligence")
+    print("RADAR by Moodlight — Societal Patterns")
     print(f"Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
     print("=" * 60)
 
     engine = _get_engine()
 
-    # Build context from all sources
-    print("\n[1/4] Building signal context...")
+    # Build context from empathy-weighted sources
+    print("\n[1/4] Building empathy-weighted context...")
     context = build_radar_context(engine)
     print(f"  Context length: {len(context)} chars")
 
@@ -434,8 +489,30 @@ def main():
     radar_md = generate_radar_email(context)
     print(f"  Radar length: {len(radar_md)} chars")
 
-    # Log topics for staleness tracking
-    print("\n[3/4] Logging output topics...")
+    # Log themes for recency suppression (prevents repeats)
+    print("\n[3/4] Logging featured themes...")
+    try:
+        from theme_detector import log_radar_themes
+        # Detect which theme labels appeared in the output by matching ALL CAPS lines
+        import re
+        featured_slugs = []
+        for line in radar_md.split("\n"):
+            line = line.strip()
+            # Match ALL CAPS lines that look like theme labels
+            if re.match(r'^[A-Z][A-Z\s\'\'\-&,]{6,}$', line):
+                slug = re.sub(r'[^a-z0-9\s]', '', line.lower().strip())
+                slug = re.sub(r'\s+', '-', slug)
+                if slug and slug not in ["the-undercurrent", "the-thread", "radar-by-moodlight"]:
+                    featured_slugs.append(slug)
+        if featured_slugs:
+            log_radar_themes(engine, featured_slugs)
+            print(f"  Logged {len(featured_slugs)} themes: {', '.join(featured_slugs)}")
+        else:
+            print("  No themes detected in output")
+    except Exception as e:
+        print(f"  Theme logging failed (non-fatal): {e}")
+
+    # Also log traditional topics for staleness tracking
     try:
         from topic_intelligence import log_output_topics
         known_topics = ["economics", "technology & ai", "sports", "entertainment",
@@ -444,7 +521,6 @@ def main():
         mentioned = [t for t in known_topics if t.lower() in radar_md.lower()]
         if mentioned:
             log_output_topics(engine, "radar", mentioned)
-            print(f"  Logged {len(mentioned)} topics")
     except Exception as e:
         print(f"  Topic logging failed (non-fatal): {e}")
 
