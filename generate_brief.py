@@ -6,7 +6,7 @@ Generates an executive intelligence brief using Claude AI
 
 import os
 import pandas as pd
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from anthropic import Anthropic
 from dotenv import load_dotenv
 import smtplib
@@ -482,6 +482,12 @@ Overall market mood: {mood} (sentiment: {avg_sentiment:.2f}/1.0)
                 WHERE scope = 'brand' AND snapshot_date >= CURRENT_DATE - INTERVAL '3 days'
                 ORDER BY snapshot_date DESC
             """), engine)
+            if not stock_df.empty:
+                # Staleness guard — skip if data is older than 5 days
+                latest_date = pd.to_datetime(stock_df["snapshot_date"]).max()
+                if latest_date < (datetime.now(timezone.utc) - timedelta(days=5)):
+                    print("  Brand stock data is stale (>5 days old) — skipping")
+                    stock_df = pd.DataFrame()
             if not stock_df.empty:
                 stock_lines = []
                 for brand in stock_df['brand'].unique():

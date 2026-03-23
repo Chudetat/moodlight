@@ -481,6 +481,12 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
             engine,
         )
         if not stocks_df.empty:
+            # Staleness guard — skip if data is older than 5 days
+            latest_date = pd.to_datetime(stocks_df["snapshot_date"]).max()
+            if latest_date < (datetime.now(timezone.utc) - timedelta(days=5)):
+                print("  Brand stock data is stale (>5 days old) — skipping")
+                stocks_df = pd.DataFrame()
+        if not stocks_df.empty:
             stock_lines = ["Brand Stocks (last 3 days):"]
             for brand_label in stocks_df["scope_name"].unique():
                 b_rows = stocks_df[stocks_df["scope_name"] == brand_label]

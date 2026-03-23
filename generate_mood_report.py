@@ -340,6 +340,12 @@ def load_mood_data(engine):
             price_df = brand_df[brand_df["metric_name"] == "stock_price"]
             chg_df = brand_df[brand_df["metric_name"] == "stock_change_pct"]
             if not price_df.empty:
+                # Staleness guard — skip if data is older than 5 days
+                latest_date = pd.to_datetime(price_df["snapshot_date"]).max()
+                if latest_date < (datetime.now(timezone.utc) - timedelta(days=5)):
+                    print("  Brand stock data is stale (>5 days old) — skipping")
+                    price_df = pd.DataFrame()
+            if not price_df.empty:
                 latest = price_df.sort_values("snapshot_date").groupby("scope_name").last().reset_index()
                 chg_map = {}
                 if not chg_df.empty:
