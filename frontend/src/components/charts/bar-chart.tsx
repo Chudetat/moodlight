@@ -86,7 +86,7 @@ export const BarChart = memo(function BarChart({
           position: (isHorizontal ? "right" : "top") as "right" | "top",
         },
         itemStyle: {
-          color: colorSpec as string,
+          color: colorSpec as string | ((params: { dataIndex: number }) => string),
           borderRadius: isHorizontal ? [0, 3, 3, 0] : [3, 3, 0, 0],
         },
         barMaxWidth: 40,

@@ -17,6 +17,7 @@ export function MoodHistory() {
     // Group by date, compute daily avg empathy
     const byDate = new Map<string, number[]>();
     for (const item of data.data) {
+      if (typeof item.empathy_score !== "number") continue;
       const date = item.created_at.slice(0, 10); // YYYY-MM-DD
       const list = byDate.get(date) || [];
       list.push(item.empathy_score);

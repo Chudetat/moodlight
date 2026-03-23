@@ -52,7 +52,7 @@ export function TopicWatchlist() {
       )}
       {topics.map((t) => (
         <div
-          key={t.topic_name}
+          key={`${t.topic_name}-${t.is_category}`}
           className="flex items-center justify-between"
         >
           <div className="flex items-center gap-1">

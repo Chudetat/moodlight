@@ -31,8 +31,10 @@ export function MarketSentiment() {
         })
         .join("\n");
 
-      // Market sentiment: use market_sentiment field from API (0-1 scale), display as integer
-      const marketScore = mkts.length > 0 ? mkts[0].market_sentiment ?? 0 : 0;
+      // Market sentiment: average across all indices (0-1 scale), display as integer
+      const marketScore = mkts.length > 0
+        ? mkts.reduce((sum, m) => sum + (m.market_sentiment ?? 0), 0) / mkts.length
+        : 0;
       const pct = Math.round(marketScore * 100);
       const label =
         pct < 40 ? "Bearish \uD83D\uDC3B" : pct >= 60 ? "Bullish \uD83D\uDC02" : "Neutral \u2696\uFE0F";

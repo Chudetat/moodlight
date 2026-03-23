@@ -1499,6 +1499,13 @@ class UpdateUserPreferencesRequest(BaseModel):
     alert_emails: Optional[bool] = None
 
 
+@app.get("/api/user/preferences")
+def api_get_user_preferences(payload: dict = Depends(require_auth)):
+    """Get email/digest preferences for the current user."""
+    username = payload["sub"]
+    return get_user_preferences(username)
+
+
 @app.patch("/api/user/preferences")
 def api_update_user_preferences(req: UpdateUserPreferencesRequest, payload: dict = Depends(require_auth)):
     """Update email/digest preferences for the current user."""

@@ -68,6 +68,7 @@ export function ScheduledReports() {
                 variant="ghost"
                 size="sm"
                 className="h-6 px-1 text-xs"
+                disabled={toggle.isPending}
                 onClick={() =>
                   toggle.mutate({ id: s.id, enabled: !s.enabled })
                 }
@@ -78,6 +79,7 @@ export function ScheduledReports() {
                 variant="ghost"
                 size="sm"
                 className="h-6 px-1 text-xs text-destructive"
+                disabled={remove.isPending}
                 onClick={() => remove.mutate(s.id)}
               >
                 Delete
@@ -166,6 +168,8 @@ export function ScheduledReports() {
                         setShowForm(false);
                         setSubject("");
                         setCustomSubject("");
+                        setFrequency("weekly");
+                        setLookback("7");
                       },
                     }
                   );

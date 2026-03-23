@@ -58,7 +58,7 @@ export function IntelligenceAlerts() {
   }, [data, prefsData, searchQuery]);
 
   const isPrediction = (a: { alert_type: string }) =>
-    a.alert_type.startsWith("predictive_");
+    a.alert_type?.startsWith("predictive_") ?? false;
 
   // Severity filter + pagination
   const { filtered, unreadCount, visible, hasMore } = useMemo(() => {

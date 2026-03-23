@@ -322,7 +322,7 @@ export function SignalTrackRecord() {
             keys={["1d Hit Rate"]}
             indexBy="type"
             layout="horizontal"
-            height={Math.max(200, typePerformance.length * 36)}
+            height={Math.min(600, Math.max(200, typePerformance.length * 36))}
             enableLabel
             colors={({ data: d }) => {
               const val = (d?.["1d Hit Rate"] as number) ?? 0;

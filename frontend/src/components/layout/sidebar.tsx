@@ -119,7 +119,9 @@ export function Sidebar() {
               checked={compareMode}
               onCheckedChange={(checked) => {
                 setCompareMode(checked);
-                if (checked) {
+                if (!checked) {
+                  setCompareBrands(["", "", ""]);
+                } else {
                   setTimeout(() => {
                     document
                       .getElementById("brand-comparison")
