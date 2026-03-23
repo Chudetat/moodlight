@@ -54,6 +54,10 @@ JOBS = {
         "module": "generate_spark",
         "label": "Spark (Daily Creative Intelligence)",
     },
+    "radar": {
+        "module": "generate_radar",
+        "label": "Radar (Daily Societal Patterns)",
+    },
 }
 
 
