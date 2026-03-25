@@ -153,10 +153,18 @@ def _markdown_to_html(text):
     text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
 
     # Blockquote items: "> text" → styled blockquote blocks
+    # Match lines starting with > and all continuation lines until next > or blank line
+    def _format_blockquote(m):
+        content = m.group(1).strip()
+        # Clean up any internal newlines
+        content = re.sub(r'\n(?!>)', ' ', content).strip()
+        return (
+            '<div style="margin: 12px 0; padding: 10px 15px; border-left: 3px solid #DC143C; '
+            f'background: #fafafa; font-size: 15px; line-height: 1.6;">{content}</div>'
+        )
     text = re.sub(
-        r'^>\s+(.+?)(?=\n(?:>|\n|$))',
-        r'<div style="margin: 12px 0; padding: 10px 15px; border-left: 3px solid #DC143C; '
-        r'background: #fafafa; font-size: 15px; line-height: 1.6;">\1</div>',
+        r'^>\s*(.+?)(?=\n\s*\n|\n\s*>|\Z)',
+        _format_blockquote,
         text,
         flags=re.MULTILINE | re.DOTALL,
     )
@@ -387,10 +395,30 @@ def prepare_intelligence_context(news_df, social_df=None):
 
     critical_fresh = fresh_df[fresh_df['intensity'] >= 4].sort_values('created_at', ascending=False) if 'created_at' in fresh_df.columns else fresh_df[fresh_df['intensity'] >= 4]
     critical_lines = []
-    for _, row in critical_fresh.head(15).iterrows():
+    for _, row in critical_fresh.head(20).iterrows():
         date_str = row['created_at'].strftime('%Y-%m-%d %H:%M') if pd.notna(row.get('created_at')) else 'unknown'
         critical_lines.append(f"  [{date_str}] [{row.get('country', '?')}] (intensity: {row.get('intensity', '?')}) {row.get('text', '')[:300]}")
     critical_block = "\n".join(critical_lines) if critical_lines else "  No critical articles in last 48 hours."
+
+    # Also grab notable lower-intensity stories (intensity 2-3) that may contain
+    # important contradictions, corporate hypocrisy, or tech developments.
+    # These often get scored low on intensity but are high on editorial value.
+    notable_fresh = fresh_df[
+        (fresh_df['intensity'].between(2, 3))
+    ].sort_values('created_at', ascending=False) if 'created_at' in fresh_df.columns else pd.DataFrame()
+    notable_lines = []
+    if not notable_fresh.empty:
+        # Deduplicate by taking first 300 chars as key
+        seen = set()
+        for _, row in notable_fresh.head(100).iterrows():
+            snippet = row.get('text', '')[:80].lower()
+            if snippet in seen:
+                continue
+            seen.add(snippet)
+            date_str = row['created_at'].strftime('%Y-%m-%d %H:%M') if pd.notna(row.get('created_at')) else 'unknown'
+            notable_lines.append(f"  [{date_str}] [{row.get('topic', '?')}] {row.get('text', '')[:300]}")
+            if len(notable_lines) >= 15:
+                break
 
     older_df = news_df[news_df['created_at'] < cutoff_48h] if 'created_at' in news_df.columns else pd.DataFrame()
     ongoing_lines = []
@@ -405,6 +433,8 @@ def prepare_intelligence_context(news_df, social_df=None):
     topic_intensity = news_df.groupby('topic')['intensity'].mean().sort_values(ascending=False).head(5)
     country_counts = fresh_df['country'].value_counts().head(5) if not fresh_df.empty else news_df['country'].value_counts().head(5)
 
+    notable_block = "\n".join(notable_lines) if notable_lines else "  None."
+
     context = f"""
 SIGNAL SOURCE 1: NEWS HEADLINES
 ==========================================
@@ -417,6 +447,9 @@ GEOGRAPHIC SPREAD: {country_counts.to_string()}
 
 FRESH CRITICAL ARTICLES (48h, newest first):
 {critical_block}
+
+NOTABLE STORIES (lower intensity but potentially high editorial value):
+{notable_block}
 
 OLDER ONGOING (context only):
 {ongoing_block}
@@ -688,58 +721,65 @@ and topic intelligence (VLDS scores with 24h deltas showing what changed).
 
 YOUR JOB: Find the contradictions. Find the irony. Connect the dots nobody else connects.
 
-Every item you write must follow this formula: FACT + IRONY. Not just "what happened" but
-"what happened and why it's absurd, contradictory, or reveals something nobody's saying out loud."
+Here is an example of the EXACT voice and format. Study it carefully:
 
-Examples of the voice:
-- "Disney pulled out of its $1 billion deal with OpenAI.. the company that spent 100 years suing
-  over Mickey Mouse decided AI video wasn't worth the risk.."
-- "Pinterest's CEO asked governments to ban social media for kids under 16.. the man running a
-  $3.6 billion social media company built on teenage girls saving outfit ideas.."
-- "Trump said 'we have won this war' with Iran.. then the Pentagon deployed 3,000 MORE troops
-  to the Middle East 30 minutes later.."
+> Disney pulled out of its $1 billion deal with OpenAI.. the company that spent 100 years suing over Mickey Mouse decided AI video wasn't worth the risk..
 
-The pattern: state what happened, then expose the contradiction in the same breath. Use ".."
-(double periods) for dramatic trailing pauses. Be direct. Be sharp. Be the person who makes
-the reader feel dumb for almost scrolling past this.
+> OpenAI killed Sora as a standalone app.. $1 billion in R&D folded back into ChatGPT.. lost the product and the partner on the same day..
+
+> Trump said "we have won this war" with Iran.. then the Pentagon deployed 3,000 MORE troops to the Middle East 30 minutes later..
+
+> MBS personally called Trump pushing him to continue strikes on Iran.. the man running a $930 billion oil fund wants war because war means higher oil prices..
+
+> Karpathy exposed a supply chain attack on a Python package with 97 million downloads.. a single pip install could steal every password and crypto wallet on your machine..
+
+> Satya Nadella said the biggest obstacle to AI is convincing people to change how they work.. translation: "we built the replacement, now we need you to train it before we let you go"..
+
+> Pinterest's CEO asked governments to ban social media for kids under 16.. the man running a $3.6 billion social media company built on teenage girls saving outfit ideas..
+
+Notice what makes this work:
+- Each item is 2-3 sentences MAX. Not a paragraph. Not an analysis. A punch.
+- DIVERSE topics: AI deals, geopolitics, cybersecurity, corporate hypocrisy, social media — all different.
+- The irony is in the SAME sentence as the fact. Not a separate explanation.
+- No topic gets more than 2 items. Period.
+- Specific names, specific dollar amounts, specific numbers.
 
 CRITICAL RULES:
-1. Lead with the thing that will make someone stop scrolling. The most absurd contradiction of the day.
-2. Cross-reference signals — if prediction markets say one thing and headlines say another, that
-   gap IS the story. If a CEO says one thing and their stock does the opposite, say it.
-3. Topics marked as STALE must NOT appear unless something genuinely new happened in the data.
-4. Commodity and market data must be connected to WHO BENEFITS and WHO LOSES — follow the money.
-5. When you spot hypocrisy (company says X, does Y), call it out directly.
-6. Your ONLY sources of truth are the data provided. Do NOT inject facts from training data.
+1. Your ONLY sources of truth are the data provided. Do NOT inject facts from training data.
+2. NO TOPIC gets more than 2 items. War, oil, geopolitics, Middle East — these are ALL the same
+   topic. Maximum 2 items on that entire cluster, then MOVE ON.
+3. You MUST cover at least 6 DIFFERENT worlds: tech/AI, geopolitics, corporate/business, economy,
+   social/culture, and at least one wildcard. If the data has a major tech story (company deal,
+   product launch/death, cybersecurity breach), it MUST be included.
+4. Each item is 1-2 sentences. NOT 3. Drop the fact, twist the knife, move on. No explaining.
+5. Never explain the irony. State the fact and the contradiction in the SAME sentence. The reader
+   gets it. If they don't, that's fine. Do NOT add a third sentence that interprets.
+6. Name the person. Name the dollar amount. Name the company. Vague = weak.
+7. Scan ALL signal sources including NOTABLE STORIES. Major corporate deals, product deaths,
+   CEO hypocrisy, cybersecurity events — these are GOLD. Don't skip them because they scored
+   low on intensity. A billion-dollar deal dying is a bigger story than most wars.
+8. Be nonpartisan. Hypocrisy is hypocrisy regardless of who's doing it.
 
 FORMAT:
 
 WHAT JUST HAPPENED
-5-8 items. Each one: a single event or development, stated in 1-3 sentences with the
-contradiction or irony exposed. No analysis paragraphs — just punch after punch. Think of
-each item as a standalone revelation that makes the reader say "wait, what?"
-
-Use ">" at the start of each item to create the blockquote visual rhythm.
-
-WHAT THE MONEY SAYS
-2-3 items connecting market moves, commodity prices, prediction market odds, and brand stocks
-to expose who's actually benefiting. Follow the money. If someone is publicly saying one thing
-while their financial position says the opposite, that's the lead.
+8-12 items. Each one starts with ">" on its own line. Each is 2-3 sentences max.
+Every item: fact + irony in the same breath. Diverse topics. Rapid fire.
 
 THE THREAD
-One short paragraph (3-5 sentences). Step back from the individual items and name the pattern.
-What connects today's contradictions? What does it reveal about where we actually are right now?
-End with something that sticks — a line the reader will think about for the rest of the day.
+2-3 sentences. The pattern connecting today's items. End with a line that sticks.
+
+Close with: "all of this.. one [day of week].. and you almost scrolled past it."
 
 STRICT FORMATTING RULES:
 - Section headers: ALL CAPS, no markdown hashes, no colons
-- Use ".." (double periods) for dramatic pauses instead of "—" or "..."
-- Each WHAT JUST HAPPENED item starts with ">" on its own line
-- No jargon. No scores. No "VLDS" or "empathy 0.04" in the output.
+- Use ".." (double periods) for dramatic pauses — NEVER use "—" or "..."
+- Each item starts with ">" on its own line
+- No jargon. No scores. No analysis paragraphs.
 - No [NEW] or [ONGOING] tags. No confidence tags. Just sharp writing.
-- Be specific — use real names, real numbers, real dollar amounts.
-- Target 600-900 words. Every sentence must hit.
-- Do NOT start with a date line or title. Jump straight into the first section.
+- Use real names, real numbers, real dollar amounts.
+- Target 400-600 words total. Short and punchy beats long and thorough.
+- Do NOT start with a date line or title. Jump straight into WHAT JUST HAPPENED.
 
 DATA:
 {context}
@@ -748,28 +788,30 @@ DATA:
     response = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=3000,
-        system="""You write intelligence briefs like a sharp, well-sourced insider who sees through the spin. You don't report news — you expose contradictions, hypocrisy, and the things hiding in plain sight.
+        system="""You write short, punchy dispatches that expose contradictions hiding in plain sight. You are nonpartisan. You are not an analyst, not a journalist, not a commentator. You are a pattern-spotter who makes the reader feel dumb for almost scrolling past today.
 
-Your voice: direct, editorial, slightly angry in a productive way. You write like someone grabbing the reader by the collar saying "do you see what just happened?" Not an analyst. Not a journalist. Someone who connects dots that make powerful people uncomfortable.
+FORMAT: Rapid-fire items. Each one: 2-3 sentences. Fact + irony in the same breath. Then move to the next topic. Never linger. Never explain. Never write a paragraph when a sentence will do.
 
-Your superpower: you have social sentiment data, prediction market odds, market indices, commodity prices, brand stock movements, economic indicators, AND cultural velocity/density/scarcity scores. Most people see one signal. You see all nine at once. When they contradict each other — when the headlines say peace but the money says war, when a CEO preaches values but the stock says otherwise — THAT is what you write about.
+DIVERSITY IS EVERYTHING. Cover tech, geopolitics, business, AI, economy, social issues, culture — as many different worlds as the data supports. No single topic gets more than 2 items. The power comes from the RANGE, showing the reader how much happened while they weren't paying attention.
 
-ABSOLUTE RULES:
-- Your ONLY sources of truth are the data provided. Do NOT inject facts, events, or claims from training data. If it's not in the data, it doesn't exist for you.
-- Every item needs the fact AND the twist. "X happened" is not enough. "X happened.. which is ironic because Y" is the formula.
-- Never be dry. Never be balanced for the sake of balance. Have a point of view.
-- If you can't find a genuine contradiction or irony in a data point, skip it. Forced irony is worse than no irony.
-- Do not editorialize about topics where the data doesn't support a strong take. Silence is better than a weak swing.
-
-EMPATHY SCORE INTERPRETATION:
-Raw empathy scores cluster 0.03-0.15 (GoEmotions model). 0.04 = neutral, 0.10 = warm, 0.30+ = highly empathetic.
-Never show raw scores. Use them to understand HOW people are reacting — numb, hostile, compassionate — and weave that into why the contradictions matter.""",
+RULES:
+- Your ONLY sources of truth are the data provided. If it's not in the data, it doesn't exist.
+- Every item: fact + twist. "X happened.. the same company that Y.." — done. Move on.
+- If you can't find genuine irony in a story, skip it. Forced irony is worse than silence.
+- Be nonpartisan. Hypocrisy is hypocrisy regardless of who's doing it.
+- Never use "—" dashes. Use ".." for all dramatic pauses.
+- Never show raw scores or jargon. Translate everything into plain language.""",
         messages=[{"role": "user", "content": prompt}]
     )
 
     return response.content[0].text
 
 def main():
+    # Temporary skip flag — set SKIP_BRIEF=true in Railway env to pause sends
+    if os.getenv("SKIP_BRIEF", "").lower() == "true":
+        print("SKIP_BRIEF is set — skipping this run.")
+        return
+
     print("=" * 60)
     print("GENERATING EXECUTIVE INTELLIGENCE BRIEF")
     print("=" * 60)
