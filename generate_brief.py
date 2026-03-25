@@ -710,14 +710,156 @@ How our predictive signals have performed historically:
 
     return context
 
-def generate_brief(context):
+def _select_stories_with_haiku(news_df, social_df=None):
+    """Use Haiku to pre-select the most interesting, diverse stories from the raw data.
+    Returns a curated list of stories that would make someone stop scrolling."""
+
+    now = datetime.now(timezone.utc)
+    cutoff_48h = now - pd.Timedelta(hours=48)
+    fresh_df = news_df[news_df['created_at'] >= cutoff_48h] if 'created_at' in news_df.columns else news_df
+
+    if fresh_df.empty:
+        return ""
+
+    # Sample up to 10 articles per topic to ensure diversity
+    topic_samples = []
+    seen_snippets = set()
+    for topic, group in fresh_df.groupby('topic'):
+        # Sort by intensity desc, then recency
+        sorted_group = group.sort_values(['intensity', 'created_at'], ascending=[False, False])
+        count = 0
+        for _, row in sorted_group.iterrows():
+            snippet = row.get('text', '')[:60].lower()
+            if snippet in seen_snippets or not row.get('text', '').strip():
+                continue
+            seen_snippets.add(snippet)
+            topic_samples.append({
+                'topic': topic,
+                'text': row.get('text', '')[:250],
+                'intensity': row.get('intensity', 0),
+            })
+            count += 1
+            if count >= 10:
+                break
+
+    if not topic_samples:
+        return ""
+
+    # Add high-engagement social posts
+    social_items = []
+    if social_df is not None and not social_df.empty:
+        fresh_social = social_df[social_df['created_at'] >= cutoff_48h] if 'created_at' in social_df.columns else social_df
+        if not fresh_social.empty and 'engagement' in fresh_social.columns:
+            top_social = fresh_social.nlargest(20, 'engagement')
+            for _, row in top_social.iterrows():
+                txt = row.get('text', '')[:250]
+                if txt.strip():
+                    social_items.append(f"[SOCIAL] [{row.get('topic', '?')}] {txt}")
+
+    # Format for Haiku
+    story_lines = []
+    for i, s in enumerate(topic_samples):
+        story_lines.append(f"{i+1}. [{s['topic']}] {s['text']}")
+
+    social_block = ""
+    if social_items:
+        social_block = "\n\nSOCIAL MEDIA (high engagement):\n" + "\n".join(social_items[:15])
+
+    haiku_prompt = f"""You are a story selector for a daily intelligence dispatch. Your job: pick the 15 stories
+that would make someone STOP SCROLLING. Not the biggest stories — the most INTERESTING ones.
+
+What makes a story interesting:
+- A powerful person or company contradicting themselves
+- A billion-dollar deal dying or being born
+- A cybersecurity breach that could affect millions
+- A CEO saying something that exposes what their company actually does
+- An absurd juxtaposition (country builds bunkers while talking peace)
+- A hidden motive (someone pushing for war because it helps their portfolio)
+- Something that affects the reader personally (AI taking jobs, prices rising, security threat)
+
+What is NOT interesting:
+- "War continues" without a specific ironic angle
+- Market moved X% (unless someone specific benefits or loses)
+- Generic policy announcements without contradiction
+- Celebrity news without a systemic angle
+- PARTISAN stories: anything where the main point is "politician did something bad" or
+  "politician said something hypocritical." Political stories are ONLY interesting when
+  the contradiction is SYSTEMIC — a government agency contradicting itself, a policy
+  producing the opposite of its stated goal, money flowing opposite to stated values.
+  "Senator X is a hypocrite" = skip. "The government declared victory while deploying
+  more troops" = systemic, keep. If the story reads like opposition research for either
+  party, SKIP IT.
+
+CRITICAL: You MUST select stories from at least 6 different topic areas. Do NOT let one topic
+dominate. If there are 5 great war stories, pick the 2 best and move on.
+
+From this list, return ONLY the numbers of the 15 most interesting stories, one per line.
+Then add a line "---" and list 3-5 stories from the social media section (by topic keyword) if any are stop-scrolling worthy.
+
+NEWS STORIES:
+{chr(10).join(story_lines)}
+{social_block}
+"""
+
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=500,
+            messages=[{"role": "user", "content": haiku_prompt}]
+        )
+        selection_text = response.content[0].text.strip()
+        print(f"  Haiku story selector returned: {selection_text[:200]}")
+
+        # Parse selected story numbers
+        import re
+        selected_indices = []
+        for line in selection_text.split("\n"):
+            line = line.strip()
+            if line == "---":
+                break
+            nums = re.findall(r'\b(\d+)\b', line)
+            for n in nums:
+                idx = int(n) - 1
+                if 0 <= idx < len(topic_samples):
+                    selected_indices.append(idx)
+
+        # Build curated context
+        curated_lines = []
+        for idx in selected_indices:
+            s = topic_samples[idx]
+            curated_lines.append(f"  [{s['topic']}] {s['text']}")
+
+        curated_block = "\n".join(curated_lines) if curated_lines else "  No stories selected."
+        print(f"  Selected {len(curated_lines)} stories across {len(set(topic_samples[i]['topic'] for i in selected_indices))} topics")
+        return curated_block
+
+    except Exception as e:
+        print(f"  Haiku story selection failed: {e}")
+        return ""
+
+
+def generate_brief(context, curated_stories=""):
     """Generate executive brief using Claude AI — editorial edge, contradictions, irony."""
 
-    prompt = f"""Based on the following data from 9 signal sources, write today's intelligence brief.
+    # If we have curated stories from Haiku, make them prominent
+    curated_section = ""
+    if curated_stories:
+        curated_section = f"""
 
-You have access to: news headlines, social media sentiment, global market indices, brand stock data,
-economic indicators, commodity prices, Polymarket prediction markets, Moodlight's predictive signals,
-and topic intelligence (VLDS scores with 24h deltas showing what changed).
+CURATED STORIES (pre-selected as the most interesting, diverse stories of the day — USE THESE FIRST):
+==========================================
+{curated_stories}
+
+The stories above were specifically selected for being stop-scrolling worthy across diverse topics.
+You MUST use most of them. The full signal data below provides additional context (markets, prediction
+markets, economic data, etc.) to add irony and contradiction to these stories.
+"""
+
+    prompt = f"""Based on the curated stories and signal data below, write today's intelligence brief.
+{curated_section}
+
+FULL SIGNAL DATA (for context, market data, prediction markets, and additional stories):
+{context}
 
 YOUR JOB: Find the contradictions. Find the irony. Connect the dots nobody else connects.
 
@@ -758,7 +900,15 @@ CRITICAL RULES:
 7. Scan ALL signal sources including NOTABLE STORIES. Major corporate deals, product deaths,
    CEO hypocrisy, cybersecurity events — these are GOLD. Don't skip them because they scored
    low on intensity. A billion-dollar deal dying is a bigger story than most wars.
-8. Be nonpartisan. Hypocrisy is hypocrisy regardless of who's doing it.
+8. NONPARTISAN IS NON-NEGOTIABLE.
+   - Never name a political party (Republican, Democrat, GOP, DNC).
+   - Never name a politician as the subject of an item unless the irony is purely structural.
+   - Never write an item where the takeaway is "this politician/party did something bad."
+   - Political stories are ONLY worth including when the SYSTEM contradicts itself — an agency
+     doing the opposite of its mandate, a policy producing opposite results, money flowing
+     opposite to stated goals. Frame these as institutional failures, not political attacks.
+   - Test: if removing the politician's name makes the item weaker, it's a partisan item. Cut it.
+     If removing the name and it still works, it's a systemic item. Keep it.
 
 FORMAT:
 
@@ -798,7 +948,7 @@ RULES:
 - Your ONLY sources of truth are the data provided. If it's not in the data, it doesn't exist.
 - Every item: fact + twist. "X happened.. the same company that Y.." — done. Move on.
 - If you can't find genuine irony in a story, skip it. Forced irony is worse than silence.
-- Be nonpartisan. Hypocrisy is hypocrisy regardless of who's doing it.
+- NONPARTISAN. Never write items that read like opposition research. Expose systems, not individuals. "The government declared victory while deploying troops" = good. "This politician is a hypocrite" = cut it.
 - Never use "—" dashes. Use ".." for all dramatic pauses.
 - Never show raw scores or jargon. Translate everything into plain language.""",
         messages=[{"role": "user", "content": prompt}]
@@ -827,8 +977,16 @@ def main():
     print(f"Analyzing {len(news_df)} news articles + {len(social_df)} social posts...")
     print()
 
+    # Step 1: Haiku selects the most interesting, diverse stories
+    print("Step 1: Haiku selecting most interesting stories...")
+    curated_stories = _select_stories_with_haiku(news_df, social_df)
+
+    # Step 2: Build full context (markets, prediction markets, economics, etc.)
     context = prepare_intelligence_context(news_df, social_df)
-    brief = generate_brief(context)
+
+    # Step 3: Opus writes the brief using curated stories + full context
+    print("Step 2: Opus writing the brief...")
+    brief = generate_brief(context, curated_stories)
 
     print(brief)
     print()
