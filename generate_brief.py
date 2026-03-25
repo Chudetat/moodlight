@@ -119,10 +119,13 @@ def _format_brief_section(title, lines):
         "EMERGING PATTERNS": "#1976D2",
         "FORWARD LOOK": "#7B1FA2",
         "RECOMMENDED ACTIONS": "#2E7D32",
+        "WHAT JUST HAPPENED": "#DC143C",
+        "WHAT THE MONEY SAYS": "#1976D2",
+        "THE THREAD": "#7B1FA2",
+        # Legacy section names (backwards compat)
         "WHAT NOBODY'S WATCHING": "#DC143C",
         "WHAT CHANGED IN 12 HOURS": "#FFB300",
         "THE EMOTIONAL UNDERCURRENT": "#7B1FA2",
-        "WHAT THE MONEY SAYS": "#1976D2",
         "KNOWN SITUATIONS": "#546E7A",
         "ONE PREDICTION": "#2E7D32",
     }
@@ -148,6 +151,15 @@ def _markdown_to_html(text):
 
     # Bold: **text**
     text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+
+    # Blockquote items: "> text" → styled blockquote blocks
+    text = re.sub(
+        r'^>\s+(.+?)(?=\n(?:>|\n|$))',
+        r'<div style="margin: 12px 0; padding: 10px 15px; border-left: 3px solid #DC143C; '
+        r'background: #fafafa; font-size: 15px; line-height: 1.6;">\1</div>',
+        text,
+        flags=re.MULTILINE | re.DOTALL,
+    )
 
     # Numbered list items: "1. text" → styled list
     text = re.sub(
@@ -268,7 +280,7 @@ def send_email_brief(brief_text):
             for recipient in recipients:
                 # Create fresh message for each recipient
                 msg = MIMEMultipart('alternative')
-                msg['Subject'] = f'[Moodlight Brief] \U0001f4ca Daily Intelligence Brief — {datetime.now(timezone.utc).strftime("%B %d, %Y")}'
+                msg['Subject'] = f'[Moodlight] \U0001f6a8 What Just Happened — {datetime.now(timezone.utc).strftime("%B %d, %Y")}'
                 msg['From'] = sender
                 msg['To'] = recipient  # Only this recipient visible
                 msg.attach(MIMEText(html, 'html'))
@@ -666,7 +678,7 @@ How our predictive signals have performed historically:
     return context
 
 def generate_brief(context):
-    """Generate executive brief using Claude AI — insight-driven, not headline-driven."""
+    """Generate executive brief using Claude AI — editorial edge, contradictions, irony."""
 
     prompt = f"""Based on the following data from 9 signal sources, write today's intelligence brief.
 
@@ -674,58 +686,60 @@ You have access to: news headlines, social media sentiment, global market indice
 economic indicators, commodity prices, Polymarket prediction markets, Moodlight's predictive signals,
 and topic intelligence (VLDS scores with 24h deltas showing what changed).
 
+YOUR JOB: Find the contradictions. Find the irony. Connect the dots nobody else connects.
+
+Every item you write must follow this formula: FACT + IRONY. Not just "what happened" but
+"what happened and why it's absurd, contradictory, or reveals something nobody's saying out loud."
+
+Examples of the voice:
+- "Disney pulled out of its $1 billion deal with OpenAI.. the company that spent 100 years suing
+  over Mickey Mouse decided AI video wasn't worth the risk.."
+- "Pinterest's CEO asked governments to ban social media for kids under 16.. the man running a
+  $3.6 billion social media company built on teenage girls saving outfit ideas.."
+- "Trump said 'we have won this war' with Iran.. then the Pentagon deployed 3,000 MORE troops
+  to the Middle East 30 minutes later.."
+
+The pattern: state what happened, then expose the contradiction in the same breath. Use ".."
+(double periods) for dramatic trailing pauses. Be direct. Be sharp. Be the person who makes
+the reader feel dumb for almost scrolling past this.
+
 CRITICAL RULES:
-1. EVERY SECTION must contain at least one insight that REQUIRES multiple signal sources to produce.
-   If a human could write it from reading headlines alone, it doesn't belong. Cross-reference signals.
-2. DO NOT lead with the biggest headline. Lead with the thing nobody else sees.
-3. Topics marked as STALE in the Topic Intelligence section must NOT lead any section unless there's
-   a measurable delta (velocity change, empathy shift, prediction market move) proving something new happened.
-4. When prediction markets disagree with social sentiment or news tone, that divergence IS the story.
-5. When empathy shifts (up or down) on a topic, explain what that means for real people's behavior.
-6. Commodity and market data must be connected to HUMAN impact — not just reported as numbers.
+1. Lead with the thing that will make someone stop scrolling. The most absurd contradiction of the day.
+2. Cross-reference signals — if prediction markets say one thing and headlines say another, that
+   gap IS the story. If a CEO says one thing and their stock does the opposite, say it.
+3. Topics marked as STALE must NOT appear unless something genuinely new happened in the data.
+4. Commodity and market data must be connected to WHO BENEFITS and WHO LOSES — follow the money.
+5. When you spot hypocrisy (company says X, does Y), call it out directly.
+6. Your ONLY sources of truth are the data provided. Do NOT inject facts from training data.
 
 FORMAT:
 
-WHAT NOBODY'S WATCHING
-The most important section. 2-3 items from: high-scarcity topics, prediction market signals that
-contradict the news narrative, signals hiding in the data that will become headlines in 5-10 days.
-For each:
-- What's happening (one sentence, plain language)
-- Why you should care (connect to the reader's daily life, money, career, or decisions)
-- What to do about it (one specific, actionable recommendation)
+WHAT JUST HAPPENED
+5-8 items. Each one: a single event or development, stated in 1-3 sentences with the
+contradiction or irony exposed. No analysis paragraphs — just punch after punch. Think of
+each item as a standalone revelation that makes the reader say "wait, what?"
 
-WHAT CHANGED IN 12 HOURS
-2-3 items where the DATA actually shifted — not "this story is still happening" but "this metric
-moved." Use VLDS deltas, empathy shifts, market moves, commodity price changes. For each:
-- What moved and by how much (in plain language, not scores)
-- What that movement means (interpret it — don't just report it)
-
-THE EMOTIONAL UNDERCURRENT
-One paragraph. What are people FEELING right now, beneath the headlines? Use social emotion data,
-empathy scores, and engagement patterns. Translate this into: what kind of messaging, content, or
-action will resonate right now? What won't?
+Use ">" at the start of each item to create the blockquote visual rhythm.
 
 WHAT THE MONEY SAYS
-One paragraph combining market indices, brand stocks, commodity prices, AND prediction market odds.
-Where is real money flowing? What are bettors saying vs. what headlines are saying?
-If there's a divergence between market bets and public sentiment — that's the lead.
+2-3 items connecting market moves, commodity prices, prediction market odds, and brand stocks
+to expose who's actually benefiting. Follow the money. If someone is publicly saying one thing
+while their financial position says the opposite, that's the lead.
 
-KNOWN SITUATIONS
-ONLY include ongoing stories if there's a measurable new data point (not just another headline).
-2-3 bullet points max. Each bullet: what's new (not what's ongoing), one sentence.
-
-ONE PREDICTION
-One specific, time-bound, falsifiable prediction grounded in converging signals from at least
-3 different data sources. State what you expect, by when, and which signals support it.
+THE THREAD
+One short paragraph (3-5 sentences). Step back from the individual items and name the pattern.
+What connects today's contradictions? What does it reveal about where we actually are right now?
+End with something that sticks — a line the reader will think about for the rest of the day.
 
 STRICT FORMATTING RULES:
-- Section headers: ALL CAPS, no colons
-- Write like a smart, articulate friend — not an analyst, not a news anchor
-- No jargon. No scores. No "VLDS" or "empathy 0.04" in the output. Translate everything into
-  what it means for the reader
-- Tags: [NEW] or [ONGOING] for Known Situations only. Confidence tags: [HIGH CONFIDENCE],
-  [MODERATE CONFIDENCE], [LIMITED CONFIDENCE]
-- Target 700-900 words. Every sentence must earn its place.
+- Section headers: ALL CAPS, no markdown hashes, no colons
+- Use ".." (double periods) for dramatic pauses instead of "—" or "..."
+- Each WHAT JUST HAPPENED item starts with ">" on its own line
+- No jargon. No scores. No "VLDS" or "empathy 0.04" in the output.
+- No [NEW] or [ONGOING] tags. No confidence tags. Just sharp writing.
+- Be specific — use real names, real numbers, real dollar amounts.
+- Target 600-900 words. Every sentence must hit.
+- Do NOT start with a date line or title. Jump straight into the first section.
 
 DATA:
 {context}
@@ -734,21 +748,22 @@ DATA:
     response = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=3000,
-        system="""You write intelligence briefs that sound like a brilliant friend explaining the world over coffee. You're direct, opinionated, and insightful — never dry, never jargon-heavy, never "analyst voice."
+        system="""You write intelligence briefs like a sharp, well-sourced insider who sees through the spin. You don't report news — you expose contradictions, hypocrisy, and the things hiding in plain sight.
 
-Your superpower: you see connections between signals that nobody else has access to. You have social sentiment data, prediction market odds, market indices, commodity prices, brand stock movements, economic indicators, AND cultural velocity/density/scarcity scores. Most analysts have one or two of these. You have all nine. USE THEM TOGETHER.
+Your voice: direct, editorial, slightly angry in a productive way. You write like someone grabbing the reader by the collar saying "do you see what just happened?" Not an analyst. Not a journalist. Someone who connects dots that make powerful people uncomfortable.
+
+Your superpower: you have social sentiment data, prediction market odds, market indices, commodity prices, brand stock movements, economic indicators, AND cultural velocity/density/scarcity scores. Most people see one signal. You see all nine at once. When they contradict each other — when the headlines say peace but the money says war, when a CEO preaches values but the stock says otherwise — THAT is what you write about.
 
 ABSOLUTE RULES:
-- Your ONLY sources of truth are the data provided. Do NOT inject facts from training data.
-- Never report a number without explaining what it means for real people.
-- Never describe a trend without saying what to do about it.
-- When data sources contradict each other (e.g., prediction markets say one thing, social sentiment says another), that contradiction IS the insight. Lead with it.
-- If a topic has been in every brief for a week, DO NOT INCLUDE IT unless you can point to a specific data change. "Still happening" is not insight.
+- Your ONLY sources of truth are the data provided. Do NOT inject facts, events, or claims from training data. If it's not in the data, it doesn't exist for you.
+- Every item needs the fact AND the twist. "X happened" is not enough. "X happened.. which is ironic because Y" is the formula.
+- Never be dry. Never be balanced for the sake of balance. Have a point of view.
+- If you can't find a genuine contradiction or irony in a data point, skip it. Forced irony is worse than no irony.
+- Do not editorialize about topics where the data doesn't support a strong take. Silence is better than a weak swing.
 
 EMPATHY SCORE INTERPRETATION:
 Raw empathy scores cluster 0.03-0.15 (GoEmotions model). 0.04 = neutral, 0.10 = warm, 0.30+ = highly empathetic.
-A score of 0.06 is NORMAL. Do not describe it as "near-zero." Instead, describe what the emotional TONE tells you about how people are processing a story — are they numb? Engaged? Hostile? Compassionate?
-Never show raw scores to the reader. Translate into human feelings.""",
+Never show raw scores. Use them to understand HOW people are reacting — numb, hostile, compassionate — and weave that into why the contradictions matter.""",
         messages=[{"role": "user", "content": prompt}]
     )
 
