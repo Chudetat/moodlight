@@ -715,8 +715,14 @@ def _select_stories_with_haiku(news_df, social_df=None):
     Returns a curated list of stories that would make someone stop scrolling."""
 
     now = datetime.now(timezone.utc)
-    cutoff_48h = now - pd.Timedelta(hours=48)
-    fresh_df = news_df[news_df['created_at'] >= cutoff_48h] if 'created_at' in news_df.columns else news_df
+    # Use 14h window to avoid repeating stories from previous brief (runs 2x daily, 12h apart)
+    cutoff = now - pd.Timedelta(hours=14)
+    fresh_df = news_df[news_df['created_at'] >= cutoff] if 'created_at' in news_df.columns else news_df
+
+    # If slim pickings in 14h, expand to 24h
+    if len(fresh_df) < 50:
+        cutoff = now - pd.Timedelta(hours=24)
+        fresh_df = news_df[news_df['created_at'] >= cutoff] if 'created_at' in news_df.columns else news_df
 
     if fresh_df.empty:
         return ""
