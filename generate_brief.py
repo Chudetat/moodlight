@@ -754,7 +754,7 @@ def _select_stories_with_haiku(news_df, social_df=None):
     # Add high-engagement social posts
     social_items = []
     if social_df is not None and not social_df.empty:
-        fresh_social = social_df[social_df['created_at'] >= cutoff_48h] if 'created_at' in social_df.columns else social_df
+        fresh_social = social_df[social_df['created_at'] >= cutoff] if 'created_at' in social_df.columns else social_df
         if not fresh_social.empty and 'engagement' in fresh_social.columns:
             top_social = fresh_social.nlargest(20, 'engagement')
             for _, row in top_social.iterrows():
