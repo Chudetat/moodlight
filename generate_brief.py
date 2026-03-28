@@ -710,6 +710,57 @@ How our predictive signals have performed historically:
 
     return context
 
+def _load_recent_story_history():
+    """Load stories featured in recent briefs (last 3 days) for dedup."""
+    try:
+        engine = _get_db_engine()
+        if not engine:
+            return []
+        from sqlalchemy import text as sql_text
+        with engine.connect() as conn:
+            rows = conn.execute(sql_text(
+                "SELECT story_key, item_text FROM brief_story_history "
+                "WHERE brief_date >= NOW() - INTERVAL '3 days' "
+                "ORDER BY brief_date DESC"
+            )).fetchall()
+        return [{"key": r[0], "text": r[1] or r[0]} for r in rows]
+    except Exception as e:
+        print(f"  Could not load story history (non-fatal): {e}")
+        return []
+
+
+def _log_brief_stories(brief_text):
+    """Extract and log story keys from a generated brief for future dedup."""
+    try:
+        engine = _get_db_engine()
+        if not engine:
+            return
+        import re
+        from sqlalchemy import text as sql_text
+        # Extract blockquote items (each starts with >)
+        items = re.findall(r'>\s*(.+?)(?=\n\n|\n>|$)', brief_text, re.DOTALL)
+        story_keys = []
+        for item in items:
+            item = item.strip()
+            if len(item) < 20:
+                continue
+            # Extract a short key: first sentence, up to 120 chars
+            first_sentence = re.split(r'\.\.|\.\s', item)[0][:120].strip()
+            if first_sentence:
+                story_keys.append((first_sentence, item[:300]))
+
+        if story_keys:
+            with engine.connect() as conn:
+                for key, text in story_keys:
+                    conn.execute(sql_text(
+                        "INSERT INTO brief_story_history (story_key, item_text) VALUES (:key, :text)"
+                    ), {"key": key, "text": text})
+                conn.commit()
+            print(f"  Logged {len(story_keys)} story keys to history")
+    except Exception as e:
+        print(f"  Could not log story history (non-fatal): {e}")
+
+
 def _select_stories_with_haiku(news_df, social_df=None):
     """Use Haiku to pre-select the most interesting, diverse stories from the raw data.
     Returns a curated list of stories that would make someone stop scrolling."""
@@ -771,9 +822,27 @@ def _select_stories_with_haiku(news_df, social_df=None):
     if social_items:
         social_block = "\n\nSOCIAL MEDIA (high engagement):\n" + "\n".join(social_items[:15])
 
+    # Load recently featured stories for dedup
+    recent_stories = _load_recent_story_history()
+    dedup_block = ""
+    if recent_stories:
+        dedup_lines = [f"- {s['key']}" for s in recent_stories[:30]]
+        dedup_block = f"""
+
+STORIES ALREADY FEATURED IN RECENT BRIEFS (DO NOT SELECT THESE AGAIN):
+{chr(10).join(dedup_lines)}
+
+RULE: If a story from the list above appears in the candidates below, SKIP IT — even if new
+articles were published about it. The ONLY exception: if the new article reveals a genuinely
+new development (e.g., a company that was "in talks" last brief has now "signed the deal,"
+or a conflict that was "escalating" has now produced casualties). Rehashed coverage, opinion
+pieces, and follow-up analysis about the SAME event do NOT count as evolution. When in doubt,
+skip it and pick something fresh.
+"""
+
     haiku_prompt = f"""You are a story selector for a daily intelligence dispatch. Your job: pick the 15 stories
 that would make someone STOP SCROLLING. Not the biggest stories — the most INTERESTING ones.
-
+{dedup_block}
 What makes a story interesting:
 - A powerful person or company contradicting themselves
 - A billion-dollar deal dying or being born
@@ -788,6 +857,8 @@ What is NOT interesting:
 - Market moved X% (unless someone specific benefits or loses)
 - Generic policy announcements without contradiction
 - Celebrity news without a systemic angle
+- Stories that were ALREADY covered in a previous brief (see list above) unless they have
+  a genuinely new development — not just new articles about the same event
 - PARTISAN stories: anything where the main point is "politician did something bad" or
   "politician said something hypocritical." Political stories are ONLY interesting when
   the contradiction is SYSTEMIC — a government agency contradicting itself, a policy
@@ -894,6 +965,10 @@ Notice what makes this work:
 
 CRITICAL RULES:
 1. Your ONLY sources of truth are the data provided. Do NOT inject facts from training data.
+1b. NEVER repeat a story from a previous brief. If the curated stories contain something that
+   was already covered in an earlier dispatch, SKIP IT and write about something else from the
+   data. The ONLY exception: a genuinely new development (deal signed, casualties reported,
+   verdict delivered). New articles about the same event do NOT count.
 2. NO TOPIC gets more than 2 items. War, oil, geopolitics, Middle East — these are ALL the same
    topic. Maximum 2 items on that entire cluster, then MOVE ON.
 3. You MUST cover at least 6 DIFFERENT worlds: tech/AI, geopolitics, corporate/business, economy,
@@ -997,6 +1072,9 @@ def main():
     print(brief)
     print()
     print("=" * 60)
+
+    # Log featured stories for dedup in future briefs
+    _log_brief_stories(brief)
 
     # Log which topics appeared for staleness tracking
     try:
