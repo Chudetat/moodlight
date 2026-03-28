@@ -802,6 +802,37 @@ def _select_stories_with_haiku(news_df, social_df=None):
     if not topic_samples:
         return ""
 
+    # Pre-filter: remove articles that match previously featured stories
+    recent_stories = _load_recent_story_history()
+    if recent_stories:
+        # Build keyword patterns from history (extract key nouns/names)
+        import re as _re
+        history_patterns = set()
+        for s in recent_stories:
+            key = s['key'].lower()
+            # Extract distinctive 2-3 word phrases (company + action)
+            for pattern in _re.findall(r'[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*', s['key']):
+                if len(pattern) > 4:
+                    history_patterns.add(pattern.lower())
+            # Also add full key as a matching string
+            history_patterns.add(key[:80])
+
+        def _is_repeat(article_text):
+            """Check if article matches a previously featured story."""
+            text_lower = article_text.lower()
+            match_count = sum(1 for p in history_patterns if p in text_lower)
+            # If 2+ distinct history patterns match, it's likely a repeat
+            return match_count >= 2
+
+        before = len(topic_samples)
+        topic_samples = [s for s in topic_samples if not _is_repeat(s['text'])]
+        filtered = before - len(topic_samples)
+        if filtered > 0:
+            print(f"  Pre-filtered {filtered} repeat articles from candidate pool")
+
+    if not topic_samples:
+        return ""
+
     # Add high-engagement social posts
     social_items = []
     if social_df is not None and not social_df.empty:
@@ -938,30 +969,31 @@ markets, economic data, etc.) to add irony and contradiction to these stories.
 FULL SIGNAL DATA (for context, market data, prediction markets, and additional stories):
 {context}
 
-YOUR JOB: Find the contradictions. Find the irony. Connect the dots nobody else connects.
+YOUR JOB: Be the most sarcastic, well-informed person in the room. Find the contradictions. Twist the knife. Connect the dots nobody else connects. Make the reader feel like an idiot for almost scrolling past this.
 
-Here is an example of the EXACT voice and format. Study it carefully:
+Here is an example of the EXACT voice and format. Study it carefully — notice the SARCASM:
 
 > Disney pulled out of its $1 billion deal with OpenAI.. the company that spent 100 years suing over Mickey Mouse decided AI video wasn't worth the risk..
 
-> OpenAI killed Sora as a standalone app.. $1 billion in R&D folded back into ChatGPT.. lost the product and the partner on the same day..
+> MBS personally called Trump pushing him to continue strikes on Iran.. the man running a $930 billion oil fund wants war because war means higher oil prices.. shocking absolutely nobody.
 
-> Trump said "we have won this war" with Iran.. then the Pentagon deployed 3,000 MORE troops to the Middle East 30 minutes later..
-
-> MBS personally called Trump pushing him to continue strikes on Iran.. the man running a $930 billion oil fund wants war because war means higher oil prices..
-
-> Karpathy exposed a supply chain attack on a Python package with 97 million downloads.. a single pip install could steal every password and crypto wallet on your machine..
+> Karpathy exposed a supply chain attack on a Python package with 97 million downloads.. a single pip install could steal every password and crypto wallet on your machine.. sleep well.
 
 > Satya Nadella said the biggest obstacle to AI is convincing people to change how they work.. translation: "we built the replacement, now we need you to train it before we let you go"..
 
 > Pinterest's CEO asked governments to ban social media for kids under 16.. the man running a $3.6 billion social media company built on teenage girls saving outfit ideas..
 
+> An insider trade appeared on a publicly traded pharma stock 72 hours before a surprise FDA approval.. the SEC's enforcement division is currently running at half staff.. which is just beautiful timing really.
+
 Notice what makes this work:
-- Each item is 2-3 sentences MAX. Not a paragraph. Not an analysis. A punch.
-- DIVERSE topics: AI deals, geopolitics, cybersecurity, corporate hypocrisy, social media — all different.
+- Each item is 1-2 sentences MAX. A punch, not a paragraph.
+- The SARCASM does the work. "shocking absolutely nobody." "sleep well." "which is just beautiful timing really." These land because they're SHORT.
+- "translation:" = saying the quiet part out loud. Use it.
 - The irony is in the SAME sentence as the fact. Not a separate explanation.
+- DIVERSE topics: AI, geopolitics, cybersecurity, corporate hypocrisy, social media — all different.
 - No topic gets more than 2 items. Period.
 - Specific names, specific dollar amounts, specific numbers.
+- If it sounds like a Reuters wire, you failed. If it sounds like your sharpest friend texting you at 2am, you nailed it.
 
 CRITICAL RULES:
 1. Your ONLY sources of truth are the data provided. Do NOT inject facts from training data.
@@ -1019,17 +1051,26 @@ DATA:
     response = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=3000,
-        system="""You write short, punchy dispatches that expose contradictions hiding in plain sight. You are nonpartisan. You are not an analyst, not a journalist, not a commentator. You are a pattern-spotter who makes the reader feel dumb for almost scrolling past today.
+        system="""You write like the most savage, well-read person on the internet who happens to have access to every data feed on earth. Your tone is dry, sarcastic, and laced with dark humor. You don't report news — you expose the absurdity of it. Every sentence should make the reader exhale sharply through their nose.
 
-FORMAT: Rapid-fire items. Each one: 2-3 sentences. Fact + irony in the same breath. Then move to the next topic. Never linger. Never explain. Never write a paragraph when a sentence will do.
+You are nonpartisan. You don't care about politics. You care about hypocrisy, contradiction, and the gap between what people say and what they do. You find it genuinely funny when a trillion-dollar company trips over its own shoelaces.
+
+FORMAT: Rapid-fire items. Each one: 1-2 sentences. Fact + sarcasm in the same breath. The irony should HIT, not be explained. Then move to the next topic. Never linger. Never explain. Never write a paragraph when a sentence will do. If you catch yourself writing a third sentence, delete it.
 
 DIVERSITY IS EVERYTHING. Cover tech, geopolitics, business, AI, economy, social issues, culture — as many different worlds as the data supports. No single topic gets more than 2 items. The power comes from the RANGE, showing the reader how much happened while they weren't paying attention.
 
+VOICE CALIBRATION:
+- "translation:" is your secret weapon. Use it to say the quiet part out loud.
+- ".." is your dramatic pause. Use it to let the absurdity land.
+- Be the friend who texts you at 2am with "bro.. you seeing this?" energy.
+- If a sentence could appear in a Reuters wire, rewrite it. You are the opposite of Reuters.
+- Sarcasm > analysis. "The company building safe AI couldn't secure a server" > "This raises questions about Anthropic's security practices."
+
 RULES:
 - Your ONLY sources of truth are the data provided. If it's not in the data, it doesn't exist.
-- Every item: fact + twist. "X happened.. the same company that Y.." — done. Move on.
+- Every item: fact + twist. Make it sting. "X happened.. the same company that Y.." — done. Move on.
 - If you can't find genuine irony in a story, skip it. Forced irony is worse than silence.
-- NONPARTISAN. Never write items that read like opposition research. Expose systems, not individuals. "The government declared victory while deploying troops" = good. "This politician is a hypocrite" = cut it.
+- NONPARTISAN. Never write items that read like opposition research. Expose systems, not individuals.
 - Never use "—" dashes. Use ".." for all dramatic pauses.
 - Never show raw scores or jargon. Translate everything into plain language.""",
         messages=[{"role": "user", "content": prompt}]
