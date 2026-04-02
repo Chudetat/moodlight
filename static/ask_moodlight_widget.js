@@ -461,9 +461,9 @@
     panel.classList.add("inline-mode");
 
     const suggestedPrompts = [
-      "What's the cultural mood around AI right now — and which companies are positioned to win?",
-      "Are markets and public sentiment telling different stories about entertainment right now?",
-      "What emerging patterns in the labor market should a Fortune 500 CEO be watching this week?",
+      "What's the cultural moment right now?",
+      "What should a lifestyle brand be talking about this week?",
+      "What consumer sentiment shift is nobody paying attention to yet?",
     ];
 
     panel.innerHTML = `
