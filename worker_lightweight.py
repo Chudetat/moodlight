@@ -58,6 +58,10 @@ JOBS = {
         "module": "generate_radar",
         "label": "Radar (Daily Societal Patterns)",
     },
+    "trade": {
+        "module": "trade_executor",
+        "label": "Trade Analyst + Executor (Daily)",
+    },
 }
 
 
