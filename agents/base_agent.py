@@ -5,11 +5,37 @@ Handles the shared orchestration: validate → load data → build prompt → ca
 """
 
 import os
+import re
 from datetime import datetime, timezone
 from anthropic import Anthropic
 from dotenv import load_dotenv
 
 load_dotenv()
+
+TRAINING_DATA_BAN = (
+    "Your ONLY sources of truth are the Moodlight intelligence data provided in the user prompt. "
+    "Do NOT inject facts, events, corporate actions, controversies, or narratives from your training data. "
+    "Your training knowledge is stale — presenting it as current intelligence destroys credibility. "
+    "If the data doesn't cover something, build from what IS there. Never fill gaps with training-data knowledge."
+)
+
+# Keywords that trigger inclusion of regulatory guidance
+_REGULATED_INDUSTRY_PATTERNS = re.compile(
+    r"pharma|healthcare|medical|hospital|drug|rx|fda|"
+    r"financial|banking|fintech|investment|insurance|"
+    r"alcohol|spirits|beer|wine|liquor|"
+    r"cannabis|cbd|marijuana|"
+    r"legal\s+service|law\s+firm|attorney",
+    re.IGNORECASE,
+)
+
+
+def get_regulatory_guidance(user_input):
+    """Return regulatory guidance only if the user's input involves a regulated industry."""
+    if _REGULATED_INDUSTRY_PATTERNS.search(user_input):
+        from generate_strategic_brief import REGULATORY_GUIDANCE
+        return f"\nINDUSTRY-SPECIFIC REGULATORY CONSIDERATIONS:\n{REGULATORY_GUIDANCE}\n"
+    return ""
 
 
 class MoodlightAgent:
@@ -19,6 +45,10 @@ class MoodlightAgent:
     model = "claude-opus-4-6"
     max_tokens = 4000
     system_prompt = ""
+
+    def _build_system_prompt(self):
+        """Combine agent-specific system prompt with universal directives."""
+        return f"{self.system_prompt}\n\n{TRAINING_DATA_BAN}"
 
     def validate_input(self, request):
         """Validate the incoming request. Override in subclass."""
@@ -68,7 +98,7 @@ class MoodlightAgent:
         response = client.messages.create(
             model=self.model,
             max_tokens=self.max_tokens,
-            system=self.system_prompt,
+            system=self._build_system_prompt(),
             messages=[{"role": "user", "content": prompt}],
         )
 

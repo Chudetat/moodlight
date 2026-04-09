@@ -20,7 +20,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text as sql_text
@@ -64,6 +64,8 @@ app = FastAPI(title="Moodlight Data API", docs_url="/api/docs", redoc_url=None)
 # CORS — allow Next.js frontend and localhost dev
 ALLOWED_ORIGINS = [
     "https://moodlight.app",
+    "https://moodlightintel.com",
+    "https://www.moodlightintel.com",
     "http://localhost:3000",
     "http://localhost:8001",
 ]
@@ -642,6 +644,146 @@ def agent_comms_planner(req: AgentRequest, payload: dict = Depends(require_auth)
         send_strategic_brief_email(req.email_recipient, req.user_input, result["output"])
 
     return result
+
+
+@app.post("/api/agents/full-deploy")
+def agent_full_deploy(req: AgentRequest, payload: dict = Depends(require_auth)):
+    """Full Deploy — all three agents as one cohesive team."""
+    _require_active_tier(payload, "strategic_brief")
+    from agents import FullDeployAgent
+    agent = FullDeployAgent()
+    result = agent.run({"user_input": req.user_input, "username": payload["sub"]})
+
+    if req.email_recipient:
+        from generate_strategic_brief import send_strategic_brief_email
+        send_strategic_brief_email(req.email_recipient, req.user_input, result["output"])
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Public Agent Marketplace (Squarespace — email-gated, no JWT)
+# ---------------------------------------------------------------------------
+
+class MarketplaceRequest(BaseModel):
+    agent: str  # "cco", "cso", "comms-planner", "full-deploy"
+    email: str
+    product: str
+    audience: str = ""
+    markets: str = ""
+    challenge: str = ""
+    timeline: str = ""
+
+_MARKETPLACE_AGENTS = {
+    "cco": ("agents", "CreativeDirectorAgent"),
+    "cso": ("agents", "StrategyAgent"),
+    "comms-planner": ("agents", "CommsPlannerAgent"),
+    "full-deploy": ("agents", "FullDeployAgent"),
+}
+
+_AGENT_LABELS = {
+    "cco": "Chief Creative Officer",
+    "cso": "Chief Strategy Officer",
+    "comms-planner": "Comms Planner",
+    "full-deploy": "Full Deploy",
+}
+
+
+def _check_marketplace_access(email: str, engine):
+    """Check if email has marketplace access. Returns True if allowed."""
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(
+                sql_text("SELECT 1 FROM marketplace_access WHERE email = :email AND active = true"),
+                {"email": email.lower().strip()},
+            ).fetchone()
+            return row is not None
+    except Exception:
+        return False
+
+
+def _log_marketplace_run(email: str, agent: str, user_input: str, engine):
+    """Log a marketplace agent run for analytics."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                sql_text("""
+                    INSERT INTO marketplace_runs (email, agent, user_input, created_at)
+                    VALUES (:email, :agent, :input, NOW())
+                """),
+                {"email": email.lower().strip(), "agent": agent, "input": user_input[:500]},
+            )
+            conn.commit()
+    except Exception:
+        pass
+
+
+def _build_marketplace_input(req: MarketplaceRequest) -> str:
+    """Assemble form fields into a single user_input string."""
+    parts = [f"launch/promote {req.product}"]
+    if req.audience:
+        parts.append(f"targeting {req.audience}")
+    if req.markets:
+        parts.append(f"in {req.markets}")
+    if req.challenge:
+        parts.append(f"with the challenge of {req.challenge}")
+    if req.timeline:
+        parts.append(f"timeline/budget: {req.timeline}")
+    return " ".join(parts)
+
+
+def _run_marketplace_agent(req: MarketplaceRequest):
+    """Background task: run the agent and email the result."""
+    import importlib
+    from generate_strategic_brief import send_strategic_brief_email
+
+    module_name, class_name = _MARKETPLACE_AGENTS[req.agent]
+    mod = importlib.import_module(module_name)
+    agent_cls = getattr(mod, class_name)
+    agent = agent_cls()
+
+    user_input = _build_marketplace_input(req)
+    result = agent.run({"user_input": user_input})
+
+    label = _AGENT_LABELS.get(req.agent, req.agent)
+    send_strategic_brief_email(
+        req.email.strip(), user_input, result["output"], frameworks=[label]
+    )
+
+    engine = get_engine()
+    if engine:
+        _log_marketplace_run(req.email, req.agent, user_input, engine)
+
+
+@app.post("/api/marketplace/run")
+def marketplace_run(req: MarketplaceRequest, background_tasks: BackgroundTasks):
+    """Public endpoint for the Moodlight Agent Marketplace on Squarespace."""
+    # Validate agent
+    if req.agent not in _MARKETPLACE_AGENTS:
+        raise HTTPException(status_code=400, detail=f"Unknown agent: {req.agent}")
+
+    if not req.product.strip():
+        raise HTTPException(status_code=400, detail="Product / service is required")
+
+    if not req.email.strip() or "@" not in req.email:
+        raise HTTPException(status_code=400, detail="Valid email is required")
+
+    # Check access
+    engine = get_engine()
+    if not engine:
+        raise HTTPException(status_code=503, detail="Service temporarily unavailable")
+
+    if not _check_marketplace_access(req.email, engine):
+        raise HTTPException(status_code=403, detail="No marketplace access. DM @danielchu on LinkedIn for access.")
+
+    # Run in background so the request returns immediately
+    background_tasks.add_task(_run_marketplace_agent, req)
+
+    label = _AGENT_LABELS.get(req.agent, req.agent)
+    return {
+        "status": "running",
+        "message": f"Your {label} brief is being generated. You'll receive it at {req.email} shortly.",
+    }
 
 
 @app.post("/api/strategic-brief")
@@ -2535,6 +2677,13 @@ async def stripe_webhook(request: Request):
         print(f"Downgraded subscription {subscription_id}")
 
     return {"status": "success"}
+
+
+# Serve static files LAST (mount is greedy — must come after all routes)
+from fastapi.staticfiles import StaticFiles
+_static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(_static_dir):
+    app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
 
 if __name__ == "__main__":

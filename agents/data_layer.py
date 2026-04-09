@@ -323,6 +323,14 @@ def load_campaign_precedents(user_need, df):
 
     user_need_lower = user_need.lower()
 
+    # Generic topics that match too many campaigns — skip for scoring
+    _generic_topics = {
+        "entertainment", "technology", "politics", "sports", "media",
+        "health", "science", "business", "economy", "education",
+        "environment", "culture", "society", "world", "social",
+        "technology & ai", "media & journalism", "labor & work",
+    }
+
     def score_campaign(camp):
         score = 0
         tension = camp.get("cultural_tension", "").lower()
@@ -330,30 +338,46 @@ def load_campaign_precedents(user_need, df):
         why = camp.get("why_it_worked", "").lower()
         tags = [t.lower() for t in camp.get("category_tags", [])]
         emo_reg = camp.get("emotional_register", "").lower()
+        category = camp.get("brand", "").lower()
 
-        for topic in topics:
-            t = topic.lower()
-            if t in tension or t in insight:
-                score += 3
-        for emo in emotions:
-            if emo.lower() in emo_reg:
-                score += 2
+        # User need is the PRIMARY signal — heavily weighted
         need_words = [w for w in user_need_lower.split() if len(w) > 4]
         for w in need_words:
             if w in tension or w in insight or w in why:
+                score += 3
+            if w in category:
+                score += 2
+
+        # Topic matching — only for specific topics, not generic categories
+        for topic in topics:
+            t = topic.lower()
+            if t in _generic_topics:
+                continue
+            if t in tension or t in insight:
+                score += 2
+
+        # Emotion matching
+        for emo in emotions:
+            if emo.lower() in emo_reg:
                 score += 1.5
-        tension_words = [w for w in tension.split() if len(w) > 5]
-        for w in tension_words:
-            if w in headline_text:
-                score += 0.3
+
+        # Headline overlap — capped to prevent common-word campaigns dominating
+        tension_words = [w for w in tension.split() if len(w) > 8]
+        headline_hits = sum(1 for w in tension_words if w in headline_text)
+        score += min(headline_hits * 0.2, 1.0)  # Cap at 1 point
+
+        # Tag bonuses only when the tag connects to user input or current signals
         tag_bonuses = {
-            "empathy": 2, "social impact": 1.5, "revelation": 1.5,
-            "cultural moment": 2, "crisis response": 1.5, "subversion": 1,
-            "provocation": 1, "reframe": 1.5, "authenticity": 1,
-            "brand platform": 1, "long-running": 1,
+            "empathy": 1.5, "social impact": 1, "revelation": 1,
+            "cultural moment": 1.5, "crisis response": 1, "subversion": 0.5,
+            "provocation": 0.5, "reframe": 1, "authenticity": 0.5,
+            "brand platform": 0.5, "long-running": 0.5,
         }
+        relevance_words = set(user_need_lower.split()) | {e.lower() for e in emotions}
         for tag in tags:
-            score += tag_bonuses.get(tag, 0)
+            bonus = tag_bonuses.get(tag, 0)
+            if bonus and any(w in tag or tag in w for w in relevance_words if len(w) > 3):
+                score += bonus
         return score
 
     scored = [(c, score_campaign(c)) for c in campaigns]

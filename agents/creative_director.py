@@ -3,21 +3,17 @@ agents/creative_director.py
 The Creative Director Agent — takes a brand or brief input, pulls real-time
 cultural signals from Moodlight, and outputs a creative brief with the
 judgment of a world-class ECD.
-
-Extracted and extended from generate_strategic_brief.py.
 """
 
-from .base_agent import MoodlightAgent
+from .base_agent import MoodlightAgent, get_regulatory_guidance
 from . import data_layer
-from generate_strategic_brief import REGULATORY_GUIDANCE
-from strategic_frameworks import select_frameworks, get_framework_prompt, STRATEGIC_FRAMEWORKS
 
 
 class CreativeDirectorAgent(MoodlightAgent):
 
     agent_name = "creative_director"
     model = "claude-opus-4-6"
-    max_tokens = 4500
+    max_tokens = 6000
 
     system_prompt = (
         "You are the most awarded creative director in advertising history. "
@@ -38,22 +34,14 @@ class CreativeDirectorAgent(MoodlightAgent):
         user_input = request["user_input"]
         username = request.get("username")
 
-        # Load all data sources
         df = data_layer.load_combined_data(days=7)
         snapshot = data_layer.build_intelligence_snapshot(df)
         headlines = data_layer.load_headlines(df)
         vlds = data_layer.load_vlds_tables()
         velocity_df, density_df, scarcity_df = vlds
         opp_map = data_layer.build_creative_opportunity_map(velocity_df, density_df, scarcity_df)
-        market_ctx = data_layer.load_market_context()
-        polymarket = data_layer.load_polymarket_data()
         brand_context = data_layer.build_enrichment(username, user_input, df)
         campaign_precedents = data_layer.load_campaign_precedents(user_input, df)
-
-        # Select strategic frameworks
-        selected = select_frameworks(user_input)
-        framework_guidance = get_framework_prompt(selected)
-        framework_names = [STRATEGIC_FRAMEWORKS[f]["name"] for f in selected]
 
         context_str = data_layer.assemble_full_context(
             df=df,
@@ -61,34 +49,26 @@ class CreativeDirectorAgent(MoodlightAgent):
             headlines=headlines,
             vlds_data=vlds,
             opp_map=opp_map,
-            market_ctx=market_ctx,
-            polymarket=polymarket,
             brand_context=brand_context,
         )
 
         return {
             "context": context_str,
-            "framework_guidance": framework_guidance,
-            "framework_names": framework_names,
             "campaign_precedents": campaign_precedents,
         }
 
     def build_prompt(self, request, data):
         user_input = request["user_input"]
         context = data["context"]
-        framework_guidance = data["framework_guidance"]
         campaign_precedents = data["campaign_precedents"]
+        reg_guidance = get_regulatory_guidance(user_input)
 
         return f"""A client has come to you with this request:
 "{user_input}"
 
-TRAINING DATA BAN: Your ONLY sources of truth are the Moodlight intelligence data provided below. Do NOT inject facts, events, corporate actions, controversies, or narratives from your training data. Your training knowledge is stale — presenting it as current intelligence destroys credibility. If the data doesn't cover something, build your strategy from what IS there. Never fill gaps with training-data "knowledge."
-
-Based on the following real-time intelligence data from Moodlight (which tracks empathy, emotions, trends, and strategic metrics across news and social media), create a strategic brief.
+Based on the following real-time intelligence data from Moodlight (which tracks empathy, emotions, trends, and strategic metrics across news and social media), create a creative brief.
 
 {context}
-
-{framework_guidance}
 
 {campaign_precedents}
 
@@ -124,30 +104,30 @@ Factor in Velocity (how fast topics are moving) and Longevity (how long they'll 
 
 End with: "Timing Recommendation: [ENGAGE NOW / WAIT / PROCEED WITH CAUTION] because [data-backed reason]"
 
-## 3. WHAT TO SAY: Message Architecture
+## 3. THE VOICE: Creative Direction
 
-Based on the empathy score and emotional climate:
-- **Empathy Calibration**: Match message warmth to current cultural mood
-- **Tone Recommendation**: Specific guidance on voice and approach
-- **Message Hierarchy**: What to lead with, what to support with
-- **Creative Thought-Starter**: One campaign idea or hook that fits this moment
+This is not a messaging framework. This is how the work should FEEL.
 
-End with: "Consider: '[specific campaign thought-starter]'"
+- **The Posture**: Is this brand whispering or shouting? Leaning in or standing back? One sentence that a writer could use to gut-check every headline.
+- **The Emotional Frequency**: Based on the cultural mood, what emotion should this work ACTIVATE in the audience? Not "inspire" — be specific. Restlessness? Relief? Defiance? Complicity?
+- **The Line You Can't Cross**: What would make this tone wrong? Where does the edge become a cliff?
+- **Reference Point**: Name one real cultural artifact (a show, a song, a meme, a moment) that captures the tone you're recommending. Not as content to copy — as a tuning fork.
 
-## 4. UNEXPECTED ANGLE: The Insight They Didn't See Coming
+End with: "This work should feel like: [one vivid sentence]"
+
+## 4. THE UNEXPECTED ANGLE: The Insight They Didn't See Coming
 
 This is where you earn your fee. Include ALL of the following:
 - **Contrarian Take**: One insight that challenges conventional thinking about this category
 - **Data Tension**: A contradiction in the data — what people say vs. what they engage with
 - **Cultural Parallel**: Reference one analogy from another brand, category, or cultural moment
 - **Competitor Blind Spot**: What competitors in this space are likely missing right now
-- **Creative Spark**: One bold campaign idea that ONLY works in this specific cultural moment
 
 ANTI-STALENESS CHECK: Do NOT anchor your creative idea on the highest-velocity topic unless you can prove a genuinely novel angle. The obvious trending topic is where lazy strategists go. Use the CREATIVE OPPORTUNITY MAP — topics marked [OPPORTUNITY] are your hunting ground; topics marked [SATURATED] are where you should NOT start.
 
 End with: "The non-obvious move: [one sentence summary]"
 
-## 4.5 CREATIVE PRECEDENT LENS
+## 5. CREATIVE PRECEDENT LENS
 
 If CREATIVE PRECEDENTS are provided above, select the 3 most relevant and present:
 - **[Campaign Name] ([Brand], [Year])** — [One sentence on cultural tension]
@@ -158,7 +138,7 @@ Then identify:
 
 Do NOT recommend recreating any precedent. The value is the THINKING behind them.
 
-## 5. WHY NOW: The Real-Time Trigger
+## 6. WHY NOW: The Real-Time Trigger
 
 - **This Week's Catalyst**: Quote 2-3 specific headlines from the data that are DIRECTLY RELEVANT
 - **The Window**: Why this opportunity exists RIGHT NOW but might not in 30 days
@@ -166,38 +146,30 @@ Do NOT recommend recreating any precedent. The value is the THINKING behind them
 
 End with: "Act now because: [one sentence]"
 
-## 6. MAKE IT REAL: Tangible Outputs
+## 7. MAKE IT REAL: Tangible Outputs
 
 **Opening Hooks (3 options):**
 - One that leads with tension
 - One that leads with aspiration
 - One that's provocative/contrarian
 
-**Campaign Concept (1 paragraph):**
-A single activatable idea — name it, describe it, explain why it fits this cultural moment. Must feel like it could ONLY exist this week.
+**Campaign Concepts (3-4 concepts):**
+For each concept:
+- **Name**: A campaign name that could go on a brief
+- **The Concept**: One paragraph. What is it, what does it look like, why does it work right now? Must feel like it could ONLY exist this week.
+- **Why This Moment**: One sentence connecting it to a specific data signal
+- **Steal This Line**: One sentence ready for a deck. Must make someone uncomfortable to say out loud.
 
-**Platform Play:**
-Which platform is best suited for this moment and why? One sentence.
-
-**First 48 Hours:**
-If the client said "go" right now, what's the single most important action? Be specific.
-
-**Steal This Line:**
-One sentence the client can use verbatim in a deck, ad, or pitch tomorrow. It must make someone uncomfortable to say out loud.
+Each concept should represent a genuinely different creative territory — not three versions of the same idea at different volume levels.
 
 End with: "This is your starting point, not your ceiling."
-
----
 
 Be bold and specific. Reference actual data points. Make decisions, not suggestions.
 
 QUALITY CHECK: Before finalizing, delete any sentence a competitor's strategist could also write.
 
-End the brief with: "---
-Powered by Moodlight's Cultural Momentum Matrix™"
-
-{REGULATORY_GUIDANCE}
-"""
+End the brief with: "Powered by Moodlight's Cultural Momentum Matrix™"
+{reg_guidance}"""
 
     def format_output(self, raw_response):
         result = super().format_output(raw_response)

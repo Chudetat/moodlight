@@ -8,9 +8,8 @@ This is business strategy, not creative. No campaign concepts or hooks —
 pure strategic thinking with real-time intelligence backing every recommendation.
 """
 
-from .base_agent import MoodlightAgent
+from .base_agent import MoodlightAgent, get_regulatory_guidance
 from . import data_layer
-from generate_strategic_brief import REGULATORY_GUIDANCE
 from strategic_frameworks import select_frameworks, get_framework_prompt, STRATEGIC_FRAMEWORKS
 
 
@@ -18,7 +17,7 @@ class StrategyAgent(MoodlightAgent):
 
     agent_name = "strategy"
     model = "claude-opus-4-6"
-    max_tokens = 4000
+    max_tokens = 5000
 
     system_prompt = (
         "You are a senior strategist who has advised Fortune 100 CEOs and "
@@ -69,11 +68,10 @@ class StrategyAgent(MoodlightAgent):
         user_input = request["user_input"]
         context = data["context"]
         framework_guidance = data["framework_guidance"]
+        reg_guidance = get_regulatory_guidance(user_input)
 
         return f"""A decision-maker has come to you with this challenge:
 "{user_input}"
-
-TRAINING DATA BAN: Your ONLY sources of truth are the Moodlight intelligence data provided below. Do NOT inject facts, events, corporate actions, controversies, or narratives from your training data. Your training knowledge is stale. If the data doesn't cover something, say so. Never fill gaps with training-data "knowledge."
 
 {context}
 
@@ -88,6 +86,7 @@ Read the data like a strategist, not an analyst. What's actually happening right
 - **The dominant force**: What single dynamic in the data most impacts this business?
 - **The hidden risk**: What does the data suggest could go wrong that most people aren't seeing?
 - **The timing reality**: Based on velocity and longevity data, is the window opening, closing, or stable?
+- **The money signal**: If MARKET INDICES, ECONOMIC INDICATORS, or PREDICTION MARKETS data is available, what is the financial environment telling you? How does economic sentiment constrain or enable this strategy? If prediction markets show relevant bets, what does the crowd's money say about the likely future?
 
 End with: "The strategic reality: [one sentence summary]"
 
@@ -114,32 +113,29 @@ Pick one. Defend it. Structure as:
 
 End with: "The strategic bet: [one sentence]"
 
-## 4. RISK FACTORS
+## 4. COMPETITIVE RESPONSE MAP
+
+For the top 3 most likely competitors or competitive forces:
+- **[Competitor/Force]**: What they'll do in the next 30 days, why, and how your strategy counters it
+- Identify which competitor is most dangerous and why
+- Name the one competitive move that would force a pivot
+
+End with: "The competitive edge: [one sentence on why you win]"
+
+## 5. RISK FACTORS
 
 - **Kill signals**: What would you watch for that means this strategy is failing? Be specific — name metrics, headlines, or shifts that would trigger a pivot.
-- **Mitigation**: For each risk, one sentence on how to hedge.
+- **The unhedgeable risk**: What is the ONE risk you cannot mitigate? No safety net, no plan B. Name it honestly and tell the client what they should do if it materializes. Not every risk has a hedge — pretending otherwise is bad strategy.
 - **The one thing that could change everything**: What single external event could invalidate this entire recommendation?
-
-## 5. 90-DAY ROADMAP
-
-- **Days 1-7**: The immediate move. What happens this week.
-- **Days 8-30**: Build the foundation. What gets set up.
-- **Days 31-60**: Accelerate. What scales.
-- **Days 61-90**: Evaluate and pivot or double down. Decision point.
-
-For each phase, one specific action — not a vague category.
 
 ## 6. THE BOTTOM LINE
 
 One paragraph. If the decision-maker reads nothing else, this is it. What to do, why now, and what happens if they don't.
 
-End with: "---
-Powered by Moodlight Strategic Intelligence"
+End with: "Powered by Moodlight Strategic Intelligence"
 
 QUALITY CHECK: Delete any recommendation that doesn't reference specific data from the intelligence snapshot. If an insight isn't grounded in THIS data and THIS moment, cut it.
-
-{REGULATORY_GUIDANCE}
-"""
+{reg_guidance}"""
 
     def format_output(self, raw_response):
         result = super().format_output(raw_response)
