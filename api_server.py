@@ -593,6 +593,57 @@ class StrategicBriefRequest(BaseModel):
     email_recipient: Optional[str] = None
 
 
+class AgentRequest(BaseModel):
+    user_input: str
+    username: str = "admin"
+    email_recipient: Optional[str] = None
+
+
+@app.post("/api/agents/creative-director")
+def agent_creative_director(req: AgentRequest, payload: dict = Depends(require_auth)):
+    """Creative Director Agent — generates a creative brief with cultural intelligence."""
+    _require_active_tier(payload, "strategic_brief")
+    from agents import CreativeDirectorAgent
+    agent = CreativeDirectorAgent()
+    result = agent.run({"user_input": req.user_input, "username": payload["sub"]})
+
+    if req.email_recipient:
+        from generate_strategic_brief import send_strategic_brief_email
+        send_strategic_brief_email(req.email_recipient, req.user_input, result["output"])
+
+    return result
+
+
+@app.post("/api/agents/strategy")
+def agent_strategy(req: AgentRequest, payload: dict = Depends(require_auth)):
+    """Strategy Agent — generates a strategic recommendation with positioning and timing."""
+    _require_active_tier(payload, "strategic_brief")
+    from agents import StrategyAgent
+    agent = StrategyAgent()
+    result = agent.run({"user_input": req.user_input, "username": payload["sub"]})
+
+    if req.email_recipient:
+        from generate_strategic_brief import send_strategic_brief_email
+        send_strategic_brief_email(req.email_recipient, req.user_input, result["output"])
+
+    return result
+
+
+@app.post("/api/agents/comms-planner")
+def agent_comms_planner(req: AgentRequest, payload: dict = Depends(require_auth)):
+    """Comms Planner Agent — generates a channel/timing plan based on real-time signals."""
+    _require_active_tier(payload, "strategic_brief")
+    from agents import CommsPlannerAgent
+    agent = CommsPlannerAgent()
+    result = agent.run({"user_input": req.user_input, "username": payload["sub"]})
+
+    if req.email_recipient:
+        from generate_strategic_brief import send_strategic_brief_email
+        send_strategic_brief_email(req.email_recipient, req.user_input, result["output"])
+
+    return result
+
+
 @app.post("/api/strategic-brief")
 def strategic_brief(req: StrategicBriefRequest, payload: dict = Depends(require_auth)):
     """Generate a strategic campaign brief powered by Claude."""
