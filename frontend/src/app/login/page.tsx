@@ -55,7 +55,9 @@ export default function LoginPage() {
           />
         </div>
         <h1 className="text-4xl font-bold leading-snug tracking-tight text-foreground sm:text-5xl">
-          Moodlight is the only real-time intelligence platform custom engineered for brands that move at the speed of culture.
+          Moodlight is the only real-time intelligence platform<br className="hidden sm:inline" />
+          {" "}custom engineered for brands<br className="hidden sm:inline" />
+          {" "}that move at the speed of culture.
         </h1>
       </div>
       <Card className="w-full max-w-sm">
