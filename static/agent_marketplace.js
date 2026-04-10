@@ -49,172 +49,171 @@
 
   function injectStyles() {
     const css = `
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
       #ml-marketplace * { box-sizing: border-box; margin: 0; padding: 0; }
       #ml-marketplace {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        max-width: 900px;
+        font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+        max-width: 720px;
         margin: 0 auto;
-        color: #e0e0e0;
-        background: #0f0f0f;
-        border-radius: 16px;
-        padding: 40px 32px;
+        color: #2D2D2D;
+        padding: 12px 20px;
       }
       .ml-agents-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
-        margin-bottom: 32px;
+        gap: 12px;
+        margin-bottom: 28px;
       }
       @media (max-width: 640px) {
         .ml-agents-grid { grid-template-columns: 1fr; }
-        #ml-marketplace { padding: 24px 16px; }
+        #ml-marketplace { padding: 12px; }
       }
       .ml-agent-card {
-        border: 1px solid #2a2a2a;
-        border-left: 3px solid var(--agent-color, #555);
-        border-radius: 10px;
-        padding: 22px 22px 22px 20px;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 12px;
+        padding: 20px;
         cursor: pointer;
         transition: all 0.2s ease;
-        background: #161616;
+        background: rgba(0, 0, 0, 0.04);
         position: relative;
       }
       .ml-agent-card:hover {
-        background: #1c1c1c;
-        border-color: #3a3a3a;
-        border-left-color: var(--agent-color, #555);
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        background: rgba(0, 0, 0, 0.08);
+        border-color: rgba(0, 0, 0, 0.18);
       }
       .ml-agent-card.ml-selected {
-        background: #1a1a1a;
-        border-color: var(--agent-color, #555);
-        box-shadow: 0 0 0 1px var(--agent-color, #555), 0 8px 24px rgba(0,0,0,0.3);
+        border-color: rgba(107, 70, 193, 0.5);
+        box-shadow: 0 0 0 1px rgba(107, 70, 193, 0.3);
+        background: rgba(107, 70, 193, 0.04);
       }
       .ml-agent-card .ml-icon {
-        font-size: 24px;
-        margin-bottom: 10px;
+        font-size: 22px;
+        margin-bottom: 8px;
         display: block;
       }
       .ml-agent-card h3 {
-        font-size: 17px;
-        font-weight: 700;
-        margin-bottom: 8px;
-        color: #fff;
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #2D2D2D;
       }
       .ml-agent-card p {
         font-size: 13px;
-        line-height: 1.55;
-        color: #888;
+        line-height: 1.5;
+        color: rgba(45, 45, 45, 0.65);
       }
       .ml-premium-badge {
         position: absolute;
         top: 12px;
         right: 12px;
-        background: #D84315;
+        background: linear-gradient(135deg, #6B46C1, #1976D2);
         color: #fff;
         font-size: 10px;
-        font-weight: 700;
-        padding: 3px 7px;
-        border-radius: 4px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 10px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
       .ml-form-section {
         display: none;
-        background: #161616;
-        border: 1px solid #2a2a2a;
+        background: rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.08);
         border-radius: 12px;
-        padding: 32px;
+        padding: 28px;
         margin-bottom: 24px;
       }
       .ml-form-section.ml-visible { display: block; }
       .ml-form-section h3 {
-        font-size: 20px;
-        font-weight: 700;
+        font-size: 18px;
+        font-weight: 600;
         margin-bottom: 4px;
-        color: #fff;
+        color: #2D2D2D;
       }
       .ml-form-section .ml-subtitle {
-        font-size: 14px;
-        color: #666;
+        font-size: 13px;
+        color: rgba(45, 45, 45, 0.5);
         margin-bottom: 24px;
       }
       .ml-field {
-        margin-bottom: 16px;
+        margin-bottom: 14px;
       }
       .ml-field label {
         display: block;
         font-size: 13px;
-        font-weight: 600;
-        color: #999;
+        font-weight: 500;
+        color: rgba(45, 45, 45, 0.7);
         margin-bottom: 4px;
       }
       .ml-field label .ml-optional {
         font-weight: 400;
-        color: #555;
+        color: rgba(45, 45, 45, 0.4);
       }
       .ml-field input {
         width: 100%;
-        padding: 10px 12px;
+        padding: 12px 16px;
         font-size: 15px;
-        border: 1px solid #2a2a2a;
-        border-radius: 8px;
-        background: #0f0f0f;
-        color: #e0e0e0;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.04);
+        color: #2D2D2D;
         outline: none;
-        transition: border-color 0.15s;
-        font-family: inherit;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        font-family: 'Space Grotesk', sans-serif;
       }
       .ml-field input:focus {
-        border-color: #555;
+        border-color: rgba(107, 70, 193, 0.5);
+        box-shadow: 0 2px 12px rgba(107, 70, 193, 0.1);
       }
       .ml-field input::placeholder {
-        color: #444;
+        color: rgba(45, 45, 45, 0.35);
       }
       .ml-submit-btn {
         width: 100%;
         padding: 14px;
-        font-size: 16px;
-        font-weight: 700;
+        font-size: 15px;
+        font-weight: 600;
         color: #fff;
         border: none;
-        border-radius: 8px;
+        border-radius: 28px;
         cursor: pointer;
         margin-top: 8px;
-        transition: opacity 0.15s;
-        font-family: inherit;
+        transition: opacity 0.2s, transform 0.2s;
+        font-family: 'Space Grotesk', sans-serif;
+        background: linear-gradient(135deg, #6B46C1, #1976D2);
       }
-      .ml-submit-btn:hover { opacity: 0.9; }
+      .ml-submit-btn:hover { opacity: 0.9; transform: scale(1.01); }
       .ml-submit-btn:disabled {
-        opacity: 0.5;
+        opacity: 0.4;
         cursor: not-allowed;
+        transform: none;
       }
       .ml-status {
         text-align: center;
-        padding: 16px;
-        border-radius: 8px;
+        padding: 14px;
+        border-radius: 10px;
         margin-top: 16px;
-        font-size: 15px;
+        font-size: 14px;
         display: none;
       }
       .ml-status.ml-success {
         display: block;
-        background: rgba(46,125,50,0.15);
-        color: #4caf50;
-        border: 1px solid rgba(46,125,50,0.3);
+        background: rgba(46, 125, 50, 0.06);
+        color: #2E7D32;
+        border: 1px solid rgba(46, 125, 50, 0.15);
       }
       .ml-status.ml-error {
         display: block;
-        background: rgba(198,40,40,0.15);
-        color: #ef5350;
-        border: 1px solid rgba(198,40,40,0.3);
+        background: rgba(198, 40, 40, 0.06);
+        color: #c62828;
+        border: 1px solid rgba(198, 40, 40, 0.15);
       }
       .ml-status.ml-loading {
         display: block;
-        background: rgba(123,31,162,0.15);
-        color: #ba68c8;
-        border: 1px solid rgba(123,31,162,0.3);
+        background: rgba(107, 70, 193, 0.06);
+        color: #6B46C1;
+        border: 1px solid rgba(107, 70, 193, 0.15);
       }
       .ml-loading-steps {
         text-align: center;
@@ -223,10 +222,10 @@
       }
       .ml-loading-steps.ml-visible { display: block; }
       .ml-loading-steps .ml-spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid #2a2a2a;
-        border-top-color: var(--agent-color, #7B1FA2);
+        width: 36px;
+        height: 36px;
+        border: 3px solid rgba(0, 0, 0, 0.08);
+        border-top-color: #6B46C1;
         border-radius: 50%;
         animation: ml-spin 0.8s linear infinite;
         margin: 0 auto 20px;
@@ -235,8 +234,8 @@
         to { transform: rotate(360deg); }
       }
       .ml-loading-steps .ml-step {
-        font-size: 15px;
-        color: #888;
+        font-size: 14px;
+        color: rgba(45, 45, 45, 0.6);
         transition: opacity 0.4s;
       }
       .ml-preview-section {
@@ -246,16 +245,16 @@
       .ml-preview-section.ml-visible { display: block; }
       .ml-preview-wrap {
         position: relative;
-        background: #1a1a1a;
-        border: 1px solid #2a2a2a;
+        background: rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.08);
         border-radius: 12px;
-        padding: 28px;
+        padding: 20px 24px;
         overflow: hidden;
       }
       .ml-preview-text {
         font-size: 14px;
         line-height: 1.7;
-        color: #ccc;
+        color: #3D3D3D;
         white-space: pre-wrap;
         word-wrap: break-word;
       }
@@ -265,31 +264,31 @@
         left: 0;
         right: 0;
         height: 120px;
-        background: linear-gradient(to bottom, rgba(26,26,26,0) 0%, rgba(26,26,26,1) 80%);
+        background: linear-gradient(to bottom, rgba(245,245,245,0) 0%, rgba(245,245,245,1) 80%);
         pointer-events: none;
       }
       .ml-preview-cta {
         text-align: center;
-        margin-top: 20px;
-        padding: 16px;
-        background: rgba(46,125,50,0.1);
-        border: 1px solid rgba(46,125,50,0.25);
-        border-radius: 8px;
+        margin-top: 16px;
+        padding: 14px;
+        background: rgba(107, 70, 193, 0.05);
+        border: 1px solid rgba(107, 70, 193, 0.12);
+        border-radius: 10px;
       }
       .ml-preview-cta .ml-cta-main {
-        font-size: 16px;
-        font-weight: 700;
-        color: #4caf50;
+        font-size: 15px;
+        font-weight: 600;
+        color: #6B46C1;
         margin-bottom: 4px;
       }
       .ml-preview-cta .ml-cta-sub {
         font-size: 13px;
-        color: #777;
+        color: rgba(45, 45, 45, 0.5);
       }
       .ml-powered-by {
         text-align: center;
-        font-size: 12px;
-        color: #444;
+        font-size: 11px;
+        color: rgba(45, 45, 45, 0.35);
         margin-top: 24px;
       }
     `;
@@ -321,7 +320,6 @@
         selectedAgent = agent.id;
         formSection.classList.add("ml-visible");
         formTitle.textContent = agent.title;
-        submitBtn.style.background = agent.color;
         submitBtn.textContent = `Generate ${agent.title} Brief`;
         statusEl.className = "ml-status";
         statusEl.style.display = "none";
@@ -369,7 +367,6 @@
     const submitBtn = document.createElement("button");
     submitBtn.className = "ml-submit-btn";
     submitBtn.textContent = "Generate Brief";
-    submitBtn.style.background = "#333";
 
     const statusEl = document.createElement("div");
     statusEl.className = "ml-status";
@@ -415,8 +412,6 @@
       statusEl.style.display = "none";
       previewSection.className = "ml-preview-section";
 
-      const agentColor = AGENTS.find((a) => a.id === selectedAgent)?.color || "#7B1FA2";
-      loadingSection.style.setProperty("--agent-color", agentColor);
       loadingSection.innerHTML = '<div class="ml-spinner"></div><div class="ml-step"></div>';
       loadingSection.classList.add("ml-visible");
 
