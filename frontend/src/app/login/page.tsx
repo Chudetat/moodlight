@@ -43,7 +43,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
-      <div className="mb-16 max-w-5xl text-center">
+      <div className="mb-16 max-w-6xl text-center">
         <div className="mb-10 flex justify-center">
           <Image
             src="/logo.png"
@@ -55,8 +55,8 @@ export default function LoginPage() {
           />
         </div>
         <h1 className="text-3xl font-light leading-relaxed tracking-tight text-foreground/90 sm:text-[2.75rem] sm:leading-snug">
-          Moodlight is the only real-time intelligence platform custom engineered<br className="hidden sm:inline" />
-          {" "}for brands that move at the speed of culture.
+          Moodlight is the only real-time intelligence platform<br className="hidden sm:inline" />
+          {" "}engineered for brands that move at the speed of culture.
         </h1>
       </div>
       <div className="w-full max-w-sm">
