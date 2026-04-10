@@ -70,12 +70,12 @@
         #ml-marketplace { padding: 12px; }
       }
       .ml-agent-card {
-        border: 1px solid rgba(0, 0, 0, 0.12);
-        border-radius: 12px;
-        padding: 32px 28px;
+        border: 1px solid rgba(0, 0, 0, 0.12) !important;
+        border-radius: 12px !important;
+        padding: 36px 32px !important;
         cursor: pointer;
         transition: all 0.2s ease;
-        background: rgba(0, 0, 0, 0.04);
+        background: rgba(0, 0, 0, 0.04) !important;
         position: relative;
       }
       .ml-agent-card:hover {
