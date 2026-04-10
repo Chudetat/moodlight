@@ -72,7 +72,7 @@
       .ml-agent-card {
         border: 1px solid rgba(0, 0, 0, 0.12);
         border-radius: 12px;
-        padding: 20px;
+        padding: 28px 24px;
         cursor: pointer;
         transition: all 0.2s ease;
         background: rgba(0, 0, 0, 0.04);
