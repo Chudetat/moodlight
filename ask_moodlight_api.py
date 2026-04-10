@@ -1144,13 +1144,7 @@ async def ask_moodlight(req: AskRequest, request: Request):
             # Token expired/invalid — fall through to free tier
             pass
 
-    # Rate limit check (skip if paid)
     client_ip = request.headers.get("x-forwarded-for", request.client.host)
-    if not is_paid and not _check_rate_limit(client_ip):
-        raise HTTPException(
-            status_code=429,
-            detail="You've used your 3 free questions for today.",
-        )
 
     question = req.question.strip()
     if not question:
@@ -1300,17 +1294,9 @@ async def ask_moodlight(req: AskRequest, request: Request):
         print(f"WARNING: Claude API failed after 3 attempts: {last_err}")
         raise HTTPException(status_code=503, detail="Intelligence engine temporarily unavailable.")
 
-    # Record successful request
-    if is_paid:
-        _decrement_token(req.token)
-        queries_remaining = max(0, paid_remaining - 1)
-    else:
-        _record_request(client_ip)
-        ip_hash = _hash_ip(client_ip)
-        now = time.time()
-        cutoff = now - 86400
-        recent = [t for t in _rate_store[ip_hash] if t > cutoff]
-        queries_remaining = max(0, RATE_LIMIT - len(recent))
+    # Record request for analytics (no limit enforced)
+    _record_request(client_ip)
+    queries_remaining = 999
 
     # Log the query for analytics
     _log_query(question, client_ip, is_paid, brand_name, topic_name)

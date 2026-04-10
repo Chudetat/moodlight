@@ -24,7 +24,7 @@
 
   let conversation = [];
   let isOpen = false;
-  let queriesRemaining = 3;
+  let queriesRemaining = 999;
   let hasSearched = false;
   let paidToken = localStorage.getItem("ml_paid_token") || null;
   let isPaid = false;
@@ -446,7 +446,6 @@
           </button>
         </div>
         <div class="ml-results" id="ml-messages" style="margin-top: 16px; max-height: 280px;"></div>
-        <div class="ml-queries-badge" id="ml-queries-badge">${queriesRemaining} free questions remaining</div>
       </div>
     `;
     document.body.appendChild(panel);
@@ -486,8 +485,6 @@
       </div>
 
       <div class="ml-results" id="ml-messages"></div>
-
-      <div class="ml-queries-badge" id="ml-queries-badge">${queriesRemaining} free questions remaining</div>
 
     `;
 
@@ -560,13 +557,6 @@
       });
 
       typing.remove();
-
-      if (res.status === 429) {
-        queriesRemaining = 0;
-        updateBadge();
-        showUnlockPrompt(messages);
-        return;
-      }
 
       if (!res.ok) {
         addResult(messages, "assistant", "Something went wrong. Please try again.");
