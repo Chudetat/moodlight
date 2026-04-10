@@ -62,7 +62,7 @@
       .ml-agents-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        gap: 16px;
         margin-bottom: 28px;
       }
       @media (max-width: 640px) {
@@ -72,7 +72,7 @@
       .ml-agent-card {
         border: 1px solid rgba(0, 0, 0, 0.12);
         border-radius: 12px;
-        padding: 28px 24px;
+        padding: 32px 28px;
         cursor: pointer;
         transition: all 0.2s ease;
         background: rgba(0, 0, 0, 0.04);
