@@ -404,14 +404,97 @@ def load_campaign_precedents(user_need, df):
 
 
 def build_enrichment(username, user_need, df):
-    """Build brand/topic enrichment context (VLDS, competitive, alerts)."""
+    """Build brand/topic enrichment context (VLDS, competitive, alerts).
+
+    For logged-in users (username set): full three-layer matching via watchlists.
+    For marketplace users (no username): compute VLDS directly from user_need.
+    """
     engine = get_engine()
-    if not engine or not username:
+    if not engine:
         return ""
 
-    # Import from existing module to avoid duplication
-    from generate_strategic_brief import _build_enrichment
-    return _build_enrichment(engine, username, user_need, df)
+    if username:
+        from generate_strategic_brief import _build_enrichment
+        return _build_enrichment(engine, username, user_need, df)
+
+    # Marketplace path: extract brand/product from user_need, compute VLDS directly
+    return _build_marketplace_enrichment(user_need, df)
+
+
+def _build_marketplace_enrichment(user_need, df):
+    """Compute VLDS enrichment for marketplace users using their product input."""
+    from vlds_helper import calculate_brand_vlds
+
+    if df.empty or "text" not in df.columns:
+        return ""
+
+    # Extract likely brand/product keywords from user_need
+    # Take the first meaningful phrase (before "targeting", "in", "with the challenge")
+    brand_phrase = user_need
+    for splitter in ["targeting ", " in ", " with the challenge"]:
+        brand_phrase = brand_phrase.split(splitter)[0]
+    # Remove "launch/promote " prefix from _build_marketplace_input
+    brand_phrase = brand_phrase.replace("launch/promote ", "").strip()
+
+    if not brand_phrase or len(brand_phrase) < 2:
+        return ""
+
+    # Search news/social data for mentions
+    search_terms = [t.strip().lower() for t in brand_phrase.split() if len(t.strip()) > 2]
+    if not search_terms:
+        return ""
+
+    # Try full phrase first, fall back to individual keywords
+    text_lower = df["text"].str.lower()
+    brand_df = df[text_lower.str.contains(brand_phrase.lower(), na=False)].copy()
+
+    # If too few results with full phrase, try the longest keyword
+    if len(brand_df) < 5 and search_terms:
+        longest_term = max(search_terms, key=len)
+        if len(longest_term) >= 4:
+            brand_df = df[text_lower.str.contains(longest_term, na=False)].copy()
+
+    if len(brand_df) < 5:
+        return ""
+
+    if "created_at" in brand_df.columns:
+        brand_df = brand_df.dropna(subset=["created_at"])
+
+    vlds = calculate_brand_vlds(brand_df)
+    if not vlds:
+        return ""
+
+    v = vlds.get("velocity", 0)
+    v_label = vlds.get("velocity_label", "")
+    v_insight = vlds.get("velocity_insight", "")
+    l = vlds.get("longevity", 0)
+    l_label = vlds.get("longevity_label", "")
+    l_insight = vlds.get("longevity_insight", "")
+    d = vlds.get("density", 0)
+    d_label = vlds.get("density_label", "")
+    d_insight = vlds.get("density_insight", "")
+    sc = vlds.get("scarcity", 0)
+    sc_label = vlds.get("scarcity_label", "")
+    emp_label = vlds.get("empathy_label", "N/A")
+
+    top_emo = vlds.get("top_emotions_detailed", [])
+    emo_str = ", ".join(
+        f"{e['emotion']} ({e['percentage']}%)" for e in top_emo[:3]
+    ) if top_emo else "N/A"
+
+    mention_count = len(brand_df)
+
+    return (
+        f"BRAND INTELLIGENCE — {brand_phrase.upper()} ({mention_count} mentions in data):\n"
+        f"---\n"
+        f"  Velocity: {v_label} [raw: {v:.2f}] — {v_insight}\n"
+        f"  Longevity: {l_label} [raw: {l:.2f}] — {l_insight}\n"
+        f"  Density: {d_label} [raw: {d:.2f}] — {d_insight}\n"
+        f"  Scarcity: {sc_label} [raw: {sc:.2f}]\n"
+        f"  Top Emotions: {emo_str}\n"
+        f"  Empathy: {emp_label}\n"
+        f"---"
+    )
 
 
 def assemble_full_context(df, snapshot, headlines, vlds_data=None,
