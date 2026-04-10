@@ -42,9 +42,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      <div className="mb-12 max-w-4xl text-center px-8">
-        <div className="mb-8 flex justify-center">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
+      <div className="mb-16 max-w-3xl text-center">
+        <div className="mb-10 flex justify-center">
           <Image
             src="/logo.png"
             alt="Moodlight"
@@ -54,64 +54,64 @@ export default function LoginPage() {
             priority
           />
         </div>
-        <h1 className="text-4xl font-bold leading-snug tracking-tight text-foreground sm:text-5xl">
+        <h1 className="text-3xl font-light leading-relaxed tracking-tight text-foreground/90 sm:text-[2.75rem] sm:leading-snug">
           Moodlight is the only real-time intelligence platform<br className="hidden sm:inline" />
           {" "}custom engineered for brands<br className="hidden sm:inline" />
           {" "}that move at the speed of culture.
         </h1>
       </div>
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-lg font-normal text-muted-foreground">
-            Sign in to your account
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+      <div className="w-full max-w-sm">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-xs font-normal uppercase tracking-widest text-muted-foreground">
+              Email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@company.com"
+              className="border-0 border-b border-border bg-transparent rounded-none px-0 text-base focus-visible:ring-0 focus-visible:border-foreground/40 transition-colors"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="password" className="text-xs font-normal uppercase tracking-widest text-muted-foreground">
+              Password
+            </Label>
+            <Input
+              id="password"
+              type="password"
+              className="border-0 border-b border-border bg-transparent rounded-none px-0 text-base focus-visible:ring-0 focus-visible:border-foreground/40 transition-colors"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
 
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? "Signing in..." : "Sign in"}
-            </Button>
+          <Button
+            type="submit"
+            className="w-full mt-4 bg-foreground/10 hover:bg-foreground/15 text-foreground border border-foreground/20 rounded-full transition-all"
+            variant="ghost"
+            disabled={loading}
+          >
+            {loading ? "Signing in..." : "Sign in"}
+          </Button>
 
-            <p className="text-center text-xs text-muted-foreground">
-              Don&apos;t have an account?{" "}
-              <a href="/signup" className="text-primary hover:underline">
-                Sign up
-              </a>
-            </p>
-          </form>
-        </CardContent>
-      </Card>
+          <p className="text-center text-xs text-muted-foreground pt-2">
+            Don&apos;t have an account?{" "}
+            <a href="/signup" className="text-foreground/60 hover:text-foreground transition-colors">
+              Sign up
+            </a>
+          </p>
+        </form>
+      </div>
     </div>
   );
 }
