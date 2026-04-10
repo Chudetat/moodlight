@@ -6,6 +6,8 @@ COPY requirements-api.txt .
 RUN pip install --no-cache-dir -r requirements-api.txt
 
 COPY *.py ./
+COPY agents/ ./agents/
+COPY campaign_database.json ./
 COPY static/ ./static/
 
 EXPOSE 8080

@@ -689,6 +689,22 @@ _AGENT_LABELS = {
 }
 
 
+_marketplace_rate: dict = {}  # {email: [timestamp, ...]}
+
+def _check_marketplace_rate(email: str) -> bool:
+    """Allow max 3 marketplace runs per email per hour."""
+    import time
+    now = time.time()
+    key = email.lower().strip()
+    times = _marketplace_rate.get(key, [])
+    times = [t for t in times if now - t < 3600]
+    if len(times) >= 3:
+        return False
+    times.append(now)
+    _marketplace_rate[key] = times
+    return True
+
+
 def _capture_marketplace_email(email: str, engine):
     """Capture email for marketplace lead. Upserts into marketplace_access."""
     try:
@@ -761,18 +777,27 @@ def marketplace_run(req: MarketplaceRequest, background_tasks: BackgroundTasks):
     if not engine:
         raise HTTPException(status_code=503, detail="Service temporarily unavailable")
 
+    # Rate limit — 3 per email per hour
+    if not _check_marketplace_rate(req.email):
+        raise HTTPException(status_code=429, detail="You've reached the limit. Please try again in an hour.")
+
     # Capture email (open access — no whitelist)
     _capture_marketplace_email(req.email, engine)
 
     # Run agent synchronously so we can return a preview
-    module_name, class_name = _MARKETPLACE_AGENTS[req.agent]
-    mod = importlib.import_module(module_name)
-    agent_cls = getattr(mod, class_name)
-    agent = agent_cls()
+    try:
+        module_name, class_name = _MARKETPLACE_AGENTS[req.agent]
+        mod = importlib.import_module(module_name)
+        agent_cls = getattr(mod, class_name)
+        agent = agent_cls()
 
-    user_input = _build_marketplace_input(req)
-    result = agent.run({"user_input": user_input})
-    output = result["output"]
+        user_input = _build_marketplace_input(req)
+        result = agent.run({"user_input": user_input})
+        output = result["output"]
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Our agents are temporarily unavailable. Please try again in a few minutes.")
 
     # Log the run
     _log_marketplace_run(req.email, req.agent, user_input, engine)
