@@ -662,7 +662,7 @@ def agent_full_deploy(req: AgentRequest, payload: dict = Depends(require_auth)):
 
 
 # ---------------------------------------------------------------------------
-# Public Agent Marketplace (Squarespace — email-gated, no JWT)
+# Public Agent Marketplace (Squarespace — open access, email capture)
 # ---------------------------------------------------------------------------
 
 class MarketplaceRequest(BaseModel):
@@ -689,17 +689,21 @@ _AGENT_LABELS = {
 }
 
 
-def _check_marketplace_access(email: str, engine):
-    """Check if email has marketplace access. Returns True if allowed."""
+def _capture_marketplace_email(email: str, engine):
+    """Capture email for marketplace lead. Upserts into marketplace_access."""
     try:
         with engine.connect() as conn:
-            row = conn.execute(
-                sql_text("SELECT 1 FROM marketplace_access WHERE email = :email AND active = true"),
+            conn.execute(
+                sql_text("""
+                    INSERT INTO marketplace_access (email, active, created_at)
+                    VALUES (:email, true, NOW())
+                    ON CONFLICT (email) DO NOTHING
+                """),
                 {"email": email.lower().strip()},
-            ).fetchone()
-            return row is not None
+            )
+            conn.commit()
     except Exception:
-        return False
+        pass
 
 
 def _log_marketplace_run(email: str, agent: str, user_input: str, engine):
@@ -732,33 +736,18 @@ def _build_marketplace_input(req: MarketplaceRequest) -> str:
     return " ".join(parts)
 
 
-def _run_marketplace_agent(req: MarketplaceRequest):
-    """Background task: run the agent and email the result."""
-    import importlib
+def _email_marketplace_result(email: str, user_input: str, output: str, label: str):
+    """Background task: email the full agent result."""
     from generate_strategic_brief import send_strategic_brief_email
-
-    module_name, class_name = _MARKETPLACE_AGENTS[req.agent]
-    mod = importlib.import_module(module_name)
-    agent_cls = getattr(mod, class_name)
-    agent = agent_cls()
-
-    user_input = _build_marketplace_input(req)
-    result = agent.run({"user_input": user_input})
-
-    label = _AGENT_LABELS.get(req.agent, req.agent)
-    send_strategic_brief_email(
-        req.email.strip(), user_input, result["output"], frameworks=[label]
-    )
-
-    engine = get_engine()
-    if engine:
-        _log_marketplace_run(req.email, req.agent, user_input, engine)
+    send_strategic_brief_email(email.strip(), user_input, output, frameworks=[label])
 
 
 @app.post("/api/marketplace/run")
 def marketplace_run(req: MarketplaceRequest, background_tasks: BackgroundTasks):
-    """Public endpoint for the Moodlight Agent Marketplace on Squarespace."""
-    # Validate agent
+    """Public endpoint for the Moodlight Agent Marketplace on Squarespace.
+    Runs agent synchronously, returns preview, emails full brief."""
+    import importlib
+
     if req.agent not in _MARKETPLACE_AGENTS:
         raise HTTPException(status_code=400, detail=f"Unknown agent: {req.agent}")
 
@@ -768,21 +757,40 @@ def marketplace_run(req: MarketplaceRequest, background_tasks: BackgroundTasks):
     if not req.email.strip() or "@" not in req.email:
         raise HTTPException(status_code=400, detail="Valid email is required")
 
-    # Check access
     engine = get_engine()
     if not engine:
         raise HTTPException(status_code=503, detail="Service temporarily unavailable")
 
-    if not _check_marketplace_access(req.email, engine):
-        raise HTTPException(status_code=403, detail="No marketplace access. DM @danielchu on LinkedIn for access.")
+    # Capture email (open access — no whitelist)
+    _capture_marketplace_email(req.email, engine)
 
-    # Run in background so the request returns immediately
-    background_tasks.add_task(_run_marketplace_agent, req)
+    # Run agent synchronously so we can return a preview
+    module_name, class_name = _MARKETPLACE_AGENTS[req.agent]
+    mod = importlib.import_module(module_name)
+    agent_cls = getattr(mod, class_name)
+    agent = agent_cls()
 
+    user_input = _build_marketplace_input(req)
+    result = agent.run({"user_input": user_input})
+    output = result["output"]
+
+    # Log the run
+    _log_marketplace_run(req.email, req.agent, user_input, engine)
+
+    # Email full brief in background (don't block response)
     label = _AGENT_LABELS.get(req.agent, req.agent)
+    background_tasks.add_task(_email_marketplace_result, req.email, user_input, output, label)
+
+    # Return preview — first ~600 chars, cut at last newline for clean break
+    preview = output[:600]
+    last_newline = preview.rfind("\n")
+    if last_newline > 200:
+        preview = preview[:last_newline]
+
     return {
-        "status": "running",
-        "message": f"Your {label} brief is being generated. You'll receive it at {req.email} shortly.",
+        "status": "done",
+        "preview": preview,
+        "message": f"Full brief sent to {req.email}",
     }
 
 
