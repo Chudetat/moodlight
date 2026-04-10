@@ -118,10 +118,10 @@
       }
       .ml-form-section {
         display: none;
-        background: rgba(0, 0, 0, 0.03);
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        border-radius: 12px;
-        padding: 28px;
+        background: rgba(0, 0, 0, 0.03) !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        border-radius: 12px !important;
+        padding: 36px 32px !important;
         margin-bottom: 24px;
       }
       .ml-form-section.ml-visible { display: block; }
@@ -134,10 +134,10 @@
       .ml-form-section .ml-subtitle {
         font-size: 13px;
         color: rgba(45, 45, 45, 0.5);
-        margin-bottom: 24px;
+        margin-bottom: 32px;
       }
       .ml-field {
-        margin-bottom: 14px;
+        margin-bottom: 18px;
       }
       .ml-field label {
         display: block;
