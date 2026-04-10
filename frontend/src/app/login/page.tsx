@@ -42,19 +42,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      <div className="mb-10 max-w-2xl text-center">
+        <div className="mb-6 flex justify-center">
+          <Image
+            src="/logo.png"
+            alt="Moodlight"
+            width={180}
+            height={36}
+            className="h-9 w-auto"
+            priority
+          />
+        </div>
+        <h1 className="text-4xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl">
+          Moodlight is the only real-time intelligence platform custom engineered for brands that move at the speed of culture.
+        </h1>
+      </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="mb-2 flex justify-center">
-            <Image
-              src="/logo.png"
-              alt="Moodlight"
-              width={180}
-              height={36}
-              className="h-9 w-auto"
-              priority
-            />
-          </div>
           <CardTitle className="text-lg font-normal text-muted-foreground">
             Sign in to your account
           </CardTitle>
