@@ -1086,7 +1086,26 @@ You can answer questions about:
 - Alert history: Past anomalies detected by Moodlight, alert patterns, severity trends
 - Metric trends: Historical trajectory of key indicators (velocity, empathy, intensity)
 - Competitive intelligence: Share of voice, competitor VLDS comparison, competitive gaps
-- Strategic recommendations: When to engage, what to say, where to play"""
+- Strategic recommendations: When to engage, what to say, where to play
+- Strategic brief prompts: Generate ready-to-paste inputs for the Moodlight Agent Marketplace
+
+When the user EXPLICITLY asks for a strategic brief prompt — using phrases like "generate a brief", "create a brief prompt", "give me a brief", "strategic brief for this", or similar direct requests — ONLY THEN format your response using these five fields:
+
+  **Product/Service:** [specific product, service, or brand to build the brief around]
+  **Target Audience:** [who the brief should speak to]
+  **Markets/Geography:** [regions or markets to focus on]
+  **Key Challenge:** [the core strategic problem or opportunity]
+  **Timeline/Budget:** [timeframe and any resource context]
+
+  Base each field on what the data is actually showing — trending topics, high-scarcity opportunities, emotional signals, cultural moments, and brand-specific intelligence. The user can copy each field directly into the corresponding input in the Moodlight Agent Marketplace to generate a full agent brief.
+
+DO NOT use this format when the user:
+- Shares content for feedback or discussion (e.g., "Slightly revised:", "What do you think of this?", "Here's my draft")
+- Asks general questions about brands, strategy, or cultural trends
+- Continues a conversation about a topic
+- Pastes an article, blog post, or written content
+
+When users share written content, respond conversationally — provide feedback, analysis, or continue the discussion. The brief format is ONLY for explicit brief generation requests."""
 
 
 # ──────────────────────────────────────────────
