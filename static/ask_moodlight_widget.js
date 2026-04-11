@@ -669,10 +669,13 @@
     }
 
     btn.onclick = function () {
+      // Store parsed fields globally so the marketplace can fill them on any agent selection
+      window._mlParsedBriefFields = parsedFields;
+
       var marketplace = document.getElementById("ml-marketplace") || document.getElementById("moodlight-marketplace");
       if (marketplace) {
         marketplace.scrollIntoView({ behavior: "smooth", block: "start" });
-        // Auto-select the detected agent card and fill form
+        // Auto-select the detected agent card
         if (detectedAgent) {
           setTimeout(function () {
             var cards = marketplace.querySelectorAll(".ml-agent-card");
@@ -682,18 +685,6 @@
                 var match = Object.entries(agentMap).find(function (entry) { return entry[1] === detectedAgent; });
                 if (match && title.textContent.includes(match[0])) {
                   card.click();
-                  // Fill form fields after card click triggers form display
-                  setTimeout(function () {
-                    var form = marketplace.querySelector(".ml-form-section");
-                    if (form) {
-                      var inputs = form.querySelectorAll("input");
-                      inputs.forEach(function (input) {
-                        if (parsedFields[input.name]) {
-                          input.value = parsedFields[input.name];
-                        }
-                      });
-                    }
-                  }, 200);
                 }
               }
             });

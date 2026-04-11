@@ -445,6 +445,13 @@
           Object.keys(defaultPlaceholders).forEach((key) => {
             if (inputs[key]) inputs[key].placeholder = ph[key] || defaultPlaceholders[key];
           });
+
+          // Auto-fill from Ask Moodlight brief fields if available
+          if (window._mlParsedBriefFields) {
+            Object.keys(window._mlParsedBriefFields).forEach((key) => {
+              if (inputs[key]) inputs[key].value = window._mlParsedBriefFields[key];
+            });
+          }
         });
         allCards.push(card);
         grid.appendChild(card);
