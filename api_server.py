@@ -683,7 +683,7 @@ _MARKETPLACE_AGENTS = {
 
 _AGENT_LABELS = {
     "cco": "Chief Creative Officer",
-    "cso": "Chief Strategy Officer",
+    "cso": "The Cultural Strategist",
     "comms-planner": "Comms Planner",
     "full-deploy": "Full Deploy",
 }

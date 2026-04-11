@@ -25,7 +25,7 @@
     },
     {
       id: "cso",
-      title: "The Chief Strategy Officer",
+      title: "The Cultural Strategist",
       desc: "Reads the market, the mood, and the momentum. Picks a position. Defends it with data. Doesn't hedge.",
       icon: "\u265F",
       color: "#1565C0",
