@@ -461,7 +461,7 @@
 
     const suggestedPrompts = [
       "Build a prompt for the Chief Creative Officer agent around Nike",
-      "What cultural shift is nobody paying attention to yet?",
+      "What's the cultural read around Microsoft right now?",
       "Give me the prompt for the Brand Auditor agent around Netflix",
     ];
 
