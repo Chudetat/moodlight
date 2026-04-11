@@ -460,9 +460,9 @@
     panel.classList.add("inline-mode");
 
     const suggestedPrompts = [
-      "Generate a prompt for Nike for the Chief Creative Officer agent",
+      "Build a prompt for the Chief Creative Officer agent around Nike",
       "What cultural shift is nobody paying attention to yet?",
-      "Build a Brand Auditor brief for Netflix",
+      "Give me the prompt for the Brand Auditor agent around Netflix",
     ];
 
     panel.innerHTML = `
