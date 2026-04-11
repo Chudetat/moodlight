@@ -870,8 +870,19 @@ def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str,
     if not all([sender, password]):
         return False
 
+    # Agent-specific email titles
+    agent_label = frameworks[0] if frameworks and len(frameworks) == 1 else None
+    if agent_label:
+        email_subject = f"Your {agent_label} Brief — Moodlight"
+        email_title = f"Your {agent_label} Brief"
+        badge_text = agent_label.upper()
+    else:
+        email_subject = "Your Moodlight Strategic Brief"
+        email_title = "Your Strategic Brief"
+        badge_text = "STRATEGIC BRIEF"
+
     msg = MIMEMultipart('alternative')
-    msg['Subject'] = 'Your Moodlight Strategic Brief'
+    msg['Subject'] = email_subject
     msg['From'] = sender
     msg['To'] = recipient_email
 
@@ -892,11 +903,11 @@ def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str,
         body_html += _build_cross_sell_html(agent_id)
 
     html = render_email(
-        badge_text="STRATEGIC BRIEF",
+        badge_text=badge_text,
         badge_color="#7B1FA2",
-        title="Your Strategic Brief",
+        title=email_title,
         body_html=body_html,
-        footer_text="Moodlight Intelligence Platform — Strategic Brief",
+        footer_text=f"Moodlight Intelligence Platform — {email_title}",
     )
 
     msg.attach(MIMEText(html, 'html'))
