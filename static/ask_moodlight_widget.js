@@ -654,20 +654,46 @@
     const btn = document.createElement("button");
     btn.className = "ml-agent-cta-btn";
     btn.textContent = "Run this in the Agent Marketplace \u2193";
+    // Parse brief fields from the answer
+    var parsedFields = {};
+    var fieldPatterns = {
+      product: /\*\*Product\/Service:\*\*\s*(.+)/i,
+      audience: /\*\*Target Audience:\*\*\s*(.+)/i,
+      markets: /\*\*Markets\/Geography:\*\*\s*(.+)/i,
+      challenge: /\*\*Key Challenge:\*\*\s*(.+)/i,
+      timeline: /\*\*Timeline\/Budget:\*\*\s*(.+)/i,
+    };
+    for (var key in fieldPatterns) {
+      var m = answer.match(fieldPatterns[key]);
+      if (m) parsedFields[key] = m[1].trim();
+    }
+
     btn.onclick = function () {
-      const marketplace = document.getElementById("ml-marketplace") || document.getElementById("moodlight-marketplace");
+      var marketplace = document.getElementById("ml-marketplace") || document.getElementById("moodlight-marketplace");
       if (marketplace) {
         marketplace.scrollIntoView({ behavior: "smooth", block: "start" });
-        // Auto-select the detected agent card
+        // Auto-select the detected agent card and fill form
         if (detectedAgent) {
           setTimeout(function () {
-            const cards = marketplace.querySelectorAll(".ml-agent-card");
+            var cards = marketplace.querySelectorAll(".ml-agent-card");
             cards.forEach(function (card) {
-              const title = card.querySelector("h3");
+              var title = card.querySelector("h3");
               if (title) {
-                const match = Object.entries(agentMap).find(function (entry) { return entry[1] === detectedAgent; });
+                var match = Object.entries(agentMap).find(function (entry) { return entry[1] === detectedAgent; });
                 if (match && title.textContent.includes(match[0])) {
                   card.click();
+                  // Fill form fields after card click triggers form display
+                  setTimeout(function () {
+                    var form = marketplace.querySelector(".ml-form-section");
+                    if (form) {
+                      var inputs = form.querySelectorAll("input");
+                      inputs.forEach(function (input) {
+                        if (parsedFields[input.name]) {
+                          input.value = parsedFields[input.name];
+                        }
+                      });
+                    }
+                  }, 200);
                 }
               }
             });
