@@ -87,11 +87,23 @@
         color: #2D2D2D;
         padding: 12px 20px;
       }
+      .ml-section-header {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: rgba(45, 45, 45, 0.4);
+        margin-bottom: 14px;
+        margin-top: 8px;
+      }
+      .ml-section-header:not(:first-child) {
+        margin-top: 32px;
+      }
       .ml-agents-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 16px;
-        margin-bottom: 28px;
+        margin-bottom: 8px;
       }
       @media (max-width: 640px) {
         .ml-agents-grid { grid-template-columns: 1fr; }
@@ -328,32 +340,50 @@
   function buildUI(container) {
     let selectedAgent = null;
 
-    // Agent cards
-    const grid = document.createElement("div");
-    grid.className = "ml-agents-grid";
+    // Agent cards — split into two sections
+    const agencyAgents = AGENTS.slice(0, 4);
+    const toolkitAgents = AGENTS.slice(4);
+    const allCards = [];
 
-    AGENTS.forEach((agent) => {
-      const card = document.createElement("div");
-      card.className = "ml-agent-card";
-      card.style.setProperty("--agent-color", agent.color);
-      card.innerHTML = `
-        <span class="ml-icon">${agent.icon}</span>
-        ${agent.premium ? '<span class="ml-premium-badge">All Three</span>' : ""}
-        <h3>${agent.title}</h3>
-        <p>${agent.desc}</p>
-      `;
-      card.addEventListener("click", () => {
-        grid.querySelectorAll(".ml-agent-card").forEach((c) => c.classList.remove("ml-selected"));
-        card.classList.add("ml-selected");
-        selectedAgent = agent.id;
-        formSection.classList.add("ml-visible");
-        formTitle.textContent = agent.title;
-        submitBtn.textContent = `Generate ${agent.title} Brief`;
-        statusEl.className = "ml-status";
-        statusEl.style.display = "none";
+    function buildGrid(agents) {
+      const grid = document.createElement("div");
+      grid.className = "ml-agents-grid";
+      agents.forEach((agent) => {
+        const card = document.createElement("div");
+        card.className = "ml-agent-card";
+        card.style.setProperty("--agent-color", agent.color);
+        card.innerHTML = `
+          <span class="ml-icon">${agent.icon}</span>
+          ${agent.premium ? '<span class="ml-premium-badge">All Three</span>' : ""}
+          <h3>${agent.title}</h3>
+          <p>${agent.desc}</p>
+        `;
+        card.addEventListener("click", () => {
+          allCards.forEach((c) => c.classList.remove("ml-selected"));
+          card.classList.add("ml-selected");
+          selectedAgent = agent.id;
+          formSection.classList.add("ml-visible");
+          formTitle.textContent = agent.title;
+          submitBtn.textContent = `Generate ${agent.title} Brief`;
+          statusEl.className = "ml-status";
+          statusEl.style.display = "none";
+        });
+        allCards.push(card);
+        grid.appendChild(card);
       });
-      grid.appendChild(card);
-    });
+      return grid;
+    }
+
+    const agencyHeader = document.createElement("div");
+    agencyHeader.className = "ml-section-header";
+    agencyHeader.textContent = "The Agency";
+
+    const toolkitHeader = document.createElement("div");
+    toolkitHeader.className = "ml-section-header";
+    toolkitHeader.textContent = "The Toolkit";
+
+    const agencyGrid = buildGrid(agencyAgents);
+    const toolkitGrid = buildGrid(toolkitAgents);
 
     // Form section
     const formSection = document.createElement("div");
@@ -517,7 +547,10 @@
     powered.className = "ml-powered-by";
     powered.textContent = "Powered by Moodlight Real-Time Intelligence";
 
-    container.appendChild(grid);
+    container.appendChild(agencyHeader);
+    container.appendChild(agencyGrid);
+    container.appendChild(toolkitHeader);
+    container.appendChild(toolkitGrid);
     container.appendChild(formSection);
     container.appendChild(powered);
   }
