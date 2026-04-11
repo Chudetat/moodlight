@@ -139,7 +139,7 @@
         margin-top: 8px;
       }
       .ml-section-header:not(:first-child) {
-        margin-top: 32px;
+        margin-top: 48px;
       }
       .ml-agents-grid {
         display: grid;
