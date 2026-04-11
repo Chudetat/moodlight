@@ -325,6 +325,21 @@
         font-size: 13px;
         color: rgba(45, 45, 45, 0.5);
       }
+      .ml-chain-btn {
+        display: inline-block;
+        margin-top: 16px;
+        padding: 10px 20px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        color: #fff;
+        background: linear-gradient(135deg, #283593, #6B46C1);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: opacity 0.2s ease;
+      }
+      .ml-chain-btn:hover { opacity: 0.85; }
       .ml-powered-by {
         text-align: center;
         font-size: 11px;
@@ -505,6 +520,9 @@
 
         if (res.ok && data.preview) {
           // Show preview with blur
+          const chainHtml = selectedAgent !== "copywriter"
+            ? '<button class="ml-chain-btn" id="ml-chain-copywriter">\u270D\uFE0F Send to Copywriter</button>'
+            : "";
           previewSection.innerHTML = `
             <div class="ml-preview-wrap">
               <div class="ml-preview-text">${data.preview.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
@@ -513,10 +531,38 @@
             <div class="ml-preview-cta">
               <div class="ml-cta-main">Full brief sent to ${email}</div>
               <div class="ml-cta-sub">Check your inbox — the complete analysis is waiting for you.</div>
+              ${chainHtml}
             </div>
           `;
           previewSection.classList.add("ml-visible");
           previewSection.scrollIntoView({ behavior: "smooth", block: "start" });
+
+          // Wire up chain button
+          const chainBtn = document.getElementById("ml-chain-copywriter");
+          if (chainBtn) {
+            chainBtn.addEventListener("click", () => {
+              // Select the Copywriter card
+              const copywriterCard = allCards.find((c) => c.querySelector("h3")?.textContent === "The Copywriter");
+              if (copywriterCard) {
+                allCards.forEach((c) => c.classList.remove("ml-selected"));
+                copywriterCard.classList.add("ml-selected");
+                selectedAgent = "copywriter";
+                formSection.classList.add("ml-visible");
+                formTitle.textContent = "The Copywriter";
+                submitBtn.textContent = "Generate The Copywriter Brief";
+                submitBtn.disabled = false;
+                statusEl.className = "ml-status";
+                statusEl.style.display = "none";
+                previewSection.className = "ml-preview-section";
+
+                // Fill challenge field with previous output
+                inputs.challenge.value = data.preview;
+
+                // Scroll to form
+                formSection.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            });
+          }
         } else if (res.ok) {
           statusEl.className = "ml-status ml-success";
           statusEl.textContent = data.message || "Your brief has been sent to your email.";
