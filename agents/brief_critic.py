@@ -72,6 +72,8 @@ Let the live data determine your response — not a default posture of tearing t
 
 Using the real-time intelligence above, review this brief.
 
+THIN INPUT PROTOCOL: If the submitted brief is very short (a few words or one sentence rather than a full brief), don't try to critique what isn't there. Instead, treat the input as a topic or brand and generate the brief FOR them — write what a strong brief for this challenge should contain based on the live data, structured as a recommended brief they can take and refine.
+
 ## 1. THE STALENESS CHECK
 
 Go through the brief line by line and flag every assumption, claim, or positioning choice that the CURRENT data contradicts or doesn't support:

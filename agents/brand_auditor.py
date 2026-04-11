@@ -67,6 +67,8 @@ class BrandAuditorAgent(MoodlightAgent):
 
 Using the real-time intelligence above, deliver a brand audit.
 
+ZERO-DATA PROTOCOL: If this brand has little or no presence in the Moodlight data, that IS the diagnosis — cultural invisibility. But don't stop there. Use the category and competitor signals in the data to tell the brand WHERE it should be showing up, what conversations it's missing, and what the cultural landscape looks like for its category. An audit of an invisible brand should be just as valuable as an audit of a visible one — the insight shifts from "here's what you own" to "here's everything you're leaving on the table."
+
 ## 1. CULTURAL VITAL SIGNS
 
 The brand's current cultural health, measured against what the data actually shows:

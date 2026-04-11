@@ -382,6 +382,12 @@
           submitBtn.textContent = `Generate ${agent.title} Brief`;
           statusEl.className = "ml-status";
           statusEl.style.display = "none";
+
+          // Update placeholders for this agent
+          const ph = agentPlaceholders[agent.id] || defaultPlaceholders;
+          Object.keys(defaultPlaceholders).forEach((key) => {
+            if (inputs[key]) inputs[key].placeholder = ph[key] || defaultPlaceholders[key];
+          });
         });
         allCards.push(card);
         grid.appendChild(card);
@@ -411,12 +417,51 @@
     subtitle.className = "ml-subtitle";
     subtitle.textContent = "The more detail you provide, the better your brief.";
 
+    const defaultPlaceholders = {
+      product: "e.g. premium running shoe, fintech app, whiskey brand",
+      audience: "e.g. women 25-40, urban professionals",
+      markets: "e.g. US, UK, Canada",
+      challenge: "e.g. competing against On and Hoka, launching into a saturated market",
+      timeline: "e.g. Q2 2026, $2M digital",
+    };
+
+    const agentPlaceholders = {
+      "brand-auditor": {
+        product: "e.g. Nike, Patagonia, Oatly, your brand name",
+        audience: "e.g. your primary customer segment",
+        markets: "e.g. US, UK, global",
+        challenge: "e.g. losing share to competitors, culturally invisible, repositioning",
+        timeline: "e.g. need positioning by Q3",
+      },
+      "brief-critic": {
+        product: "Paste your brief or strategy here — the more detail, the sharper the review",
+        audience: "Who was this brief written for?",
+        markets: "Target markets from the original brief",
+        challenge: "Any specific concerns about the brief you want addressed",
+        timeline: "When does this need to go live?",
+      },
+      "trend-forecaster": {
+        product: "e.g. athletic wear, plant-based food, fintech, your category",
+        audience: "e.g. Gen Z, working parents, luxury consumers",
+        markets: "e.g. US, Europe, global",
+        challenge: "e.g. what cultural shifts should we prepare for, where is the category headed",
+        timeline: "e.g. planning for Q3-Q4 2026",
+      },
+      "copywriter": {
+        product: "e.g. Nike Air Max, Oatly oat milk, or paste a brief from another agent",
+        audience: "e.g. women 25-40, urban professionals",
+        markets: "e.g. US, UK, social-first",
+        challenge: "e.g. launch campaign, rebrand, social content series, or paste strategy output here",
+        timeline: "e.g. need assets by next week",
+      },
+    };
+
     const fields = [
-      { name: "product", label: "Product / Service", placeholder: "e.g. premium running shoe, fintech app, whiskey brand", required: true },
-      { name: "audience", label: "Target Audience", placeholder: "e.g. women 25-40, urban professionals" },
-      { name: "markets", label: "Markets / Geography", placeholder: "e.g. US, UK, Canada" },
-      { name: "challenge", label: "Key Challenge", placeholder: "e.g. competing against On and Hoka, launching into a saturated market" },
-      { name: "timeline", label: "Timeline / Budget", placeholder: "e.g. Q2 2026, $2M digital" },
+      { name: "product", label: "Product / Service", placeholder: defaultPlaceholders.product, required: true },
+      { name: "audience", label: "Target Audience", placeholder: defaultPlaceholders.audience },
+      { name: "markets", label: "Markets / Geography", placeholder: defaultPlaceholders.markets },
+      { name: "challenge", label: "Key Challenge", placeholder: defaultPlaceholders.challenge },
+      { name: "timeline", label: "Timeline / Budget", placeholder: defaultPlaceholders.timeline },
       { name: "email", label: "Your Email", placeholder: "We'll send your full brief here", required: true },
     ];
 

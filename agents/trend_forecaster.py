@@ -68,6 +68,8 @@ class TrendForecasterAgent(MoodlightAgent):
 
 Using the real-time intelligence above, deliver a cultural forecast.
 
+DATA DEPTH CHECK: If the intelligence data is thin (few signals, limited time range, or sparse VLDS scores), acknowledge it briefly and lean harder on pattern analysis and strategic reasoning from the signals that DO exist. A confident forecast from 500 signals is more valuable than a hedged forecast waiting for 50,000. Work with what you have.
+
 ## 1. THE SIGNAL SCAN: What's Moving Right Now
 
 Before forecasting, establish the baseline — what does the data show is in motion?
