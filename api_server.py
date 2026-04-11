@@ -679,6 +679,10 @@ _MARKETPLACE_AGENTS = {
     "cso": ("agents", "StrategyAgent"),
     "comms-planner": ("agents", "CommsPlannerAgent"),
     "full-deploy": ("agents", "FullDeployAgent"),
+    "brand-auditor": ("agents", "BrandAuditorAgent"),
+    "brief-critic": ("agents", "BriefCriticAgent"),
+    "trend-forecaster": ("agents", "TrendForecasterAgent"),
+    "copywriter": ("agents", "CopywriterAgent"),
 }
 
 _AGENT_LABELS = {
@@ -686,6 +690,10 @@ _AGENT_LABELS = {
     "cso": "The Cultural Strategist",
     "comms-planner": "Comms Planner",
     "full-deploy": "Full Deploy",
+    "brand-auditor": "The Brand Auditor",
+    "brief-critic": "The Brief Critic",
+    "trend-forecaster": "The Trend Forecaster",
+    "copywriter": "The Copywriter",
 }
 
 

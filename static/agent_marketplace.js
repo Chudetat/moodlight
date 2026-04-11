@@ -45,6 +45,34 @@
       color: "#D84315",
       premium: true,
     },
+    {
+      id: "brand-auditor",
+      title: "The Brand Auditor",
+      desc: "Type your brand. See where you stand culturally — what you own, what you're missing, and where the whitespace is. A full diagnostic in 60 seconds.",
+      icon: "\uD83D\uDD0D",
+      color: "#00838F",
+    },
+    {
+      id: "brief-critic",
+      title: "The Brief Critic",
+      desc: "Paste your brief. Get it torn apart against live data. Finds what's stale, what's wrong, and what the data says you should be doing instead.",
+      icon: "\u2702\uFE0F",
+      color: "#AD1457",
+    },
+    {
+      id: "trend-forecaster",
+      title: "The Trend Forecaster",
+      desc: "Not what's trending now — what's next. Reads velocity, scarcity, and signal clusters to predict cultural shifts before they have names.",
+      icon: "\uD83D\uDD2E",
+      color: "#E65100",
+    },
+    {
+      id: "copywriter",
+      title: "The Copywriter",
+      desc: "Headlines, social posts, and ad copy tuned to the cultural moment. Every line is built on what's happening right now, not what was approved last month.",
+      icon: "\u270D\uFE0F",
+      color: "#283593",
+    },
   ];
 
   function injectStyles() {
