@@ -849,6 +849,14 @@ _AGENT_CROSS_SELL = {
         ("The Copywriter", "Write market-specific copy for each adaptation."),
         ("The Comms Planner", "Plan the channel deployment per market."),
     ],
+    "seo-strategist": [
+        ("The Content Strategist", "Build the full content strategy around these search opportunities."),
+        ("The Copywriter", "Write the SEO content for your highest-priority keyword clusters."),
+    ],
+    "social-strategist": [
+        ("The Copywriter", "Write the posts, hooks, and captions for this week's plan."),
+        ("The Content Strategist", "Build a longer-term content ecosystem around these social insights."),
+    ],
 }
 
 

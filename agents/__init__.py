@@ -12,10 +12,13 @@ from .competitive_scout import CompetitiveScoutAgent
 from .pitch_builder import PitchBuilderAgent
 from .content_strategist import ContentStrategistAgent
 from .culture_translator import CultureTranslatorAgent
+from .seo_strategist import SEOStrategistAgent
+from .social_strategist import SocialStrategistAgent
 
 __all__ = [
     "CreativeDirectorAgent", "StrategyAgent", "CommsPlannerAgent", "FullDeployAgent",
     "BrandAuditorAgent", "BriefCriticAgent", "TrendForecasterAgent", "CopywriterAgent",
     "CrisisAdvisorAgent", "AudienceProfilerAgent", "CompetitiveScoutAgent",
     "PitchBuilderAgent", "ContentStrategistAgent", "CultureTranslatorAgent",
+    "SEOStrategistAgent", "SocialStrategistAgent",
 ]

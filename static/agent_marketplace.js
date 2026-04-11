@@ -115,6 +115,20 @@
       icon: "\uD83C\uDF0D",
       color: "#006064",
     },
+    {
+      id: "seo-strategist",
+      title: "The SEO Strategist",
+      desc: "Predicts what people will search for before keyword tools catch up. Finds the gaps, maps the clusters, and owns the rankings while competitors wait for last month's data.",
+      icon: "\uD83D\uDD0E",
+      color: "#33691E",
+    },
+    {
+      id: "social-strategist",
+      title: "The Social Strategist",
+      desc: "What's actually working on social this week. Which hooks stop the scroll, which trends to ride, which to skip. Tactical intelligence, not best practices from last quarter.",
+      icon: "\uD83D\uDCF1",
+      color: "#880E4F",
+    },
   ];
 
   function injectStyles() {
@@ -543,6 +557,20 @@
         markets: "e.g. US → UK + Japan, or list all target markets",
         challenge: "e.g. global launch, campaign adaptation, cultural risk assessment",
         timeline: "e.g. launching in new markets Q3",
+      },
+      "seo-strategist": {
+        product: "e.g. Nike, your brand or category — what you want to rank for",
+        audience: "e.g. who's searching, what they're looking for",
+        markets: "e.g. US, UK, global",
+        challenge: "e.g. no organic traffic, losing rankings to competitors, entering new category",
+        timeline: "e.g. need rankings within 90 days, Q3 content plan",
+      },
+      "social-strategist": {
+        product: "e.g. Nike, your brand — what you sell and your social presence",
+        audience: "e.g. Gen Z on TikTok, professionals on LinkedIn",
+        markets: "e.g. US, global, platform-specific",
+        challenge: "e.g. low engagement, need to grow followers, launching on a new platform",
+        timeline: "e.g. need this week's social plan",
       },
     };
 

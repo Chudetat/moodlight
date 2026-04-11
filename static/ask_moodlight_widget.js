@@ -640,6 +640,8 @@
       "Pitch Builder": "pitch-builder",
       "Content Strategist": "content-strategist",
       "Culture Translator": "culture-translator",
+      "SEO Strategist": "seo-strategist",
+      "Social Strategist": "social-strategist",
     };
 
     let detectedAgent = null;
