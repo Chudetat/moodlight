@@ -415,7 +415,7 @@
 
     const subtitle = document.createElement("div");
     subtitle.className = "ml-subtitle";
-    subtitle.textContent = "The more detail you provide, the better your brief.";
+    subtitle.innerHTML = 'The more detail you provide, the better your brief. <span style="color:rgba(107,70,193,0.7)">Not sure what to enter? Use Ask Moodlight above to build your prompt.</span>';
 
     const defaultPlaceholders = {
       product: "e.g. premium running shoe, fintech app, whiskey brand",

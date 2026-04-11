@@ -792,7 +792,72 @@ Powered by Moodlight's Cultural Momentum Matrix™"
     return response.content[0].text, framework_names
 
 
-def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str, frameworks: list = None) -> bool:
+_AGENT_CROSS_SELL = {
+    "cco": [
+        ("The Copywriter", "Turn this brief into headlines, social posts, and ad copy."),
+        ("The Comms Planner", "Get a channel-by-channel deployment plan for this campaign."),
+    ],
+    "cso": [
+        ("The Chief Creative Officer", "Turn this strategy into campaign concepts."),
+        ("The Comms Planner", "Map out where and when to deploy this positioning."),
+    ],
+    "comms-planner": [
+        ("The Chief Creative Officer", "Build creative concepts for these channels."),
+        ("The Copywriter", "Write the copy for each touchpoint in this plan."),
+    ],
+    "full-deploy": [
+        ("The Copywriter", "Turn this battle plan into ready-to-run copy."),
+    ],
+    "brand-auditor": [
+        ("The Cultural Strategist", "Build a positioning strategy from this audit."),
+        ("The Chief Creative Officer", "Create campaign concepts to close the gaps."),
+    ],
+    "brief-critic": [
+        ("The Chief Creative Officer", "Rebuild the brief with these fixes applied."),
+        ("The Cultural Strategist", "Rethink the strategy behind this brief."),
+    ],
+    "trend-forecaster": [
+        ("The Cultural Strategist", "Build a positioning strategy around these trends."),
+        ("The Chief Creative Officer", "Create campaigns that ride these shifts."),
+    ],
+    "copywriter": [
+        ("The Comms Planner", "Plan where and when to deploy this copy."),
+        ("The Brief Critic", "Pressure-test the strategy behind this work."),
+    ],
+}
+
+
+def _build_cross_sell_html(agent_id: str) -> str:
+    """Build cross-sell HTML for agent emails."""
+    suggestions = _AGENT_CROSS_SELL.get(agent_id, [])
+    if not suggestions:
+        return ""
+
+    items = ""
+    for agent_name, reason in suggestions:
+        items += (
+            f'<div style="margin: 6px 0; padding: 10px 14px; background: #f9f7fd; '
+            f'border-radius: 8px; border: 1px solid #ede8f5;">'
+            f'<strong style="color: #6B46C1;">{agent_name}</strong> '
+            f'<span style="color: #555;">— {reason}</span>'
+            f'</div>'
+        )
+
+    return (
+        f'<div style="margin: 28px 0 0 0; padding: 20px; background: #fafafa; '
+        f'border-radius: 10px; border: 1px solid #eee;">'
+        f'<div style="font-size: 14px; font-weight: 600; color: #2D2D2D; margin-bottom: 10px;">'
+        f'Keep going — run this through another agent</div>'
+        f'{items}'
+        f'<div style="margin-top: 12px; font-size: 13px; color: #888;">'
+        f'Visit <a href="https://www.moodlightintel.com" style="color: #6B46C1; text-decoration: none;">'
+        f'moodlightintel.com</a> to run your next agent.'
+        f'</div>'
+        f'</div>'
+    )
+
+
+def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str, frameworks: list = None, agent_id: str = None) -> bool:
     """Send strategic brief via email"""
     import smtplib
     from email.mime.text import MIMEText
@@ -821,6 +886,10 @@ def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str,
     )
 
     body_html = meta_html + parse_and_render_sections(brief)
+
+    # Add cross-sell for marketplace agent emails
+    if agent_id:
+        body_html += _build_cross_sell_html(agent_id)
 
     html = render_email(
         badge_text="STRATEGIC BRIEF",

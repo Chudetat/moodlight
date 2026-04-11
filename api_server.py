@@ -760,10 +760,10 @@ def _build_marketplace_input(req: MarketplaceRequest) -> str:
     return " ".join(parts)
 
 
-def _email_marketplace_result(email: str, user_input: str, output: str, label: str):
+def _email_marketplace_result(email: str, user_input: str, output: str, label: str, agent_id: str = None):
     """Background task: email the full agent result."""
     from generate_strategic_brief import send_strategic_brief_email
-    send_strategic_brief_email(email.strip(), user_input, output, frameworks=[label])
+    send_strategic_brief_email(email.strip(), user_input, output, frameworks=[label], agent_id=agent_id)
 
 
 @app.post("/api/marketplace/run")
@@ -812,7 +812,7 @@ def marketplace_run(req: MarketplaceRequest, background_tasks: BackgroundTasks):
 
     # Email full brief in background (don't block response)
     label = _AGENT_LABELS.get(req.agent, req.agent)
-    background_tasks.add_task(_email_marketplace_result, req.email, user_input, output, label)
+    background_tasks.add_task(_email_marketplace_result, req.email, user_input, output, label, req.agent)
 
     # Return preview — first ~600 chars, cut at last newline for clean break
     preview = output[:600]

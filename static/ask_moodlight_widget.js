@@ -326,6 +326,30 @@
       color: #2D2D2D;
     }
 
+    /* ── Agent marketplace CTA ── */
+    .ml-agent-cta {
+      text-align: center;
+      margin-top: 12px;
+    }
+    .ml-agent-cta-btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #6B46C1, #1976D2);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 10px 24px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: opacity 0.2s, transform 0.2s;
+      text-decoration: none;
+    }
+    .ml-agent-cta-btn:hover {
+      opacity: 0.9;
+      transform: scale(1.02);
+    }
+
     /* ── Unlock button ── */
     .ml-unlock-btn {
       display: inline-block;
@@ -571,6 +595,9 @@
       updateBadge();
 
       addResult(messages, "assistant", data.answer);
+      if (data.answer.includes("**Product/Service:**")) {
+        showAgentCta(messages, data.answer);
+      }
       showNewQuestionBtn(messages);
     } catch (err) {
       typing.remove();
@@ -588,6 +615,59 @@
     const el = document.createElement("div");
     el.className = "ml-new-question";
     el.innerHTML = '<button class="ml-new-question-btn" onclick="window._mlClear()">Ask a new question</button>';
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function showAgentCta(container, answer) {
+    const existing = container.querySelector(".ml-agent-cta");
+    if (existing) existing.remove();
+
+    // Detect which agent was mentioned
+    const agentMap = {
+      "Chief Creative Officer": "cco",
+      "CCO": "cco",
+      "Cultural Strategist": "cso",
+      "Comms Planner": "comms-planner",
+      "Full Deploy": "full-deploy",
+      "Brand Auditor": "brand-auditor",
+      "Brief Critic": "brief-critic",
+      "Trend Forecaster": "trend-forecaster",
+      "Copywriter": "copywriter",
+    };
+
+    let detectedAgent = null;
+    for (const [name, id] of Object.entries(agentMap)) {
+      if (answer.includes(name)) { detectedAgent = id; break; }
+    }
+
+    const el = document.createElement("div");
+    el.className = "ml-agent-cta";
+    const btn = document.createElement("button");
+    btn.className = "ml-agent-cta-btn";
+    btn.textContent = "Run this in the Agent Marketplace \u2193";
+    btn.onclick = function () {
+      const marketplace = document.getElementById("ml-marketplace") || document.getElementById("moodlight-marketplace");
+      if (marketplace) {
+        marketplace.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Auto-select the detected agent card
+        if (detectedAgent) {
+          setTimeout(function () {
+            const cards = marketplace.querySelectorAll(".ml-agent-card");
+            cards.forEach(function (card) {
+              const title = card.querySelector("h3");
+              if (title) {
+                const match = Object.entries(agentMap).find(function (entry) { return entry[1] === detectedAgent; });
+                if (match && title.textContent.includes(match[0])) {
+                  card.click();
+                }
+              }
+            });
+          }, 500);
+        }
+      }
+    };
+    el.appendChild(btn);
     container.appendChild(el);
     container.scrollTop = container.scrollHeight;
   }
