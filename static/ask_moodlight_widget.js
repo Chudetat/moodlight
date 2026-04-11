@@ -460,9 +460,9 @@
     panel.classList.add("inline-mode");
 
     const suggestedPrompts = [
-      "What's the cultural moment right now?",
-      "What should a lifestyle brand be talking about this week?",
-      "What consumer sentiment shift is nobody paying attention to yet?",
+      "Generate a prompt for Nike for the Chief Creative Officer agent",
+      "What cultural shift is nobody paying attention to yet?",
+      "Build a Brand Auditor brief for Netflix",
     ];
 
     panel.innerHTML = `
