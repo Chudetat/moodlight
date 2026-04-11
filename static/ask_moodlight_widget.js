@@ -634,6 +634,12 @@
       "Brief Critic": "brief-critic",
       "Trend Forecaster": "trend-forecaster",
       "Copywriter": "copywriter",
+      "Crisis Advisor": "crisis-advisor",
+      "Audience Profiler": "audience-profiler",
+      "Competitive Scout": "competitive-scout",
+      "Pitch Builder": "pitch-builder",
+      "Content Strategist": "content-strategist",
+      "Culture Translator": "culture-translator",
     };
 
     let detectedAgent = null;

@@ -6,8 +6,16 @@ from .brand_auditor import BrandAuditorAgent
 from .brief_critic import BriefCriticAgent
 from .trend_forecaster import TrendForecasterAgent
 from .copywriter import CopywriterAgent
+from .crisis_advisor import CrisisAdvisorAgent
+from .audience_profiler import AudienceProfilerAgent
+from .competitive_scout import CompetitiveScoutAgent
+from .pitch_builder import PitchBuilderAgent
+from .content_strategist import ContentStrategistAgent
+from .culture_translator import CultureTranslatorAgent
 
 __all__ = [
     "CreativeDirectorAgent", "StrategyAgent", "CommsPlannerAgent", "FullDeployAgent",
     "BrandAuditorAgent", "BriefCriticAgent", "TrendForecasterAgent", "CopywriterAgent",
+    "CrisisAdvisorAgent", "AudienceProfilerAgent", "CompetitiveScoutAgent",
+    "PitchBuilderAgent", "ContentStrategistAgent", "CultureTranslatorAgent",
 ]

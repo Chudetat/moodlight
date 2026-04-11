@@ -73,6 +73,48 @@
       icon: "\u270D\uFE0F",
       color: "#283593",
     },
+    {
+      id: "crisis-advisor",
+      title: "The Crisis Advisor",
+      desc: "Your brand just got tagged in something. Here's what to say, what not to say, and how fast you need to move. Real-time crisis response, not a PR playbook.",
+      icon: "\u26A1",
+      color: "#B71C1C",
+    },
+    {
+      id: "audience-profiler",
+      title: "The Audience Profiler",
+      desc: "Who's actually talking about your brand, what they care about, and where they're drifting. Psychographic intelligence from live signals, not stale persona decks.",
+      icon: "\uD83C\uDFAF",
+      color: "#4A148C",
+    },
+    {
+      id: "competitive-scout",
+      title: "The Competitive Scout",
+      desc: "What cultural territory your competitors are claiming, where they're vulnerable, and what they're sleeping on. Head-to-head intelligence from live data.",
+      icon: "\uD83D\uDD75\uFE0F",
+      color: "#1B5E20",
+    },
+    {
+      id: "pitch-builder",
+      title: "The Pitch Builder",
+      desc: "Turns any brief or strategy into a client-ready pitch narrative. The insight that wins the room, the setup that makes inaction feel dangerous.",
+      icon: "\uD83C\uDFAC",
+      color: "#F57F17",
+    },
+    {
+      id: "content-strategist",
+      title: "The Content Strategist",
+      desc: "Content pillars, editorial rhythm, and platform angles built from what the culture is actually talking about. Not a calendar — a content ecosystem.",
+      icon: "\uD83D\uDCDD",
+      color: "#0277BD",
+    },
+    {
+      id: "culture-translator",
+      title: "The Culture Translator",
+      desc: "Launching across markets? Here's what lands, what breaks, and what will get you cancelled. Market-by-market cultural adaptation intelligence.",
+      icon: "\uD83C\uDF0D",
+      color: "#006064",
+    },
   ];
 
   function injectStyles() {
@@ -355,9 +397,10 @@
   function buildUI(container) {
     let selectedAgent = null;
 
-    // Agent cards — split into two sections
+    // Agent cards — split into three sections
     const agencyAgents = AGENTS.slice(0, 4);
-    const toolkitAgents = AGENTS.slice(4);
+    const toolkitAgents = AGENTS.slice(4, 8);
+    const specialistAgents = AGENTS.slice(8);
     const allCards = [];
 
     function buildGrid(agents) {
@@ -403,8 +446,13 @@
     toolkitHeader.className = "ml-section-header";
     toolkitHeader.textContent = "The Toolkit";
 
+    const specialistHeader = document.createElement("div");
+    specialistHeader.className = "ml-section-header";
+    specialistHeader.textContent = "The Specialists";
+
     const agencyGrid = buildGrid(agencyAgents);
     const toolkitGrid = buildGrid(toolkitAgents);
+    const specialistGrid = buildGrid(specialistAgents);
 
     // Form section
     const formSection = document.createElement("div");
@@ -453,6 +501,48 @@
         markets: "e.g. US, UK, social-first",
         challenge: "e.g. launch campaign, rebrand, social content series, or paste strategy output here",
         timeline: "e.g. need assets by next week",
+      },
+      "crisis-advisor": {
+        product: "e.g. Nike, your brand — and describe the situation",
+        audience: "e.g. who's angry, who's amplifying",
+        markets: "e.g. US, global, specific platform",
+        challenge: "e.g. viral social media backlash, product recall, executive controversy",
+        timeline: "e.g. this is happening RIGHT NOW, broke 2 hours ago",
+      },
+      "audience-profiler": {
+        product: "e.g. Nike, Peloton, your brand or category",
+        audience: "e.g. who you think your audience is (we'll tell you who it actually is)",
+        markets: "e.g. US, UK, global",
+        challenge: "e.g. audience is aging out, need to reach new segment, don't know who's buying",
+        timeline: "e.g. planning next campaign cycle",
+      },
+      "competitive-scout": {
+        product: "e.g. name your competitor or competitive set (Nike vs. On vs. Hoka)",
+        audience: "e.g. the shared audience you're fighting over",
+        markets: "e.g. US, UK, global",
+        challenge: "e.g. losing share, new entrant disrupting, need competitive positioning",
+        timeline: "e.g. need intelligence for Q2 planning",
+      },
+      "pitch-builder": {
+        product: "e.g. the brand you're pitching, or paste output from another agent",
+        audience: "e.g. the client stakeholders in the room",
+        markets: "e.g. campaign markets",
+        challenge: "e.g. new business pitch, rebranding pitch, campaign extension, paste a brief here",
+        timeline: "e.g. pitch is next Tuesday",
+      },
+      "content-strategist": {
+        product: "e.g. Nike, your brand — what you sell and who you are",
+        audience: "e.g. your content audience, not just buyers",
+        markets: "e.g. US, global, platform-specific",
+        challenge: "e.g. content isn't landing, need new pillars, launching a new channel",
+        timeline: "e.g. need 30-day content plan",
+      },
+      "culture-translator": {
+        product: "e.g. your brand + the campaign or brief to adapt",
+        audience: "e.g. same audience, different market",
+        markets: "e.g. US → UK + Japan, or list all target markets",
+        challenge: "e.g. global launch, campaign adaptation, cultural risk assessment",
+        timeline: "e.g. launching in new markets Q3",
       },
     };
 
@@ -642,6 +732,8 @@
     container.appendChild(agencyGrid);
     container.appendChild(toolkitHeader);
     container.appendChild(toolkitGrid);
+    container.appendChild(specialistHeader);
+    container.appendChild(specialistGrid);
     container.appendChild(formSection);
     container.appendChild(powered);
   }

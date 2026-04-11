@@ -807,6 +807,7 @@ _AGENT_CROSS_SELL = {
     ],
     "full-deploy": [
         ("The Copywriter", "Turn this battle plan into ready-to-run copy."),
+        ("The Pitch Builder", "Package this into a client-ready pitch narrative."),
     ],
     "brand-auditor": [
         ("The Cultural Strategist", "Build a positioning strategy from this audit."),
@@ -822,7 +823,31 @@ _AGENT_CROSS_SELL = {
     ],
     "copywriter": [
         ("The Comms Planner", "Plan where and when to deploy this copy."),
-        ("The Brief Critic", "Pressure-test the strategy behind this work."),
+        ("The Content Strategist", "Build a full content strategy around this voice."),
+    ],
+    "crisis-advisor": [
+        ("The Copywriter", "Draft the exact statements and social copy for this response."),
+        ("The Comms Planner", "Map the channel-by-channel deployment of your crisis response."),
+    ],
+    "audience-profiler": [
+        ("The Content Strategist", "Build content pillars for this audience."),
+        ("The Chief Creative Officer", "Create campaigns that speak to who this audience really is."),
+    ],
+    "competitive-scout": [
+        ("The Cultural Strategist", "Build a positioning strategy that exploits these gaps."),
+        ("The Brand Auditor", "Run a full audit on your own brand to compare."),
+    ],
+    "pitch-builder": [
+        ("The Copywriter", "Write the headlines and key copy for this pitch."),
+        ("The Content Strategist", "Plan the content rollout if you win the pitch."),
+    ],
+    "content-strategist": [
+        ("The Copywriter", "Write the first batch of content from these pillars."),
+        ("The Audience Profiler", "Validate that this content strategy matches who's actually listening."),
+    ],
+    "culture-translator": [
+        ("The Copywriter", "Write market-specific copy for each adaptation."),
+        ("The Comms Planner", "Plan the channel deployment per market."),
     ],
 }
 

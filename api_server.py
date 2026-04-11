@@ -683,6 +683,12 @@ _MARKETPLACE_AGENTS = {
     "brief-critic": ("agents", "BriefCriticAgent"),
     "trend-forecaster": ("agents", "TrendForecasterAgent"),
     "copywriter": ("agents", "CopywriterAgent"),
+    "crisis-advisor": ("agents", "CrisisAdvisorAgent"),
+    "audience-profiler": ("agents", "AudienceProfilerAgent"),
+    "competitive-scout": ("agents", "CompetitiveScoutAgent"),
+    "pitch-builder": ("agents", "PitchBuilderAgent"),
+    "content-strategist": ("agents", "ContentStrategistAgent"),
+    "culture-translator": ("agents", "CultureTranslatorAgent"),
 }
 
 _AGENT_LABELS = {
@@ -694,6 +700,12 @@ _AGENT_LABELS = {
     "brief-critic": "The Brief Critic",
     "trend-forecaster": "The Trend Forecaster",
     "copywriter": "The Copywriter",
+    "crisis-advisor": "The Crisis Advisor",
+    "audience-profiler": "The Audience Profiler",
+    "competitive-scout": "The Competitive Scout",
+    "pitch-builder": "The Pitch Builder",
+    "content-strategist": "The Content Strategist",
+    "culture-translator": "The Culture Translator",
 }
 
 
