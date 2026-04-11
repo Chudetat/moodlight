@@ -462,7 +462,7 @@
     const suggestedPrompts = [
       "Build a prompt for the Chief Creative Officer agent around Nike",
       "What's the cultural read around Microsoft right now?",
-      "Give me the prompt for the Brand Auditor agent around Netflix",
+      "Run a Brand Audit on Netflix",
     ];
 
     panel.innerHTML = `
