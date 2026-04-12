@@ -205,11 +205,11 @@
         text-transform: uppercase;
         letter-spacing: 1.5px;
         color: rgba(45, 45, 45, 0.75);
-        margin-bottom: 14px;
+        margin-bottom: 20px;
         margin-top: 8px;
       }
       .ml-section-header:not(:first-child) {
-        margin-top: 48px;
+        margin-top: 72px;
       }
       .ml-agents-grid {
         display: grid;
