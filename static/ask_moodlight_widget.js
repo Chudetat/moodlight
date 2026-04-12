@@ -483,11 +483,34 @@
     panel.id = "ml-widget-panel";
     panel.classList.add("inline-mode");
 
-    const suggestedPrompts = [
-      "Build a prompt for the Chief Creative Officer agent around Nike",
-      "What's the cultural read around Microsoft right now?",
-      "Run a Brand Audit on Netflix",
+    // Rotating prompt pools — one prompt picked from each slot on load
+    // so visitors see different agents across the 16-agent marketplace
+    const promptPools = [
+      [
+        "Build a prompt for the Chief Creative Officer agent around Nike",
+        "Build a Crisis Advisor prompt for Boeing",
+        "Build a Trend Forecaster brief for Rhode",
+        "Build a Pitch Builder deck for a new business win",
+        "Build a SEO Strategist brief for Patagonia",
+        "Build a Cultural Strategist brief for Airbnb",
+      ],
+      [
+        "What's the cultural read around Microsoft right now?",
+        "What's shifting in Gen Z attention right now?",
+        "Where is the conversation moving on AI and labor?",
+        "What's the mood around luxury brands right now?",
+      ],
+      [
+        "Run a Brand Audit on Netflix",
+        "Run a Competitive Scout on Spotify",
+        "Run an Audience Profiler on Peloton",
+        "Run a Content Strategist on Glossier",
+        "Run a Social Strategist on Duolingo",
+      ],
     ];
+    const suggestedPrompts = promptPools.map(
+      (pool) => pool[Math.floor(Math.random() * pool.length)]
+    );
 
     panel.innerHTML = `
       <div class="ml-logo">
