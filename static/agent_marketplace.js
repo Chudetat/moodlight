@@ -200,11 +200,11 @@
         padding: 12px 20px;
       }
       .ml-section-header {
-        font-size: 13px;
-        font-weight: 600;
+        font-size: 14px;
+        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 1.5px;
-        color: rgba(45, 45, 45, 0.4);
+        color: rgba(45, 45, 45, 0.75);
         margin-bottom: 14px;
         margin-top: 8px;
       }
