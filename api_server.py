@@ -699,6 +699,8 @@ _MARKETPLACE_AGENTS = {
     "experimentation-strategist": ("agents", "ExperimentationStrategistAgent"),
     "referral-architect": ("agents", "ReferralArchitectAgent"),
     "partnership-scout": ("agents", "PartnershipScoutAgent"),
+    "creative-council": ("agents", "CreativeCouncilAgent"),
+    "focus-group": ("agents", "FocusGroupAgent"),
 }
 
 _AGENT_LABELS = {
@@ -726,6 +728,8 @@ _AGENT_LABELS = {
     "experimentation-strategist": "The Experimentation Strategist",
     "referral-architect": "The Referral Architect",
     "partnership-scout": "The Partnership Scout",
+    "creative-council": "The Global Creative Council",
+    "focus-group": "The Focus Group",
 }
 
 

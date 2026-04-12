@@ -673,6 +673,9 @@
       "Experimentation Strategist": "experimentation-strategist",
       "Referral Architect": "referral-architect",
       "Partnership Scout": "partnership-scout",
+      "Global Creative Council": "creative-council",
+      "Creative Council": "creative-council",
+      "Focus Group": "focus-group",
     };
 
     let detectedAgent = null;

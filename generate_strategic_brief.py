@@ -889,6 +889,14 @@ _AGENT_CROSS_SELL = {
         ("The Pitch Builder", "Turn the top partnership candidate into a pitch narrative that earns the meeting."),
         ("The Chief Creative Officer", "Build the creative concept the partnership will actually live inside."),
     ],
+    "creative-council": [
+        ("The Brief Critic", "Tighten the case study before you submit — find what's thin against live data."),
+        ("The Pitch Builder", "Turn this entry into the jury presentation narrative."),
+    ],
+    "focus-group": [
+        ("The Audience Profiler", "Go deeper on who this audience actually is culturally before you retest."),
+        ("The Brief Critic", "Stress-test the brief behind the creative before you spend on real research."),
+    ],
 }
 
 

@@ -185,6 +185,20 @@
       icon: "\uD83D\uDD17",
       color: "#AD1457",
     },
+    {
+      id: "creative-council",
+      title: "The Global Creative Council",
+      desc: "Award-show entry strategist. Tells you which Cannes, Effie, Clio, D&AD, and One Show categories give your work its best shot — with a dark horse pick and the categories to skip. Not a win predictor, a strategic filter.",
+      icon: "\uD83C\uDFC6",
+      color: "#B8860B",
+    },
+    {
+      id: "focus-group",
+      title: "The Focus Group",
+      desc: "Pre-research gut check grounded in live cultural signals. Convenes a synthetic panel anchored in what real audiences are talking about this week. Directional, not a substitute for real research.",
+      icon: "\uD83D\uDDE3\uFE0F",
+      color: "#00695C",
+    },
   ];
 
   function injectStyles() {
@@ -471,7 +485,8 @@
     const agencyAgents = AGENTS.slice(0, 6);
     const toolkitAgents = AGENTS.slice(6, 10);
     const specialistAgents = AGENTS.slice(10, 18);
-    const growthAgents = AGENTS.slice(18);
+    const growthAgents = AGENTS.slice(18, 24);
+    const juryAgents = AGENTS.slice(24);
     const allCards = [];
 
     function buildGrid(agents) {
@@ -532,10 +547,15 @@
     growthHeader.className = "ml-section-header";
     growthHeader.textContent = "The Growth Team";
 
+    const juryHeader = document.createElement("div");
+    juryHeader.className = "ml-section-header";
+    juryHeader.textContent = "The Jury Room";
+
     const agencyGrid = buildGrid(agencyAgents);
     const toolkitGrid = buildGrid(toolkitAgents);
     const specialistGrid = buildGrid(specialistAgents);
     const growthGrid = buildGrid(growthAgents);
+    const juryGrid = buildGrid(juryAgents);
 
     // Form section
     const formSection = document.createElement("div");
@@ -696,6 +716,20 @@
         markets: "e.g. US, UK, global",
         challenge: "e.g. need to borrow cultural credit, looking for unexpected collabs, bored of the usual co-brand suspects",
         timeline: "e.g. need a partnership live by Q3 launch",
+      },
+      "creative-council": {
+        product: "Paste your case study here — the work, what it did, the evidence. The more complete, the sharper the read.",
+        audience: "e.g. the audience the work was made for",
+        markets: "e.g. where the work ran — US, UK, global",
+        challenge: "e.g. which Cannes categories, Effie fit check, pro-bono film strategy, where should this work compete",
+        timeline: "e.g. 2026 eligibility, $40K awards budget",
+      },
+      "focus-group": {
+        product: "Paste the creative — script, copy, concept, tagline. Describe the visual if it's not text.",
+        audience: "e.g. women 28-40 urban beauty enthusiasts — OR leave blank to auto-select from brand",
+        markets: "e.g. US, UK — where this creative will run",
+        challenge: "e.g. does this tagline read too clinical, pre-launch gut check, messaging test before we spend on real research",
+        timeline: "e.g. launching in 6 weeks, pre-production gut check",
       },
     };
 
@@ -889,6 +923,8 @@
     container.appendChild(specialistGrid);
     container.appendChild(growthHeader);
     container.appendChild(growthGrid);
+    container.appendChild(juryHeader);
+    container.appendChild(juryGrid);
     container.appendChild(formSection);
     container.appendChild(powered);
   }

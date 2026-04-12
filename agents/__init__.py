@@ -22,6 +22,8 @@ from .funnel_doctor import FunnelDoctorAgent
 from .experimentation_strategist import ExperimentationStrategistAgent
 from .referral_architect import ReferralArchitectAgent
 from .partnership_scout import PartnershipScoutAgent
+from .creative_council import CreativeCouncilAgent
+from .focus_group import FocusGroupAgent
 
 __all__ = [
     "CreativeDirectorAgent", "StrategyAgent", "CommsPlannerAgent", "FullDeployAgent",
@@ -33,4 +35,5 @@ __all__ = [
     "LifecycleStrategistAgent", "PaidMediaStrategistAgent", "FunnelDoctorAgent",
     "ExperimentationStrategistAgent", "ReferralArchitectAgent",
     "PartnershipScoutAgent",
+    "CreativeCouncilAgent", "FocusGroupAgent",
 ]
