@@ -484,21 +484,33 @@
     panel.classList.add("inline-mode");
 
     // Rotating prompt pools — one prompt picked from each slot on load
-    // so visitors see different agents across the 16-agent marketplace
+    // so visitors see different agents across the 26-agent marketplace
     const promptPools = [
       [
-        "Build a prompt for the Chief Creative Officer agent around Nike",
-        "Build a Crisis Advisor prompt for Boeing",
+        "Build a Chief Creative Officer brief for Nike",
+        "Build a Cultural Strategist brief for Airbnb",
+        "Build a Comms Planner brief for a Peloton relaunch",
+        "Build a Full Deploy brief for Liquid Death",
+        "Build a Data Strategist brief for Allbirds",
+        "Build a Creative Technologist brief for Nothing",
+        "Build a Partnership Scout brief for Patagonia",
+        "Build a Referral Architect brief for Hims",
+        "Build a Paid Media Strategist brief for Allbirds",
+        "Build a Lifecycle Strategist brief for a subscription box",
+        "Build a Global Creative Council entry strategy for our Cannes case study",
+        "Build a Focus Group gut check on a new tagline",
         "Build a Trend Forecaster brief for Rhode",
         "Build a Pitch Builder deck for a new business win",
-        "Build a SEO Strategist brief for Patagonia",
-        "Build a Cultural Strategist brief for Airbnb",
+        "Build a Crisis Advisor brief for Boeing",
+        "Build a Copywriter brief for a DTC product launch",
       ],
       [
-        "What's the cultural read around Microsoft right now?",
+        "What's the cultural read on Microsoft right now?",
         "What's shifting in Gen Z attention right now?",
         "Where is the conversation moving on AI and labor?",
         "What's the mood around luxury brands right now?",
+        "What's breaking in the creator economy this week?",
+        "What's the read on Gen Alpha vs Gen Z right now?",
       ],
       [
         "Run a Brand Audit on Netflix",
@@ -506,6 +518,13 @@
         "Run an Audience Profiler on Peloton",
         "Run a Content Strategist on Glossier",
         "Run a Social Strategist on Duolingo",
+        "Run a Funnel Doctor on a DTC checkout flow",
+        "Run an Experimentation Strategist on a landing page test",
+        "Run a Culture Translator on a brand entering Japan",
+        "Run a Focus Group on a pre-launch creative concept",
+        "Run a Global Creative Council on a case study headed to Cannes",
+        "Run a Brief Critic on a client brief",
+        "Run a SEO Strategist on Patagonia",
       ],
     ];
     const suggestedPrompts = promptPools.map(
