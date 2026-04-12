@@ -46,6 +46,20 @@
       premium: true,
     },
     {
+      id: "data-strategist",
+      title: "The Data Strategist",
+      desc: "Builds the KPI tree, kills the vanity metrics, and tells you which first-party data to activate. A measurement plan that actually ladders to revenue — not a dashboard graveyard.",
+      icon: "\uD83D\uDCCA",
+      color: "#37474F",
+    },
+    {
+      id: "creative-technologist",
+      title: "The Creative Technologist",
+      desc: "Translates a concept into a stack, a prototype, and a build plan. Tells you what to build, what to buy, what will break, and when to walk away. No hype — just what ships.",
+      icon: "\uD83D\uDEE0\uFE0F",
+      color: "#5D4037",
+    },
+    {
       id: "brand-auditor",
       title: "The Brand Auditor",
       desc: "Type your brand. See where you stand culturally — what you own, what you're missing, and where the whitespace is. A full diagnostic in 60 seconds.",
@@ -412,9 +426,9 @@
     let selectedAgent = null;
 
     // Agent cards — split into three sections
-    const agencyAgents = AGENTS.slice(0, 4);
-    const toolkitAgents = AGENTS.slice(4, 8);
-    const specialistAgents = AGENTS.slice(8);
+    const agencyAgents = AGENTS.slice(0, 6);
+    const toolkitAgents = AGENTS.slice(6, 10);
+    const specialistAgents = AGENTS.slice(10);
     const allCards = [];
 
     function buildGrid(agents) {
@@ -578,6 +592,20 @@
         markets: "e.g. US, global, platform-specific",
         challenge: "e.g. low engagement, need to grow followers, launching on a new platform",
         timeline: "e.g. need this week's social plan",
+      },
+      "data-strategist": {
+        product: "e.g. Nike, your brand — what you sell and what you're trying to measure",
+        audience: "e.g. customer segments you want to instrument or activate",
+        markets: "e.g. US, UK, global",
+        challenge: "e.g. dashboard graveyard, can't prove ROI, first-party data is thin, need a learning agenda",
+        timeline: "e.g. need a measurement plan in 30 days",
+      },
+      "creative-technologist": {
+        product: "e.g. your brand + the concept you want to build, or paste a brief from another agent",
+        audience: "e.g. who will experience the thing you're building",
+        markets: "e.g. US, global, platform-specific",
+        challenge: "e.g. can we actually build this, what stack do we need, prototype before we commit, what will break",
+        timeline: "e.g. need a working prototype in 3 weeks",
       },
     };
 

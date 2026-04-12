@@ -857,6 +857,14 @@ _AGENT_CROSS_SELL = {
         ("The Copywriter", "Write the posts, hooks, and captions for this week's plan."),
         ("The Content Strategist", "Build a longer-term content ecosystem around these social insights."),
     ],
+    "data-strategist": [
+        ("The Audience Profiler", "Validate that who you're measuring against is who's actually showing up."),
+        ("The Creative Technologist", "Figure out the instrumentation stack needed to capture these events."),
+    ],
+    "creative-technologist": [
+        ("The Chief Creative Officer", "Make sure the concept this build is serving is still the right concept."),
+        ("The Pitch Builder", "Turn this build plan into a client-ready pitch narrative."),
+    ],
 }
 
 

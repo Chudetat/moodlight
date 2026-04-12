@@ -14,6 +14,8 @@ from .content_strategist import ContentStrategistAgent
 from .culture_translator import CultureTranslatorAgent
 from .seo_strategist import SEOStrategistAgent
 from .social_strategist import SocialStrategistAgent
+from .data_strategist import DataStrategistAgent
+from .creative_technologist import CreativeTechnologistAgent
 
 __all__ = [
     "CreativeDirectorAgent", "StrategyAgent", "CommsPlannerAgent", "FullDeployAgent",
@@ -21,4 +23,5 @@ __all__ = [
     "CrisisAdvisorAgent", "AudienceProfilerAgent", "CompetitiveScoutAgent",
     "PitchBuilderAgent", "ContentStrategistAgent", "CultureTranslatorAgent",
     "SEOStrategistAgent", "SocialStrategistAgent",
+    "DataStrategistAgent", "CreativeTechnologistAgent",
 ]

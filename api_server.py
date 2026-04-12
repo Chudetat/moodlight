@@ -691,6 +691,8 @@ _MARKETPLACE_AGENTS = {
     "culture-translator": ("agents", "CultureTranslatorAgent"),
     "seo-strategist": ("agents", "SEOStrategistAgent"),
     "social-strategist": ("agents", "SocialStrategistAgent"),
+    "data-strategist": ("agents", "DataStrategistAgent"),
+    "creative-technologist": ("agents", "CreativeTechnologistAgent"),
 }
 
 _AGENT_LABELS = {
@@ -710,6 +712,8 @@ _AGENT_LABELS = {
     "culture-translator": "The Culture Translator",
     "seo-strategist": "The SEO Strategist",
     "social-strategist": "The Social Strategist",
+    "data-strategist": "The Data Strategist",
+    "creative-technologist": "The Creative Technologist",
 }
 
 

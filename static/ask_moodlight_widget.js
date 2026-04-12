@@ -665,6 +665,8 @@
       "Culture Translator": "culture-translator",
       "SEO Strategist": "seo-strategist",
       "Social Strategist": "social-strategist",
+      "Data Strategist": "data-strategist",
+      "Creative Technologist": "creative-technologist",
     };
 
     let detectedAgent = null;
