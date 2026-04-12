@@ -214,13 +214,24 @@
         padding: 12px 20px;
       }
       .ml-section-header {
-        font-size: 14px;
+        font-size: 18px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 1.5px;
-        color: rgba(45, 45, 45, 0.75);
+        color: #2D2D2D;
         margin-bottom: 20px;
         margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .ml-section-header::before {
+        content: "";
+        display: inline-block;
+        width: 28px;
+        height: 3px;
+        background: #6B46C1;
+        border-radius: 2px;
       }
       .ml-section-header:not(:first-child) {
         margin-top: 72px;
