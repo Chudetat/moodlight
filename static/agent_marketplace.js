@@ -536,6 +536,15 @@
               if (inputs[key]) inputs[key].value = window._mlParsedBriefFields[key];
             });
           }
+
+          // Scroll the form into view and focus first input so users
+          // don't have to hunt for where the form appeared
+          setTimeout(function () {
+            formSection.scrollIntoView({ behavior: "smooth", block: "center" });
+            if (inputs.product) {
+              try { inputs.product.focus({ preventScroll: true }); } catch (e) { inputs.product.focus(); }
+            }
+          }, 50);
         });
         allCards.push(card);
         grid.appendChild(card);
