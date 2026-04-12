@@ -234,7 +234,8 @@
         border-radius: 2px;
       }
       .ml-section-header:not(:first-child) {
-        margin-top: 72px;
+        padding-top: 72px;
+        margin-top: 0;
       }
       .ml-agents-grid {
         display: grid;
@@ -548,18 +549,22 @@
 
     const toolkitHeader = document.createElement("div");
     toolkitHeader.className = "ml-section-header";
+    toolkitHeader.style.paddingTop = "72px";
     toolkitHeader.textContent = "The Toolkit";
 
     const specialistHeader = document.createElement("div");
     specialistHeader.className = "ml-section-header";
+    specialistHeader.style.paddingTop = "72px";
     specialistHeader.textContent = "The Specialists";
 
     const growthHeader = document.createElement("div");
     growthHeader.className = "ml-section-header";
+    growthHeader.style.paddingTop = "72px";
     growthHeader.textContent = "The Growth Team";
 
     const juryHeader = document.createElement("div");
     juryHeader.className = "ml-section-header";
+    juryHeader.style.paddingTop = "72px";
     juryHeader.textContent = "The Jury Room";
 
     const agencyGrid = buildGrid(agencyAgents);
