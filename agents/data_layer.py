@@ -96,7 +96,7 @@ def load_vlds_tables():
     """Load velocity, density, scarcity tables."""
     engine = get_engine()
     if not engine:
-        return {}, {}, {}
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
     velocity_df = density_df = scarcity_df = pd.DataFrame()
     try:
