@@ -532,10 +532,6 @@
     );
 
     panel.innerHTML = `
-      <div class="ml-logo">
-        <div class="ml-logo-text"><span class="ml-logo-icon"><img src="${API_BASE}/static/logo_black.png" alt="Moodlight" style="width:48px;height:48px;vertical-align:middle"></span> Ask Moodlight</div>
-      </div>
-
       <div class="ml-search-container">
         <input class="ml-search-bar" id="ml-input" type="text"
                placeholder="Ask about any brand, trend, or strategy..."
