@@ -885,6 +885,10 @@ _AGENT_CROSS_SELL = {
         ("The Copywriter", "Write the share copy, incentive messaging, and landing experience."),
         ("The Lifecycle Strategist", "Embed referral triggers inside the lifecycle journey."),
     ],
+    "partnership-scout": [
+        ("The Pitch Builder", "Turn the top partnership candidate into a pitch narrative that earns the meeting."),
+        ("The Chief Creative Officer", "Build the creative concept the partnership will actually live inside."),
+    ],
 }
 
 

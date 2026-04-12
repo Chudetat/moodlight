@@ -698,6 +698,7 @@ _MARKETPLACE_AGENTS = {
     "funnel-doctor": ("agents", "FunnelDoctorAgent"),
     "experimentation-strategist": ("agents", "ExperimentationStrategistAgent"),
     "referral-architect": ("agents", "ReferralArchitectAgent"),
+    "partnership-scout": ("agents", "PartnershipScoutAgent"),
 }
 
 _AGENT_LABELS = {
@@ -724,6 +725,7 @@ _AGENT_LABELS = {
     "funnel-doctor": "The Funnel Doctor",
     "experimentation-strategist": "The Experimentation Strategist",
     "referral-architect": "The Referral Architect",
+    "partnership-scout": "The Partnership Scout",
 }
 
 

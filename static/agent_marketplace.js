@@ -109,6 +109,13 @@
       color: "#1B5E20",
     },
     {
+      id: "partnership-scout",
+      title: "The Partnership Scout",
+      desc: "The opposite of the Competitive Scout. Finds unexpected brand, creator, and institution collabs — with the value exchange, the risk read, and how to actually make the ask.",
+      icon: "\uD83E\uDD1D",
+      color: "#6A1B9A",
+    },
+    {
       id: "pitch-builder",
       title: "The Pitch Builder",
       desc: "Turns any brief or strategy into a client-ready pitch narrative. The insight that wins the room, the setup that makes inaction feel dangerous.",
@@ -463,8 +470,8 @@
     // Agent cards — split into four sections
     const agencyAgents = AGENTS.slice(0, 6);
     const toolkitAgents = AGENTS.slice(6, 10);
-    const specialistAgents = AGENTS.slice(10, 17);
-    const growthAgents = AGENTS.slice(17);
+    const specialistAgents = AGENTS.slice(10, 18);
+    const growthAgents = AGENTS.slice(18);
     const allCards = [];
 
     function buildGrid(agents) {
@@ -682,6 +689,13 @@
         markets: "e.g. US, UK, global",
         challenge: "e.g. no organic word-of-mouth, referral program is flat, need to design a loop from scratch",
         timeline: "e.g. need a referral program live in 90 days",
+      },
+      "partnership-scout": {
+        product: "e.g. Nike, your brand — what cultural gap you're trying to close through a partner",
+        audience: "e.g. the audience you want to reach or borrow credibility with",
+        markets: "e.g. US, UK, global",
+        challenge: "e.g. need to borrow cultural credit, looking for unexpected collabs, bored of the usual co-brand suspects",
+        timeline: "e.g. need a partnership live by Q3 launch",
       },
     };
 

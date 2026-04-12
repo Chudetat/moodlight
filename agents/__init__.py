@@ -21,6 +21,7 @@ from .paid_media_strategist import PaidMediaStrategistAgent
 from .funnel_doctor import FunnelDoctorAgent
 from .experimentation_strategist import ExperimentationStrategistAgent
 from .referral_architect import ReferralArchitectAgent
+from .partnership_scout import PartnershipScoutAgent
 
 __all__ = [
     "CreativeDirectorAgent", "StrategyAgent", "CommsPlannerAgent", "FullDeployAgent",
@@ -31,4 +32,5 @@ __all__ = [
     "DataStrategistAgent", "CreativeTechnologistAgent",
     "LifecycleStrategistAgent", "PaidMediaStrategistAgent", "FunnelDoctorAgent",
     "ExperimentationStrategistAgent", "ReferralArchitectAgent",
+    "PartnershipScoutAgent",
 ]

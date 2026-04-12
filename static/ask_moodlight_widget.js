@@ -672,6 +672,7 @@
       "Lifecycle Strategist": "lifecycle-strategist",
       "Experimentation Strategist": "experimentation-strategist",
       "Referral Architect": "referral-architect",
+      "Partnership Scout": "partnership-scout",
     };
 
     let detectedAgent = null;
