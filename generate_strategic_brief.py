@@ -865,6 +865,26 @@ _AGENT_CROSS_SELL = {
         ("The Chief Creative Officer", "Make sure the concept this build is serving is still the right concept."),
         ("The Pitch Builder", "Turn this build plan into a client-ready pitch narrative."),
     ],
+    "paid-media-strategist": [
+        ("The Copywriter", "Write the ad creative for this channel mix."),
+        ("The Experimentation Strategist", "Design incrementality tests to pressure-test platform-reported ROAS."),
+    ],
+    "funnel-doctor": [
+        ("The Experimentation Strategist", "Design tests that prove the proposed fixes actually move the needle."),
+        ("The Copywriter", "Rewrite the high-friction copy flagged in the audit."),
+    ],
+    "lifecycle-strategist": [
+        ("The Content Strategist", "Build content pillars that feed each stage of this lifecycle."),
+        ("The Copywriter", "Write the journey emails, SMS, and push copy for these sequences."),
+    ],
+    "experimentation-strategist": [
+        ("The Funnel Doctor", "Find the next wave of leaks to test against."),
+        ("The Data Strategist", "Instrument the events needed to measure these tests cleanly."),
+    ],
+    "referral-architect": [
+        ("The Copywriter", "Write the share copy, incentive messaging, and landing experience."),
+        ("The Lifecycle Strategist", "Embed referral triggers inside the lifecycle journey."),
+    ],
 }
 
 

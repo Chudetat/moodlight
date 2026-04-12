@@ -693,6 +693,11 @@ _MARKETPLACE_AGENTS = {
     "social-strategist": ("agents", "SocialStrategistAgent"),
     "data-strategist": ("agents", "DataStrategistAgent"),
     "creative-technologist": ("agents", "CreativeTechnologistAgent"),
+    "lifecycle-strategist": ("agents", "LifecycleStrategistAgent"),
+    "paid-media-strategist": ("agents", "PaidMediaStrategistAgent"),
+    "funnel-doctor": ("agents", "FunnelDoctorAgent"),
+    "experimentation-strategist": ("agents", "ExperimentationStrategistAgent"),
+    "referral-architect": ("agents", "ReferralArchitectAgent"),
 }
 
 _AGENT_LABELS = {
@@ -714,6 +719,11 @@ _AGENT_LABELS = {
     "social-strategist": "The Social Strategist",
     "data-strategist": "The Data Strategist",
     "creative-technologist": "The Creative Technologist",
+    "lifecycle-strategist": "The Lifecycle Strategist",
+    "paid-media-strategist": "The Paid Media Strategist",
+    "funnel-doctor": "The Funnel Doctor",
+    "experimentation-strategist": "The Experimentation Strategist",
+    "referral-architect": "The Referral Architect",
 }
 
 

@@ -130,6 +130,13 @@
       color: "#006064",
     },
     {
+      id: "social-strategist",
+      title: "The Social Strategist",
+      desc: "What's actually working on social this week. Which hooks stop the scroll, which trends to ride, which to skip. Tactical intelligence, not best practices from last quarter.",
+      icon: "\uD83D\uDCF1",
+      color: "#880E4F",
+    },
+    {
       id: "seo-strategist",
       title: "The SEO Strategist",
       desc: "Predicts what people will search for before keyword tools catch up. Finds the gaps, maps the clusters, and owns the rankings while competitors wait for last month's data.",
@@ -137,11 +144,39 @@
       color: "#33691E",
     },
     {
-      id: "social-strategist",
-      title: "The Social Strategist",
-      desc: "What's actually working on social this week. Which hooks stop the scroll, which trends to ride, which to skip. Tactical intelligence, not best practices from last quarter.",
-      icon: "\uD83D\uDCF1",
-      color: "#880E4F",
+      id: "paid-media-strategist",
+      title: "The Paid Media Strategist",
+      desc: "Channel mix, budget allocation, creative rotation, and honest incrementality. Tells you where every paid dollar goes — and which platforms are a tax, not a strategy.",
+      icon: "\uD83D\uDCB0",
+      color: "#4E342E",
+    },
+    {
+      id: "funnel-doctor",
+      title: "The Funnel Doctor",
+      desc: "Finds where your funnel is leaking, why, and what to fix first. A stage-by-stage x-ray with an impact-times-effort fix list you can start on tomorrow.",
+      icon: "\uD83E\uDE7A",
+      color: "#BF360C",
+    },
+    {
+      id: "lifecycle-strategist",
+      title: "The Lifecycle Strategist",
+      desc: "Triggered journeys from onboarding to win-back. CRM, email, and SMS plays designed around customer state — not campaign calendars.",
+      icon: "\uD83D\uDD04",
+      color: "#1A237E",
+    },
+    {
+      id: "experimentation-strategist",
+      title: "The Experimentation Strategist",
+      desc: "Falsifiable hypotheses, pre-registered decision rules, and a 90-day test roadmap. Fewer tests, better-designed, with actual learnings instead of vibes.",
+      icon: "\uD83E\uDDEA",
+      color: "#4527A0",
+    },
+    {
+      id: "referral-architect",
+      title: "The Referral Architect",
+      desc: "Designs the loop before the incentive. Finds your real share moment, maps the mechanic, and engineers word-of-mouth that doesn't depend on a coupon at checkout.",
+      icon: "\uD83D\uDD17",
+      color: "#AD1457",
     },
   ];
 
@@ -425,10 +460,11 @@
   function buildUI(container) {
     let selectedAgent = null;
 
-    // Agent cards — split into three sections
+    // Agent cards — split into four sections
     const agencyAgents = AGENTS.slice(0, 6);
     const toolkitAgents = AGENTS.slice(6, 10);
-    const specialistAgents = AGENTS.slice(10);
+    const specialistAgents = AGENTS.slice(10, 17);
+    const growthAgents = AGENTS.slice(17);
     const allCards = [];
 
     function buildGrid(agents) {
@@ -485,9 +521,14 @@
     specialistHeader.className = "ml-section-header";
     specialistHeader.textContent = "The Specialists";
 
+    const growthHeader = document.createElement("div");
+    growthHeader.className = "ml-section-header";
+    growthHeader.textContent = "The Growth Team";
+
     const agencyGrid = buildGrid(agencyAgents);
     const toolkitGrid = buildGrid(toolkitAgents);
     const specialistGrid = buildGrid(specialistAgents);
+    const growthGrid = buildGrid(growthAgents);
 
     // Form section
     const formSection = document.createElement("div");
@@ -606,6 +647,41 @@
         markets: "e.g. US, global, platform-specific",
         challenge: "e.g. can we actually build this, what stack do we need, prototype before we commit, what will break",
         timeline: "e.g. need a working prototype in 3 weeks",
+      },
+      "paid-media-strategist": {
+        product: "e.g. Nike, your brand — what you're trying to acquire or promote",
+        audience: "e.g. who you're buying media against",
+        markets: "e.g. US, UK, global",
+        challenge: "e.g. CPA climbing, creative fatigue, need to pick channels, ROAS vs. incrementality gap",
+        timeline: "e.g. Q2 plan, $500K budget, need a 30-60-90 deployment",
+      },
+      "funnel-doctor": {
+        product: "e.g. Nike, your brand or product — what you're trying to convert",
+        audience: "e.g. the traffic that isn't converting",
+        markets: "e.g. US, UK, global",
+        challenge: "e.g. checkout abandonment, traffic doesn't convert, activation broken, low repeat purchase",
+        timeline: "e.g. need a prioritized fix list this week",
+      },
+      "lifecycle-strategist": {
+        product: "e.g. Nike, your brand — what your customers buy or subscribe to",
+        audience: "e.g. your customer base across lifecycle stages",
+        markets: "e.g. US, UK, global",
+        challenge: "e.g. churn is rising, onboarding isn't activating, need a win-back sequence, silo'd CRM",
+        timeline: "e.g. need a 90-day lifecycle build roadmap",
+      },
+      "experimentation-strategist": {
+        product: "e.g. Nike, your brand — what you want to test and learn",
+        audience: "e.g. the audience the test will run against",
+        markets: "e.g. US, UK, global",
+        challenge: "e.g. running tests without hypotheses, need a test roadmap, can't tell winners from noise",
+        timeline: "e.g. 90-day experimentation program",
+      },
+      "referral-architect": {
+        product: "e.g. Nike, your brand — what you want customers to share",
+        audience: "e.g. your most loyal customers, your hero-moment users",
+        markets: "e.g. US, UK, global",
+        challenge: "e.g. no organic word-of-mouth, referral program is flat, need to design a loop from scratch",
+        timeline: "e.g. need a referral program live in 90 days",
       },
     };
 
@@ -797,6 +873,8 @@
     container.appendChild(toolkitGrid);
     container.appendChild(specialistHeader);
     container.appendChild(specialistGrid);
+    container.appendChild(growthHeader);
+    container.appendChild(growthGrid);
     container.appendChild(formSection);
     container.appendChild(powered);
   }

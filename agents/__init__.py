@@ -16,6 +16,11 @@ from .seo_strategist import SEOStrategistAgent
 from .social_strategist import SocialStrategistAgent
 from .data_strategist import DataStrategistAgent
 from .creative_technologist import CreativeTechnologistAgent
+from .lifecycle_strategist import LifecycleStrategistAgent
+from .paid_media_strategist import PaidMediaStrategistAgent
+from .funnel_doctor import FunnelDoctorAgent
+from .experimentation_strategist import ExperimentationStrategistAgent
+from .referral_architect import ReferralArchitectAgent
 
 __all__ = [
     "CreativeDirectorAgent", "StrategyAgent", "CommsPlannerAgent", "FullDeployAgent",
@@ -24,4 +29,6 @@ __all__ = [
     "PitchBuilderAgent", "ContentStrategistAgent", "CultureTranslatorAgent",
     "SEOStrategistAgent", "SocialStrategistAgent",
     "DataStrategistAgent", "CreativeTechnologistAgent",
+    "LifecycleStrategistAgent", "PaidMediaStrategistAgent", "FunnelDoctorAgent",
+    "ExperimentationStrategistAgent", "ReferralArchitectAgent",
 ]

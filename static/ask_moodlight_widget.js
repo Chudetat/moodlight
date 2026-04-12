@@ -667,6 +667,11 @@
       "Social Strategist": "social-strategist",
       "Data Strategist": "data-strategist",
       "Creative Technologist": "creative-technologist",
+      "Paid Media Strategist": "paid-media-strategist",
+      "Funnel Doctor": "funnel-doctor",
+      "Lifecycle Strategist": "lifecycle-strategist",
+      "Experimentation Strategist": "experimentation-strategist",
+      "Referral Architect": "referral-architect",
     };
 
     let detectedAgent = null;
