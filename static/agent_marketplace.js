@@ -188,7 +188,7 @@
     {
       id: "creative-council",
       title: "The Global Creative Council",
-      desc: "Award-show entry strategist. Grounded in the top global advertising shows (Cannes, Effie, Clio, D&AD, One Show, ADC, LIA) AND the historical database of past winning work and the exact categories it won in. Recommends categories with precedent — a past winner whose DNA rhymes with your work — plus a dark horse pick and the categories to skip. Not a win predictor, a strategic filter.",
+      desc: "Award-show entry strategist. Grounded in the top global advertising shows (Cannes, Effie, Clio, D&AD, One Show, ADC, LIA) AND the historical database of past winning work and the exact categories it won in.",
       icon: "\uD83C\uDFC6",
       color: "#B8860B",
     },
