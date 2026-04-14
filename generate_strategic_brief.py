@@ -958,12 +958,12 @@ def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str,
     # Agent-specific email titles
     agent_label = frameworks[0] if frameworks and len(frameworks) == 1 else None
     if agent_label:
-        email_subject = f"Your {agent_label} Brief — Moodlight"
-        email_title = f"Your {agent_label} Brief"
+        email_subject = f"{agent_label} Brief — Moodlight"
+        email_title = f"{agent_label} Brief"
         badge_text = agent_label.upper()
     else:
-        email_subject = "Your Moodlight Strategic Brief"
-        email_title = "Your Strategic Brief"
+        email_subject = "Moodlight Strategic Brief"
+        email_title = "Strategic Brief"
         badge_text = "STRATEGIC BRIEF"
 
     msg = MIMEMultipart('alternative')
