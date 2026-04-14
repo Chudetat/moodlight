@@ -368,6 +368,37 @@ def _load_scarcity_data():
 # Intelligence functions (adapted from app.py)
 # ──────────────────────────────────────────────
 
+def _normalize_brand(brand):
+    """Coerce Haiku's multi-brand outputs down to a single primary brand.
+
+    Haiku sometimes returns a list, a Postgres-array-literal string like
+    '{"Nike","Adidas"}', or a comma-separated string like "Nike, Adidas".
+    Normalize all of those to the first brand, so downstream retrieval and
+    admin analytics see clean single-brand values.
+    """
+    if brand is None:
+        return None
+    if isinstance(brand, list):
+        brand = brand[0] if brand else None
+        if brand is None:
+            return None
+    if not isinstance(brand, str):
+        return None
+    brand = brand.strip()
+    if not brand:
+        return None
+    if brand.startswith("{") and brand.endswith("}"):
+        inner = brand[1:-1]
+        parts = [p.strip().strip('"').strip("'") for p in inner.split(",")]
+        parts = [p for p in parts if p]
+        return parts[0] if parts else None
+    if "," in brand:
+        parts = [p.strip() for p in brand.split(",")]
+        parts = [p for p in parts if p]
+        return parts[0] if parts else None
+    return brand
+
+
 def detect_search_topic(user_message: str, client: Anthropic) -> dict:
     """Detect if user query needs web search — brands, events, or topics."""
     try:
@@ -389,7 +420,9 @@ Return ONLY valid JSON, no explanation.""",
         # Haiku wraps JSON in ```json ... ``` fences; strip before parsing.
         if result.startswith("```"):
             result = result.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-        return json.loads(result)
+        parsed = json.loads(result)
+        parsed["brand"] = _normalize_brand(parsed.get("brand"))
+        return parsed
     except Exception:
         return {"brand": None, "event": None, "topic": None, "needs_web": False}
 
