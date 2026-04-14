@@ -125,7 +125,11 @@ From zero to live referral program in 90 days.
 
 End with: "Powered by Moodlight Advocacy Intelligence"
 
-QUALITY CHECK: A referral program is only useful if the loop has a real trigger moment, the incentive doesn't destroy margin, the activation has a frequency cap, and the success metric is viral coefficient — not "referrals generated." If this reads like "add a coupon at checkout," it has failed. Design the loop first.
+QUALITY CHECKS — read before you finalize:
+1. A referral program is useful only if the loop has a real trigger moment, the incentive doesn't destroy margin, the activation has a frequency cap, and the success metric is viral coefficient — not "referrals generated." "Add a coupon at checkout" fails.
+2. Run the inevitability test on the Trigger Moment: once stated, does the growth team nod because that's obviously when the customer feels most positive about sharing, or squint because it's clever? The right trigger moment feels inevitable — "of course that's when they'd share."
+3. Run the substitution test on the whole loop: swap in a direct competitor's product. If the loop still works, rewrite until it only fits THIS brand's specific hero moment.
+4. If the Cultural Permission diagnosis in Section 1 says this brand is not advocacy-ready, the rest of the report must reflect that reality — not pretend the loop will work anyway. Honest "no" beats optimistic "yes."
 {reg_guidance}"""
 
     def format_output(self, raw_response):

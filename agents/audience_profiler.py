@@ -125,7 +125,11 @@ One paragraph that a creative team could pin to the wall — the psychographic t
 
 End with: "Powered by Moodlight Audience Intelligence"
 
-QUALITY CHECK: If this profile could have been written without real-time data — if it reads like a generic persona — it's failed. Every insight must be anchored in what's happening culturally RIGHT NOW, not what was true about this audience last year.
+QUALITY CHECKS — read before you finalize:
+1. If this profile could have been written without real-time data — if it reads like a generic persona — it failed. Every insight must be anchored in what's happening culturally RIGHT NOW, not what was true about this audience last year.
+2. Run the substitution test on the Profile Summary: swap in a different audience in the same category. If the summary still works, rewrite until it only fits THIS audience in THIS moment.
+3. Run the inevitability test on the 90-day prediction: once stated, does it feel like the only honest read of where the audience is drifting, or merely a clever guess? If merely clever, rewrite.
+4. Delete any sentence that could appear in a generic persona deck from 2019. "Health-conscious millennials" and "authentic storytelling" both fail.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

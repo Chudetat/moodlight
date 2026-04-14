@@ -133,7 +133,11 @@ The metrics the team should watch after the fixes ship. Without this, every "CRO
 
 End with: "Powered by Moodlight Funnel Intelligence"
 
-QUALITY CHECK: A funnel diagnostic is only useful if every leak is named specifically, every fix has impact×effort math, every friction flavor is audited, and every post-fix metric has a guardrail. If this reads like "improve conversion rate," it has failed. Be specific about where the money is leaking.
+QUALITY CHECKS — read before you finalize:
+1. Every leak must be named specifically, every fix must have impact×effort math, every friction flavor must be audited, every post-fix metric must have a guardrail. "Improve conversion rate" fails.
+2. Run the inevitability test on the #1 leak: once stated, does the growth team nod because it's obviously where the money is leaking, or squint because it's clever? Obvious wins — funnels don't reward contrarian diagnoses.
+3. Run the substitution test on the prioritized fix list: swap in a different brand in the same vertical. If the fixes still work, they're too generic — rewrite until they only fit THIS funnel's specific leaks.
+4. The #1 fix must be actionable tomorrow, not "hire a CRO consultant." If a designer/engineer can't start on it in the morning, re-rank.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

@@ -121,7 +121,11 @@ One paragraph. Is this a real crisis or a Twitter tempest? Will anyone remember 
 
 End with: "Powered by Moodlight Crisis Intelligence"
 
-QUALITY CHECK: Every recommendation must be specific to THIS brand in THIS moment with THIS cultural context. Generic crisis playbook advice is worthless here. If you can swap the brand name and the advice still works, it's not specific enough.
+QUALITY CHECKS — read before you finalize:
+1. Every recommendation must be specific to THIS brand in THIS moment with THIS cultural context. Generic crisis playbook advice fails. Run the substitution test: swap in a different brand facing the same crisis shape. If the advice still works, rewrite until it only fits this specific situation.
+2. The "Say This" statement must read as the only honest thing this brand could say right now. Run the inevitability test: once stated, does a CEO nod because it's obviously the right words, or squint because it's clever? In a crisis, clever loses.
+3. Every "Don't Say This" trap must name WHY it backfires in THIS specific cultural moment, not in general. "It will look bad" fails. "The current empathy reading is hostile/cold — apologies that start with 'we hear you' will read as performative and amplify" passes.
+4. The Honest Verdict must give a real answer on whether this is a real crisis or a Twitter tempest. Hedging fails — the CEO needs a call, not a menu.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

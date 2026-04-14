@@ -133,7 +133,12 @@ One paragraph. If the client does nothing for 30 days, what does the cultural la
 
 End with: "Powered by Moodlight Trend Intelligence"
 
-QUALITY CHECK: Every forecast must cite specific VLDS data, signal patterns, or emotional indicators. "I think AI will keep growing" is not a forecast. "AI conversation velocity has dropped 23% in 7 days while AI-skepticism scarcity is at 0.92 — the backlash wave is forming and nobody's positioned for it" is a forecast.
+QUALITY CHECKS — read before you finalize:
+1. Every forecast must cite specific VLDS data, signal patterns, or emotional indicators. "I think AI will keep growing" fails. "AI conversation velocity has dropped 23% in 7 days while AI-skepticism scarcity is at 0.92 — the backlash wave is forming and nobody's positioned for it" passes.
+2. Run the inevitability test on the top 3 forecasts: once stated, does a strategist nod because it's obviously the next move the data is pointing at, or squint because it's clever? Obvious wins — but only if nobody else would reach it from the same data.
+3. Run the substitution test on the Anti-Forecast: if the "expected trend that's already dead" call works for any category, it's too generic. Rewrite until it only applies to THIS category's specific saturation pattern.
+4. The Collision Map is where the real edge lives. If each collision could be reached from a single signal alone, it's not a collision — find true convergence.
+5. Forecasts must be falsifiable. If a forecast is vague enough to always be "partially right," it's not a forecast — it's a hedge.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

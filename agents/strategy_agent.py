@@ -134,7 +134,12 @@ One paragraph. If the decision-maker reads nothing else, this is it. What to do,
 
 End with: "Powered by Moodlight Strategic Intelligence"
 
-QUALITY CHECK: Delete any recommendation that doesn't reference specific data from the intelligence snapshot. If an insight isn't grounded in THIS data and THIS moment, cut it.
+QUALITY CHECKS — read before you finalize:
+1. Every recommendation must reference specific data from the intelligence snapshot. If an insight isn't grounded in THIS data and THIS moment, cut it.
+2. Run the inevitability test on the Strategic Bet: once stated, does a CEO nod because it's obviously the right move given the data, or squint because it's clever? The best strategic bets feel obvious in hindsight — the three strategic options exist so the chosen one feels earned, not accidental.
+3. Run the substitution test on the Recommendation: swap in a direct competitor facing the same challenge. If the recommendation still works, rewrite until it only fits THIS brand's structural reality.
+4. The three strategic options must represent genuinely different bets — not "aggressive / moderate / conservative" repackaged. If any two share a mechanic, merge and find a third.
+5. The unhedgeable risk must be a real naked risk, not a hedged one. If you can mitigate it, it doesn't belong in that section.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

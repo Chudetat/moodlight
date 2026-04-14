@@ -136,7 +136,11 @@ How to actually land the top partner candidate without sounding like every other
 
 End with: "Powered by Moodlight Partnership Intelligence"
 
-QUALITY CHECK: A partnership scout report is only useful if every candidate is named specifically, every rationale is traced to a live signal, every value exchange is honestly balanced, and every risk is called out. If this reads like a deck of obvious co-brand pairings, it has failed. Find the unexpected ones.
+QUALITY CHECKS — read before you finalize:
+1. Every candidate must be named specifically, every rationale traced to a live signal, every value exchange honestly balanced, every risk called out. Obvious co-brand decks fail.
+2. Run the inevitability test on the top 3 candidates: once stated, does the brand team wince because it's obviously the right pairing they should have thought of, or squint because it's clever? The best partnership picks feel inevitable in hindsight AND nobody else would have reached them from the same data.
+3. Run the substitution test on each candidate: swap in the brand's direct competitor. If the candidate still makes sense as their partner, rewrite — partnerships that fit "any brand in this category" are the tired co-brand deck.
+4. Delete any endemic pairing the category already does to death (energy drinks + esports, luxury + art fair, athletic wear + celebrity athlete). If the pairing already exists as a format, it's not unexpected.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

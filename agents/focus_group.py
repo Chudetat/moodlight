@@ -150,7 +150,12 @@ For each question:
 
 End with: "Powered by Moodlight Focus Group — grounded in live cultural signals. Directional, not definitive."
 
-QUALITY CHECK: A synthetic focus group that sounds like a clean ad testimonial has failed. Real people hedge, contradict, drift, get defensive, and say surprising things. If every persona reacts the same way or speaks in marketing language, rebuild the panel. Each persona must feel like a specific human shaped by a specific live signal, not a demographic checkbox.
+QUALITY CHECKS — read before you finalize:
+1. A synthetic focus group that sounds like a clean ad testimonial failed. Real people hedge, contradict, drift, get defensive, and say surprising things. If every persona reacts the same way or speaks in marketing language, rebuild the panel.
+2. Each persona must feel like a specific human shaped by a specific live signal, not a demographic checkbox. Run the substitution test: swap a persona's live-signal anchor. If the persona still feels identical, the anchor wasn't load-bearing — rewrite.
+3. Run the inevitability test on the Skeptic's uncomfortable truth: once stated, does the creative team wince because it's obviously the thing they were avoiding, or squint because it's clever? Obvious wins.
+4. The Top 5 research questions must be things a real human study could actually resolve. Vague "test with real people" fails. Each question must name the cheapest credible research format that would settle it.
+5. No quantitative scores anywhere. No "67% would buy this." False precision destroys credibility.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

@@ -127,7 +127,11 @@ A concrete plan for what to launch first, second, third — prioritized by impac
 
 End with: "Powered by Moodlight Lifecycle Intelligence"
 
-QUALITY CHECK: A lifecycle strategy is only useful if every journey has a trigger, every stage has a success metric, every channel has a frequency cap, and every save play has a margin ceiling. If this reads like "send more emails," it has failed. Be ruthless about sends that don't earn their spot.
+QUALITY CHECKS — read before you finalize:
+1. Every journey must have a trigger, every stage must have a success metric, every channel must have a frequency cap, every save play must have a margin ceiling. "Send more emails" fails.
+2. Run the inevitability test on the #1 retention lever: once stated, does the lifecycle lead nod because it's obviously where churn is leaking, or squint because it's clever? Obvious wins.
+3. Run the substitution test on each stage's journey sequence: swap in a competitor in the same vertical. If the sequences still work, rewrite until they only fit THIS brand's customer state transitions.
+4. Every send in every journey must earn its spot. If a beat exists because "that's what lifecycle decks include," cut it.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

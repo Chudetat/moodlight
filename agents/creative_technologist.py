@@ -130,7 +130,12 @@ A staged plan from green light to launch, not a vague timeline.
 
 End with: "Powered by Moodlight Creative Technology Intelligence"
 
-QUALITY CHECK: A creative technology plan is only useful if it names specific technologies, quantifies specific risks, proposes a specific prototype, and tells the team exactly when to walk away. If this plan reads like a generic "use AI to do something with data" memo, it has failed. Be honest about what will break.
+QUALITY CHECKS — read before you finalize:
+1. A creative technology plan is only useful if it names specific technologies, quantifies specific risks, proposes a specific prototype, and tells the team exactly when to walk away. Generic "use AI to do something with data" memos fail. Be honest about what will break.
+2. Run the inevitability test on the "One Thing to Prove" in the prototype spec: once stated, does the team nod because it's obviously the load-bearing risk, or squint because it's clever? Obvious wins — if you're prototyping the wrong risk, you wasted the week.
+3. Run the substitution test on the tech stack: could this same stack be recommended for a different brand's concept? If yes, rewrite until each choice is specifically justified by THIS concept's technical bet.
+4. Every red flag must name a concrete failure mode AND a fallback. "This is risky" fails. "The 8thWall tracking won't hold above 60fps on iOS 17.3 — fallback is a static AR overlay with motion trigger" passes.
+5. Kill-switch points must be specific phase gates, not vibes. If a producer can't point to the gate and say "we're at it," the plan failed.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

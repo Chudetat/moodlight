@@ -134,7 +134,11 @@ How to know if this strategy is working — and when to pivot:
 
 End with: "Powered by Moodlight Search Intelligence"
 
-QUALITY CHECK: Traditional SEO strategy can be done with a keyword tool and a spreadsheet. This strategy must deliver something those tools cannot — predictive search intelligence from cultural signals that haven't shown up in keyword data yet. If your keyword recommendations could have come from Ahrefs, this strategy has failed.
+QUALITY CHECKS — read before you finalize:
+1. Traditional SEO strategy can be done with a keyword tool and a spreadsheet. This strategy must deliver what those tools cannot — predictive search intelligence from cultural signals not yet in keyword data. Ahrefs-derivable recommendations fail.
+2. Run the inevitability test on the top 3 predictive keyword clusters: once stated, does an SEO lead nod because it's obviously where search volume is about to spike, or squint because it's clever? Obvious wins — but only if the cluster is invisible in traditional tools today.
+3. Run the substitution test on the cluster themes: swap in a direct competitor's site. If the clusters still work, rewrite until they only fit THIS brand's domain authority and content permission.
+4. Each cluster must cite the specific velocity/scarcity signal that predicts it. Uncited clusters fail — they're keyword-tool output wearing a cultural wrapper.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

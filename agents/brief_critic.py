@@ -132,7 +132,11 @@ One paragraph. Would you approve this brief, send it back, or kill it? Be honest
 
 End with: "Powered by Moodlight Brief Intelligence"
 
-QUALITY CHECK: Every critique must cite specific data. "This feels generic" is not a critique. "This targets sustainability but density is 8.4 — the 3rd most saturated topic in the data. You're screaming into a crowd" is a critique.
+QUALITY CHECKS — read before you finalize:
+1. Every critique must cite specific data. "This feels generic" fails. "This targets sustainability but density is 8.4 — the 3rd most saturated topic in the data. You're screaming into a crowd" passes.
+2. Run the inevitability test on the biggest blind spot: once stated, does the strategist slap their forehead because it's obvious, or squint because it's clever? Obvious wins.
+3. Run the substitution test on the Redirect: swap in a different brand facing the same brief. If the pivot still works, rewrite until it only fits THIS brief in THIS moment.
+4. The Verdict must name what specifically breaks if this brief ships as-is — not a vague "it could go wrong." Vague verdicts are theater, not intelligence.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

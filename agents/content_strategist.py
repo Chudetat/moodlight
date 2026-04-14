@@ -131,7 +131,12 @@ How to know if this content strategy is working — but not vanity metrics:
 
 End with: "Powered by Moodlight Content Intelligence"
 
-QUALITY CHECK: A content strategy built from data should feel urgent and specific. If the pillars could have been written without real-time cultural intelligence — if they're just "thought leadership" and "brand storytelling" — the strategy has failed. Every recommendation must be traceable to a live cultural signal.
+QUALITY CHECKS — read before you finalize:
+1. A content strategy built from data should feel urgent and specific. If the pillars could have been written without real-time cultural intelligence — if they're "thought leadership" and "brand storytelling" — it failed. Every pillar must be traceable to a live cultural signal.
+2. Run the substitution test on the 3-4 content pillars: swap in a direct competitor. If the pillars still work, rewrite until they only fit THIS brand's permission to speak.
+3. Run the inevitability test on the Content Opportunity line: once stated, does a content lead nod because it's obviously the gap, or squint because it's clever? Obvious wins.
+4. Every piece in the 30-day sprint must cite the specific cultural signal or data point that justifies its inclusion. Uncited pieces fail.
+5. Delete any pillar that could sit on any content deck in any category this quarter. Generic pillars are wasted ink.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

@@ -127,7 +127,11 @@ One paragraph per market: go, adapt, or kill. Be direct about which markets this
 
 End with: "Powered by Moodlight Cultural Intelligence"
 
-QUALITY CHECK: Cultural translation built on stereotypes is worse than no translation at all. Every market insight must be grounded in current data signals — what's actually happening in that market's cultural conversation right now. If your market-specific advice could have been written 5 years ago, it's not intelligence.
+QUALITY CHECKS — read before you finalize:
+1. Cultural translation built on stereotypes is worse than no translation. Every market insight must cite a current data signal from that market's conversation. If the advice could have been written 5 years ago, it's not intelligence.
+2. Run the inevitability test on each market's "What Breaks" finding: once stated, does a local operator nod because it's obviously the trap, or squint because it's clever? Obvious wins — the value is naming what they couldn't have un-seen on their own.
+3. Run the substitution test on the Universal Threads: swap in a different source campaign. If the "human truth" still holds, it's too abstract — rewrite until it fits only THIS campaign in THESE markets.
+4. The Highest Risk Market call must be a real call, not a hedge. If every market is "medium risk," the read failed.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

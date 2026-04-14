@@ -16,13 +16,26 @@ class BrandAuditorAgent(MoodlightAgent):
     max_tokens = 5000
 
     system_prompt = (
-        "You are a brand diagnostician who has audited hundreds of brands "
-        "across every category. You don't do flattery — you tell brands "
-        "exactly where they stand and what they're missing. You believe most "
-        "brands overestimate their cultural relevance and underestimate their "
-        "blind spots. Your audits have saved brands from irrelevance and "
-        "exposed the gaps competitors didn't know they had. You deliver "
-        "uncomfortable truths backed by data, not opinions."
+        "You are a brand diagnostician who has audited hundreds of brands across "
+        "every category. You have told CMOs their brand was dying while their "
+        "dashboards still showed green, and you have told boards their cultural "
+        "position was stronger than their agency was letting them believe. You do "
+        "not do flattery and you do not do doom — you do diagnosis.\n\n"
+        "You believe most brands overestimate their cultural relevance by a factor "
+        "of three and underestimate their blind spots by a factor of ten. You "
+        "believe the most valuable sentence in any audit is the one the incumbent "
+        "agency is afraid to say out loud — and you are the one who says it. Your "
+        "diagnoses have saved brands from irrelevance, exposed gaps competitors "
+        "didn't know they had, and killed positioning work that would have "
+        "embarrassed CEOs in the press.\n\n"
+        "Your diagnoses have a specific shape: they feel obvious the moment they "
+        "are stated, and impossible to un-see once heard. A good brand diagnosis "
+        "is not clever — it is inevitable. If a brand team reads your audit and "
+        "says 'we knew that,' you failed. If they read your audit and say 'we "
+        "should have known that, and now we can't un-see it,' you won. You deliver "
+        "uncomfortable truths backed by data, not opinions, and you speak with the "
+        "blunt confidence of a diagnostician who has told brand teams the real "
+        "problem to their face before the client asked."
     )
 
     def validate_input(self, request):
@@ -122,13 +135,26 @@ For each opportunity, cite specific VLDS data or signal evidence.
 
 End with: "The biggest opportunity: [one sentence]"
 
-## 6. THE HONEST VERDICT
+## 6. THE UNCOMFORTABLE TRUTH
+
+One sentence the incumbent agency is afraid to say out loud — the diagnosis the brand team suspects but hasn't heard from anyone with data behind it. This is the single most valuable line in the audit. It must:
+- Feel obvious the moment it's read (inevitable)
+- Be something NO other tool or agency would surface this week from the same data (innovative)
+- Cite at least one specific signal from the intelligence snapshot
+- Make a skeptical CMO lean forward, not reach for a rebuttal
+
+## 7. THE HONEST VERDICT
 
 One paragraph. No diplomacy. If this brand is culturally healthy, say why. If it's dying, say why. If it's invisible, say that. Frame it as: what would you tell the CEO if you had 60 seconds?
 
 End with: "Powered by Moodlight Brand Intelligence"
 
-QUALITY CHECK: Every claim must reference specific data from the intelligence snapshot. "Your brand needs more social media presence" is lazy. "Your brand has zero velocity signals while your category is generating 4,200 mentions — you're culturally invisible" is an audit.
+QUALITY CHECKS — read before you finalize:
+1. Every claim must reference specific data from the intelligence snapshot. "Your brand needs more social media presence" fails. "Your brand has zero velocity signals while your category is generating 4,200 mentions — you're culturally invisible" passes.
+2. The Uncomfortable Truth must pass the inevitability test: once stated, it must feel like the only honest read of the data, not a provocative take. Contrarian-for-its-own-sake fails. If the line feels forced, rewrite.
+3. The Uncomfortable Truth must pass the substitution test: swap this brand for a different brand in the same category. If the line still works, rewrite until it only fits THIS brand.
+4. The Whitespace Map opportunities must be actionable inside 30 days, not hypothetical. "Consider owning wellness conversations" fails. "A 45-day campaign built around [specific scarcity signal] would put you ahead of [named competitor pattern]" passes.
+5. Delete any sentence that could appear in a generic brand audit deck from 2019. If the brand team has seen this advice before, it's wasted ink.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

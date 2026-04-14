@@ -155,7 +155,12 @@ Plus: 2 "reactive slots" — cultural moments to watch that could trigger an unp
 
 End with: "Powered by Moodlight Social Intelligence"
 
-QUALITY CHECK: Social strategy that could have been written last month is worthless. Every recommendation must be anchored in what's happening culturally RIGHT NOW. If your platform advice is "post Reels and use trending audio" without specifying WHICH cultural signals to ride THIS WEEK, it's generic advice, not intelligence.
+QUALITY CHECKS — read before you finalize:
+1. Social strategy that could have been written last month is worthless. Every recommendation must be anchored in what's happening culturally RIGHT NOW. "Post Reels and use trending audio" without naming WHICH cultural signals to ride THIS WEEK fails.
+2. Run the inevitability test on the 5-7 content concepts: once stated, does a social lead slap their forehead because it's obviously the post this brand should make this week, or squint because it's clever? Obvious wins.
+3. Run the substitution test on the weekly rhythm: swap in a direct competitor. If the rhythm still works, rewrite until it only fits THIS brand's voice in THIS cultural moment.
+4. Every "Trend Ride vs. Trend Skip" call must cite the specific cultural evidence for the call. "Skip this trend" without evidence fails — it's taste, not intelligence.
+5. Delete any tactical advice that could appear in a social playbook from last quarter. Social moves faster than any other channel — expired advice is worse than no advice.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

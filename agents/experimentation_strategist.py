@@ -129,7 +129,11 @@ Most experimentation programs die because learnings go into a Notion doc nobody 
 
 End with: "Powered by Moodlight Experimentation Intelligence"
 
-QUALITY CHECK: An experimentation program is only useful if every hypothesis is falsifiable, every test has pre-defined ship/kill criteria, every learning has a capture plan, and every decision rule is written before the test starts. If this reads like "run more A/B tests," it has failed. Be disciplined.
+QUALITY CHECKS — read before you finalize:
+1. Every hypothesis must be falsifiable, every test must have pre-defined ship/kill criteria, every learning must have a capture plan, every decision rule must be written BEFORE the test starts. "Run more A/B tests" fails.
+2. Run the inevitability test on the top hypothesis: once stated, does a growth lead nod because it's obviously the load-bearing bet, or squint because it's clever? Obvious wins — a surprising hypothesis that isn't actually the biggest lever is an expensive distraction.
+3. Run the substitution test on the top 5 test designs: swap in a different brand in the same vertical. If the tests still work, rewrite until they only fit THIS brand's current state.
+4. Each "Why This Hypothesis Now" must cite a specific cultural or business signal. Hypotheses without a "now" are solving yesterday's problem.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

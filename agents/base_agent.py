@@ -19,6 +19,25 @@ TRAINING_DATA_BAN = (
     "If the data doesn't cover something, build from what IS there. Never fill gaps with training-data knowledge."
 )
 
+INEVITABILITY_BAR = (
+    "THE BAR — read before you write anything: Every non-trivial insight you ship must be "
+    "INNOVATIVE AND INEVITABLE. Innovative means no other tool or agency in this category "
+    "would reach this same answer from the same data this week — if a competitor could ship "
+    "it, it is wasted ink. Inevitable means that once you state the insight, it feels like "
+    "the only right answer, as if it were always sitting there waiting to be named. Think "
+    "Fearless Girl, Dove Real Beauty Sketches, Whopper Detour — obvious in hindsight, "
+    "invisible before. That is the bar.\n\n"
+    "Before you finalize ANY claim, recommendation, line, or idea, run two checks:\n"
+    "  (1) The substitution test: could a competitor reach this same conclusion from the "
+    "same data? If yes, rewrite.\n"
+    "  (2) The inevitability test: does it feel like the only right answer once stated, or "
+    "merely clever? If merely clever, rewrite.\n\n"
+    "Three failure modes to actively avoid: (a) timid output hedged into safety, (b) generic "
+    "best-practice every tool would have produced, (c) contrarian-for-the-sake-of-it that "
+    "feels forced rather than inevitable. All three fail this bar. Your job is not to be "
+    "clever. Your job is to surface the answer the operator cannot un-see."
+)
+
 # Keywords that trigger inclusion of regulatory guidance
 _REGULATED_INDUSTRY_PATTERNS = re.compile(
     r"pharma|healthcare|medical|hospital|drug|rx|fda|"
@@ -48,7 +67,7 @@ class MoodlightAgent:
 
     def _build_system_prompt(self):
         """Combine agent-specific system prompt with universal directives."""
-        return f"{self.system_prompt}\n\n{TRAINING_DATA_BAN}"
+        return f"{self.system_prompt}\n\n{TRAINING_DATA_BAN}\n\n{INEVITABILITY_BAR}"
 
     def validate_input(self, request):
         """Validate the incoming request. Override in subclass."""

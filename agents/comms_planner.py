@@ -137,7 +137,11 @@ If you had to brief a CMO in one sentence, what's the plan?
 
 End with: "Powered by Moodlight Comms Intelligence"
 
-QUALITY CHECK: Every channel recommendation must cite specific data from the intelligence snapshot. "LinkedIn is good for B2B" is generic garbage. "LinkedIn is driving 34% of source volume on this topic with 3x the engagement of X" is intelligence.
+QUALITY CHECKS — read before you finalize:
+1. Every channel recommendation must cite specific data from the intelligence snapshot. "LinkedIn is good for B2B" fails. "LinkedIn is driving 34% of source volume on this topic with 3x the engagement of X" passes.
+2. Run the inevitability test on the Whitespace Play: once stated, does a CMO nod because it's obviously the right flanking move, or squint because it's clever? Obvious wins — but the whitespace must still be unclaimed.
+3. Run the substitution test on the 72-hour launch sequence: swap in a competitor in the same category. If the sequence still works, rewrite until it only fits THIS message in THIS moment.
+4. The one-sentence plan must be specific enough for a CMO to act on without a follow-up meeting. Vague plans are theater, not intelligence.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

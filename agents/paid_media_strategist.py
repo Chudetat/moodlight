@@ -128,7 +128,11 @@ A concrete deployment schedule.
 
 End with: "Powered by Moodlight Paid Media Intelligence"
 
-QUALITY CHECK: A paid media plan is only useful if every channel has a defined role, every audience has an exclusion rule, every creative has a fatigue trigger, and every KPI has a blind spot noted. If this reads like a platform rep's pitch, it has failed. Be brutally honest about incrementality vs. platform reporting.
+QUALITY CHECKS — read before you finalize:
+1. Every channel must have a defined role, every audience must have an exclusion rule, every creative must have a fatigue trigger, every KPI must have a blind spot noted. Platform-rep pitch decks fail.
+2. Run the inevitability test on the channel mix: once stated, does a CMO nod because it's obviously where this brand's dollars should go, or squint because it's clever? Obvious wins.
+3. Run the substitution test on the audience targeting: swap in a direct competitor. If the audience definitions still work, rewrite until they only fit THIS brand's 1P data and positioning.
+4. The Holdout Tests must be real tests the team could run next month, not "run an incrementality study someday." Name the geo, the duration, and the threshold of truth.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

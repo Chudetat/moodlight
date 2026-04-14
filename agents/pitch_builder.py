@@ -121,7 +121,11 @@ The last thing you say in the room:
 
 End with: "Powered by Moodlight Strategic Intelligence"
 
-QUALITY CHECK: A winning pitch does three things — makes the client feel understood, makes the problem feel solvable, and makes inaction feel dangerous. If your pitch is missing any of these three elements, it won't win. Every data point must serve one of these three purposes.
+QUALITY CHECKS — read before you finalize:
+1. A winning pitch does three things: makes the client feel understood, makes the problem feel solvable, makes inaction feel dangerous. If any is missing, it won't win. Every data point must serve one of those three purposes.
+2. Run the inevitability test on the Opening Provocation: once stated, does the client lean forward because it's obviously the truth they'd been circling, or squint because it's clever? The best provocations feel like the only honest read of the room. Clever without inevitable loses.
+3. Run the substitution test on the Strategic Idea: swap in a direct competitor brand. If the idea still works, it fails the "Why Only This Brand" test — rewrite until it only fits THIS client.
+4. The Stakes line at the Close must be specific enough to be testable. "The category will leave them behind" fails. "By Q3 the data says [competitor archetype] will have claimed the whitespace — and reversing that takes 18 months and a rebrand" passes.
 {reg_guidance}"""
 
     def format_output(self, raw_response):

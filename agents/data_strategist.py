@@ -123,7 +123,11 @@ A measurement plan without a learning agenda is accounting. Design what this bra
 
 End with: "Powered by Moodlight Data Intelligence"
 
-QUALITY CHECK: A data strategy is only useful if every KPI has an owner, every metric has a decision attached, every first-party asset has an activation play, and every learning question has a falsifiable answer. If this brief reads like a dashboard wish-list, it has failed. Be brutal about vanity metrics and honest about attribution's limits.
+QUALITY CHECKS — read before you finalize:
+1. Every KPI must have an owner, every metric must have a decision attached, every first-party asset must have an activation play, and every learning question must have a falsifiable answer. Dashboard wish-lists fail.
+2. Run the inevitability test on the North Star: once stated, does the CMO nod because it's obviously the number that matters, or squint because it's clever? Obvious wins.
+3. Run the substitution test on the Top 5 Learning Questions: swap in a different brand in the same category. If the questions still work, rewrite until they only fit THIS brand's strategic tension.
+4. The Kill List must name specific vanity metrics this brand is likely tracking, not generic ones. "Avoid vanity metrics" fails. "Drop impression share from the weekly dashboard — it creates a false signal that correlates with awareness spend but not revenue" passes.
 {reg_guidance}"""
 
     def format_output(self, raw_response):
