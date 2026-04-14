@@ -423,7 +423,8 @@ Return ONLY valid JSON, no explanation.""",
         parsed = json.loads(result)
         parsed["brand"] = _normalize_brand(parsed.get("brand"))
         return parsed
-    except Exception:
+    except Exception as e:
+        print(f"[classifier] detect_search_topic failed: {type(e).__name__}: {e}")
         return {"brand": None, "event": None, "topic": None, "needs_web": False}
 
 
