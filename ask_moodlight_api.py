@@ -386,6 +386,9 @@ Return ONLY valid JSON, no explanation.""",
             messages=[{"role": "user", "content": user_message}],
         )
         result = response.content[0].text.strip()
+        # Haiku wraps JSON in ```json ... ``` fences; strip before parsing.
+        if result.startswith("```"):
+            result = result.split("\n", 1)[1].rsplit("```", 1)[0].strip()
         return json.loads(result)
     except Exception:
         return {"brand": None, "event": None, "topic": None, "needs_web": False}
