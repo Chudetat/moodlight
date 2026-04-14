@@ -1156,6 +1156,18 @@ def ask_moodlight(
     except Exception as e:
         assistant_message = f"Sorry, I encountered an error: {str(e)}"
 
+    # Strip the <moodlight-route> block Claude emits at the end of every
+    # response. The dashboard Ask Moodlight doesn't consume the routing
+    # data (only the widget does), so we just remove it from the visible
+    # answer. Keeping the instruction in the shared system prompt lets
+    # both surfaces stay in sync.
+    assistant_message = re.sub(
+        r"<moodlight-route>.*?</moodlight-route>",
+        "",
+        assistant_message,
+        flags=re.DOTALL | re.IGNORECASE,
+    ).strip()
+
     return {
         "response": assistant_message,
         "search_info": search_info,
