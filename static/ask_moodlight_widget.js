@@ -803,6 +803,19 @@
       // Marketplace reads this on card click to fill the form fields.
       window._mlParsedBriefFields = parsedFields;
 
+      // Persist the brief so it survives page reloads and the
+      // email cross-sell roundtrip. 24h expiry is handled on
+      // hydrate. The marketplace widget reads this on load.
+      try {
+        localStorage.setItem("ml_active_brief", JSON.stringify({
+          fields: parsedFields,
+          originalQuestion: rawQuestion,
+          detectedBrand: detectedBrand,
+          recommendedAgent: agentId,
+          timestamp: Date.now(),
+        }));
+      } catch (e) {}
+
       var marketplace = document.getElementById("ml-marketplace") || document.getElementById("moodlight-marketplace");
       if (!marketplace) return;
 

@@ -331,6 +331,47 @@
         margin-bottom: 24px;
       }
       .ml-form-section.ml-visible { display: block; }
+      .ml-brief-banner {
+        display: none;
+        background: rgba(123, 31, 162, 0.06);
+        border: 1px solid rgba(123, 31, 162, 0.18);
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        color: #2D2D2D;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .ml-brief-banner.ml-visible { display: flex; }
+      .ml-brief-banner-body {
+        flex: 1;
+        line-height: 1.5;
+      }
+      .ml-brief-banner-label {
+        font-weight: 600;
+        color: #7B1FA2;
+        display: block;
+        margin-bottom: 2px;
+      }
+      .ml-brief-banner-quote {
+        color: rgba(45, 45, 45, 0.75);
+        font-style: italic;
+      }
+      .ml-brief-banner-clear {
+        background: none;
+        border: none;
+        color: #7B1FA2;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        padding: 4px 8px;
+        white-space: nowrap;
+        text-decoration: underline;
+        align-self: center;
+      }
+      .ml-brief-banner-clear:hover { color: #5a1480; }
       .ml-form-section h3 {
         font-size: 18px;
         font-weight: 600;
@@ -491,21 +532,6 @@
         font-size: 13px;
         color: rgba(45, 45, 45, 0.5);
       }
-      .ml-chain-btn {
-        display: inline-block;
-        margin-top: 16px;
-        padding: 10px 20px;
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 13px;
-        font-weight: 500;
-        color: #fff;
-        background: linear-gradient(135deg, #283593, #6B46C1);
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: opacity 0.2s ease;
-      }
-      .ml-chain-btn:hover { opacity: 0.85; }
       .ml-powered-by {
         text-align: center;
         font-size: 11px;
@@ -518,8 +544,28 @@
     document.head.appendChild(style);
   }
 
+  function hydrateBriefFromStorage() {
+    // If the Ask Moodlight widget already set the global this
+    // tab (user just clicked the CTA), leave it alone.
+    if (window._mlParsedBriefFields) return;
+    try {
+      var stored = localStorage.getItem("ml_active_brief");
+      if (!stored) return;
+      var brief = JSON.parse(stored);
+      // 24h expiry — stale briefs from last week shouldn't leak
+      // back into a fresh session.
+      if (!brief.timestamp || Date.now() - brief.timestamp > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem("ml_active_brief");
+        return;
+      }
+      window._mlParsedBriefFields = brief.fields || {};
+      window._mlActiveBrief = brief;
+    } catch (e) {}
+  }
+
   function buildUI(container) {
     let selectedAgent = null;
+    hydrateBriefFromStorage();
 
     // Agent cards — split into sections
     const bundleAgents = AGENTS.slice(0, 2);
@@ -564,6 +610,18 @@
             Object.keys(window._mlParsedBriefFields).forEach((key) => {
               if (inputs[key]) inputs[key].value = window._mlParsedBriefFields[key];
             });
+          }
+
+          // Show the "brief is locked" banner if we have an active
+          // brief. The Ask Moodlight parse is the source of truth —
+          // all agents in this session analyze the same brief.
+          if (window._mlActiveBrief) {
+            const q = window._mlActiveBrief.originalQuestion || "";
+            const shown = q.length > 120 ? q.slice(0, 117) + "\u2026" : q;
+            briefBannerQuote.textContent = shown ? ' \u201C' + shown + '\u201D' : "";
+            briefBanner.classList.add("ml-visible");
+          } else {
+            briefBanner.classList.remove("ml-visible");
           }
 
           // Scroll the form into view and focus first input so users
@@ -620,6 +678,27 @@
     // Form section
     const formSection = document.createElement("div");
     formSection.className = "ml-form-section";
+
+    // Brief banner — shown when user arrived via Ask Moodlight (or
+    // a persisted brief was hydrated from localStorage). Makes the
+    // "your brief travels with you across agents" model visible.
+    const briefBanner = document.createElement("div");
+    briefBanner.className = "ml-brief-banner";
+    const briefBannerBody = document.createElement("div");
+    briefBannerBody.className = "ml-brief-banner-body";
+    const briefBannerLabel = document.createElement("span");
+    briefBannerLabel.className = "ml-brief-banner-label";
+    briefBannerLabel.textContent = "\uD83D\uDCCB Working from the brief you built with Ask Moodlight";
+    const briefBannerQuote = document.createElement("span");
+    briefBannerQuote.className = "ml-brief-banner-quote";
+    briefBannerBody.appendChild(briefBannerLabel);
+    briefBannerBody.appendChild(briefBannerQuote);
+    const briefBannerClear = document.createElement("button");
+    briefBannerClear.className = "ml-brief-banner-clear";
+    briefBannerClear.type = "button";
+    briefBannerClear.textContent = "Clear and start fresh";
+    briefBanner.appendChild(briefBannerBody);
+    briefBanner.appendChild(briefBannerClear);
 
     const formTitle = document.createElement("h3");
     formTitle.textContent = "";
@@ -945,10 +1024,12 @@
         const data = await res.json();
 
         if (res.ok && data.preview) {
-          // Show preview with blur
-          const chainHtml = selectedAgent !== "copywriter"
-            ? '<button class="ml-chain-btn" id="ml-chain-copywriter">\u270D\uFE0F Send to Copywriter</button>'
-            : "";
+          // Show preview with blur. NOTE: the old "Send to Copywriter"
+          // chain button was removed in Ship 1 of the Methodology work —
+          // it silently overwrote the challenge field with the previous
+          // agent's output, which corrupts the brief. Real upstream →
+          // downstream chaining will land in Ship 2 as additive
+          // context, not as form-field replacement.
           previewSection.innerHTML = `
             <div class="ml-preview-wrap">
               <div class="ml-preview-text">${data.preview.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
@@ -957,38 +1038,10 @@
             <div class="ml-preview-cta">
               <div class="ml-cta-main">Full brief sent to ${email}</div>
               <div class="ml-cta-sub">Check your inbox — the complete analysis is waiting for you.</div>
-              ${chainHtml}
             </div>
           `;
           previewSection.classList.add("ml-visible");
           previewSection.scrollIntoView({ behavior: "smooth", block: "start" });
-
-          // Wire up chain button
-          const chainBtn = document.getElementById("ml-chain-copywriter");
-          if (chainBtn) {
-            chainBtn.addEventListener("click", () => {
-              // Select the Copywriter card
-              const copywriterCard = allCards.find((c) => c.querySelector("h3")?.textContent === "The Copywriter");
-              if (copywriterCard) {
-                allCards.forEach((c) => c.classList.remove("ml-selected"));
-                copywriterCard.classList.add("ml-selected");
-                selectedAgent = "copywriter";
-                formSection.classList.add("ml-visible");
-                formTitle.textContent = "The Copywriter";
-                submitBtn.textContent = "Generate The Copywriter Brief";
-                submitBtn.disabled = false;
-                statusEl.className = "ml-status";
-                statusEl.style.display = "none";
-                previewSection.className = "ml-preview-section";
-
-                // Fill challenge field with previous output
-                inputs.challenge.value = data.preview;
-
-                // Scroll to form
-                formSection.scrollIntoView({ behavior: "smooth", block: "start" });
-              }
-            });
-          }
         } else if (res.ok) {
           statusEl.className = "ml-status ml-success";
           statusEl.textContent = data.message || "Your brief has been sent to your email.";
@@ -1006,6 +1059,7 @@
       }
     });
 
+    formSection.appendChild(briefBanner);
     formSection.appendChild(formTitle);
     formSection.appendChild(subtitle);
     formSection.appendChild(fieldsContainer);
@@ -1013,6 +1067,18 @@
     formSection.appendChild(statusEl);
     formSection.appendChild(loadingSection);
     formSection.appendChild(previewSection);
+
+    // Clear the active brief — wipe localStorage, globals, form
+    // fields, and hide the banner. User can then start fresh.
+    briefBannerClear.addEventListener("click", () => {
+      try { localStorage.removeItem("ml_active_brief"); } catch (e) {}
+      delete window._mlParsedBriefFields;
+      delete window._mlActiveBrief;
+      Object.keys(inputs).forEach((k) => {
+        if (inputs[k]) inputs[k].value = "";
+      });
+      briefBanner.classList.remove("ml-visible");
+    });
 
     // Powered by
     const powered = document.createElement("div");
