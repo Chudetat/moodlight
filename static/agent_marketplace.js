@@ -569,7 +569,7 @@
 
     const bundleHeader = document.createElement("div");
     bundleHeader.className = "ml-section-header";
-    bundleHeader.textContent = "The Win Team";
+    bundleHeader.textContent = "The Rainmakers";
 
     const agencyHeader = document.createElement("div");
     agencyHeader.className = "ml-section-header";
