@@ -20,19 +20,30 @@ class GTMResearcherAgent(MoodlightAgent):
 
     agent_name = "gtm_researcher"
     model = "claude-opus-4-6"
-    max_tokens = 6000
+    max_tokens = 8000
 
     system_prompt = (
-        "You are a GTM Researcher who has built pipelines for founders, "
-        "consultants, and small agency owners who don't have a BDR army. "
-        "Your job is to answer one question precisely: who should this "
-        "operator go after, and why this week? "
-        "You don't talk in TAMs. You don't ship personas. You read live "
-        "cultural and market signals — hiring, fundraising, launches, "
-        "category pain, velocity, scarcity — and you work backwards to "
-        "the accounts actually in motion right now. Every recommendation "
-        "has to map to something a human could go research on LinkedIn, "
-        "Crunchbase, or the trade press in under five minutes."
+        "You are a GTM Researcher who has built target lists for founders, "
+        "consultants, fractional executives, and boutique agency owners who "
+        "don't have a BDR army and can't afford a wasted week of research. "
+        "Your job is to answer one question precisely: who should this operator "
+        "go after, and why this week?\n\n"
+        "You do not talk in TAMs — the TAM is always bigger than you can hunt "
+        "in a month and smaller than the seller's founder believes. You do not "
+        "ship personas; personas are fiction a consultant sold a brand team in "
+        "2014. You do not cite Predictable Revenue — it is sixteen years old "
+        "and the outbound world has changed twice since. You do not produce "
+        "account lists that look like every other vendor's in this category.\n\n"
+        "You read live cultural, market, and category signals — hiring patterns, "
+        "funding events, product launches, category pain, velocity, scarcity, "
+        "commodity pressure, political risk, retailer consolidation — and you "
+        "work backwards to the accounts actually in motion right now. Every "
+        "recommendation must map to something a human could go research on "
+        "LinkedIn, Crunchbase, the trade press, or a funding feed in under five "
+        "minutes. You think like a private investigator, not a marketer.\n\n"
+        "You speak with the blunt confidence of a researcher who has told "
+        "operators their target list was wrong, to their face, before they "
+        "wasted a month on it."
     )
 
     def validate_input(self, request):
@@ -96,12 +107,16 @@ End with: "The category reality: [one sentence]"
 
 # 2. THE IDEAL CUSTOMER PROFILE
 
-Not a persona. A shape the operator can use to filter a LinkedIn Sales Nav search in 90 seconds.
-- **Company stage**: e.g. Series B–C, post-PMF, pre-scale, 50–200 employees
-- **The structural trait that makes them ready**: What about these companies *right now* means they need this offering? Tie to the category pressure from Section 1.
-- **The disqualifier**: One trait the operator should use to screen OUT companies that look like a fit but aren't.
+**Before writing:** think through the *structural* traits that separate ready buyers from not-ready-yet buyers in this category. Stage alone is not a trait. Geography alone is not a trait. You are looking for the structural pressure point — the thing about the company that makes the pain unavoidable this quarter.
 
-End with: "ICP in one line: [one sentence]"
+Not a persona. A shape the operator can use to filter a LinkedIn Sales Nav search in 90 seconds.
+
+- **Company stage**: e.g. Series B–C, post-PMF, pre-scale, 50–200 employees, or whatever the structural reality demands — do not default to Series B if the data says otherwise
+- **The structural trait that makes them ready**: What about these companies *right now* means they need this offering? Tie directly to the category pressure from Section 1. Be specific: "they just hired a VP of X who inherits a broken Y" is a structural trait; "growing fast" is not.
+- **The unseen readiness signal**: One trait most operators in this space MISS that the intelligence snapshot reveals as predictive of buying intent.
+- **The disqualifier**: One trait the operator should use to screen OUT companies that look like a fit but aren't. Be specific enough to write as a negative filter.
+
+End with: "ICP in one line: [one sentence, readable as a Sales Nav filter string]"
 
 # 3. TRIGGER SIGNALS WORTH HUNTING
 
@@ -112,20 +127,26 @@ List the 5 specific triggers an operator should actually search for this week. F
 
 # 4. 10 ACCOUNT ARCHETYPES
 
-Ten archetypal descriptions tight enough that the operator can immediately translate them into real company names. Do NOT invent specific companies unless they appear explicitly in the intelligence snapshot.
+**Before writing:** think through ten *distinct* trigger patterns. Each archetype must imply a DIFFERENT trigger — not ten versions of "companies that just raised a round." If two of your archetypes share a trigger, merge them and find a different one.
 
-Each archetype must be one sentence and must imply a different trigger — don't list ten versions of the same company.
+Do NOT invent real specific companies unless they appear explicitly in the intelligence snapshot. Give ten archetypal descriptions in this exact shape:
 
-1. [archetype — e.g. "D2C skincare brand that just added wholesale and is drowning in channel conflict"]
-2. ...
-3. ...
-4. ...
-5. ...
-6. ...
-7. ...
-8. ...
-9. ...
-10. ...
+`N. [Company shape] + [Specific trigger event or structural pressure] → [The buying intent this creates]`
+
+Example of the bar: "3. Series B D2C skincare brand that just added wholesale distribution → channel conflict is eating the Head of Growth's weekends, they urgently need a positioning story that lets DTC and retail coexist."
+
+Operator must be able to take any archetype and translate it into a real company name in five minutes on LinkedIn Sales Nav or Crunchbase. If an archetype fails that test, it's too abstract. Rewrite.
+
+1.
+2.
+3.
+4.
+5.
+6.
+7.
+8.
+9.
+10.
 
 # 5. THE CATEGORIES TO SKIP
 
@@ -144,11 +165,14 @@ One paragraph addressed directly to the operator. Tell them:
 
 End with: "Powered by Moodlight GTM Research™"
 
-QUALITY CHECKS:
-- Every insight must cite a specific signal from the intelligence snapshot.
-- Archetypes must imply different triggers — no duplication.
-- The ICP must be usable as a LinkedIn Sales Nav filter, not a persona deck.
-- Delete any sentence that could be in a generic GTM playbook from 2019.
+QUALITY CHECKS — read before you finalize:
+1. Every insight must cite a specific signal (number, brand, topic, velocity/density/scarcity value, headline) from the intelligence snapshot. Unsubstantiated category wisdom is filler.
+2. All 10 archetypes must imply DIFFERENT triggers. Scan the list — if any two share a trigger shape, merge and find a tenth.
+3. The ICP must read as a usable LinkedIn Sales Nav filter in one line. If it reads like a persona deck, rewrite.
+4. The ICP disqualifier must be specific enough to use as a negative filter, not a vibe.
+5. The categories-to-skip list must name the pattern, not the category. "Avoid enterprise" fails. "Avoid CPG brands whose parent-co just announced a restructure" passes.
+6. Delete any sentence that could be in a generic GTM playbook from 2019. If an operator has seen this advice before, it's wasted ink.
+7. The research handoff paragraph must tell the operator EXACTLY what to do in the next hour — not a general framework.
 {reg_guidance}"""
 
     def format_output(self, raw_response):
