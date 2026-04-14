@@ -760,7 +760,7 @@ If the client said "go" right now, what's the single most important action in th
 **Steal This Line:**
 One sentence the client can use verbatim in a deck, ad, or pitch tomorrow. It must make someone uncomfortable to say out loud. If it's safe, it's forgettable.
 
-End with: "This is your starting point, not your ceiling."
+End with: "This is the starting point, not the ceiling."
 
 ---
 
@@ -803,7 +803,7 @@ _AGENT_CROSS_SELL = {
     ],
     "gtm-researcher": [
         ("Outbound Discovery", "Turn this research brief into a full GTM motion with outbound lines you can send today."),
-        ("The Audience Profiler", "Go deeper on the cultural read of your top archetype."),
+        ("The Audience Profiler", "Go deeper on the cultural read of the top archetype."),
     ],
     "cco": [
         ("The Copywriter", "Turn this brief into headlines, social posts, and ad copy."),
@@ -839,7 +839,7 @@ _AGENT_CROSS_SELL = {
     ],
     "crisis-advisor": [
         ("The Copywriter", "Draft the exact statements and social copy for this response."),
-        ("The Comms Planner", "Map the channel-by-channel deployment of your crisis response."),
+        ("The Comms Planner", "Map the channel-by-channel deployment of the crisis response."),
     ],
     "audience-profiler": [
         ("The Content Strategist", "Build content pillars for this audience."),
@@ -847,7 +847,7 @@ _AGENT_CROSS_SELL = {
     ],
     "competitive-scout": [
         ("The Cultural Strategist", "Build a positioning strategy that exploits these gaps."),
-        ("The Brand Auditor", "Run a full audit on your own brand to compare."),
+        ("The Brand Auditor", "Run a full audit on the same brand to compare."),
     ],
     "pitch-builder": [
         ("The Copywriter", "Write the headlines and key copy for this pitch."),
@@ -863,7 +863,7 @@ _AGENT_CROSS_SELL = {
     ],
     "seo-strategist": [
         ("The Content Strategist", "Build the full content strategy around these search opportunities."),
-        ("The Copywriter", "Write the SEO content for your highest-priority keyword clusters."),
+        ("The Copywriter", "Write the SEO content for the highest-priority keyword clusters."),
     ],
     "social-strategist": [
         ("The Copywriter", "Write the posts, hooks, and captions for this week's plan."),
@@ -936,7 +936,7 @@ def _build_cross_sell_html(agent_id: str) -> str:
         f'{items}'
         f'<div style="margin-top: 12px; font-size: 13px; color: #888;">'
         f'Visit <a href="https://www.moodlightintel.com" style="color: #6B46C1; text-decoration: none;">'
-        f'moodlightintel.com</a> to run your next agent.'
+        f'moodlightintel.com</a> to run another agent.'
         f'</div>'
         f'</div>'
     )
@@ -976,7 +976,7 @@ def send_strategic_brief_email(recipient_email: str, user_need: str, brief: str,
     meta_html = (
         f'<div style="margin: 0 0 20px 0; padding: 10px 15px; background: #f5f5f5; '
         f'border-radius: 8px; font-size: 14px; color: #555;">'
-        f'<strong>Your request:</strong> "{user_need}"<br>'
+        f'<strong>Request:</strong> "{user_need}"<br>'
         f'<strong>Frameworks applied:</strong> {frameworks_text}'
         f'</div>'
     )
