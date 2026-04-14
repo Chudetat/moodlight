@@ -10,6 +10,7 @@ from .crisis_advisor import CrisisAdvisorAgent
 from .audience_profiler import AudienceProfilerAgent
 from .competitive_scout import CompetitiveScoutAgent
 from .pitch_builder import PitchBuilderAgent
+from .pitch_strategist import PitchStrategistAgent
 from .content_strategist import ContentStrategistAgent
 from .culture_translator import CultureTranslatorAgent
 from .seo_strategist import SEOStrategistAgent
@@ -32,7 +33,7 @@ __all__ = [
     "CreativeDirectorAgent", "StrategyAgent", "CommsPlannerAgent", "FullDeployAgent",
     "BrandAuditorAgent", "BriefCriticAgent", "TrendForecasterAgent", "CopywriterAgent",
     "CrisisAdvisorAgent", "AudienceProfilerAgent", "CompetitiveScoutAgent",
-    "PitchBuilderAgent", "ContentStrategistAgent", "CultureTranslatorAgent",
+    "PitchBuilderAgent", "PitchStrategistAgent", "ContentStrategistAgent", "CultureTranslatorAgent",
     "SEOStrategistAgent", "SocialStrategistAgent",
     "DataStrategistAgent", "CreativeTechnologistAgent",
     "LifecycleStrategistAgent", "PaidMediaStrategistAgent", "FunnelDoctorAgent",

@@ -19,7 +19,7 @@
     {
       id: "new-business-win",
       title: "New Business Win",
-      desc: "Integrates five agents into one pitch package: Brand Auditor, Audience Profiler, Pitch Builder, Copywriter, and the Global Creative Council. Diagnostic → real audience → winning narrative → the lines that sell it → award-show endgame. For agencies walking into a pitch room.",
+      desc: "Integrates six agents into one pitch package: Brand Auditor, Audience Profiler, Pitch Strategist, Pitch Builder, Copywriter, and the Global Creative Council. Diagnostic → real audience → the one strategic insight → winning narrative → the lines that sell it → award-show endgame. For agencies walking into a pitch room.",
       icon: "\uD83C\uDFC6",
       color: "#8E24AA",
     },
@@ -135,6 +135,13 @@
       desc: "Turns any brief or strategy into a client-ready pitch narrative. The insight that wins the room, the setup that makes inaction feel dangerous.",
       icon: "\uD83C\uDFAC",
       color: "#F57F17",
+    },
+    {
+      id: "pitch-strategist",
+      title: "The Pitch Strategist",
+      desc: "The planner who walks into the room with the brief already solved. Takes diagnosis and audience and hands you the one strategic insight the pitch lives or dies on. Not three options — a bet. Kills clever for inevitable.",
+      icon: "\uD83D\uDDFA\uFE0F",
+      color: "#283593",
     },
     {
       id: "content-strategist",
@@ -518,9 +525,9 @@
     const bundleAgents = AGENTS.slice(0, 2);
     const agencyAgents = AGENTS.slice(2, 8);
     const toolkitAgents = AGENTS.slice(8, 12);
-    const specialistAgents = AGENTS.slice(12, 20);
-    const growthAgents = AGENTS.slice(20, 27);
-    const juryAgents = AGENTS.slice(27);
+    const specialistAgents = AGENTS.slice(12, 21);
+    const growthAgents = AGENTS.slice(21, 28);
+    const juryAgents = AGENTS.slice(28);
     const allCards = [];
 
     function buildGrid(agents) {
@@ -707,6 +714,13 @@
         challenge: "e.g. new business pitch, rebranding pitch, campaign extension, paste a brief here",
         timeline: "e.g. pitch is next Tuesday",
       },
+      "pitch-strategist": {
+        product: "e.g. the brand you're pitching, or paste Brand Auditor + Audience Profiler output",
+        audience: "e.g. the audience the pitch has to move — and who's in the room",
+        markets: "e.g. the markets the work has to work in",
+        challenge: "e.g. new business pitch, need one inevitable strategic insight before the creative team touches it",
+        timeline: "e.g. pitch is next Tuesday, need the spine by Friday",
+      },
       "content-strategist": {
         product: "e.g. Nike, your brand — what you sell and who you are",
         audience: "e.g. your content audience, not just buyers",
@@ -847,8 +861,26 @@
     const loadingSteps = [
       "Scanning 70,000+ cultural signals...",
       "Reading the market mood...",
-      "Mapping cultural patterns...",
-      "Building your brief...",
+      "The Pitch Strategist is thinking...",
+      "Mapping velocity, density, and scarcity...",
+      "The Brand Auditor is taking the pulse...",
+      "Hunting for inevitable insights...",
+      "The Audience Profiler is listening...",
+      "Killing clever for inevitable...",
+      "The Pitch Builder is structuring the room...",
+      "Running the substitution test...",
+      "The Copywriter is rewriting the first line...",
+      "Stripping hedge words...",
+      "The Creative Council is weighing awards...",
+      "Pressure-testing the spine...",
+      "Checking what the competition isn't saying...",
+      "The Focus Group is reacting...",
+      "Building the case for why now...",
+      "Defending the position...",
+      "Double-checking every signal citation...",
+      "Shaping the opening provocation...",
+      "Refusing the three-option menu...",
+      "Finalizing the brief...",
     ];
 
     // Preview section
@@ -889,10 +921,8 @@
       stepEl.textContent = loadingSteps[0];
       const stepInterval = setInterval(() => {
         stepIdx++;
-        if (stepIdx < loadingSteps.length) {
-          stepEl.textContent = loadingSteps[stepIdx];
-        }
-      }, 8000);
+        stepEl.textContent = loadingSteps[stepIdx % loadingSteps.length];
+      }, 6000);
 
       try {
         const res = await fetch(API_BASE + "/api/marketplace/run", {
