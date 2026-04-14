@@ -19,18 +19,16 @@
     {
       id: "new-business-win",
       title: "New Business Win",
-      desc: "Five voices, one pitch package. Brand diagnostic → real audience → winning narrative → the lines that sell it → award-show endgame. Built for agencies about to walk into a pitch room.",
+      desc: "Integrates five agents into one pitch package: Brand Auditor, Audience Profiler, Pitch Builder, Copywriter, and the Global Creative Council. Diagnostic → real audience → winning narrative → the lines that sell it → award-show endgame. For agencies walking into a pitch room.",
       icon: "\uD83C\uDFC6",
       color: "#8E24AA",
-      premium: true,
     },
     {
       id: "outbound-discovery",
       title: "Outbound Discovery",
-      desc: "Four voices, one GTM motion. Finds the next 10 accounts in motion, maps the category they live in, reads the buyer culturally, and writes outbound lines you can send today. For operators who don't have a BDR army.",
+      desc: "Integrates four agents into one GTM motion: GTM Researcher, Competitive Scout, Audience Profiler, and a B2B Copywriter. Finds the next 10 accounts in motion, maps the category, reads the buyer culturally, and writes outbound lines you can send today. For operators without a BDR army.",
       icon: "\uD83C\uDFAF",
       color: "#00897B",
-      premium: true,
     },
     {
       id: "cco",
