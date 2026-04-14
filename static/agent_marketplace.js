@@ -17,6 +17,22 @@
 
   const AGENTS = [
     {
+      id: "new-business-win",
+      title: "New Business Win",
+      desc: "Five voices, one pitch package. Brand diagnostic → real audience → winning narrative → the lines that sell it → award-show endgame. Built for agencies about to walk into a pitch room.",
+      icon: "\uD83C\uDFC6",
+      color: "#8E24AA",
+      premium: true,
+    },
+    {
+      id: "outbound-discovery",
+      title: "Outbound Discovery",
+      desc: "Four voices, one GTM motion. Finds the next 10 accounts in motion, maps the category they live in, reads the buyer culturally, and writes outbound lines you can send today. For operators who don't have a BDR army.",
+      icon: "\uD83C\uDFAF",
+      color: "#00897B",
+      premium: true,
+    },
+    {
       id: "cco",
       title: "The Chief Creative Officer",
       desc: "Builds campaign concepts from live cultural signals. The brief it writes on Tuesday is different from the one it writes on Thursday. Because the culture moved.",
@@ -493,12 +509,13 @@
   function buildUI(container) {
     let selectedAgent = null;
 
-    // Agent cards — split into four sections
-    const agencyAgents = AGENTS.slice(0, 6);
-    const toolkitAgents = AGENTS.slice(6, 10);
-    const specialistAgents = AGENTS.slice(10, 18);
-    const growthAgents = AGENTS.slice(18, 24);
-    const juryAgents = AGENTS.slice(24);
+    // Agent cards — split into sections
+    const bundleAgents = AGENTS.slice(0, 2);
+    const agencyAgents = AGENTS.slice(2, 8);
+    const toolkitAgents = AGENTS.slice(8, 12);
+    const specialistAgents = AGENTS.slice(12, 20);
+    const growthAgents = AGENTS.slice(20, 26);
+    const juryAgents = AGENTS.slice(26);
     const allCards = [];
 
     function buildGrid(agents) {
@@ -552,8 +569,13 @@
       return grid;
     }
 
+    const bundleHeader = document.createElement("div");
+    bundleHeader.className = "ml-section-header";
+    bundleHeader.textContent = "The Bundles";
+
     const agencyHeader = document.createElement("div");
     agencyHeader.className = "ml-section-header";
+    agencyHeader.style.paddingTop = "72px";
     agencyHeader.textContent = "The Agency";
 
     const toolkitHeader = document.createElement("div");
@@ -576,6 +598,7 @@
     juryHeader.style.paddingTop = "72px";
     juryHeader.textContent = "The Jury Room";
 
+    const bundleGrid = buildGrid(bundleAgents);
     const agencyGrid = buildGrid(agencyAgents);
     const toolkitGrid = buildGrid(toolkitAgents);
     const specialistGrid = buildGrid(specialistAgents);
@@ -602,6 +625,20 @@
     };
 
     const agentPlaceholders = {
+      "new-business-win": {
+        product: "e.g. the brand you're pitching (or paste the RFP) — what they sell and what they're trying to solve",
+        audience: "e.g. the audience in the RFP (we'll tell you who's actually buying)",
+        markets: "e.g. US, UK, global — where the winning work would run",
+        challenge: "e.g. new business pitch, incumbent defending, chemistry meeting, final-round creative presentation",
+        timeline: "e.g. pitch is next Tuesday, final round in 2 weeks",
+      },
+      "outbound-discovery": {
+        product: "e.g. what you sell — a service, a tool, a point of view. The tighter the description, the sharper the outbound.",
+        audience: "e.g. the kind of buyer you want (VP Marketing at Series B D2C brands, founders of 10-50 person agencies, etc.)",
+        markets: "e.g. US, UK, global — where you can actually service",
+        challenge: "e.g. need to book 10 qualified calls this month, launching a new offer, breaking into a new category, pipeline is dry",
+        timeline: "e.g. need lines I can send this week",
+      },
       "brand-auditor": {
         product: "e.g. Nike, Patagonia, Oatly, your brand name",
         audience: "e.g. your primary customer segment",
@@ -940,6 +977,8 @@
     powered.className = "ml-powered-by";
     powered.textContent = "Powered by Moodlight Real-Time Intelligence";
 
+    container.appendChild(bundleHeader);
+    container.appendChild(bundleGrid);
     container.appendChild(agencyHeader);
     container.appendChild(agencyGrid);
     container.appendChild(toolkitHeader);

@@ -793,6 +793,14 @@ Powered by Moodlight's Cultural Momentum Matrix™"
 
 
 _AGENT_CROSS_SELL = {
+    "new-business-win": [
+        ("The Brief Critic", "Pressure-test the pitch narrative before you walk into the room."),
+        ("The Creative Technologist", "Stress-test the hero concept's build and timeline before you commit to it."),
+    ],
+    "outbound-discovery": [
+        ("The Audience Profiler", "Go deeper on one of the 10 account archetypes before you send."),
+        ("The Partnership Scout", "Find partners who already have relationships in the accounts you're hunting."),
+    ],
     "cco": [
         ("The Copywriter", "Turn this brief into headlines, social posts, and ad copy."),
         ("The Comms Planner", "Get a channel-by-channel deployment plan for this campaign."),

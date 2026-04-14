@@ -675,6 +675,8 @@ class MarketplaceRequest(BaseModel):
     timeline: str = ""
 
 _MARKETPLACE_AGENTS = {
+    "new-business-win": ("agents", "NewBusinessWinAgent"),
+    "outbound-discovery": ("agents", "OutboundDiscoveryAgent"),
     "cco": ("agents", "CreativeDirectorAgent"),
     "cso": ("agents", "StrategyAgent"),
     "comms-planner": ("agents", "CommsPlannerAgent"),
@@ -704,6 +706,8 @@ _MARKETPLACE_AGENTS = {
 }
 
 _AGENT_LABELS = {
+    "new-business-win": "The New Business Win Bundle",
+    "outbound-discovery": "The Outbound Discovery Bundle",
     "cco": "Chief Creative Officer",
     "cso": "The Cultural Strategist",
     "comms-planner": "Comms Planner",

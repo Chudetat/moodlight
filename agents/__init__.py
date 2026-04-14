@@ -24,6 +24,8 @@ from .referral_architect import ReferralArchitectAgent
 from .partnership_scout import PartnershipScoutAgent
 from .creative_council import CreativeCouncilAgent
 from .focus_group import FocusGroupAgent
+from .new_business_win import NewBusinessWinAgent
+from .outbound_discovery import OutboundDiscoveryAgent
 
 __all__ = [
     "CreativeDirectorAgent", "StrategyAgent", "CommsPlannerAgent", "FullDeployAgent",
@@ -36,4 +38,5 @@ __all__ = [
     "ExperimentationStrategistAgent", "ReferralArchitectAgent",
     "PartnershipScoutAgent",
     "CreativeCouncilAgent", "FocusGroupAgent",
+    "NewBusinessWinAgent", "OutboundDiscoveryAgent",
 ]
