@@ -328,8 +328,39 @@
 
     /* ── Agent marketplace CTA ── */
     .ml-agent-cta {
-      text-align: center;
-      margin-top: 12px;
+      margin: 16px 0 4px 0;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, rgba(107, 70, 193, 0.06), rgba(25, 118, 210, 0.06));
+      border: 1px solid rgba(107, 70, 193, 0.18);
+      border-radius: 14px;
+    }
+    .ml-agent-cta-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(45, 45, 45, 0.55);
+      margin-bottom: 6px;
+    }
+    .ml-agent-cta-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #2D2D2D;
+      margin-bottom: 6px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .ml-agent-cta-why {
+      font-size: 13px;
+      color: rgba(45, 45, 45, 0.75);
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+    .ml-agent-cta-deliverable {
+      font-size: 12px;
+      color: rgba(45, 45, 45, 0.6);
+      line-height: 1.45;
+      margin-bottom: 12px;
+      font-style: italic;
     }
     .ml-agent-cta-btn {
       display: inline-block;
@@ -337,7 +368,7 @@
       color: white;
       border: none;
       border-radius: 20px;
-      padding: 10px 24px;
+      padding: 10px 22px;
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
@@ -633,9 +664,10 @@
       updateBadge();
 
       addResult(messages, "assistant", data.answer);
-      if (data.answer.includes("**Product/Service:**")) {
-        showAgentCta(messages, data.answer);
-      }
+      // Always attempt to show the handoff CTA. The backend emits a
+      // structured `recommended_agent` on every answer now; if it's
+      // missing we fall back to a generic brand-auditor nudge.
+      showAgentCta(messages, data);
       showNewQuestionBtn(messages);
     } catch (err) {
       typing.remove();
@@ -657,54 +689,59 @@
     container.scrollTop = container.scrollHeight;
   }
 
-  function showAgentCta(container, answer) {
+  // Display title lookup for every marketplace agent — keyed by the
+  // same IDs the backend emits in its <moodlight-route> block. Keep
+  // this in sync with static/agent_marketplace.js AGENTS[].
+  var AGENT_TITLES = {
+    "new-business-win": "New Business Win",
+    "outbound-discovery": "Outbound Discovery",
+    "cco": "The Chief Creative Officer",
+    "cso": "The Cultural Strategist",
+    "comms-planner": "The Comms Planner",
+    "full-deploy": "Full Deploy",
+    "data-strategist": "The Data Strategist",
+    "creative-technologist": "The Creative Technologist",
+    "brand-auditor": "The Brand Auditor",
+    "brief-critic": "The Brief Critic",
+    "trend-forecaster": "The Trend Forecaster",
+    "copywriter": "The Copywriter",
+    "crisis-advisor": "The Crisis Advisor",
+    "audience-profiler": "The Audience Profiler",
+    "competitive-scout": "The Competitive Scout",
+    "partnership-scout": "The Partnership Scout",
+    "pitch-builder": "The Pitch Builder",
+    "pitch-strategist": "The Pitch Strategist",
+    "content-strategist": "The Content Strategist",
+    "culture-translator": "The Culture Translator",
+    "social-strategist": "The Social Strategist",
+    "gtm-researcher": "The GTM Researcher",
+    "seo-strategist": "The SEO Strategist",
+    "paid-media-strategist": "The Paid Media Strategist",
+    "funnel-doctor": "The Funnel Doctor",
+    "lifecycle-strategist": "The Lifecycle Strategist",
+    "experimentation-strategist": "The Experimentation Strategist",
+    "referral-architect": "The Referral Architect",
+    "creative-council": "The Global Creative Council",
+    "focus-group": "The Focus Group",
+  };
+
+  function showAgentCta(container, data) {
     const existing = container.querySelector(".ml-agent-cta");
     if (existing) existing.remove();
 
-    // Detect which agent was mentioned
-    const agentMap = {
-      "Chief Creative Officer": "cco",
-      "CCO": "cco",
-      "Cultural Strategist": "cso",
-      "Comms Planner": "comms-planner",
-      "Full Deploy": "full-deploy",
-      "Brand Auditor": "brand-auditor",
-      "Brief Critic": "brief-critic",
-      "Trend Forecaster": "trend-forecaster",
-      "Copywriter": "copywriter",
-      "Crisis Advisor": "crisis-advisor",
-      "Audience Profiler": "audience-profiler",
-      "Competitive Scout": "competitive-scout",
-      "Pitch Builder": "pitch-builder",
-      "Content Strategist": "content-strategist",
-      "Culture Translator": "culture-translator",
-      "SEO Strategist": "seo-strategist",
-      "Social Strategist": "social-strategist",
-      "Data Strategist": "data-strategist",
-      "Creative Technologist": "creative-technologist",
-      "Paid Media Strategist": "paid-media-strategist",
-      "Funnel Doctor": "funnel-doctor",
-      "Lifecycle Strategist": "lifecycle-strategist",
-      "Experimentation Strategist": "experimentation-strategist",
-      "Referral Architect": "referral-architect",
-      "Partnership Scout": "partnership-scout",
-      "Global Creative Council": "creative-council",
-      "Creative Council": "creative-council",
-      "Focus Group": "focus-group",
-    };
+    // Prefer the structured handoff from the backend. Fall back to
+    // brand-auditor so every answer still offers a next move.
+    var rec = data && data.recommended_agent;
+    var agentId = rec && rec.id && AGENT_TITLES[rec.id] ? rec.id : "brand-auditor";
+    var agentName = AGENT_TITLES[agentId];
+    var why = (rec && rec.why) || "";
+    var deliverable = (rec && rec.deliverable) || "";
 
-    let detectedAgent = null;
-    for (const [name, id] of Object.entries(agentMap)) {
-      if (answer.includes(name)) { detectedAgent = id; break; }
-    }
-
-    const el = document.createElement("div");
-    el.className = "ml-agent-cta";
-    const btn = document.createElement("button");
-    btn.className = "ml-agent-cta-btn";
-    btn.textContent = "Run this in the Agent Marketplace \u2193";
-    // Parse brief fields from the answer
+    // Parse any explicit brief fields Claude emitted inline (only
+    // happens when the user actually asked for a brief). These still
+    // win over the fallback auto-fill when present.
     var parsedFields = {};
+    var answer = (data && data.answer) || "";
     var fieldPatterns = {
       product: /\*\*Product\/Service:\*\*\s*(.+)/i,
       audience: /\*\*Target Audience:\*\*\s*(.+)/i,
@@ -717,31 +754,72 @@
       if (m) parsedFields[key] = m[1].trim();
     }
 
+    // Fallback auto-fill — if there's no explicit brief but we have a
+    // detected brand and the user's question, use those. Product
+    // defaults to the brand, Key Challenge defaults to the verbatim
+    // question. Anything Claude already parsed takes priority.
+    var detectedBrand = (data && data.detected_brand) || "";
+    var rawQuestion = (data && data.question) || "";
+    if (!parsedFields.product && detectedBrand) {
+      parsedFields.product = detectedBrand;
+    }
+    if (!parsedFields.challenge && rawQuestion) {
+      parsedFields.challenge = rawQuestion;
+    }
+
+    // Build the CTA card
+    var el = document.createElement("div");
+    el.className = "ml-agent-cta";
+
+    var label = document.createElement("div");
+    label.className = "ml-agent-cta-label";
+    label.textContent = "Your next move \u2192";
+    el.appendChild(label);
+
+    var nameEl = document.createElement("div");
+    nameEl.className = "ml-agent-cta-name";
+    nameEl.textContent = agentName;
+    el.appendChild(nameEl);
+
+    if (why) {
+      var whyEl = document.createElement("div");
+      whyEl.className = "ml-agent-cta-why";
+      whyEl.textContent = why;
+      el.appendChild(whyEl);
+    }
+
+    if (deliverable) {
+      var delEl = document.createElement("div");
+      delEl.className = "ml-agent-cta-deliverable";
+      delEl.textContent = "You'll get: " + deliverable;
+      el.appendChild(delEl);
+    }
+
+    var btn = document.createElement("button");
+    btn.className = "ml-agent-cta-btn";
+    btn.textContent = "Run " + agentName + " \u2193";
+
     btn.onclick = function () {
-      // Store parsed fields globally so the marketplace can fill them on any agent selection
+      // Marketplace reads this on card click to fill the form fields.
       window._mlParsedBriefFields = parsedFields;
 
       var marketplace = document.getElementById("ml-marketplace") || document.getElementById("moodlight-marketplace");
-      if (marketplace) {
-        marketplace.scrollIntoView({ behavior: "smooth", block: "start" });
-        // Auto-select the detected agent card
-        if (detectedAgent) {
-          setTimeout(function () {
-            var cards = marketplace.querySelectorAll(".ml-agent-card");
-            cards.forEach(function (card) {
-              var title = card.querySelector("h3");
-              if (title) {
-                var match = Object.entries(agentMap).find(function (entry) { return entry[1] === detectedAgent; });
-                if (match && title.textContent.includes(match[0])) {
-                  card.click();
-                }
-              }
-            });
-          }, 500);
-        }
-      }
+      if (!marketplace) return;
+
+      marketplace.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Pre-select the recommended agent card by matching title text.
+      setTimeout(function () {
+        var cards = marketplace.querySelectorAll(".ml-agent-card");
+        cards.forEach(function (card) {
+          var title = card.querySelector("h3");
+          if (title && title.textContent.trim() === agentName) {
+            card.click();
+          }
+        });
+      }, 500);
     };
     el.appendChild(btn);
+
     container.appendChild(el);
     container.scrollTop = container.scrollHeight;
   }

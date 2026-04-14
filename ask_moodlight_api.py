@@ -6,6 +6,7 @@ Rate-limited to 3 queries per visitor per day.
 """
 
 import os
+import re
 import json
 import time
 import hashlib
@@ -975,6 +976,93 @@ For all industries: Consider regulatory and reputational risk when recommending 
 # System prompt (full parity with dashboard)
 # ──────────────────────────────────────────────
 
+# ──────────────────────────────────────────────
+# Agent routing — parses <moodlight-route> block Claude emits at the
+# end of every Ask Moodlight response. The widget consumes the
+# structured result to pre-select the right marketplace card and
+# auto-fill the brief fields. Any ID not in _AGENT_LABELS is dropped.
+# ──────────────────────────────────────────────
+
+_AGENT_LABELS = {
+    "new-business-win": "New Business Win",
+    "outbound-discovery": "Outbound Discovery",
+    "cco": "The Chief Creative Officer",
+    "cso": "The Cultural Strategist",
+    "comms-planner": "The Comms Planner",
+    "full-deploy": "Full Deploy",
+    "data-strategist": "The Data Strategist",
+    "creative-technologist": "The Creative Technologist",
+    "brand-auditor": "The Brand Auditor",
+    "brief-critic": "The Brief Critic",
+    "trend-forecaster": "The Trend Forecaster",
+    "copywriter": "The Copywriter",
+    "crisis-advisor": "The Crisis Advisor",
+    "audience-profiler": "The Audience Profiler",
+    "competitive-scout": "The Competitive Scout",
+    "partnership-scout": "The Partnership Scout",
+    "pitch-builder": "The Pitch Builder",
+    "pitch-strategist": "The Pitch Strategist",
+    "content-strategist": "The Content Strategist",
+    "culture-translator": "The Culture Translator",
+    "social-strategist": "The Social Strategist",
+    "gtm-researcher": "The GTM Researcher",
+    "seo-strategist": "The SEO Strategist",
+    "paid-media-strategist": "The Paid Media Strategist",
+    "funnel-doctor": "The Funnel Doctor",
+    "lifecycle-strategist": "The Lifecycle Strategist",
+    "experimentation-strategist": "The Experimentation Strategist",
+    "referral-architect": "The Referral Architect",
+    "creative-council": "The Global Creative Council",
+    "focus-group": "The Focus Group",
+}
+
+_ROUTE_RE = re.compile(
+    r"<moodlight-route>\s*(.*?)\s*</moodlight-route>",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def _extract_routing(answer: str):
+    """
+    Strip the <moodlight-route> block from the answer and return
+    (clean_answer, recommended_agent_dict_or_None).
+
+    Block format Claude emits:
+        <moodlight-route>
+        agent: <agent-id>
+        why: <one sentence>
+        deliverable: <one sentence>
+        </moodlight-route>
+
+    If no block is present or the agent ID is not recognized, returns
+    (answer, None) so the widget falls back to its generic CTA.
+    """
+    match = _ROUTE_RE.search(answer)
+    if not match:
+        return answer.strip(), None
+
+    block_text = match.group(1)
+    clean = _ROUTE_RE.sub("", answer).strip()
+
+    route = {}
+    for line in block_text.splitlines():
+        if ":" not in line:
+            continue
+        k, _, v = line.partition(":")
+        route[k.strip().lower()] = v.strip()
+
+    agent_id = route.get("agent", "").strip().lower()
+    if agent_id not in _AGENT_LABELS:
+        return clean, None
+
+    return clean, {
+        "id": agent_id,
+        "name": _AGENT_LABELS[agent_id],
+        "why": route.get("why", ""),
+        "deliverable": route.get("deliverable", ""),
+    }
+
+
 def build_system_prompt(data_context: str, total_posts: int, date_range: str) -> str:
     current_date = datetime.now().strftime("%B %d, %Y")
     return f"""You are Moodlight's AI analyst — a strategic intelligence advisor with access to real-time cultural signals and live web research.
@@ -1127,7 +1215,11 @@ You can answer questions about:
 - Strategic brief prompts: Generate ready-to-paste inputs for the Moodlight Agent Marketplace
 
 MOODLIGHT AGENT MARKETPLACE — AGENT AWARENESS:
-The Moodlight Agent Marketplace has 24 specialized AI agents. When a user references any of these agents by name, tailor the brief fields to produce the best possible input for that specific agent:
+The Moodlight Agent Marketplace has 30 specialized AI agents organized into six sections. When a user references any of these agents by name, tailor the brief fields to produce the best possible input for that specific agent:
+
+THE RAINMAKERS (multi-agent bundles for new business):
+- **New Business Win:** Integrates six agents into one pitch package — Brand Auditor → Audience Profiler → Pitch Strategist → Pitch Builder → Copywriter → Global Creative Council. Diagnostic → real audience → the one strategic insight → winning narrative → the lines that sell it → award-show endgame. Best inputs: a brand the agency is pitching + the real creative challenge. Tailor Key Challenge toward the pitch context.
+- **Outbound Discovery:** Integrates four agents into one GTM motion — GTM Researcher → Competitive Scout → Audience Profiler → B2B Copywriter. Finds the next 10 accounts in motion, maps the category, reads the buyer culturally, and writes outbound lines. Best inputs: a B2B brand + what they sell + the ICP description if known. Tailor Key Challenge toward outbound targeting problems.
 
 THE AGENCY (core strategic agents):
 - **The Chief Creative Officer (CCO):** Builds campaign concepts from live cultural signals. Best inputs: a specific brand/product, a defined audience, and a challenge framed as a creative opportunity (e.g. "break through in a saturated athleisure market"). Tailor Key Challenge toward creative territory and cultural positioning.
@@ -1149,11 +1241,13 @@ THE SPECIALISTS (deep-expertise agents):
 - **The Competitive Scout:** Head-to-head competitive intelligence from live data. Best inputs: a competitor name or competitive set (e.g. "Nike vs. On vs. Hoka"). Tailor Key Challenge toward competitive dynamics (e.g. "losing share" or "new entrant disrupting").
 - **The Partnership Scout:** Unexpected brand, creator, and institution collaboration candidates with value exchange, risk assessment, and outreach playbook. Opposite vector from the Competitive Scout — this one finds allies, not enemies. Best inputs: a brand + the cultural gap it's trying to close. Tailor Key Challenge toward partnership needs (e.g. "need to borrow cultural credit" or "looking for unexpected collabs" or "who should we team up with").
 - **The Pitch Builder:** Turns briefs or strategy into client-ready pitch narratives. Best inputs: a brand + challenge, or paste output from another agent. Tailor Key Challenge toward the pitch context (e.g. "new business pitch" or "campaign extension to existing client").
+- **The Pitch Strategist:** The planner who walks into the room with the brief already solved. Hands you ONE strategic insight the pitch lives or dies on — not three options, a bet. Kills clever for inevitable. Best inputs: a brand + the pitch context (the brief as given, the incumbent if any, what the client said they want). Tailor Key Challenge toward the central strategic question (e.g. "what's the one insight that wins this pitch" or "why should this brand exist now").
 - **The Content Strategist:** Content pillars, editorial rhythm, and platform angles from cultural signals. Best inputs: a brand + content goals. Tailor Key Challenge toward content problems (e.g. "content isn't landing" or "launching a new channel" or "need new pillars").
 - **The Culture Translator:** Market-by-market cultural adaptation intelligence. Best inputs: a brand + campaign + target markets. Tailor Markets/Geography toward the specific markets to adapt for, Key Challenge toward adaptation concerns (e.g. "global launch" or "what will get us cancelled in Japan").
 - **The Social Strategist:** Real-time social platform intelligence — what's working this week, which hooks stop the scroll, which trends to ride. Best inputs: a brand + social goals or platforms. Tailor Key Challenge toward social problems (e.g. "low engagement on TikTok" or "launching on LinkedIn" or "need this week's content").
 
 THE GROWTH TEAM (acquisition, retention, and revenue engineering agents):
+- **The GTM Researcher:** Names the next 10 accounts worth going after this week, the trigger signals worth hunting, the ICP that fits a LinkedIn filter, and which categories to skip. The research brief every growth team needs before outbound starts. Best inputs: a B2B brand + what they sell. Tailor Key Challenge toward targeting problems (e.g. "who should we hit next week" or "ICP is too broad" or "outbound is cold").
 - **The SEO Strategist:** Predictive SEO from cultural velocity signals — identifies what people will search for before keyword tools catch up. Best inputs: a brand or category + search goals. Tailor Key Challenge toward search problems (e.g. "no organic traffic" or "losing rankings" or "entering new category").
 - **The Paid Media Strategist:** Paid channel mix, budget allocation, audience targeting, creative rotation, bid strategy, and incrementality testing. Best inputs: a brand with active or planned paid spend. Tailor Key Challenge toward paid problems (e.g. "CPA is climbing" or "creative fatigue" or "need to pick channels" or "ROAS doesn't match incrementality").
 - **The Funnel Doctor:** Conversion diagnostics — finds where users drop, why, and what to fix first. Best inputs: a brand with a funnel problem. Tailor Key Challenge toward conversion leaks (e.g. "checkout abandonment" or "traffic doesn't convert" or "activation is broken").
@@ -1181,7 +1275,27 @@ DO NOT use this format when the user:
 - Continues a conversation about a topic
 - Pastes an article, blog post, or written content
 
-When users share written content, respond conversationally — provide feedback, analysis, or continue the discussion. The brief format is ONLY for explicit brief generation requests."""
+When users share written content, respond conversationally — provide feedback, analysis, or continue the discussion. The brief format is ONLY for explicit brief generation requests.
+
+ALWAYS-ON AGENT ROUTING — EMIT THIS BLOCK AT THE END OF EVERY RESPONSE, NO EXCEPTIONS:
+
+After your main answer, regardless of whether the user asked for a brief, always emit a single routing block in this exact format on its own lines at the very end of your response:
+
+<moodlight-route>
+agent: [one agent-id from the list below]
+why: [one sentence — the specific reason THIS agent is the right next move for THIS query]
+deliverable: [one sentence — what the agent will actually produce, in concrete terms the user can visualize]
+</moodlight-route>
+
+Valid agent IDs (use the ID exactly, lowercase, with hyphens — not the display name):
+new-business-win, outbound-discovery, cco, cso, comms-planner, full-deploy, data-strategist, creative-technologist, brand-auditor, brief-critic, trend-forecaster, copywriter, crisis-advisor, audience-profiler, competitive-scout, partnership-scout, pitch-builder, pitch-strategist, content-strategist, culture-translator, social-strategist, gtm-researcher, seo-strategist, paid-media-strategist, funnel-doctor, lifecycle-strategist, experimentation-strategist, referral-architect, creative-council, focus-group
+
+Routing rules:
+- Pick the ONE agent that would most obviously blow the doors off the user's expectations given what they just asked. Competitive positioning → Competitive Scout or Cultural Strategist. Crisis → Crisis Advisor. New business pitch → New Business Win bundle or Pitch Strategist. Launching in a new market → Culture Translator. Can't find organic traffic → SEO Strategist. Pre-launch creative gut check → Focus Group. Award submission question → Global Creative Council. B2B outbound → Outbound Discovery or GTM Researcher. General "what's happening in my brand's culture" → Brand Auditor. When in doubt, default to brand-auditor — it accepts any brand and always produces useful output.
+- The `why` line must be specific to the user's actual question. "Because you asked about positioning" fails. Name the brand, the category dynamic, or the signal that makes this the right call.
+- The `deliverable` line must be concrete and visualizable. "A strategic analysis" fails. "A one-page cultural positioning read with 3 ownable territories ranked by whitespace, each with signal citations from the last 7 days of data" passes.
+- This block is CONSUMED BY THE INTERFACE — the user never sees it. It determines which marketplace agent card gets pre-selected when they click "Run this." A wrong or missing agent ID breaks the handoff.
+- Emit the block even if you already recommended an agent in-line in the answer. Emit exactly ONE block. Never skip it. Never wrap it in code fences."""
 
 
 # ──────────────────────────────────────────────
@@ -1198,6 +1312,11 @@ class AskResponse(BaseModel):
     answer: str
     queries_remaining: int
     is_paid: bool = False
+    # Handoff fields consumed by the Ask Moodlight widget to pre-select
+    # the right marketplace agent and auto-fill the brief fields.
+    detected_brand: str | None = None
+    question: str | None = None
+    recommended_agent: dict | None = None
 
 
 # ──────────────────────────────────────────────
@@ -1370,6 +1489,10 @@ async def ask_moodlight(req: AskRequest, request: Request):
         print(f"WARNING: Claude API failed after 3 attempts: {last_err}")
         raise HTTPException(status_code=503, detail="Intelligence engine temporarily unavailable.")
 
+    # Strip the routing block Claude emitted at the end of the answer
+    # and surface it as structured handoff data for the widget.
+    clean_answer, recommended_agent = _extract_routing(answer)
+
     # Record request for analytics (no limit enforced)
     _record_request(client_ip)
     queries_remaining = 999
@@ -1377,7 +1500,14 @@ async def ask_moodlight(req: AskRequest, request: Request):
     # Log the query for analytics
     _log_query(question, client_ip, is_paid, brand_name, topic_name)
 
-    return AskResponse(answer=answer, queries_remaining=queries_remaining, is_paid=is_paid)
+    return AskResponse(
+        answer=clean_answer,
+        queries_remaining=queries_remaining,
+        is_paid=is_paid,
+        detected_brand=brand_name or None,
+        question=question,
+        recommended_agent=recommended_agent,
+    )
 
 
 # ──────────────────────────────────────────────
