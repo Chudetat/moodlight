@@ -703,6 +703,7 @@ _MARKETPLACE_AGENTS = {
     "partnership-scout": ("agents", "PartnershipScoutAgent"),
     "creative-council": ("agents", "CreativeCouncilAgent"),
     "focus-group": ("agents", "FocusGroupAgent"),
+    "gtm-researcher": ("agents", "GTMResearcherAgent"),
 }
 
 _AGENT_LABELS = {
@@ -734,6 +735,7 @@ _AGENT_LABELS = {
     "partnership-scout": "The Partnership Scout",
     "creative-council": "The Global Creative Council",
     "focus-group": "The Focus Group",
+    "gtm-researcher": "The GTM Researcher",
 }
 
 

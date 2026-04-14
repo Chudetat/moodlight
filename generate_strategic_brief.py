@@ -801,6 +801,10 @@ _AGENT_CROSS_SELL = {
         ("The Audience Profiler", "Go deeper on one of the 10 account archetypes before you send."),
         ("The Partnership Scout", "Find partners who already have relationships in the accounts you're hunting."),
     ],
+    "gtm-researcher": [
+        ("Outbound Discovery", "Turn this research brief into a full GTM motion with outbound lines you can send today."),
+        ("The Audience Profiler", "Go deeper on the cultural read of your top archetype."),
+    ],
     "cco": [
         ("The Copywriter", "Turn this brief into headlines, social posts, and ad copy."),
         ("The Comms Planner", "Get a channel-by-channel deployment plan for this campaign."),

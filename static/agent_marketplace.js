@@ -158,6 +158,13 @@
       color: "#880E4F",
     },
     {
+      id: "gtm-researcher",
+      title: "The GTM Researcher",
+      desc: "Tells you exactly who to go after this week. 10 account archetypes, the trigger signals worth hunting, the ICP that fits a LinkedIn filter — and which categories to skip. The research brief every growth team needs before outbound starts.",
+      icon: "\uD83D\uDD2D",
+      color: "#2E7D32",
+    },
+    {
       id: "seo-strategist",
       title: "The SEO Strategist",
       desc: "Predicts what people will search for before keyword tools catch up. Finds the gaps, maps the clusters, and owns the rankings while competitors wait for last month's data.",
@@ -512,8 +519,8 @@
     const agencyAgents = AGENTS.slice(2, 8);
     const toolkitAgents = AGENTS.slice(8, 12);
     const specialistAgents = AGENTS.slice(12, 20);
-    const growthAgents = AGENTS.slice(20, 26);
-    const juryAgents = AGENTS.slice(26);
+    const growthAgents = AGENTS.slice(20, 27);
+    const juryAgents = AGENTS.slice(27);
     const allCards = [];
 
     function buildGrid(agents) {
@@ -636,6 +643,13 @@
         markets: "e.g. US, UK, global — where you can actually service",
         challenge: "e.g. need to book 10 qualified calls this month, launching a new offer, breaking into a new category, pipeline is dry",
         timeline: "e.g. need lines I can send this week",
+      },
+      "gtm-researcher": {
+        product: "e.g. what you sell — the offering you need to find accounts for",
+        audience: "e.g. the type of buyer you think fits (we'll tighten the ICP against live signals)",
+        markets: "e.g. US, UK, global — where you can actually service",
+        challenge: "e.g. don't know who to hunt this quarter, category feels crowded, pipeline research is stale",
+        timeline: "e.g. need a target list today",
       },
       "brand-auditor": {
         product: "e.g. Nike, Patagonia, Oatly, your brand name",
