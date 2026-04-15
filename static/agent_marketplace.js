@@ -15,6 +15,13 @@
     ? scriptSrc.replace(/\/static\/agent_marketplace\.js.*$/, "")
     : "https://moodlight-api-production.up.railway.app";
 
+  // tier: "upstream" (analysis/strategy/research — runs first),
+  //       "downstream" (production/making the artifact — runs after
+  //       context is set), "both" (agents that operate on either side
+  //       of the chain depending on the query), or "bundle" (multi-
+  //       agent packages that contain their own upstream→downstream
+  //       flow). Used for the tier badge on each card and for Ship 3
+  //       sequence validation in the routing parser.
   const AGENTS = [
     {
       id: "new-business-win",
@@ -22,6 +29,7 @@
       desc: "Integrates six agents into one pitch package: Brand Auditor, Audience Profiler, Pitch Strategist, Pitch Builder, Copywriter, and the Global Creative Council. Diagnostic → real audience → the one strategic insight → winning narrative → the lines that sell it → award-show endgame. For agencies walking into a pitch room.",
       icon: "\uD83C\uDFC6",
       color: "#8E24AA",
+      tier: "bundle",
     },
     {
       id: "outbound-discovery",
@@ -29,6 +37,7 @@
       desc: "Integrates four agents into one GTM motion: GTM Researcher, Competitive Scout, Audience Profiler, and a B2B Copywriter. Finds the next 10 accounts in motion, maps the category, reads the buyer culturally, and writes outbound lines you can send today. For operators without a BDR army.",
       icon: "\uD83C\uDFAF",
       color: "#00897B",
+      tier: "bundle",
     },
     {
       id: "cco",
@@ -36,6 +45,7 @@
       desc: "Builds campaign concepts from live cultural signals. The brief it writes on Tuesday is different from the one it writes on Thursday. Because the culture moved.",
       icon: "\u2728",
       color: "#7B1FA2",
+      tier: "downstream",
     },
     {
       id: "cso",
@@ -43,6 +53,7 @@
       desc: "Reads the market, the mood, and the momentum. Picks a position. Defends it with data. Doesn't hedge.",
       icon: "\u265F",
       color: "#1565C0",
+      tier: "upstream",
     },
     {
       id: "comms-planner",
@@ -50,6 +61,7 @@
       desc: "Tells you where to show up, when to deploy, and what to skip. Every recommendation backed by where attention actually is.",
       icon: "\uD83D\uDCE1",
       color: "#2E7D32",
+      tier: "upstream",
     },
     {
       id: "full-deploy",
@@ -58,6 +70,7 @@
       icon: "\uD83D\uDE80",
       color: "#D84315",
       premium: true,
+      tier: "bundle",
     },
     {
       id: "data-strategist",
@@ -65,6 +78,7 @@
       desc: "Builds the KPI tree, kills the vanity metrics, and tells you which first-party data to activate. A measurement plan that actually ladders to revenue — not a dashboard graveyard.",
       icon: "\uD83D\uDCCA",
       color: "#37474F",
+      tier: "upstream",
     },
     {
       id: "creative-technologist",
@@ -72,6 +86,7 @@
       desc: "Translates a concept into a stack, a prototype, and a build plan. Tells you what to build, what to buy, what will break, and when to walk away. No hype — just what ships.",
       icon: "\uD83D\uDEE0\uFE0F",
       color: "#5D4037",
+      tier: "downstream",
     },
     {
       id: "brand-auditor",
@@ -79,6 +94,7 @@
       desc: "Type your brand. See where you stand culturally — what you own, what you're missing, and where the whitespace is. A full diagnostic in 60 seconds.",
       icon: "\uD83D\uDD0D",
       color: "#00838F",
+      tier: "upstream",
     },
     {
       id: "brief-critic",
@@ -86,6 +102,7 @@
       desc: "Paste your brief. Get it torn apart against live data. Finds what's stale, what's wrong, and what the data says you should be doing instead.",
       icon: "\u2702\uFE0F",
       color: "#AD1457",
+      tier: "both",
     },
     {
       id: "trend-forecaster",
@@ -93,6 +110,7 @@
       desc: "Not what's trending now — what's next. Reads velocity, scarcity, and signal clusters to predict cultural shifts before they have names.",
       icon: "\uD83D\uDD2E",
       color: "#E65100",
+      tier: "upstream",
     },
     {
       id: "copywriter",
@@ -100,6 +118,7 @@
       desc: "Headlines, social posts, and ad copy tuned to the cultural moment. Every line is built on what's happening right now, not what was approved last month.",
       icon: "\u270D\uFE0F",
       color: "#283593",
+      tier: "downstream",
     },
     {
       id: "crisis-advisor",
@@ -107,6 +126,7 @@
       desc: "Your brand just got tagged in something. Here's what to say, what not to say, and how fast you need to move. Real-time crisis response, not a PR playbook.",
       icon: "\u26A1",
       color: "#B71C1C",
+      tier: "both",
     },
     {
       id: "audience-profiler",
@@ -114,6 +134,7 @@
       desc: "Who's actually talking about your brand, what they care about, and where they're drifting. Psychographic intelligence from live signals, not stale persona decks.",
       icon: "\uD83C\uDFAF",
       color: "#4A148C",
+      tier: "upstream",
     },
     {
       id: "competitive-scout",
@@ -121,6 +142,7 @@
       desc: "What cultural territory your competitors are claiming, where they're vulnerable, and what they're sleeping on. Head-to-head intelligence from live data.",
       icon: "\uD83D\uDD75\uFE0F",
       color: "#1B5E20",
+      tier: "upstream",
     },
     {
       id: "partnership-scout",
@@ -128,6 +150,7 @@
       desc: "The opposite of the Competitive Scout. Finds unexpected brand, creator, and institution collabs — with the value exchange, the risk read, and how to actually make the ask.",
       icon: "\uD83E\uDD1D",
       color: "#6A1B9A",
+      tier: "upstream",
     },
     {
       id: "pitch-builder",
@@ -135,6 +158,7 @@
       desc: "Turns any brief or strategy into a client-ready pitch narrative. The insight that wins the room, the setup that makes inaction feel dangerous.",
       icon: "\uD83C\uDFAC",
       color: "#F57F17",
+      tier: "downstream",
     },
     {
       id: "pitch-strategist",
@@ -142,6 +166,7 @@
       desc: "The planner who walks into the room with the brief already solved. Takes diagnosis and audience and hands you the one strategic insight the pitch lives or dies on. Not three options — a bet. Kills clever for inevitable.",
       icon: "\uD83D\uDDFA\uFE0F",
       color: "#283593",
+      tier: "upstream",
     },
     {
       id: "content-strategist",
@@ -149,6 +174,7 @@
       desc: "Content pillars, editorial rhythm, and platform angles built from what the culture is actually talking about. Not a calendar — a content ecosystem.",
       icon: "\uD83D\uDCDD",
       color: "#0277BD",
+      tier: "upstream",
     },
     {
       id: "culture-translator",
@@ -156,6 +182,7 @@
       desc: "Launching across markets? Here's what lands, what breaks, and what will get you cancelled. Market-by-market cultural adaptation intelligence.",
       icon: "\uD83C\uDF0D",
       color: "#006064",
+      tier: "upstream",
     },
     {
       id: "social-strategist",
@@ -163,6 +190,7 @@
       desc: "What's actually working on social this week. Which hooks stop the scroll, which trends to ride, which to skip. Tactical intelligence, not best practices from last quarter.",
       icon: "\uD83D\uDCF1",
       color: "#880E4F",
+      tier: "both",
     },
     {
       id: "gtm-researcher",
@@ -170,6 +198,7 @@
       desc: "Tells you exactly who to go after this week. 10 account archetypes, the trigger signals worth hunting, the ICP that fits a LinkedIn filter — and which categories to skip. The research brief every growth team needs before outbound starts.",
       icon: "\uD83D\uDD2D",
       color: "#2E7D32",
+      tier: "upstream",
     },
     {
       id: "seo-strategist",
@@ -177,6 +206,7 @@
       desc: "Predicts what people will search for before keyword tools catch up. Finds the gaps, maps the clusters, and owns the rankings while competitors wait for last month's data.",
       icon: "\uD83D\uDD0E",
       color: "#33691E",
+      tier: "both",
     },
     {
       id: "paid-media-strategist",
@@ -184,6 +214,7 @@
       desc: "Channel mix, budget allocation, creative rotation, and honest incrementality. Tells you where every paid dollar goes — and which platforms are a tax, not a strategy.",
       icon: "\uD83D\uDCB0",
       color: "#4E342E",
+      tier: "both",
     },
     {
       id: "funnel-doctor",
@@ -191,6 +222,7 @@
       desc: "Finds where your funnel is leaking, why, and what to fix first. A stage-by-stage x-ray with an impact-times-effort fix list you can start on tomorrow.",
       icon: "\uD83E\uDE7A",
       color: "#BF360C",
+      tier: "both",
     },
     {
       id: "lifecycle-strategist",
@@ -198,6 +230,7 @@
       desc: "Triggered journeys from onboarding to win-back. CRM, email, and SMS plays designed around customer state — not campaign calendars.",
       icon: "\uD83D\uDD04",
       color: "#1A237E",
+      tier: "both",
     },
     {
       id: "experimentation-strategist",
@@ -205,6 +238,7 @@
       desc: "Falsifiable hypotheses, pre-registered decision rules, and a 90-day test roadmap. Fewer tests, better-designed, with actual learnings instead of vibes.",
       icon: "\uD83E\uDDEA",
       color: "#4527A0",
+      tier: "both",
     },
     {
       id: "referral-architect",
@@ -212,6 +246,7 @@
       desc: "Designs the loop before the incentive. Finds your real share moment, maps the mechanic, and engineers word-of-mouth that doesn't depend on a coupon at checkout.",
       icon: "\uD83D\uDD17",
       color: "#AD1457",
+      tier: "both",
     },
     {
       id: "creative-council",
@@ -219,6 +254,7 @@
       desc: "Award-show entry strategist. Grounded in the top global advertising shows (Cannes, Effie, Clio, D&AD, One Show, ADC, LIA) AND the historical database of past winning work and the exact categories it won in.",
       icon: "\uD83C\uDFC6",
       color: "#B8860B",
+      tier: "upstream",
     },
     {
       id: "focus-group",
@@ -226,8 +262,18 @@
       desc: "Pre-research gut check grounded in live cultural signals. Convenes a synthetic panel anchored in what real audiences are talking about this week. Directional, not a substitute for real research.",
       icon: "\uD83D\uDDE3\uFE0F",
       color: "#00695C",
+      tier: "upstream",
     },
   ];
+
+  // Display label + color-pair for each tier. Kept separate from the
+  // raw tier so we can swap copy without retyping 30 metadata blocks.
+  const TIER_DISPLAY = {
+    upstream:   { label: "Analysis",   color: "#1565C0" },
+    downstream: { label: "Production", color: "#D84315" },
+    both:       { label: "Hybrid",     color: "#5D4037" },
+    bundle:     { label: "Bundle",     color: "#8E24AA" },
+  };
 
   function injectStyles() {
     const css = `
@@ -322,6 +368,21 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
+      .ml-tier-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        font-size: 9px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        background: rgba(45, 45, 45, 0.04);
+        border: 1px solid currentColor;
+        opacity: 0.7;
+      }
+      .ml-agent-card:hover .ml-tier-badge { opacity: 1; }
       .ml-form-section {
         display: none;
         background: rgba(0, 0, 0, 0.03) !important;
@@ -667,9 +728,18 @@
         const card = document.createElement("div");
         card.className = "ml-agent-card";
         card.style.setProperty("--agent-color", agent.color);
+        // Tier badge — shown on every non-premium card so users can
+        // instantly read whether an agent is Analysis (upstream),
+        // Production (downstream), Hybrid (both), or a Bundle. The
+        // "All Three" premium badge still wins on full-deploy so
+        // badges don't stack in the top-right corner.
+        const tier = TIER_DISPLAY[agent.tier] || null;
+        const tierBadgeHTML = (!agent.premium && tier)
+          ? `<span class="ml-tier-badge" style="color:${tier.color}">${tier.label}</span>`
+          : "";
         card.innerHTML = `
           <span class="ml-icon">${agent.icon}</span>
-          ${agent.premium ? '<span class="ml-premium-badge">All Three</span>' : ""}
+          ${agent.premium ? '<span class="ml-premium-badge">All Three</span>' : tierBadgeHTML}
           <h3>${agent.title}</h3>
           <p>${agent.desc}</p>
         `;
