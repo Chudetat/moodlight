@@ -1006,6 +1006,8 @@ After your main answer, regardless of whether the user asked for a brief, always
 agent: [one agent-id from the list below]
 why: [one sentence — the specific reason THIS agent is the right next move for THIS query]
 deliverable: [one sentence — what the agent will actually produce, in concrete terms the user can visualize]
+sequence: [OPTIONAL — upstream→downstream workflow of 2-4 agent IDs separated by " > ", e.g. "cso > copywriter > cco". First agent MUST equal the `agent:` above.]
+sequence_reasoning: [OPTIONAL — one sentence explaining why this multi-agent chain beats running the primary agent alone. Required if `sequence:` is present.]
 </moodlight-route>
 
 Valid agent IDs (use the ID exactly, lowercase, with hyphens — not the display name):
@@ -1015,7 +1017,13 @@ Routing rules:
 - Pick the ONE agent that would most obviously blow the doors off the user's expectations given what they just asked. Competitive positioning → Competitive Scout or Cultural Strategist. Crisis → Crisis Advisor. New business pitch → New Business Win bundle or Pitch Strategist. Launching in a new market → Culture Translator. Can't find organic traffic → SEO Strategist. Pre-launch creative gut check → Focus Group. Award submission question → Global Creative Council. B2B outbound → Outbound Discovery or GTM Researcher. General "what's happening in my brand's culture" → Brand Auditor. When in doubt, default to brand-auditor — it accepts any brand and always produces useful output.
 - The `why` line must be specific to the user's actual question. "Because you asked about positioning" fails. Name the brand, the category dynamic, or the signal that makes this the right call.
 - The `deliverable` line must be concrete and visualizable. "A strategic analysis" fails. "A one-page cultural positioning read with 3 ownable territories ranked by whitespace, each with signal citations from the last 7 days of data" passes.
-- This block is CONSUMED BY THE INTERFACE — the user never sees it. It determines which marketplace agent card gets pre-selected when they click "Run this." A wrong or missing agent ID breaks the handoff.
+
+SEQUENCE RULES — WHEN TO EMIT A MULTI-AGENT CHAIN:
+- EMIT a sequence when the query implies multi-step work: a full launch/rebrand/pitch/campaign/crisis-response, ANY request that names both upstream analysis AND downstream production ("what's the positioning AND write the copy"), or any ask where running a single agent would leave an obvious next step on the table that a competent creative director would immediately reach for. Upstream agents (cultural analysis, brand audit, competitive scout, audience profile, trend forecast, data strategy, crisis advisor, partnership scout, culture translator, content strategist, comms planner, pitch strategist, gtm researcher, seo strategist, paid media strategist, lifecycle strategist, experimentation strategist, referral architect, creative council, focus group) feed downstream production agents (copywriter, cco, creative-technologist, pitch-builder) with context.
+- DO NOT emit a sequence when the query is a single diagnostic question ("what's happening with Nike right now"), a one-shot category read, feedback on content, or any ask that a single agent can satisfy end-to-end. A forced sequence on a simple question looks robotic.
+- When you emit a sequence: the FIRST ID must equal `agent:` above. Subsequent IDs must be downstream of that first agent (the output of step N must be usable context for step N+1). Cap at 4 steps. Never repeat an ID.
+- `sequence_reasoning` must name the SPECIFIC value-add of chaining — e.g. "The Cultural Strategist frames the territory so the Copywriter isn't writing from a cold brief, and the CCO stress-tests the final idea against the Fearless Girl bar." Generic "this gives a complete workflow" fails.
+- This block is CONSUMED BY THE INTERFACE — the user never sees it. It determines which marketplace agent card gets pre-selected and, when a sequence is present, populates the workflow ladder shown below the primary CTA. A wrong or missing agent ID breaks the handoff.
 - Emit the block even if you already recommended an agent in-line in the answer. Emit exactly ONE block. Never skip it. Never wrap it in code fences."""
 
 

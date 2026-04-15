@@ -380,6 +380,68 @@
       opacity: 0.9;
       transform: scale(1.02);
     }
+    .ml-agent-cta-workflow {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px dashed rgba(107, 70, 193, 0.22);
+    }
+    .ml-agent-cta-workflow-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6B46C1;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .ml-agent-cta-workflow-ladder {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 4px;
+      margin-bottom: 8px;
+    }
+    .ml-workflow-step {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(107, 70, 193, 0.08);
+      border: 1px solid rgba(107, 70, 193, 0.20);
+      color: #5a1480;
+      border-radius: 999px;
+      padding: 5px 12px 5px 8px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: 'Space Grotesk', sans-serif;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .ml-workflow-step:hover {
+      background: rgba(107, 70, 193, 0.14);
+      transform: translateY(-1px);
+    }
+    .ml-workflow-step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #6B46C1;
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .ml-workflow-arrow {
+      color: rgba(107, 70, 193, 0.5);
+      font-size: 12px;
+      padding: 0 1px;
+    }
+    .ml-agent-cta-workflow-reasoning {
+      font-size: 11px;
+      color: rgba(45, 45, 45, 0.6);
+      line-height: 1.5;
+      font-style: italic;
+    }
 
     /* ── Unlock button ── */
     .ml-unlock-btn {
@@ -795,23 +857,17 @@
       el.appendChild(delEl);
     }
 
-    var btn = document.createElement("button");
-    btn.className = "ml-agent-cta-btn";
-    btn.textContent = "Run " + agentName + " \u2193";
-
-    btn.onclick = function () {
-      // Marketplace reads this on card click to fill the form fields.
+    // Shared handoff — persist brief to localStorage and click the
+    // target marketplace agent card. Used by both the primary CTA
+    // button and every step chip in the workflow ladder.
+    function handoffTo(targetAgentId, targetAgentName) {
       window._mlParsedBriefFields = parsedFields;
-
-      // Persist the brief so it survives page reloads and the
-      // email cross-sell roundtrip. 24h expiry is handled on
-      // hydrate. The marketplace widget reads this on load.
       try {
         localStorage.setItem("ml_active_brief", JSON.stringify({
           fields: parsedFields,
           originalQuestion: rawQuestion,
           detectedBrand: detectedBrand,
-          recommendedAgent: agentId,
+          recommendedAgent: targetAgentId,
           timestamp: Date.now(),
         }));
       } catch (e) {}
@@ -820,18 +876,73 @@
       if (!marketplace) return;
 
       marketplace.scrollIntoView({ behavior: "smooth", block: "start" });
-      // Pre-select the recommended agent card by matching title text.
       setTimeout(function () {
         var cards = marketplace.querySelectorAll(".ml-agent-card");
         cards.forEach(function (card) {
           var title = card.querySelector("h3");
-          if (title && title.textContent.trim() === agentName) {
+          if (title && title.textContent.trim() === targetAgentName) {
             card.click();
           }
         });
       }, 500);
-    };
+    }
+
+    var btn = document.createElement("button");
+    btn.className = "ml-agent-cta-btn";
+    btn.textContent = "Run " + agentName + " \u2193";
+    btn.onclick = function () { handoffTo(agentId, agentName); };
     el.appendChild(btn);
+
+    // Ship 3: Moodlight Methodology workflow ladder. When Claude
+    // emits a multi-step sequence, render it as numbered clickable
+    // chips below the primary CTA so the user can see the full
+    // recommended workflow and jump directly to any step. Ship 2
+    // upstream context automatically links them together when the
+    // user runs them in order.
+    var sequence = (rec && Array.isArray(rec.sequence)) ? rec.sequence : [];
+    if (sequence.length >= 2) {
+      var workflow = document.createElement("div");
+      workflow.className = "ml-agent-cta-workflow";
+
+      var workflowLabel = document.createElement("div");
+      workflowLabel.className = "ml-agent-cta-workflow-label";
+      workflowLabel.textContent = "The Moodlight Methodology \u2192";
+      workflow.appendChild(workflowLabel);
+
+      var ladder = document.createElement("div");
+      ladder.className = "ml-agent-cta-workflow-ladder";
+      sequence.forEach(function (step, idx) {
+        if (idx > 0) {
+          var arrow = document.createElement("span");
+          arrow.className = "ml-workflow-arrow";
+          arrow.textContent = "\u2192";
+          ladder.appendChild(arrow);
+        }
+        var chip = document.createElement("button");
+        chip.className = "ml-workflow-step";
+        chip.type = "button";
+        var num = document.createElement("span");
+        num.className = "ml-workflow-step-num";
+        num.textContent = String(idx + 1);
+        chip.appendChild(num);
+        var chipLabel = document.createElement("span");
+        chipLabel.textContent = step.name || step.id;
+        chip.appendChild(chipLabel);
+        chip.onclick = function () { handoffTo(step.id, step.name || step.id); };
+        ladder.appendChild(chip);
+      });
+      workflow.appendChild(ladder);
+
+      var seqWhy = (rec && rec.sequence_reasoning) || "";
+      if (seqWhy) {
+        var reasoningEl = document.createElement("div");
+        reasoningEl.className = "ml-agent-cta-workflow-reasoning";
+        reasoningEl.textContent = seqWhy;
+        workflow.appendChild(reasoningEl);
+      }
+
+      el.appendChild(workflow);
+    }
 
     container.appendChild(el);
     container.scrollTop = container.scrollHeight;
