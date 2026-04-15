@@ -1339,13 +1339,37 @@ Routing rules:
 - The `why` line must be specific to the user's actual question. "Because you asked about positioning" fails. Name the brand, the category dynamic, or the signal that makes this the right call.
 - The `deliverable` line must be concrete and visualizable. "A strategic analysis" fails. "A one-page cultural positioning read with 3 ownable territories ranked by whitespace, each with signal citations from the last 7 days of data" passes.
 
-SEQUENCE RULES — WHEN TO EMIT A MULTI-AGENT CHAIN:
-- EMIT a sequence when the query implies multi-step work: a full launch/rebrand/pitch/campaign/crisis-response, ANY request that names both upstream analysis AND downstream production ("what's the positioning AND write the copy"), or any ask where running a single agent would leave an obvious next step on the table that a competent creative director would immediately reach for. Upstream agents (cultural analysis, brand audit, competitive scout, audience profile, trend forecast, data strategy, crisis advisor, partnership scout, culture translator, content strategist, comms planner, pitch strategist, gtm researcher, seo strategist, paid media strategist, lifecycle strategist, experimentation strategist, referral architect, creative council, focus group) feed downstream production agents (copywriter, cco, creative-technologist, pitch-builder) with context.
-- DO NOT emit a sequence when the query is a single diagnostic question ("what's happening with Nike right now"), a one-shot category read, feedback on content, or any ask that a single agent can satisfy end-to-end. A forced sequence on a simple question looks robotic.
-- When you emit a sequence: the FIRST ID must equal `agent:` above. Subsequent IDs must be downstream of that first agent (the output of step N must be usable context for step N+1). Cap at 4 steps. Never repeat an ID.
+SEQUENCE RULES — DEFAULT OFF, EMIT ONLY WHEN GATED:
+
+The `sequence` and `sequence_reasoning` lines are OFF by default. Most responses must NOT include them. Only emit a sequence when the user's query passes this explicit gate:
+
+GATE — emit a sequence ONLY if the query contains TWO OR MORE distinct deliverables that naturally map to different agents. Examples of queries that pass the gate:
+- "give me the positioning AND write the launch copy" (two deliverables: strategy + copy)
+- "build me a full pitch for [brand]" (implicit multi-deliverable: diagnostic + strategy + pitch narrative + copy)
+- "I'm launching [brand] in [market] — I need the cultural read, the audience, and the first wave of creative" (three explicit deliverables)
+- "crisis response for [brand] — what do we say and how do we deploy it" (diagnosis + response copy + distribution)
+- "new business pitch for [account] next week — I need everything" (explicit "everything" = full chain)
+
+Queries that FAIL the gate (never emit a sequence, even if you could imagine a useful chain):
+- "what's the mood around [category]" → single diagnostic
+- "what's happening with [brand] right now" → single diagnostic
+- "who's my real audience for [brand]" → single diagnostic
+- "read my draft copy / what do you think of this line" → single feedback
+- "should we enter [market]" → single strategic question
+- "what are [competitor]s doing in social right now" → single scan
+- Any question a single agent can satisfy end-to-end, even if a downstream agent could theoretically extend the answer. A forced sequence on a simple question looks robotic and kills trust.
+
+The test: strike the ENTIRE sequence block and ask — does the response still fully answer what the user asked? If yes, the query failed the gate and you MUST omit the sequence. If the response is obviously incomplete without multi-agent work, the query passed the gate and you emit the sequence. Default to omitting. The vast majority of queries should get a primary agent only.
+
+When you DO emit a sequence:
+- The FIRST ID must equal `agent:` above. Subsequent IDs must be strictly downstream of that first agent (the output of step N must be directly usable as context for step N+1). Cap at 4 steps. Never repeat an ID.
+- Upstream agents set context: cso, comms-planner, data-strategist, brand-auditor, trend-forecaster, audience-profiler, competitive-scout, partnership-scout, pitch-strategist, content-strategist, culture-translator, gtm-researcher, creative-council, focus-group. Downstream agents produce artifacts: copywriter, cco, creative-technologist, pitch-builder. Bundles contain their own full chain and should NOT appear inside a sequence.
 - `sequence_reasoning` must name the SPECIFIC value-add of chaining — e.g. "The Cultural Strategist frames the territory so the Copywriter isn't writing from a cold brief, and the CCO stress-tests the final idea against the Fearless Girl bar." Generic "this gives a complete workflow" fails.
+
+ROUTING BLOCK BEHAVIOR:
 - This block is CONSUMED BY THE INTERFACE — the user never sees it. It determines which marketplace agent card gets pre-selected and, when a sequence is present, populates the workflow ladder shown below the primary CTA. A wrong or missing agent ID breaks the handoff.
-- Emit the block even if you already recommended an agent in-line in the answer. Emit exactly ONE block. Never skip it. Never wrap it in code fences."""
+- Emit the block even if you already recommended an agent in-line in the answer. Emit exactly ONE block. Never skip it. Never wrap it in code fences.
+- When you omit the sequence, omit BOTH `sequence:` and `sequence_reasoning:` lines entirely — do not emit them as empty."""
 
 
 # ──────────────────────────────────────────────
