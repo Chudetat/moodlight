@@ -357,32 +357,25 @@
       }
       .ml-premium-badge {
         position: absolute;
-        top: 12px;
-        right: 12px;
-        background: linear-gradient(135deg, #6B46C1, #1976D2);
-        color: #fff;
+        top: 14px;
+        right: 14px;
+        color: #6B46C1;
         font-size: 10px;
-        font-weight: 600;
-        padding: 3px 8px;
-        border-radius: 10px;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
       }
       .ml-tier-badge {
         position: absolute;
-        top: 12px;
-        right: 12px;
-        font-size: 9px;
-        font-weight: 600;
-        padding: 2px 8px;
-        border-radius: 10px;
+        top: 14px;
+        right: 14px;
+        font-size: 10px;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.6px;
-        background: rgba(45, 45, 45, 0.04);
-        border: 1px solid currentColor;
-        opacity: 0.7;
+        letter-spacing: 0.8px;
+        opacity: 0.55;
       }
-      .ml-agent-card:hover .ml-tier-badge { opacity: 1; }
+      .ml-agent-card:hover .ml-tier-badge { opacity: 0.9; }
       .ml-form-section {
         display: none;
         background: rgba(0, 0, 0, 0.03) !important;
