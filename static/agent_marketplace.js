@@ -372,6 +372,53 @@
         align-self: center;
       }
       .ml-brief-banner-clear:hover { color: #5a1480; }
+      .ml-context-card {
+        display: none;
+        background: rgba(123, 31, 162, 0.04);
+        border: 1px dashed rgba(123, 31, 162, 0.28);
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        color: #2D2D2D;
+      }
+      .ml-context-card.ml-visible { display: block; }
+      .ml-context-label {
+        font-weight: 600;
+        color: #7B1FA2;
+        display: block;
+        margin-bottom: 8px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+      .ml-context-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .ml-context-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(123, 31, 162, 0.10);
+        color: #5a1480;
+        border-radius: 999px;
+        padding: 4px 10px 4px 12px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .ml-context-chip-remove {
+        background: none;
+        border: none;
+        color: #7B1FA2;
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 0 0 2px;
+        font-weight: 700;
+      }
+      .ml-context-chip-remove:hover { color: #5a1480; }
       .ml-form-section h3 {
         font-size: 18px;
         font-weight: 600;
@@ -544,7 +591,35 @@
     document.head.appendChild(style);
   }
 
+  var SESSION_OUTPUTS_TTL_MS = 24 * 60 * 60 * 1000;
+
   function hydrateBriefFromStorage() {
+    // Hydrate session agent outputs (Ship 2) — these persist across
+    // marketplace runs so downstream agents can build on upstream
+    // work without copy/paste. Keyed by agent_id.
+    if (!window._mlSessionAgentOutputs) {
+      try {
+        var rawOut = localStorage.getItem("ml_session_agent_outputs");
+        if (rawOut) {
+          var parsedOut = JSON.parse(rawOut);
+          var nowTs = Date.now();
+          var fresh = {};
+          Object.keys(parsedOut || {}).forEach(function (k) {
+            var entry = parsedOut[k];
+            if (entry && entry.timestamp && nowTs - entry.timestamp < SESSION_OUTPUTS_TTL_MS) {
+              fresh[k] = entry;
+            }
+          });
+          window._mlSessionAgentOutputs = fresh;
+          localStorage.setItem("ml_session_agent_outputs", JSON.stringify(fresh));
+        } else {
+          window._mlSessionAgentOutputs = {};
+        }
+      } catch (e) {
+        window._mlSessionAgentOutputs = {};
+      }
+    }
+
     // If the Ask Moodlight widget already set the global this
     // tab (user just clicked the CTA), leave it alone.
     if (window._mlParsedBriefFields) return;
@@ -560,6 +635,15 @@
       }
       window._mlParsedBriefFields = brief.fields || {};
       window._mlActiveBrief = brief;
+    } catch (e) {}
+  }
+
+  function persistSessionOutputs() {
+    try {
+      localStorage.setItem(
+        "ml_session_agent_outputs",
+        JSON.stringify(window._mlSessionAgentOutputs || {})
+      );
     } catch (e) {}
   }
 
@@ -623,6 +707,10 @@
           } else {
             briefBanner.classList.remove("ml-visible");
           }
+
+          // Render upstream context chips for every prior agent run
+          // in this session (excluding the currently selected one).
+          renderContextChips(agent.id);
 
           // Scroll the form into view and focus first input so users
           // don't have to hunt for where the form appeared
@@ -699,6 +787,51 @@
     briefBannerClear.textContent = "Clear and start fresh";
     briefBanner.appendChild(briefBannerBody);
     briefBanner.appendChild(briefBannerClear);
+
+    // Upstream context card (Ship 2) — shows chips for every agent
+    // the user has already run in this session, so a downstream
+    // agent (e.g. The Copywriter) visibly builds on the upstream
+    // work (e.g. The Cultural Strategist) rather than starting cold.
+    const contextCard = document.createElement("div");
+    contextCard.className = "ml-context-card";
+    const contextLabel = document.createElement("span");
+    contextLabel.className = "ml-context-label";
+    contextLabel.textContent = "Continuing from";
+    const contextChips = document.createElement("div");
+    contextChips.className = "ml-context-chips";
+    contextCard.appendChild(contextLabel);
+    contextCard.appendChild(contextChips);
+
+    function renderContextChips(forAgentId) {
+      contextChips.innerHTML = "";
+      var outputs = window._mlSessionAgentOutputs || {};
+      var ids = Object.keys(outputs).filter(function (k) { return k !== forAgentId; });
+      if (!ids.length) {
+        contextCard.classList.remove("ml-visible");
+        return;
+      }
+      ids.forEach(function (id) {
+        var entry = outputs[id];
+        if (!entry) return;
+        var chip = document.createElement("span");
+        chip.className = "ml-context-chip";
+        chip.textContent = entry.agent_label || id;
+        var remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "ml-context-chip-remove";
+        remove.setAttribute("aria-label", "Remove " + (entry.agent_label || id));
+        remove.textContent = "\u00D7";
+        remove.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          delete window._mlSessionAgentOutputs[id];
+          persistSessionOutputs();
+          renderContextChips(forAgentId);
+        });
+        chip.appendChild(remove);
+        contextChips.appendChild(chip);
+      });
+      contextCard.classList.add("ml-visible");
+    }
 
     const formTitle = document.createElement("h3");
     formTitle.textContent = "";
@@ -1003,6 +1136,17 @@
         stepEl.textContent = loadingSteps[stepIdx % loadingSteps.length];
       }, 6000);
 
+      // Build upstream_context from session outputs, excluding the
+      // currently selected agent (can't be upstream of itself).
+      const sessionOutputs = window._mlSessionAgentOutputs || {};
+      const upstreamContext = Object.keys(sessionOutputs)
+        .filter((k) => k !== selectedAgent)
+        .map((k) => ({
+          agent_id: k,
+          agent_label: sessionOutputs[k].agent_label || k,
+          output: sessionOutputs[k].output || "",
+        }));
+
       try {
         const res = await fetch(API_BASE + "/api/marketplace/run", {
           method: "POST",
@@ -1015,6 +1159,7 @@
             markets: inputs.markets.value || "",
             challenge: inputs.challenge.value || "",
             timeline: inputs.timeline.value || "",
+            upstream_context: upstreamContext,
           }),
         });
 
@@ -1024,12 +1169,21 @@
         const data = await res.json();
 
         if (res.ok && data.preview) {
-          // Show preview with blur. NOTE: the old "Send to Copywriter"
-          // chain button was removed in Ship 1 of the Methodology work —
-          // it silently overwrote the challenge field with the previous
-          // agent's output, which corrupts the brief. Real upstream →
-          // downstream chaining will land in Ship 2 as additive
-          // context, not as form-field replacement.
+          // Ship 2: capture the full output so future downstream
+          // agents in this session automatically inherit it as
+          // upstream context. The brief form fields stay locked to
+          // the Ask Moodlight source of truth — context is additive,
+          // never a form-field replacement.
+          if (data.full_output) {
+            if (!window._mlSessionAgentOutputs) window._mlSessionAgentOutputs = {};
+            window._mlSessionAgentOutputs[selectedAgent] = {
+              agent_id: selectedAgent,
+              agent_label: data.agent_label || selectedAgent,
+              output: data.full_output,
+              timestamp: Date.now(),
+            };
+            persistSessionOutputs();
+          }
           previewSection.innerHTML = `
             <div class="ml-preview-wrap">
               <div class="ml-preview-text">${data.preview.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
@@ -1060,6 +1214,7 @@
     });
 
     formSection.appendChild(briefBanner);
+    formSection.appendChild(contextCard);
     formSection.appendChild(formTitle);
     formSection.appendChild(subtitle);
     formSection.appendChild(fieldsContainer);
@@ -1072,12 +1227,16 @@
     // fields, and hide the banner. User can then start fresh.
     briefBannerClear.addEventListener("click", () => {
       try { localStorage.removeItem("ml_active_brief"); } catch (e) {}
+      try { localStorage.removeItem("ml_session_agent_outputs"); } catch (e) {}
       delete window._mlParsedBriefFields;
       delete window._mlActiveBrief;
+      window._mlSessionAgentOutputs = {};
       Object.keys(inputs).forEach((k) => {
         if (inputs[k]) inputs[k].value = "";
       });
       briefBanner.classList.remove("ml-visible");
+      contextCard.classList.remove("ml-visible");
+      contextChips.innerHTML = "";
     });
 
     // Powered by

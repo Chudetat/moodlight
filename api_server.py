@@ -673,6 +673,7 @@ class MarketplaceRequest(BaseModel):
     markets: str = ""
     challenge: str = ""
     timeline: str = ""
+    upstream_context: list | None = None  # [{agent_id, agent_label, output}] from prior agents in this session
 
 _MARKETPLACE_AGENTS = {
     "new-business-win": ("agents", "NewBusinessWinAgent"),
@@ -844,7 +845,10 @@ def marketplace_run(req: MarketplaceRequest, background_tasks: BackgroundTasks):
         agent = agent_cls()
 
         user_input = _build_marketplace_input(req)
-        result = agent.run({"user_input": user_input})
+        result = agent.run({
+            "user_input": user_input,
+            "upstream_context": req.upstream_context or [],
+        })
         output = result["output"]
     except Exception as e:
         import traceback
@@ -867,6 +871,9 @@ def marketplace_run(req: MarketplaceRequest, background_tasks: BackgroundTasks):
     return {
         "status": "done",
         "preview": preview,
+        "full_output": output,
+        "agent_id": req.agent,
+        "agent_label": label,
         "message": f"Full brief sent to {req.email}",
     }
 

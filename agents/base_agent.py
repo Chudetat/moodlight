@@ -69,6 +69,41 @@ class MoodlightAgent:
         """Combine agent-specific system prompt with universal directives."""
         return f"{self.system_prompt}\n\n{TRAINING_DATA_BAN}\n\n{INEVITABILITY_BAR}"
 
+    def _render_upstream_context(self, upstream_context):
+        """Render upstream agent outputs from prior runs in this session as
+        an additive preamble for the user prompt. The brief in the prompt
+        below remains the source of truth; this is grounding, not replacement."""
+        if not upstream_context:
+            return ""
+        # Cap payload per entry to prevent prompt bloat / abuse
+        MAX_CHARS_PER_ENTRY = 8000
+        MAX_ENTRIES = 5
+        entries = [e for e in upstream_context if isinstance(e, dict) and e.get("output")]
+        if not entries:
+            return ""
+        entries = entries[-MAX_ENTRIES:]  # keep most-recent if the list is longer
+        parts = [
+            "# PRIOR ANALYSIS FROM UPSTREAM AGENTS IN THIS SESSION",
+            "",
+            "The user has already run one or more Moodlight agents on this same brief. "
+            "Their outputs are included below as additional grounding. Use this prior work "
+            "to sharpen and build on — do NOT repeat it. The brief that follows in the main "
+            "user prompt is still the source of truth; this section is additive context, not "
+            "a replacement for the brief.",
+            "",
+        ]
+        for item in entries:
+            label = item.get("agent_label") or item.get("agent_id") or "Upstream Agent"
+            output = str(item.get("output", "")).strip()
+            if len(output) > MAX_CHARS_PER_ENTRY:
+                output = output[:MAX_CHARS_PER_ENTRY] + "\n\n[... truncated ...]"
+            parts.append(f"## From {label}")
+            parts.append(output)
+            parts.append("")
+        parts.append("---")
+        parts.append("")
+        return "\n".join(parts)
+
     def validate_input(self, request):
         """Validate the incoming request. Override in subclass."""
         if not request.get("user_input"):
@@ -105,6 +140,11 @@ class MoodlightAgent:
 
         # Build prompt
         prompt = self.build_prompt(request, context)
+
+        # Prepend upstream context from prior agents in this session (additive, not replacement)
+        upstream_preamble = self._render_upstream_context(request.get("upstream_context"))
+        if upstream_preamble:
+            prompt = upstream_preamble + prompt
 
         # Call Claude
         api_key = os.getenv("ANTHROPIC_API_KEY")
