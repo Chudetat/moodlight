@@ -355,16 +355,6 @@
         line-height: 1.5;
         color: rgba(45, 45, 45, 0.65);
       }
-      .ml-premium-badge {
-        position: absolute;
-        top: 14px;
-        right: 14px;
-        color: #6B46C1;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-      }
       .ml-tier-badge {
         position: absolute;
         top: 14px;
@@ -721,18 +711,18 @@
         const card = document.createElement("div");
         card.className = "ml-agent-card";
         card.style.setProperty("--agent-color", agent.color);
-        // Tier badge — shown on every non-premium card so users can
-        // instantly read whether an agent is Analysis (upstream),
-        // Production (downstream), Hybrid (both), or a Bundle. The
-        // "All Three" premium badge still wins on full-deploy so
-        // badges don't stack in the top-right corner.
+        // Tier badge — shown on every card so users can instantly
+        // read whether an agent is Analysis (upstream), Production
+        // (downstream), Hybrid (both), or a Bundle. All three bundles
+        // (Full Deploy, New Business Win, Outbound Discovery) render
+        // identically via the same tier path.
         const tier = TIER_DISPLAY[agent.tier] || null;
-        const tierBadgeHTML = (!agent.premium && tier)
+        const tierBadgeHTML = tier
           ? `<span class="ml-tier-badge" style="color:${tier.color}">${tier.label}</span>`
           : "";
         card.innerHTML = `
           <span class="ml-icon">${agent.icon}</span>
-          ${agent.premium ? '<span class="ml-premium-badge">All Three</span>' : tierBadgeHTML}
+          ${tierBadgeHTML}
           <h3>${agent.title}</h3>
           <p>${agent.desc}</p>
         `;
