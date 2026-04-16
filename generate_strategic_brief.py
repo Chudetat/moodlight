@@ -912,20 +912,68 @@ _AGENT_CROSS_SELL = {
 }
 
 
+# Reverse lookup from display name → agent slug so cross-sell email
+# CTAs can deep-link directly to the target agent card on the
+# marketplace. Must stay in sync with _AGENT_LABELS in
+# ask_moodlight_api.py and with the display names used in
+# _AGENT_CROSS_SELL above. Unknown names fall back to the marketplace
+# root (no ?agent= param).
+_AGENT_SLUG_BY_LABEL = {
+    "New Business Win": "new-business-win",
+    "Outbound Discovery": "outbound-discovery",
+    "The Chief Creative Officer": "cco",
+    "The Cultural Strategist": "cso",
+    "The Comms Planner": "comms-planner",
+    "Full Deploy": "full-deploy",
+    "The Data Strategist": "data-strategist",
+    "The Creative Technologist": "creative-technologist",
+    "The Brand Auditor": "brand-auditor",
+    "The Brief Critic": "brief-critic",
+    "The Trend Forecaster": "trend-forecaster",
+    "The Copywriter": "copywriter",
+    "The Crisis Advisor": "crisis-advisor",
+    "The Audience Profiler": "audience-profiler",
+    "The Competitive Scout": "competitive-scout",
+    "The Partnership Scout": "partnership-scout",
+    "The Pitch Builder": "pitch-builder",
+    "The Pitch Strategist": "pitch-strategist",
+    "The Content Strategist": "content-strategist",
+    "The Culture Translator": "culture-translator",
+    "The Social Strategist": "social-strategist",
+    "The GTM Researcher": "gtm-researcher",
+    "The SEO Strategist": "seo-strategist",
+    "The Paid Media Strategist": "paid-media-strategist",
+    "The Funnel Doctor": "funnel-doctor",
+    "The Lifecycle Strategist": "lifecycle-strategist",
+    "The Experimentation Strategist": "experimentation-strategist",
+    "The Referral Architect": "referral-architect",
+    "The Global Creative Council": "creative-council",
+    "The Focus Group": "focus-group",
+}
+
+
 def _build_cross_sell_html(agent_id: str) -> str:
-    """Build cross-sell HTML for agent emails."""
+    """Build cross-sell HTML for agent emails. Each suggestion is a
+    deep-link to the marketplace with ?agent=<slug> so clicking the
+    CTA opens the right agent card automatically."""
     suggestions = _AGENT_CROSS_SELL.get(agent_id, [])
     if not suggestions:
         return ""
 
+    base_url = "https://www.moodlightintel.com"
     items = ""
     for agent_name, reason in suggestions:
+        slug = _AGENT_SLUG_BY_LABEL.get(agent_name)
+        href = f"{base_url}?agent={slug}" if slug else base_url
         items += (
-            f'<div style="margin: 6px 0; padding: 10px 14px; background: #f9f7fd; '
-            f'border-radius: 8px; border: 1px solid #ede8f5;">'
+            f'<a href="{href}" '
+            f'style="display: block; margin: 6px 0; padding: 10px 14px; '
+            f'background: #f9f7fd; border-radius: 8px; '
+            f'border: 1px solid #ede8f5; text-decoration: none; '
+            f'color: inherit;">'
             f'<strong style="color: #6B46C1;">{agent_name}</strong> '
             f'<span style="color: #555;">— {reason}</span>'
-            f'</div>'
+            f'</a>'
         )
 
     return (
@@ -935,8 +983,9 @@ def _build_cross_sell_html(agent_id: str) -> str:
         f'Keep going — run this through another agent</div>'
         f'{items}'
         f'<div style="margin-top: 12px; font-size: 13px; color: #888;">'
-        f'Visit <a href="https://www.moodlightintel.com" style="color: #6B46C1; text-decoration: none;">'
-        f'moodlightintel.com</a> to run another agent.'
+        f'Click an agent above, or visit '
+        f'<a href="{base_url}" style="color: #6B46C1; text-decoration: none;">'
+        f'moodlightintel.com</a> to run another.'
         f'</div>'
         f'</div>'
     )

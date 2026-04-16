@@ -726,6 +726,7 @@
           <h3>${agent.title}</h3>
           <p>${agent.desc}</p>
         `;
+        card.dataset.agentId = agent.id;
         card.addEventListener("click", () => {
           allCards.forEach((c) => c.classList.remove("ml-selected"));
           card.classList.add("ml-selected");
@@ -733,6 +734,11 @@
           formSection.classList.add("ml-visible");
           formTitle.textContent = agent.title;
           submitBtn.textContent = `Generate ${agent.title} Brief`;
+          // Defensive reset: a prior run in the same session may have
+          // left the button disabled if the user navigated away before
+          // the finally block fired. Always re-enable when a new card
+          // is selected.
+          submitBtn.disabled = false;
           statusEl.className = "ml-status";
           statusEl.style.display = "none";
 
@@ -1255,13 +1261,17 @@
         } else {
           statusEl.className = "ml-status ml-error";
           statusEl.textContent = data.detail || "Something went wrong. Please try again.";
-          submitBtn.disabled = false;
         }
       } catch (err) {
         clearInterval(stepInterval);
         loadingSection.classList.remove("ml-visible");
         statusEl.className = "ml-status ml-error";
         statusEl.textContent = "Network error. Please try again.";
+      } finally {
+        // Always re-enable the submit button so the user can run
+        // another agent without having to reload the page. Previous
+        // bug: success path never re-enabled it, leaving the button
+        // stuck after the first run.
         submitBtn.disabled = false;
       }
     });
@@ -1311,6 +1321,27 @@
     container.appendChild(juryGrid);
     container.appendChild(formSection);
     container.appendChild(powered);
+
+    // Deep-link handler: if the page URL has ?agent=<slug>, find the
+    // matching card and programmatically click it. This is how email
+    // cross-sell CTAs land users directly on the right agent card
+    // with the form pre-opened. Unknown slugs are silently ignored.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const targetAgent = params.get("agent");
+      if (targetAgent) {
+        const targetCard = allCards.find(
+          (c) => c.dataset.agentId === targetAgent
+        );
+        if (targetCard) {
+          setTimeout(function () {
+            targetCard.click();
+          }, 100);
+        }
+      }
+    } catch (e) {
+      // URL params not supported — no-op
+    }
   }
 
   function init() {
