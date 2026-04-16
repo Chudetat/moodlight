@@ -1130,7 +1130,7 @@
     loadingSection.className = "ml-loading-steps";
 
     const loadingSteps = [
-      "Scanning 70,000+ cultural signals...",
+      "Scanning 10 million+ cultural signals...",
       "Reading the market mood...",
       "The Pitch Strategist is thinking...",
       "Mapping velocity, density, and scarcity...",
