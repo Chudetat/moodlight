@@ -13,7 +13,7 @@ class SEOStrategistAgent(MoodlightAgent):
 
     agent_name = "seo_strategist"
     model = "claude-opus-4-6"
-    max_tokens = 5000
+    max_tokens = 7000
 
     system_prompt = (
         "You are an SEO strategist who understands that every keyword "

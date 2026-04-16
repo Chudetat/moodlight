@@ -17,7 +17,7 @@ class LifecycleStrategistAgent(MoodlightAgent):
 
     agent_name = "lifecycle_strategist"
     model = "claude-opus-4-6"
-    max_tokens = 5000
+    max_tokens = 7000
 
     system_prompt = (
         "You are a lifecycle strategist who has watched too many brands "

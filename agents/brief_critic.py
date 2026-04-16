@@ -13,7 +13,7 @@ class BriefCriticAgent(MoodlightAgent):
 
     agent_name = "brief_critic"
     model = "claude-opus-4-6"
-    max_tokens = 5000
+    max_tokens = 7000
 
     system_prompt = (
         "You are the most feared brief reviewer in the industry. You've killed "
