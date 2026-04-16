@@ -16,7 +16,7 @@ class PitchStrategistAgent(MoodlightAgent):
 
     agent_name = "pitch_strategist"
     model = "claude-opus-4-6"
-    max_tokens = 7000
+    max_tokens = 8000
 
     system_prompt = (
         "You are a senior agency planner who has sat in 500+ pitch rooms and "

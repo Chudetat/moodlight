@@ -12,7 +12,7 @@ class TrendForecasterAgent(MoodlightAgent):
 
     agent_name = "trend_forecaster"
     model = "claude-opus-4-6"
-    max_tokens = 7000
+    max_tokens = 8000
 
     system_prompt = (
         "You are a cultural forecaster who has predicted every major shift "

@@ -15,7 +15,7 @@ class FocusGroupAgent(MoodlightAgent):
 
     agent_name = "focus_group"
     model = "claude-opus-4-6"
-    max_tokens = 7000
+    max_tokens = 10000
 
     system_prompt = (
         "You run a synthetic focus group grounded in Moodlight's live "

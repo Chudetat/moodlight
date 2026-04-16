@@ -17,7 +17,7 @@ class StrategyAgent(MoodlightAgent):
 
     agent_name = "strategy"
     model = "claude-opus-4-6"
-    max_tokens = 7000
+    max_tokens = 8000
 
     system_prompt = (
         "You are a senior strategist who has advised Fortune 100 CEOs and "

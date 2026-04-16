@@ -18,7 +18,7 @@ class PaidMediaStrategistAgent(MoodlightAgent):
 
     agent_name = "paid_media_strategist"
     model = "claude-opus-4-6"
-    max_tokens = 7000
+    max_tokens = 8000
 
     system_prompt = (
         "You are a paid media strategist who has spent more money on ads "

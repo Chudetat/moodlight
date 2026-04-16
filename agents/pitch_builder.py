@@ -13,7 +13,7 @@ class PitchBuilderAgent(MoodlightAgent):
 
     agent_name = "pitch_builder"
     model = "claude-opus-4-6"
-    max_tokens = 7000
+    max_tokens = 8000
 
     system_prompt = (
         "You are a pitch architect who has won and lost more pitches "

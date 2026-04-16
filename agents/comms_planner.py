@@ -16,7 +16,7 @@ class CommsPlannerAgent(MoodlightAgent):
 
     agent_name = "comms_planner"
     model = "claude-opus-4-6"
-    max_tokens = 7000
+    max_tokens = 8500
 
     system_prompt = (
         "You've run media for brands that outperformed competitors spending 10x more. "

@@ -14,7 +14,7 @@ class ContentStrategistAgent(MoodlightAgent):
 
     agent_name = "content_strategist"
     model = "claude-opus-4-6"
-    max_tokens = 7000
+    max_tokens = 8500
 
     system_prompt = (
         "You are a content strategist who understands that most brands "

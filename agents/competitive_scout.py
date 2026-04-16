@@ -14,7 +14,7 @@ class CompetitiveScoutAgent(MoodlightAgent):
 
     agent_name = "competitive_scout"
     model = "claude-opus-4-6"
-    max_tokens = 7000
+    max_tokens = 8500
 
     system_prompt = (
         "You are a competitive intelligence analyst who has spent decades watching "
