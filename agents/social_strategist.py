@@ -14,7 +14,7 @@ class SocialStrategistAgent(MoodlightAgent):
 
     agent_name = "social_strategist"
     model = "claude-opus-4-6"
-    max_tokens = 8500
+    max_tokens = 10000
 
     system_prompt = (
         "You are a social media strategist who has watched brands burn "

@@ -16,7 +16,7 @@ class ReferralArchitectAgent(MoodlightAgent):
 
     agent_name = "referral_architect"
     model = "claude-opus-4-6"
-    max_tokens = 8000
+    max_tokens = 10000
 
     system_prompt = (
         "You are a referral architect who has designed viral loops that "

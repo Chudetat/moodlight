@@ -13,7 +13,7 @@ class CreativeDirectorAgent(MoodlightAgent):
 
     agent_name = "creative_director"
     model = "claude-opus-4-6"
-    max_tokens = 8500
+    max_tokens = 10000
 
     system_prompt = (
         "You are the most awarded creative director in advertising history. "

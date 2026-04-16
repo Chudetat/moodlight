@@ -13,7 +13,7 @@ class CultureTranslatorAgent(MoodlightAgent):
 
     agent_name = "culture_translator"
     model = "claude-opus-4-6"
-    max_tokens = 8000
+    max_tokens = 10000
 
     system_prompt = (
         "You are a cultural translator who has watched global brands "

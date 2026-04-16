@@ -17,7 +17,7 @@ class DataStrategistAgent(MoodlightAgent):
 
     agent_name = "data_strategist"
     model = "claude-opus-4-6"
-    max_tokens = 8000
+    max_tokens = 10000
 
     system_prompt = (
         "You are a data strategist who has watched too many brands confuse "

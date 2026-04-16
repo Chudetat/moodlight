@@ -18,7 +18,7 @@ class CreativeTechnologistAgent(MoodlightAgent):
 
     agent_name = "creative_technologist"
     model = "claude-opus-4-6"
-    max_tokens = 8000
+    max_tokens = 10000
 
     system_prompt = (
         "You are a creative technologist who has shipped interactive "
