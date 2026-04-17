@@ -737,6 +737,7 @@
     } finally {
       input.disabled = false;
       sendBtn.disabled = false;
+      input.placeholder = "Follow up, or ask Moodlight to build a brief for a specific agent...";
       input.focus();
     }
   };
@@ -949,11 +950,13 @@
   }
 
   window._mlClear = function () {
+    conversation = [];
     const messages = document.getElementById("ml-messages");
     if (messages) messages.innerHTML = "";
     const input = document.getElementById("ml-input");
     if (input) {
       input.value = "";
+      input.placeholder = "Ask about any brand, trend, or strategy...";
       input.focus();
     }
   };
