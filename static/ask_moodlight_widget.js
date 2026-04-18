@@ -820,12 +820,12 @@
       seqEl.textContent = seqText;
       teamEl.appendChild(seqEl);
 
-      // Persist brief fields for auto-fill
+      // Use structured brief fields extracted by the backend (Haiku)
+      // instead of dumping the raw question into form fields
       var detectedBrand = (data && data.detected_brand) || "";
       var rawQuestion = (data && data.question) || "";
-      var parsedFields = {};
-      if (detectedBrand) parsedFields.product = detectedBrand;
-      if (rawQuestion) parsedFields.challenge = rawQuestion;
+      var parsedFields = (data && data.brief_fields) || {};
+      if (!parsedFields.product && detectedBrand) parsedFields.product = detectedBrand;
 
       var teamBtn = document.createElement("button");
       teamBtn.className = "ml-agent-cta-btn";
@@ -870,27 +870,27 @@
     var why = (rec && rec.why) || "";
     var deliverable = (rec && rec.deliverable) || "";
 
-    // Parse any explicit brief fields Claude emitted inline (only
-    // happens when the user actually asked for a brief). These still
-    // win over the fallback auto-fill when present.
-    var parsedFields = {};
+    // Use structured brief fields from the backend (Haiku extraction)
+    // when available. Fall back to inline regex parsing, then raw
+    // brand/question as last resort.
+    var parsedFields = (data && data.brief_fields) ? Object.assign({}, data.brief_fields) : {};
     var answer = (data && data.answer) || "";
-    var fieldPatterns = {
-      product: /\*\*Product\/Service:\*\*\s*(.+)/i,
-      audience: /\*\*Target Audience:\*\*\s*(.+)/i,
-      markets: /\*\*Markets\/Geography:\*\*\s*(.+)/i,
-      challenge: /\*\*Key Challenge:\*\*\s*(.+)/i,
-      timeline: /\*\*Timeline\/Budget:\*\*\s*(.+)/i,
-    };
-    for (var key in fieldPatterns) {
-      var m = answer.match(fieldPatterns[key]);
-      if (m) parsedFields[key] = m[1].trim();
+    if (!parsedFields.product || !parsedFields.challenge) {
+      var fieldPatterns = {
+        product: /\*\*Product\/Service:\*\*\s*(.+)/i,
+        audience: /\*\*Target Audience:\*\*\s*(.+)/i,
+        markets: /\*\*Markets\/Geography:\*\*\s*(.+)/i,
+        challenge: /\*\*Key Challenge:\*\*\s*(.+)/i,
+        timeline: /\*\*Timeline\/Budget:\*\*\s*(.+)/i,
+      };
+      for (var key in fieldPatterns) {
+        if (!parsedFields[key]) {
+          var m = answer.match(fieldPatterns[key]);
+          if (m) parsedFields[key] = m[1].trim();
+        }
+      }
     }
 
-    // Fallback auto-fill — if there's no explicit brief but we have a
-    // detected brand and the user's question, use those. Product
-    // defaults to the brand, Key Challenge defaults to the verbatim
-    // question. Anything Claude already parsed takes priority.
     var detectedBrand = (data && data.detected_brand) || "";
     var rawQuestion = (data && data.question) || "";
     if (!parsedFields.product && detectedBrand) {

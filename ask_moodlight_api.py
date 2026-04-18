@@ -1394,6 +1394,7 @@ class AskResponse(BaseModel):
     question: str | None = None
     recommended_agent: dict | None = None
     recommended_team: dict | None = None  # saved team match
+    brief_fields: dict | None = None  # extracted brief fields from answer
 
 
 def _find_matching_team(email: str | None, question: str) -> dict | None:
@@ -1431,6 +1432,43 @@ def _find_matching_team(email: str | None, question: str) -> dict | None:
         return None
     except Exception:
         return None
+
+
+def _extract_brief_fields(answer: str, question: str, detected_brand: str | None, client: Anthropic) -> dict | None:
+    """Use Haiku to extract structured brief fields from an Ask Moodlight answer."""
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=400,
+            system="""You extract structured brief fields from an intelligence overview.
+
+Given an intelligence brief and the user's original question, extract these fields:
+
+- "product": The brand, product, or service being analyzed (short — just the name)
+- "audience": The target audience or consumer segments discussed (1-2 sentences)
+- "markets": Key markets or geographies mentioned (comma-separated, or "Global" if not specified)
+- "challenge": The core strategic challenge or opportunity identified in the brief (1-2 sentences — this is the most important field, distill the central insight)
+- "timeline": Any timing, urgency, or budget context mentioned (or null if none)
+
+Return ONLY valid JSON with these 5 keys. Use the intelligence in the brief to fill each field with substance — never repeat the raw question as a field value.""",
+            messages=[{"role": "user", "content": f"ORIGINAL QUESTION: {question}\n\nINTELLIGENCE BRIEF:\n{answer[:3000]}"}],
+        )
+        result = response.content[0].text.strip()
+        if result.startswith("```"):
+            result = result.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        fields = json.loads(result)
+        # Override product with detected brand if available (more reliable)
+        if detected_brand:
+            fields["product"] = detected_brand
+        # Strip null/empty values
+        return {k: v for k, v in fields.items() if v and k in ("product", "audience", "markets", "challenge", "timeline")}
+    except Exception as e:
+        print(f"[brief_extract] Failed: {type(e).__name__}: {e}")
+        # Fallback — at least fill product and challenge
+        fields = {}
+        if detected_brand:
+            fields["product"] = detected_brand
+        return fields if fields else None
 
 
 # ──────────────────────────────────────────────
@@ -1617,6 +1655,12 @@ async def ask_moodlight(req: AskRequest, request: Request):
     # Check if the question references one of the user's saved teams
     recommended_team = _find_matching_team(req.email, question)
 
+    # Extract structured brief fields from the answer so the team run
+    # form gets intelligent auto-fill (not raw question text)
+    brief_fields = None
+    if recommended_team or recommended_agent:
+        brief_fields = _extract_brief_fields(clean_answer, question, brand_name or None, client)
+
     return AskResponse(
         answer=clean_answer,
         queries_remaining=queries_remaining,
@@ -1625,6 +1669,7 @@ async def ask_moodlight(req: AskRequest, request: Request):
         question=question,
         recommended_agent=recommended_agent,
         recommended_team=recommended_team,
+        brief_fields=brief_fields,
     )
 
 
