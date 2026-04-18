@@ -644,7 +644,7 @@
         border: none;
         border-radius: 14px;
         cursor: pointer;
-        margin-bottom: 32px;
+        margin-bottom: 48px;
         font-family: 'Space Grotesk', sans-serif;
         background: linear-gradient(135deg, #6B46C1, #1976D2);
         transition: opacity 0.2s, transform 0.2s;
