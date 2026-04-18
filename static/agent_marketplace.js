@@ -1168,6 +1168,7 @@
 
     const bundleHeader = document.createElement("div");
     bundleHeader.className = "ml-section-header";
+    bundleHeader.style.paddingTop = "72px";
     bundleHeader.textContent = "The Rainmakers";
 
     const agencyHeader = document.createElement("div");
