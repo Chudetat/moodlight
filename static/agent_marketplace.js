@@ -899,15 +899,16 @@
       .ml-saved-team-card {
         border: 1px solid rgba(107,70,193,0.2);
         border-radius: 12px;
-        padding: 20px;
+        padding: 24px;
         background: rgba(107,70,193,0.03);
         cursor: default;
+        overflow: hidden;
       }
       .ml-saved-team-card h4 {
         font-size: 16px;
         font-weight: 600;
         color: #2D2D2D;
-        margin-bottom: 8px;
+        margin: 0 0 8px 0;
       }
       .ml-saved-team-agents {
         font-size: 12px;
