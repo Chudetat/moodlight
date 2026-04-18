@@ -1706,6 +1706,11 @@
 
     let teamChain = [];
     let savedTeamsEmail = "";
+    // Restore email from localStorage so teams persist across refreshes
+    try {
+      var storedEmail = localStorage.getItem("ml_team_email");
+      if (storedEmail) savedTeamsEmail = storedEmail;
+    } catch (e) {}
 
     function agentById(id) {
       return AGENTS.find(function (a) { return a.id === id; });
@@ -1740,6 +1745,7 @@
     function loadSavedTeams(email) {
       if (!email || !email.includes("@")) return;
       savedTeamsEmail = email.toLowerCase().trim();
+      try { localStorage.setItem("ml_team_email", savedTeamsEmail); } catch (e) {}
       fetch(API_BASE + "/api/marketplace/teams?email=" + encodeURIComponent(savedTeamsEmail))
         .then(function (r) { return r.json(); })
         .then(function (teams) {
@@ -1752,8 +1758,17 @@
           teams.forEach(function (team) {
             var card = document.createElement("div");
             card.className = "ml-saved-team-card";
+            card.style.padding = "24px";
+            card.style.overflow = "hidden";
+            card.style.boxSizing = "border-box";
 
             var h4 = document.createElement("h4");
+            h4.style.margin = "0 0 8px 0";
+            h4.style.padding = "0";
+            h4.style.fontSize = "16px";
+            h4.style.fontWeight = "600";
+            h4.style.color = "#2D2D2D";
+            h4.style.wordWrap = "break-word";
             h4.textContent = team.name;
             card.appendChild(h4);
 
@@ -2271,6 +2286,11 @@
       }
     } catch (e) {
       // URL params not supported — no-op
+    }
+
+    // Auto-load saved teams from localStorage on page load
+    if (savedTeamsEmail) {
+      loadSavedTeams(savedTeamsEmail);
     }
   }
 
