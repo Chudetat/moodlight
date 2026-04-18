@@ -1706,10 +1706,17 @@
 
     let teamChain = [];
     let savedTeamsEmail = "";
-    // Restore email from localStorage so teams persist across refreshes
+    // Restore email from localStorage or URL param (email CTA links)
     try {
-      var storedEmail = localStorage.getItem("ml_team_email");
-      if (storedEmail) savedTeamsEmail = storedEmail;
+      var params = new URLSearchParams(window.location.search);
+      var urlEmail = params.get("team_email");
+      if (urlEmail && urlEmail.includes("@")) {
+        savedTeamsEmail = urlEmail.toLowerCase().trim();
+        localStorage.setItem("ml_team_email", savedTeamsEmail);
+      } else {
+        var storedEmail = localStorage.getItem("ml_team_email");
+        if (storedEmail) savedTeamsEmail = storedEmail;
+      }
     } catch (e) {}
 
     function agentById(id) {

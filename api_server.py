@@ -945,10 +945,12 @@ def _send_team_confirmation_email(email: str, team_name: str, agent_sequence: li
     )
     how_section = render_section("HOW YOUR TEAM WORKS", how_it_works, color="#1976D2")
 
-    # CTA
+    # CTA — include email as URL param so teams load on any device
+    from urllib.parse import quote
+    cta_url = f"https://www.moodlightintel.com/?team_email={quote(email)}"
     cta_html = (
         '<div style="text-align:center; margin:28px 0 12px 0;">'
-        '<a href="https://www.moodlightintel.com/#team-builder" '
+        f'<a href="{cta_url}" '
         'style="display:inline-block; padding:14px 36px; background:linear-gradient(135deg,#6B46C1,#1976D2); '
         'color:#fff; text-decoration:none; border-radius:10px; font-weight:600; font-size:15px; '
         'font-family:Arial,sans-serif;">Run Your Team</a>'
