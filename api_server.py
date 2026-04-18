@@ -674,6 +674,8 @@ class MarketplaceRequest(BaseModel):
     challenge: str = ""
     timeline: str = ""
     upstream_context: list | None = None  # [{agent_id, agent_label, output}] from prior agents in this session
+    team_id: int | None = None  # If part of a saved team run
+    team_step: int | None = None  # 1-indexed position in team chain
 
 _MARKETPLACE_AGENTS = {
     "new-business-win": ("agents", "NewBusinessWinAgent"),
@@ -775,16 +777,18 @@ def _capture_marketplace_email(email: str, engine):
         pass
 
 
-def _log_marketplace_run(email: str, agent: str, user_input: str, engine):
+def _log_marketplace_run(email: str, agent: str, user_input: str, engine,
+                         team_id: int = None, team_step: int = None):
     """Log a marketplace agent run for analytics."""
     try:
         with engine.connect() as conn:
             conn.execute(
                 sql_text("""
-                    INSERT INTO marketplace_runs (email, agent, user_input, created_at)
-                    VALUES (:email, :agent, :input, NOW())
+                    INSERT INTO marketplace_runs (email, agent, user_input, created_at, team_id, team_step)
+                    VALUES (:email, :agent, :input, NOW(), :team_id, :team_step)
                 """),
-                {"email": email.lower().strip(), "agent": agent, "input": user_input[:500]},
+                {"email": email.lower().strip(), "agent": agent, "input": user_input[:500],
+                 "team_id": team_id, "team_step": team_step},
             )
             conn.commit()
     except Exception:
@@ -856,7 +860,8 @@ def marketplace_run(req: MarketplaceRequest, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail="Our agents are temporarily unavailable. Please try again in a few minutes.")
 
     # Log the run
-    _log_marketplace_run(req.email, req.agent, user_input, engine)
+    _log_marketplace_run(req.email, req.agent, user_input, engine,
+                         team_id=req.team_id, team_step=req.team_step)
 
     # Email full brief in background (don't block response)
     label = _AGENT_LABELS.get(req.agent, req.agent)
@@ -876,6 +881,223 @@ def marketplace_run(req: MarketplaceRequest, background_tasks: BackgroundTasks):
         "agent_label": label,
         "message": f"Full brief sent to {req.email}",
     }
+
+
+# ---------------------------------------------------------------------------
+# Team Builder — save, list, delete user-composed agent teams
+# ---------------------------------------------------------------------------
+
+_AGENT_TIERS = {
+    "new-business-win": "bundle", "outbound-discovery": "bundle", "full-deploy": "bundle",
+    "cco": "downstream", "cso": "upstream", "comms-planner": "upstream",
+    "data-strategist": "upstream", "creative-technologist": "downstream",
+    "brand-auditor": "upstream", "brief-critic": "both", "trend-forecaster": "upstream",
+    "copywriter": "downstream", "crisis-advisor": "both", "audience-profiler": "upstream",
+    "competitive-scout": "upstream", "partnership-scout": "upstream",
+    "pitch-builder": "downstream", "pitch-strategist": "upstream",
+    "content-strategist": "upstream", "culture-translator": "upstream",
+    "social-strategist": "both", "gtm-researcher": "upstream",
+    "seo-strategist": "both", "paid-media-strategist": "both",
+    "funnel-doctor": "both", "lifecycle-strategist": "both",
+    "experimentation-strategist": "both", "referral-architect": "both",
+    "creative-council": "upstream", "focus-group": "upstream",
+}
+
+
+def _validate_team_composition(agent_sequence: list) -> str | None:
+    """Validate team composition. Returns error message or None if valid."""
+    if len(agent_sequence) < 2:
+        return "A team needs at least 2 agents."
+    if len(agent_sequence) > 4:
+        return "A team can have at most 4 agents."
+    for agent_id in agent_sequence:
+        if agent_id not in _MARKETPLACE_AGENTS:
+            return f"Unknown agent: {agent_id}"
+        if _AGENT_TIERS.get(agent_id) == "bundle":
+            return f"Bundles can't sit inside a team — run them on their own."
+    tiers = [_AGENT_TIERS.get(a, "upstream") for a in agent_sequence]
+    has_analysis = any(t in ("upstream", "both") for t in tiers)
+    has_production = any(t in ("downstream", "both") for t in tiers)
+    if not has_analysis:
+        return "Add at least one Analysis agent."
+    if not has_production:
+        return "Add at least one Production agent."
+    return None
+
+
+class TeamRequest(BaseModel):
+    email: str
+    name: str
+    agent_sequence: list[str]
+    id: int | None = None  # If present, update existing team
+
+
+@app.post("/api/marketplace/team")
+def save_team(req: TeamRequest):
+    """Create or update a saved team."""
+    if not req.email.strip() or "@" not in req.email:
+        raise HTTPException(status_code=400, detail="Valid email is required")
+    if not req.name.strip():
+        raise HTTPException(status_code=400, detail="Team name is required")
+
+    error = _validate_team_composition(req.agent_sequence)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+
+    engine = get_engine()
+    if not engine:
+        raise HTTPException(status_code=503, detail="Service temporarily unavailable")
+
+    email = req.email.lower().strip()
+
+    # Capture email for lead database
+    _capture_marketplace_email(email, engine)
+
+    try:
+        with engine.connect() as conn:
+            if req.id:
+                # Update existing — verify email matches
+                existing = conn.execute(
+                    sql_text("SELECT email FROM marketplace_teams WHERE id = :id"),
+                    {"id": req.id},
+                ).fetchone()
+                if not existing or existing[0] != email:
+                    raise HTTPException(status_code=404, detail="Team not found")
+                conn.execute(
+                    sql_text("""
+                        UPDATE marketplace_teams
+                        SET name = :name, agent_sequence = :seq, updated_at = NOW()
+                        WHERE id = :id AND email = :email
+                    """),
+                    {"id": req.id, "name": req.name.strip(), "seq": req.agent_sequence, "email": email},
+                )
+                conn.commit()
+                team_id = req.id
+            else:
+                # Check for duplicate name
+                dup = conn.execute(
+                    sql_text("SELECT id FROM marketplace_teams WHERE email = :email AND name = :name"),
+                    {"email": email, "name": req.name.strip()},
+                ).fetchone()
+                if dup:
+                    raise HTTPException(status_code=400, detail="You already have a team with this name")
+                result = conn.execute(
+                    sql_text("""
+                        INSERT INTO marketplace_teams (email, name, agent_sequence, created_at, updated_at)
+                        VALUES (:email, :name, :seq, NOW(), NOW())
+                        RETURNING id
+                    """),
+                    {"email": email, "name": req.name.strip(), "seq": req.agent_sequence},
+                )
+                conn.commit()
+                team_id = result.fetchone()[0]
+
+            # Return the saved team
+            row = conn.execute(
+                sql_text("SELECT id, name, agent_sequence, created_at, updated_at, last_run_at, run_count FROM marketplace_teams WHERE id = :id"),
+                {"id": team_id},
+            ).fetchone()
+            return {
+                "id": row[0], "name": row[1], "agent_sequence": row[2],
+                "created_at": str(row[3]), "updated_at": str(row[4]),
+                "last_run_at": str(row[5]) if row[5] else None, "run_count": row[6],
+            }
+    except HTTPException:
+        raise
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Failed to save team")
+
+
+@app.get("/api/marketplace/teams")
+def list_teams(email: str = Query(...)):
+    """List saved teams for a user."""
+    if not email.strip() or "@" not in email:
+        raise HTTPException(status_code=400, detail="Valid email is required")
+
+    engine = get_engine()
+    if not engine:
+        raise HTTPException(status_code=503, detail="Service temporarily unavailable")
+
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(
+                sql_text("""
+                    SELECT id, name, agent_sequence, created_at, updated_at, last_run_at, run_count
+                    FROM marketplace_teams WHERE email = :email
+                    ORDER BY updated_at DESC
+                """),
+                {"email": email.lower().strip()},
+            ).fetchall()
+            return [
+                {
+                    "id": r[0], "name": r[1], "agent_sequence": r[2],
+                    "created_at": str(r[3]), "updated_at": str(r[4]),
+                    "last_run_at": str(r[5]) if r[5] else None, "run_count": r[6],
+                }
+                for r in rows
+            ]
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Failed to load teams")
+
+
+@app.delete("/api/marketplace/team/{team_id}")
+def delete_team(team_id: int, email: str = Query(...)):
+    """Delete a saved team. Email must match for auth."""
+    if not email.strip() or "@" not in email:
+        raise HTTPException(status_code=400, detail="Valid email is required")
+
+    engine = get_engine()
+    if not engine:
+        raise HTTPException(status_code=503, detail="Service temporarily unavailable")
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                sql_text("DELETE FROM marketplace_teams WHERE id = :id AND email = :email"),
+                {"id": team_id, "email": email.lower().strip()},
+            )
+            conn.commit()
+            if result.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Team not found")
+            return {"status": "deleted"}
+    except HTTPException:
+        raise
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Failed to delete team")
+
+
+@app.post("/api/marketplace/team/{team_id}/run-complete")
+def team_run_complete(team_id: int, email: str = Query(...)):
+    """Called by frontend after all steps in a team run complete.
+    Increments run_count and sets last_run_at."""
+    engine = get_engine()
+    if not engine:
+        raise HTTPException(status_code=503, detail="Service temporarily unavailable")
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                sql_text("""
+                    UPDATE marketplace_teams
+                    SET run_count = run_count + 1, last_run_at = NOW()
+                    WHERE id = :id AND email = :email
+                """),
+                {"id": team_id, "email": email.lower().strip()},
+            )
+            conn.commit()
+            if result.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Team not found")
+            return {"status": "updated"}
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to update team")
 
 
 @app.post("/api/strategic-brief")

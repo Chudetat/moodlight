@@ -629,6 +629,386 @@
         color: rgba(45, 45, 45, 0.35);
         margin-top: 24px;
       }
+
+      /* Team Builder */
+      .ml-team-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        padding: 16px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+        border: none;
+        border-radius: 14px;
+        cursor: pointer;
+        margin-bottom: 32px;
+        font-family: 'Space Grotesk', sans-serif;
+        background: linear-gradient(135deg, #6B46C1, #1976D2);
+        transition: opacity 0.2s, transform 0.2s;
+      }
+      .ml-team-trigger:hover { opacity: 0.9; transform: scale(1.01); }
+
+      .ml-team-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 99999;
+        overflow-y: auto;
+        padding: 40px 20px;
+      }
+      .ml-team-overlay.ml-visible { display: flex; justify-content: center; align-items: flex-start; }
+      .ml-team-modal {
+        background: #fff;
+        border-radius: 16px;
+        max-width: 860px;
+        width: 100%;
+        padding: 36px 32px;
+        position: relative;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        font-family: 'Space Grotesk', sans-serif;
+        color: #2D2D2D;
+      }
+      .ml-team-close {
+        position: absolute;
+        top: 16px; right: 20px;
+        background: none; border: none;
+        font-size: 24px; cursor: pointer;
+        color: rgba(45,45,45,0.5);
+        line-height: 1;
+      }
+      .ml-team-close:hover { color: #2D2D2D; }
+      .ml-team-modal h2 {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .ml-team-modal .ml-team-sub {
+        font-size: 13px;
+        color: rgba(45,45,45,0.5);
+        margin-bottom: 24px;
+      }
+      .ml-team-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      @media (max-width: 700px) {
+        .ml-team-layout { grid-template-columns: 1fr; }
+      }
+      .ml-team-picker h4, .ml-team-canvas h4 {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: rgba(45,45,45,0.5);
+        margin-bottom: 12px;
+      }
+      .ml-team-picker-search {
+        width: 100%;
+        padding: 10px 14px;
+        font-size: 14px;
+        border: 1px solid rgba(0,0,0,0.12);
+        border-radius: 10px;
+        background: rgba(0,0,0,0.03);
+        color: #2D2D2D;
+        outline: none;
+        margin-bottom: 12px;
+        font-family: 'Space Grotesk', sans-serif;
+      }
+      .ml-team-picker-search:focus {
+        border-color: rgba(107,70,193,0.5);
+      }
+      .ml-team-picker-list {
+        max-height: 380px;
+        overflow-y: auto;
+        border: 1px solid rgba(0,0,0,0.08);
+        border-radius: 10px;
+      }
+      .ml-team-picker-section {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: rgba(45,45,45,0.4);
+        padding: 10px 14px 4px;
+        background: rgba(0,0,0,0.02);
+      }
+      .ml-team-picker-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        transition: background 0.15s;
+        font-size: 14px;
+      }
+      .ml-team-picker-item:hover { background: rgba(107,70,193,0.06); }
+      .ml-team-picker-item.ml-disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .ml-team-picker-item .ml-picker-icon { font-size: 18px; }
+      .ml-team-picker-item .ml-picker-name { flex: 1; font-weight: 500; }
+      .ml-team-picker-item .ml-picker-tier {
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: #fff;
+      }
+
+      .ml-team-chain {
+        min-height: 120px;
+        border: 2px dashed rgba(107,70,193,0.2);
+        border-radius: 12px;
+        padding: 16px;
+      }
+      .ml-team-chain-empty {
+        color: rgba(45,45,45,0.35);
+        font-size: 13px;
+        text-align: center;
+        padding: 32px 16px;
+      }
+      .ml-team-step {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        background: rgba(107,70,193,0.06);
+        border: 1px solid rgba(107,70,193,0.15);
+        border-radius: 10px;
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .ml-team-step .ml-step-num {
+        width: 22px; height: 22px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6B46C1, #1976D2);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .ml-team-step .ml-step-name { flex: 1; }
+      .ml-team-step .ml-step-remove {
+        background: none; border: none;
+        color: rgba(45,45,45,0.4);
+        font-size: 18px; cursor: pointer;
+        line-height: 1;
+      }
+      .ml-team-step .ml-step-remove:hover { color: #c62828; }
+      .ml-team-arrow {
+        text-align: center;
+        color: rgba(107,70,193,0.4);
+        font-size: 16px;
+        margin-bottom: 8px;
+      }
+      .ml-team-validator {
+        margin-top: 12px;
+        font-size: 13px;
+        padding: 10px 14px;
+        border-radius: 8px;
+      }
+      .ml-team-validator.ml-valid {
+        background: rgba(46,125,50,0.06);
+        color: #2E7D32;
+        border: 1px solid rgba(46,125,50,0.15);
+      }
+      .ml-team-validator.ml-invalid {
+        background: rgba(198,40,40,0.04);
+        color: #c62828;
+        border: 1px solid rgba(198,40,40,0.12);
+      }
+      .ml-team-actions {
+        margin-top: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .ml-team-name-input {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 15px;
+        border: 1px solid rgba(0,0,0,0.12);
+        border-radius: 10px;
+        background: rgba(0,0,0,0.04);
+        color: #2D2D2D;
+        outline: none;
+        font-family: 'Space Grotesk', sans-serif;
+      }
+      .ml-team-name-input:focus { border-color: rgba(107,70,193,0.5); }
+      .ml-team-email-input {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 15px;
+        border: 1px solid rgba(0,0,0,0.12);
+        border-radius: 10px;
+        background: rgba(0,0,0,0.04);
+        color: #2D2D2D;
+        outline: none;
+        font-family: 'Space Grotesk', sans-serif;
+      }
+      .ml-team-email-input:focus { border-color: rgba(107,70,193,0.5); }
+      .ml-team-save-btn, .ml-team-run-btn {
+        width: 100%;
+        padding: 14px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #fff;
+        border: none;
+        border-radius: 28px;
+        cursor: pointer;
+        font-family: 'Space Grotesk', sans-serif;
+        transition: opacity 0.2s;
+      }
+      .ml-team-save-btn {
+        background: linear-gradient(135deg, #6B46C1, #1976D2);
+      }
+      .ml-team-run-btn {
+        background: transparent;
+        color: #6B46C1;
+        border: 2px solid rgba(107,70,193,0.3);
+      }
+      .ml-team-save-btn:hover, .ml-team-run-btn:hover { opacity: 0.85; }
+      .ml-team-save-btn:disabled, .ml-team-run-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      /* Saved teams section */
+      .ml-saved-teams { margin-bottom: 32px; }
+      .ml-saved-teams-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+      @media (max-width: 640px) {
+        .ml-saved-teams-grid { grid-template-columns: 1fr; }
+      }
+      .ml-saved-team-card {
+        border: 1px solid rgba(107,70,193,0.2);
+        border-radius: 12px;
+        padding: 20px;
+        background: rgba(107,70,193,0.03);
+        cursor: default;
+      }
+      .ml-saved-team-card h4 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #2D2D2D;
+        margin-bottom: 8px;
+      }
+      .ml-saved-team-agents {
+        font-size: 12px;
+        color: rgba(45,45,45,0.6);
+        margin-bottom: 12px;
+        line-height: 1.5;
+      }
+      .ml-saved-team-meta {
+        font-size: 11px;
+        color: rgba(45,45,45,0.4);
+        margin-bottom: 12px;
+      }
+      .ml-saved-team-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .ml-saved-team-actions button {
+        flex: 1;
+        padding: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: 'Space Grotesk', sans-serif;
+        border: none;
+        transition: opacity 0.2s;
+      }
+      .ml-saved-team-actions button:hover { opacity: 0.85; }
+      .ml-saved-team-run {
+        background: linear-gradient(135deg, #6B46C1, #1976D2);
+        color: #fff;
+      }
+      .ml-saved-team-edit {
+        background: rgba(107,70,193,0.1);
+        color: #6B46C1;
+      }
+      .ml-saved-team-delete {
+        background: rgba(198,40,40,0.08);
+        color: #c62828;
+        flex: 0 0 auto !important;
+        padding: 8px 12px !important;
+      }
+
+      /* Team run progress */
+      .ml-team-run-progress {
+        display: none;
+        margin-top: 16px;
+      }
+      .ml-team-run-progress.ml-visible { display: block; }
+      .ml-team-run-step {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        margin-bottom: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        background: rgba(0,0,0,0.03);
+        border: 1px solid rgba(0,0,0,0.06);
+        transition: all 0.3s;
+      }
+      .ml-team-run-step.ml-active {
+        background: rgba(107,70,193,0.08);
+        border-color: rgba(107,70,193,0.2);
+        color: #6B46C1;
+      }
+      .ml-team-run-step.ml-done {
+        background: rgba(46,125,50,0.06);
+        border-color: rgba(46,125,50,0.15);
+        color: #2E7D32;
+      }
+      .ml-team-run-step.ml-failed {
+        background: rgba(198,40,40,0.06);
+        border-color: rgba(198,40,40,0.15);
+        color: #c62828;
+      }
+      .ml-team-run-step .ml-run-step-icon {
+        width: 22px; height: 22px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        flex-shrink: 0;
+        background: rgba(0,0,0,0.08);
+        color: rgba(45,45,45,0.5);
+      }
+      .ml-team-run-step.ml-active .ml-run-step-icon {
+        background: linear-gradient(135deg, #6B46C1, #1976D2);
+        color: #fff;
+      }
+      .ml-team-run-step.ml-done .ml-run-step-icon {
+        background: #2E7D32;
+        color: #fff;
+      }
+      .ml-team-run-step.ml-failed .ml-run-step-icon {
+        background: #c62828;
+        color: #fff;
+      }
     `;
     const style = document.createElement("style");
     style.textContent = css;
@@ -1114,6 +1494,15 @@
       input.placeholder = f.placeholder;
       input.name = f.name;
       inputs[f.name] = input;
+      // Load saved teams when user enters email
+      if (f.name === "email") {
+        input.addEventListener("blur", function () {
+          var em = input.value.trim();
+          if (em && em.includes("@") && em !== savedTeamsEmail) {
+            loadSavedTeams(em);
+          }
+        });
+      }
       div.appendChild(input);
       fieldsContainer.appendChild(div);
     });
@@ -1302,11 +1691,550 @@
       contextChips.innerHTML = "";
     });
 
+    // ---------------------------------------------------------------
+    // Team Builder
+    // ---------------------------------------------------------------
+    const SECTION_MAP = [
+      { label: "The Agency", agents: AGENTS.slice(2, 8) },
+      { label: "The Toolkit", agents: AGENTS.slice(8, 12) },
+      { label: "The Specialists", agents: AGENTS.slice(12, 21) },
+      { label: "The Growth Team", agents: AGENTS.slice(21, 28) },
+      { label: "The Jury Room", agents: AGENTS.slice(28) },
+    ];
+
+    let teamChain = [];
+    let savedTeamsEmail = "";
+
+    function agentById(id) {
+      return AGENTS.find(function (a) { return a.id === id; });
+    }
+
+    function validateChain(chain) {
+      if (chain.length < 2) return "Add at least 2 agents to build a team.";
+      if (chain.length > 4) return "A team can have at most 4 agents.";
+      var tiers = chain.map(function (id) { var a = agentById(id); return a ? a.tier : "upstream"; });
+      if (tiers.indexOf("bundle") >= 0) return "Bundles can\u2019t sit inside a team \u2014 run them on their own.";
+      var hasAnalysis = tiers.some(function (t) { return t === "upstream" || t === "both"; });
+      var hasProduction = tiers.some(function (t) { return t === "downstream" || t === "both"; });
+      if (!hasAnalysis) return "\u26A0 Add at least one Analysis agent \u2014 without upstream analysis, your Production agent is writing from a cold brief.";
+      if (!hasProduction) return "\u26A0 Add at least one Production agent \u2014 without a Production step, your team only produces analysis, not artifacts.";
+      return null;
+    }
+
+    // --- Saved Teams Section ---
+    const savedTeamsSection = document.createElement("div");
+    savedTeamsSection.className = "ml-saved-teams";
+    savedTeamsSection.style.display = "none";
+
+    const savedTeamsHeader = document.createElement("div");
+    savedTeamsHeader.className = "ml-section-header";
+    savedTeamsHeader.textContent = "Your Teams";
+    savedTeamsSection.appendChild(savedTeamsHeader);
+
+    const savedTeamsGrid = document.createElement("div");
+    savedTeamsGrid.className = "ml-saved-teams-grid";
+    savedTeamsSection.appendChild(savedTeamsGrid);
+
+    function loadSavedTeams(email) {
+      if (!email || !email.includes("@")) return;
+      savedTeamsEmail = email.toLowerCase().trim();
+      fetch(API_BASE + "/api/marketplace/teams?email=" + encodeURIComponent(savedTeamsEmail))
+        .then(function (r) { return r.json(); })
+        .then(function (teams) {
+          savedTeamsGrid.innerHTML = "";
+          if (!teams || !teams.length) {
+            savedTeamsSection.style.display = "none";
+            return;
+          }
+          savedTeamsSection.style.display = "block";
+          teams.forEach(function (team) {
+            var card = document.createElement("div");
+            card.className = "ml-saved-team-card";
+
+            var h4 = document.createElement("h4");
+            h4.textContent = team.name;
+            card.appendChild(h4);
+
+            var agentsDiv = document.createElement("div");
+            agentsDiv.className = "ml-saved-team-agents";
+            agentsDiv.textContent = team.agent_sequence.map(function (id, i) {
+              var a = agentById(id);
+              return (i + 1) + ". " + (a ? a.title : id);
+            }).join(" \u2192 ");
+            card.appendChild(agentsDiv);
+
+            var meta = document.createElement("div");
+            meta.className = "ml-saved-team-meta";
+            var parts = [];
+            if (team.run_count > 0) parts.push("Runs: " + team.run_count);
+            if (team.last_run_at) {
+              var d = new Date(team.last_run_at);
+              parts.push("Last run: " + d.toLocaleDateString());
+            }
+            meta.textContent = parts.join(" \u00B7 ") || "Never run";
+            card.appendChild(meta);
+
+            var actions = document.createElement("div");
+            actions.className = "ml-saved-team-actions";
+
+            var runBtn = document.createElement("button");
+            runBtn.className = "ml-saved-team-run";
+            runBtn.textContent = "Run Team";
+            runBtn.addEventListener("click", function () {
+              startTeamRun(team);
+            });
+            actions.appendChild(runBtn);
+
+            var editBtn = document.createElement("button");
+            editBtn.className = "ml-saved-team-edit";
+            editBtn.textContent = "Edit";
+            editBtn.addEventListener("click", function () {
+              openTeamBuilder(team);
+            });
+            actions.appendChild(editBtn);
+
+            var delBtn = document.createElement("button");
+            delBtn.className = "ml-saved-team-delete";
+            delBtn.textContent = "\u00D7";
+            delBtn.addEventListener("click", function () {
+              if (!confirm("Delete team \"" + team.name + "\"?")) return;
+              fetch(API_BASE + "/api/marketplace/team/" + team.id + "?email=" + encodeURIComponent(savedTeamsEmail), { method: "DELETE" })
+                .then(function () { loadSavedTeams(savedTeamsEmail); });
+            });
+            actions.appendChild(delBtn);
+
+            card.appendChild(actions);
+            savedTeamsGrid.appendChild(card);
+          });
+        })
+        .catch(function () {});
+    }
+
+    // --- Team Builder Modal ---
+    const teamOverlay = document.createElement("div");
+    teamOverlay.className = "ml-team-overlay";
+    document.body.appendChild(teamOverlay);
+
+    function openTeamBuilder(existingTeam) {
+      teamChain = existingTeam ? existingTeam.agent_sequence.slice() : [];
+      var modal = document.createElement("div");
+      modal.className = "ml-team-modal";
+
+      var closeBtn = document.createElement("button");
+      closeBtn.className = "ml-team-close";
+      closeBtn.innerHTML = "&times;";
+      closeBtn.addEventListener("click", function () { teamOverlay.classList.remove("ml-visible"); teamOverlay.innerHTML = ""; });
+      modal.appendChild(closeBtn);
+
+      var h2 = document.createElement("h2");
+      h2.textContent = existingTeam ? "Edit Team" : "Build Your Team";
+      modal.appendChild(h2);
+
+      var sub = document.createElement("div");
+      sub.className = "ml-team-sub";
+      sub.textContent = "Compose 2\u20134 agents into an ordered workflow. Analysis agents feed into Production agents.";
+      modal.appendChild(sub);
+
+      var layout = document.createElement("div");
+      layout.className = "ml-team-layout";
+
+      // --- Left: Agent Picker ---
+      var pickerCol = document.createElement("div");
+      pickerCol.className = "ml-team-picker";
+
+      var pickerLabel = document.createElement("h4");
+      pickerLabel.textContent = "Add Agents";
+      pickerCol.appendChild(pickerLabel);
+
+      var searchInput = document.createElement("input");
+      searchInput.className = "ml-team-picker-search";
+      searchInput.placeholder = "Search agents...";
+      pickerCol.appendChild(searchInput);
+
+      var pickerList = document.createElement("div");
+      pickerList.className = "ml-team-picker-list";
+
+      function renderPickerList(filter) {
+        pickerList.innerHTML = "";
+        var q = (filter || "").toLowerCase();
+        SECTION_MAP.forEach(function (section) {
+          var filtered = section.agents.filter(function (a) {
+            return !q || a.title.toLowerCase().includes(q) || a.id.toLowerCase().includes(q);
+          });
+          if (!filtered.length) return;
+          var sectionEl = document.createElement("div");
+          sectionEl.className = "ml-team-picker-section";
+          sectionEl.textContent = section.label;
+          pickerList.appendChild(sectionEl);
+          filtered.forEach(function (agent) {
+            var item = document.createElement("div");
+            item.className = "ml-team-picker-item";
+            var isBundle = agent.tier === "bundle";
+            var atMax = teamChain.length >= 4;
+            if (isBundle || atMax) item.classList.add("ml-disabled");
+
+            var icon = document.createElement("span");
+            icon.className = "ml-picker-icon";
+            icon.textContent = agent.icon;
+            item.appendChild(icon);
+
+            var name = document.createElement("span");
+            name.className = "ml-picker-name";
+            name.textContent = agent.title;
+            item.appendChild(name);
+
+            var tierBadge = document.createElement("span");
+            tierBadge.className = "ml-picker-tier";
+            var td = TIER_DISPLAY[agent.tier] || TIER_DISPLAY.upstream;
+            tierBadge.textContent = td.label;
+            tierBadge.style.background = td.color;
+            item.appendChild(tierBadge);
+
+            if (!isBundle && !atMax) {
+              item.addEventListener("click", function () {
+                teamChain.push(agent.id);
+                renderChain();
+                renderPickerList(searchInput.value);
+              });
+            }
+
+            if (isBundle) {
+              item.title = "Bundles can\u2019t sit inside a team";
+            }
+
+            pickerList.appendChild(item);
+          });
+        });
+      }
+
+      searchInput.addEventListener("input", function () { renderPickerList(searchInput.value); });
+      pickerCol.appendChild(pickerList);
+      layout.appendChild(pickerCol);
+
+      // --- Right: Chain Canvas ---
+      var canvasCol = document.createElement("div");
+      canvasCol.className = "ml-team-canvas";
+
+      var canvasLabel = document.createElement("h4");
+      canvasLabel.textContent = "Your Team";
+      canvasCol.appendChild(canvasLabel);
+
+      var chainEl = document.createElement("div");
+      chainEl.className = "ml-team-chain";
+      canvasCol.appendChild(chainEl);
+
+      var validatorEl = document.createElement("div");
+      validatorEl.className = "ml-team-validator";
+      canvasCol.appendChild(validatorEl);
+
+      // --- Actions ---
+      var actionsEl = document.createElement("div");
+      actionsEl.className = "ml-team-actions";
+
+      var nameInput = document.createElement("input");
+      nameInput.className = "ml-team-name-input";
+      nameInput.placeholder = "Team name (e.g. Launch Team, Brand Audit Flow)";
+      nameInput.value = existingTeam ? existingTeam.name : "";
+      actionsEl.appendChild(nameInput);
+
+      var emailInput = document.createElement("input");
+      emailInput.className = "ml-team-email-input";
+      emailInput.type = "email";
+      emailInput.placeholder = "Your email \u2014 to save and retrieve your teams";
+      emailInput.value = savedTeamsEmail || "";
+      actionsEl.appendChild(emailInput);
+
+      var saveBtn = document.createElement("button");
+      saveBtn.className = "ml-team-save-btn";
+      saveBtn.textContent = existingTeam ? "Update Team" : "Save Team";
+      saveBtn.disabled = true;
+      actionsEl.appendChild(saveBtn);
+
+      var runBtn = document.createElement("button");
+      runBtn.className = "ml-team-run-btn";
+      runBtn.textContent = "Run Without Saving";
+      runBtn.disabled = true;
+      actionsEl.appendChild(runBtn);
+
+      canvasCol.appendChild(actionsEl);
+      layout.appendChild(canvasCol);
+      modal.appendChild(layout);
+
+      function renderChain() {
+        chainEl.innerHTML = "";
+        if (!teamChain.length) {
+          var empty = document.createElement("div");
+          empty.className = "ml-team-chain-empty";
+          empty.textContent = "Click agents on the left to add them to your team.";
+          chainEl.appendChild(empty);
+        } else {
+          teamChain.forEach(function (id, i) {
+            if (i > 0) {
+              var arrow = document.createElement("div");
+              arrow.className = "ml-team-arrow";
+              arrow.textContent = "\u2193";
+              chainEl.appendChild(arrow);
+            }
+            var step = document.createElement("div");
+            step.className = "ml-team-step";
+
+            var num = document.createElement("span");
+            num.className = "ml-step-num";
+            num.textContent = (i + 1).toString();
+            step.appendChild(num);
+
+            var a = agentById(id);
+            var nameEl = document.createElement("span");
+            nameEl.className = "ml-step-name";
+            nameEl.textContent = a ? a.title : id;
+            step.appendChild(nameEl);
+
+            var removeBtn = document.createElement("button");
+            removeBtn.className = "ml-step-remove";
+            removeBtn.innerHTML = "&times;";
+            removeBtn.addEventListener("click", function () {
+              teamChain.splice(i, 1);
+              renderChain();
+              renderPickerList(searchInput.value);
+            });
+            step.appendChild(removeBtn);
+
+            chainEl.appendChild(step);
+          });
+        }
+
+        // Validate
+        var err = validateChain(teamChain);
+        if (err) {
+          validatorEl.className = "ml-team-validator ml-invalid";
+          validatorEl.textContent = err;
+        } else {
+          validatorEl.className = "ml-team-validator ml-valid";
+          validatorEl.textContent = "\u2713 Team is valid \u2014 ready to save or run.";
+        }
+
+        var isValid = !err;
+        runBtn.disabled = !isValid;
+        updateSaveState();
+      }
+
+      function updateSaveState() {
+        var err = validateChain(teamChain);
+        var hasName = nameInput.value.trim().length > 0;
+        var hasEmail = emailInput.value.trim().includes("@");
+        saveBtn.disabled = !!err || !hasName || !hasEmail;
+      }
+
+      nameInput.addEventListener("input", updateSaveState);
+      emailInput.addEventListener("input", updateSaveState);
+
+      saveBtn.addEventListener("click", function () {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving...";
+        var body = {
+          email: emailInput.value.trim(),
+          name: nameInput.value.trim(),
+          agent_sequence: teamChain,
+        };
+        if (existingTeam && existingTeam.id) body.id = existingTeam.id;
+        fetch(API_BASE + "/api/marketplace/team", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+          .then(function (r) {
+            if (!r.ok) return r.json().then(function (d) { throw new Error(d.detail || "Failed to save"); });
+            return r.json();
+          })
+          .then(function (team) {
+            savedTeamsEmail = emailInput.value.trim().toLowerCase();
+            loadSavedTeams(savedTeamsEmail);
+            teamOverlay.classList.remove("ml-visible");
+            teamOverlay.innerHTML = "";
+          })
+          .catch(function (err) {
+            alert(err.message || "Failed to save team");
+            saveBtn.disabled = false;
+            saveBtn.textContent = existingTeam ? "Update Team" : "Save Team";
+          });
+      });
+
+      runBtn.addEventListener("click", function () {
+        var team = {
+          id: existingTeam ? existingTeam.id : null,
+          name: nameInput.value.trim() || "Unsaved Team",
+          agent_sequence: teamChain.slice(),
+        };
+        teamOverlay.classList.remove("ml-visible");
+        teamOverlay.innerHTML = "";
+        startTeamRun(team);
+      });
+
+      renderChain();
+      renderPickerList("");
+
+      teamOverlay.innerHTML = "";
+      teamOverlay.appendChild(modal);
+      teamOverlay.classList.add("ml-visible");
+
+      // Close on overlay click (not modal)
+      teamOverlay.addEventListener("click", function (e) {
+        if (e.target === teamOverlay) {
+          teamOverlay.classList.remove("ml-visible");
+          teamOverlay.innerHTML = "";
+        }
+      });
+    }
+
+    // --- Team Run Execution ---
+    function startTeamRun(team) {
+      // Show the form section for brief input, then run chain
+      formSection.classList.add("ml-visible");
+      formSection.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      // Set form title to team name
+      formTitle.textContent = "Run: " + team.name;
+      subtitle.innerHTML = 'Fill in the brief below. It will be used for all ' + team.agent_sequence.length + ' agents in your team.';
+
+      // Swap submit button behavior for team run
+      var origText = submitBtn.textContent;
+      submitBtn.textContent = "Run " + team.name;
+      submitBtn.disabled = false;
+
+      // Replace submit handler temporarily
+      var teamSubmitHandler = async function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        submitBtn.removeEventListener("click", teamSubmitHandler);
+
+        var product = (inputs.product.value || "").trim();
+        if (!product) { alert("Product / Service is required"); return; }
+        var email = (inputs.email.value || "").trim();
+        if (!email || !email.includes("@")) { alert("Valid email is required"); return; }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Running team...";
+
+        // Build progress ladder
+        var progressEl = document.createElement("div");
+        progressEl.className = "ml-team-run-progress ml-visible";
+        var stepEls = [];
+        team.agent_sequence.forEach(function (agentId, i) {
+          var a = agentById(agentId);
+          var stepDiv = document.createElement("div");
+          stepDiv.className = "ml-team-run-step";
+          var iconEl = document.createElement("span");
+          iconEl.className = "ml-run-step-icon";
+          iconEl.textContent = (i + 1).toString();
+          stepDiv.appendChild(iconEl);
+          var nameEl = document.createElement("span");
+          nameEl.textContent = a ? a.title : agentId;
+          stepDiv.appendChild(nameEl);
+          progressEl.appendChild(stepDiv);
+          stepEls.push(stepDiv);
+        });
+        // Insert progress after form
+        formSection.parentNode.insertBefore(progressEl, formSection.nextSibling);
+
+        var upstreamContext = [];
+        var allSucceeded = true;
+
+        for (var i = 0; i < team.agent_sequence.length; i++) {
+          var agentId = team.agent_sequence[i];
+          stepEls[i].classList.add("ml-active");
+
+          try {
+            var res = await fetch(API_BASE + "/api/marketplace/run", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                agent: agentId,
+                email: email,
+                product: inputs.product.value || "",
+                audience: inputs.audience.value || "",
+                markets: inputs.markets.value || "",
+                challenge: inputs.challenge.value || "",
+                timeline: inputs.timeline.value || "",
+                upstream_context: upstreamContext,
+                team_id: team.id || null,
+                team_step: i + 1,
+              }),
+            });
+
+            if (!res.ok) throw new Error("Agent failed");
+
+            var data = await res.json();
+            stepEls[i].classList.remove("ml-active");
+            stepEls[i].classList.add("ml-done");
+            stepEls[i].querySelector(".ml-run-step-icon").textContent = "\u2713";
+
+            // Accumulate upstream context for next step
+            upstreamContext.push({
+              agent_id: agentId,
+              agent_label: data.agent_label || agentId,
+              output: data.full_output || "",
+            });
+
+            // Store in session outputs for continuity
+            window._mlSessionAgentOutputs = window._mlSessionAgentOutputs || {};
+            window._mlSessionAgentOutputs[agentId] = {
+              agent_label: data.agent_label || agentId,
+              output: data.full_output || "",
+              timestamp: Date.now(),
+            };
+          } catch (err) {
+            stepEls[i].classList.remove("ml-active");
+            stepEls[i].classList.add("ml-failed");
+            stepEls[i].querySelector(".ml-run-step-icon").textContent = "\u2717";
+            allSucceeded = false;
+            break;
+          }
+        }
+
+        persistSessionOutputs();
+
+        // Update team run count if saved team
+        if (team.id && allSucceeded) {
+          fetch(API_BASE + "/api/marketplace/team/" + team.id + "/run-complete?email=" + encodeURIComponent(email), { method: "POST" }).catch(function () {});
+          loadSavedTeams(email);
+        }
+
+        // Show completion
+        var statusMsg = document.createElement("div");
+        statusMsg.style.cssText = "text-align:center; padding:16px; margin-top:12px; border-radius:10px; font-size:14px; font-weight:500;";
+        if (allSucceeded) {
+          statusMsg.style.background = "rgba(46,125,50,0.06)";
+          statusMsg.style.color = "#2E7D32";
+          statusMsg.style.border = "1px solid rgba(46,125,50,0.15)";
+          statusMsg.textContent = "\u2713 All " + team.agent_sequence.length + " briefs complete \u2014 check " + email + " for the full outputs.";
+        } else {
+          statusMsg.style.background = "rgba(198,40,40,0.06)";
+          statusMsg.style.color = "#c62828";
+          statusMsg.style.border = "1px solid rgba(198,40,40,0.15)";
+          statusMsg.textContent = "A step failed. Completed briefs were still sent to " + email + ".";
+        }
+        progressEl.appendChild(statusMsg);
+
+        submitBtn.textContent = origText;
+        submitBtn.disabled = false;
+      };
+
+      submitBtn.addEventListener("click", teamSubmitHandler);
+    }
+
+    // --- Build Your Team trigger button ---
+    const teamTrigger = document.createElement("button");
+    teamTrigger.className = "ml-team-trigger";
+    teamTrigger.textContent = "Build Your Own Team \u2192";
+    teamTrigger.addEventListener("click", function () { openTeamBuilder(null); });
+
     // Powered by
     const powered = document.createElement("div");
     powered.className = "ml-powered-by";
     powered.textContent = "Powered by Moodlight Real-Time Intelligence";
 
+    container.appendChild(teamTrigger);
+    container.appendChild(savedTeamsSection);
     container.appendChild(bundleHeader);
     container.appendChild(bundleGrid);
     container.appendChild(agencyHeader);
