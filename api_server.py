@@ -887,6 +887,97 @@ def marketplace_run(req: MarketplaceRequest, background_tasks: BackgroundTasks):
 # Team Builder — save, list, delete user-composed agent teams
 # ---------------------------------------------------------------------------
 
+def _send_team_confirmation_email(email: str, team_name: str, agent_sequence: list[str]):
+    """Background task: send confirmation email when a team is saved."""
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    from email_templates import render_email, render_section
+
+    sender = os.getenv("EMAIL_ADDRESS")
+    password = os.getenv("EMAIL_PASSWORD")
+    if not all([sender, password]):
+        return
+
+    labels = _AGENT_LABELS
+    tiers = _AGENT_TIERS
+
+    tier_label = {"upstream": "Analysis", "downstream": "Production", "both": "Hybrid"}
+
+    # Build the sequence visual — numbered steps with tier badges
+    steps_html = ""
+    for i, agent_id in enumerate(agent_sequence, 1):
+        name = labels.get(agent_id, agent_id)
+        tier = tier_label.get(tiers.get(agent_id, "upstream"), "Analysis")
+        tier_color = {"Analysis": "#1976D2", "Production": "#2E7D32", "Hybrid": "#7B1FA2"}.get(tier, "#1976D2")
+        arrow = ""
+        if i < len(agent_sequence):
+            arrow = '<div style="text-align:center; color:#bbb; font-size:18px; padding:4px 0;">&#8595;</div>'
+        steps_html += (
+            f'<div style="display:flex; align-items:center; gap:12px; padding:12px 16px; '
+            f'background:#fff; border:1px solid #eee; border-radius:10px; margin-bottom:2px;">'
+            f'<span style="background:{tier_color}; color:#fff; width:28px; height:28px; '
+            f'border-radius:50%; display:inline-flex; align-items:center; justify-content:center; '
+            f'font-size:13px; font-weight:700; flex-shrink:0;">{i}</span>'
+            f'<div>'
+            f'<span style="font-weight:600; color:#333; font-size:15px;">{name}</span>'
+            f'<br><span style="font-size:11px; color:{tier_color}; text-transform:uppercase; '
+            f'letter-spacing:0.5px; font-weight:600;">{tier}</span>'
+            f'</div>'
+            f'</div>'
+            f'{arrow}'
+        )
+
+    sequence_section = render_section(
+        "YOUR AGENT SEQUENCE",
+        f'<div style="padding:4px 0;">{steps_html}</div>',
+        color="#6B46C1",
+    )
+
+    # How it works section
+    how_it_works = (
+        '<div style="font-size:14px; color:#555; line-height:1.7;">'
+        "When you run this team, each agent executes in order. "
+        "The output from each step flows into the next agent as upstream context "
+        "— so every agent builds on the intelligence before it. "
+        "The result is a layered, compounding brief that no single agent could produce alone."
+        "</div>"
+    )
+    how_section = render_section("HOW YOUR TEAM WORKS", how_it_works, color="#1976D2")
+
+    # CTA
+    cta_html = (
+        '<div style="text-align:center; margin:28px 0 12px 0;">'
+        '<a href="https://www.moodlightintel.com/#team-builder" '
+        'style="display:inline-block; padding:14px 36px; background:linear-gradient(135deg,#6B46C1,#1976D2); '
+        'color:#fff; text-decoration:none; border-radius:10px; font-weight:600; font-size:15px; '
+        'font-family:Arial,sans-serif;">Run Your Team</a>'
+        "</div>"
+    )
+
+    body_html = sequence_section + how_section + cta_html
+
+    html = render_email(
+        badge_text="TEAM SAVED",
+        badge_color="#6B46C1",
+        title=team_name,
+        body_html=body_html,
+        footer_text="Moodlight Intelligence Platform — Team Builder",
+    )
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"Your Team: {team_name} — Moodlight"
+    msg["From"] = sender
+    msg["To"] = email
+    msg.attach(MIMEText(html, "html"))
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender, password)
+            server.send_message(msg)
+    except Exception as e:
+        print(f"Team confirmation email failed: {e}")
+
 _AGENT_TIERS = {
     "new-business-win": "bundle", "outbound-discovery": "bundle", "full-deploy": "bundle",
     "cco": "downstream", "cso": "upstream", "comms-planner": "upstream",
@@ -933,7 +1024,7 @@ class TeamRequest(BaseModel):
 
 
 @app.post("/api/marketplace/team")
-def save_team(req: TeamRequest):
+def save_team(req: TeamRequest, background_tasks: BackgroundTasks):
     """Create or update a saved team."""
     if not req.email.strip() or "@" not in req.email:
         raise HTTPException(status_code=400, detail="Valid email is required")
@@ -991,6 +1082,10 @@ def save_team(req: TeamRequest):
                 )
                 conn.commit()
                 team_id = result.fetchone()[0]
+                # Fire confirmation email for new teams only
+                background_tasks.add_task(
+                    _send_team_confirmation_email, email, req.name.strip(), list(req.agent_sequence),
+                )
 
             # Return the saved team
             row = conn.execute(
