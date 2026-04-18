@@ -708,7 +708,10 @@
       const res = await fetch(API_BASE + "/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, conversation, token: paidToken }),
+        body: JSON.stringify({
+          question, conversation, token: paidToken,
+          email: (function () { try { return localStorage.getItem("ml_team_email") || undefined; } catch (e) { return undefined; } })(),
+        }),
       });
 
       typing.remove();
@@ -791,6 +794,73 @@
   function showAgentCta(container, data) {
     const existing = container.querySelector(".ml-agent-cta");
     if (existing) existing.remove();
+
+    // If the question matched a saved team, show a team CTA instead
+    var team = data && data.recommended_team;
+    if (team && team.id && team.agent_sequence && team.agent_sequence.length >= 2) {
+      var teamEl = document.createElement("div");
+      teamEl.className = "ml-agent-cta";
+
+      var teamLabel = document.createElement("div");
+      teamLabel.className = "ml-agent-cta-label";
+      teamLabel.textContent = "Your team \u2192";
+      teamEl.appendChild(teamLabel);
+
+      var teamName = document.createElement("div");
+      teamName.className = "ml-agent-cta-name";
+      teamName.textContent = team.name;
+      teamEl.appendChild(teamName);
+
+      // Show the agent sequence as a mini ladder
+      var seqText = (team.agent_labels || []).map(function (a, i) {
+        return (i + 1) + ". " + a.name;
+      }).join("  \u2192  ");
+      var seqEl = document.createElement("div");
+      seqEl.className = "ml-agent-cta-why";
+      seqEl.textContent = seqText;
+      teamEl.appendChild(seqEl);
+
+      // Persist brief fields for auto-fill
+      var detectedBrand = (data && data.detected_brand) || "";
+      var rawQuestion = (data && data.question) || "";
+      var parsedFields = {};
+      if (detectedBrand) parsedFields.product = detectedBrand;
+      if (rawQuestion) parsedFields.challenge = rawQuestion;
+
+      var teamBtn = document.createElement("button");
+      teamBtn.className = "ml-agent-cta-btn";
+      teamBtn.textContent = "Run " + team.name + " \u2193";
+      teamBtn.onclick = function () {
+        window._mlParsedBriefFields = parsedFields;
+        try {
+          localStorage.setItem("ml_active_brief", JSON.stringify({
+            fields: parsedFields,
+            originalQuestion: rawQuestion,
+            detectedBrand: detectedBrand,
+            recommendedAgent: team.agent_sequence[0],
+            timestamp: Date.now(),
+          }));
+          localStorage.setItem("ml_team_handoff", JSON.stringify({
+            id: team.id,
+            name: team.name,
+            agent_sequence: team.agent_sequence,
+            timestamp: Date.now(),
+          }));
+        } catch (e) {}
+        var marketplace = document.getElementById("ml-marketplace") || document.getElementById("moodlight-marketplace");
+        if (marketplace) {
+          marketplace.scrollIntoView({ behavior: "smooth", block: "start" });
+          setTimeout(function () {
+            if (window._mlRunTeamHandoff) window._mlRunTeamHandoff();
+          }, 600);
+        }
+      };
+      teamEl.appendChild(teamBtn);
+
+      container.appendChild(teamEl);
+      container.scrollTop = container.scrollHeight;
+      return;  // Team CTA takes priority — don't show single-agent CTA
+    }
 
     // Prefer the structured handoff from the backend. Fall back to
     // brand-auditor so every answer still offers a next move.

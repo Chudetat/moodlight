@@ -1381,6 +1381,7 @@ class AskRequest(BaseModel):
     question: str
     conversation: list[dict] | None = None  # optional history
     token: str | None = None  # paid access token
+    email: str | None = None  # optional — enables saved-team lookup
 
 
 class AskResponse(BaseModel):
@@ -1392,6 +1393,44 @@ class AskResponse(BaseModel):
     detected_brand: str | None = None
     question: str | None = None
     recommended_agent: dict | None = None
+    recommended_team: dict | None = None  # saved team match
+
+
+def _find_matching_team(email: str | None, question: str) -> dict | None:
+    """Check if the question references one of the user's saved teams by name."""
+    if not email or not question:
+        return None
+    email = email.lower().strip()
+    if "@" not in email:
+        return None
+    try:
+        engine = _get_engine()
+        if not engine:
+            return None
+        from sqlalchemy import text as sql_text
+        with engine.connect() as conn:
+            rows = conn.execute(
+                sql_text("SELECT id, name, agent_sequence FROM marketplace_teams WHERE email = :email"),
+                {"email": email},
+            ).fetchall()
+        if not rows:
+            return None
+        q_lower = question.lower()
+        for row in rows:
+            team_name = row[1]
+            if team_name.lower() in q_lower:
+                return {
+                    "id": row[0],
+                    "name": team_name,
+                    "agent_sequence": row[2],
+                    "agent_labels": [
+                        {"id": aid, "name": _AGENT_LABELS.get(aid, aid)}
+                        for aid in row[2]
+                    ],
+                }
+        return None
+    except Exception:
+        return None
 
 
 # ──────────────────────────────────────────────
@@ -1575,6 +1614,9 @@ async def ask_moodlight(req: AskRequest, request: Request):
     # Log the query for analytics
     _log_query(question, client_ip, is_paid, brand_name, topic_name)
 
+    # Check if the question references one of the user's saved teams
+    recommended_team = _find_matching_team(req.email, question)
+
     return AskResponse(
         answer=clean_answer,
         queries_remaining=queries_remaining,
@@ -1582,6 +1624,7 @@ async def ask_moodlight(req: AskRequest, request: Request):
         detected_brand=brand_name or None,
         question=question,
         recommended_agent=recommended_agent,
+        recommended_team=recommended_team,
     )
 
 

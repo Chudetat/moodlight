@@ -2113,6 +2113,17 @@
       formTitle.textContent = "Run: " + team.name;
       subtitle.innerHTML = 'Fill in the brief below. It will be used for all ' + team.agent_sequence.length + ' agents in your team.';
 
+      // Auto-fill brief fields from Ask Moodlight handoff if available
+      if (window._mlParsedBriefFields) {
+        Object.keys(window._mlParsedBriefFields).forEach(function (key) {
+          if (inputs[key]) inputs[key].value = window._mlParsedBriefFields[key];
+        });
+      }
+      // Pre-fill email from team email if available
+      if (savedTeamsEmail && inputs.email && !inputs.email.value) {
+        inputs.email.value = savedTeamsEmail;
+      }
+
       // Swap submit button behavior for team run
       var origText = submitBtn.textContent;
       submitBtn.textContent = "Run " + team.name;
@@ -2292,6 +2303,28 @@
     if (savedTeamsEmail) {
       loadSavedTeams(savedTeamsEmail);
     }
+
+    // Expose team handoff for Ask Moodlight widget
+    window._mlRunTeamHandoff = function () {
+      try {
+        var raw = localStorage.getItem("ml_team_handoff");
+        if (!raw) return;
+        var handoff = JSON.parse(raw);
+        localStorage.removeItem("ml_team_handoff");
+        // Stale check — 60 seconds
+        if (!handoff.timestamp || Date.now() - handoff.timestamp > 60000) return;
+        if (!handoff.id || !handoff.agent_sequence || handoff.agent_sequence.length < 2) return;
+
+        // Hydrate brief fields from Ask Moodlight
+        hydrateBriefFromStorage();
+
+        startTeamRun({
+          id: handoff.id,
+          name: handoff.name,
+          agent_sequence: handoff.agent_sequence,
+        });
+      } catch (e) {}
+    };
   }
 
   function init() {
