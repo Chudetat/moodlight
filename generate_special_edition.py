@@ -809,7 +809,7 @@ def generate_special_edition_x_thread(context, newsletter_md, topic):
     """Generate a condensed X/Twitter thread from the special edition."""
     system = SPECIAL_EDITION_X_PROMPT.format(topic=topic)
     response = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
+        model="claude-sonnet-4-6",
         max_tokens=800,
         system=system,
         messages=[{

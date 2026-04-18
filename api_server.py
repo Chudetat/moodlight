@@ -2587,7 +2587,7 @@ def generate_case_study(req: CaseStudyRequest, payload: dict = Depends(require_a
     # Generate via Claude
     client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     response = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
+        model="claude-sonnet-4-6",
         max_tokens=2000,
         system="""You write concise, data-backed retrospective case studies for Moodlight, a cultural intelligence platform.
 

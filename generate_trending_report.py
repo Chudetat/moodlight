@@ -896,7 +896,7 @@ def generate_trending_newsletter(context):
 def generate_trending_x_thread(context, newsletter_md):
     """Generate a condensed X/Twitter thread from the trending edition."""
     response = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
+        model="claude-sonnet-4-6",
         max_tokens=800,
         system=TRENDING_X_PROMPT,
         messages=[{
