@@ -264,6 +264,14 @@
       color: "#00695C",
       tier: "upstream",
     },
+    {
+      id: "bill-bernbach",
+      title: "Bill Bernbach",
+      desc: "The godfather of modern advertising, rebuilt on real-time cultural intelligence. Finds the inherent drama of your product and says it with the honesty that made 'Think Small' and 'We Try Harder' impossible to argue with. Worker of the Week.",
+      icon: "\uD83D\uDD8B\uFE0F",
+      color: "#1A1A2E",
+      tier: "both",
+    },
   ];
 
   // Display label + color-pair for each tier. Kept separate from the
@@ -1471,6 +1479,13 @@
         markets: "e.g. US, UK — where this creative will run",
         challenge: "e.g. does this tagline read too clinical, pre-launch gut check, messaging test before we spend on real research",
         timeline: "e.g. launching in 6 weeks, pre-production gut check",
+      },
+      "bill-bernbach": {
+        product: "e.g. the brand or product — what are we advertising?",
+        audience: "e.g. who are we talking to — not demographics, but what they believe",
+        markets: "e.g. US, global — where this work will run",
+        challenge: "e.g. new launch, repositioning, the category all sounds the same, need to find the truth nobody else is saying",
+        timeline: "e.g. campaign needed this quarter, pitch next week",
       },
     };
 

@@ -708,6 +708,7 @@ _MARKETPLACE_AGENTS = {
     "creative-council": ("agents", "CreativeCouncilAgent"),
     "focus-group": ("agents", "FocusGroupAgent"),
     "gtm-researcher": ("agents", "GTMResearcherAgent"),
+    "bill-bernbach": ("agents", "BillBernbachAgent"),
 }
 
 _AGENT_LABELS = {
@@ -741,6 +742,7 @@ _AGENT_LABELS = {
     "creative-council": "The Global Creative Council",
     "focus-group": "The Focus Group",
     "gtm-researcher": "The GTM Researcher",
+    "bill-bernbach": "Bill Bernbach",
 }
 
 
@@ -994,6 +996,7 @@ _AGENT_TIERS = {
     "funnel-doctor": "both", "lifecycle-strategist": "both",
     "experimentation-strategist": "both", "referral-architect": "both",
     "creative-council": "upstream", "focus-group": "upstream",
+    "bill-bernbach": "both",
 }
 
 

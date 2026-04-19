@@ -1014,6 +1014,7 @@ _AGENT_LABELS = {
     "referral-architect": "The Referral Architect",
     "creative-council": "The Global Creative Council",
     "focus-group": "The Focus Group",
+    "bill-bernbach": "Bill Bernbach",
 }
 
 _ROUTE_RE = re.compile(
