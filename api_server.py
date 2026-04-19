@@ -709,6 +709,7 @@ _MARKETPLACE_AGENTS = {
     "focus-group": ("agents", "FocusGroupAgent"),
     "gtm-researcher": ("agents", "GTMResearcherAgent"),
     "bill-bernbach": ("agents", "BillBernbachAgent"),
+    "david-ogilvy": ("agents", "DavidOgilvyAgent"),
 }
 
 _AGENT_LABELS = {
@@ -743,6 +744,7 @@ _AGENT_LABELS = {
     "focus-group": "The Focus Group",
     "gtm-researcher": "The GTM Researcher",
     "bill-bernbach": "Bill Bernbach",
+    "david-ogilvy": "David Ogilvy",
 }
 
 
@@ -997,6 +999,7 @@ _AGENT_TIERS = {
     "experimentation-strategist": "both", "referral-architect": "both",
     "creative-council": "upstream", "focus-group": "upstream",
     "bill-bernbach": "both",
+    "david-ogilvy": "both",
 }
 
 

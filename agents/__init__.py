@@ -29,6 +29,7 @@ from .new_business_win import NewBusinessWinAgent
 from .outbound_discovery import OutboundDiscoveryAgent
 from .gtm_researcher import GTMResearcherAgent
 from .bill_bernbach import BillBernbachAgent
+from .david_ogilvy import DavidOgilvyAgent
 
 __all__ = [
     "CreativeDirectorAgent", "StrategyAgent", "CommsPlannerAgent", "FullDeployAgent",
@@ -44,4 +45,5 @@ __all__ = [
     "NewBusinessWinAgent", "OutboundDiscoveryAgent",
     "GTMResearcherAgent",
     "BillBernbachAgent",
+    "DavidOgilvyAgent",
 ]

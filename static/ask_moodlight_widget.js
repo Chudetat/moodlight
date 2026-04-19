@@ -810,6 +810,7 @@
     "creative-council": "The Global Creative Council",
     "focus-group": "The Focus Group",
     "bill-bernbach": "Bill Bernbach",
+    "david-ogilvy": "David Ogilvy",
   };
 
   function showAgentCta(container, data) {

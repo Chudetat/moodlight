@@ -272,6 +272,14 @@
       color: "#1A1A2E",
       tier: "both",
     },
+    {
+      id: "david-ogilvy",
+      title: "David Ogilvy",
+      desc: "The father of modern advertising, rebuilt on real-time cultural intelligence. Finds the one demonstrable product truth nobody else is claiming, then builds it into a headline that selects the right reader and long copy that sells the way Rolls-Royce, Hathaway, and Dove once did.",
+      icon: "\uD83C\uDFA9",
+      color: "#2C1810",
+      tier: "both",
+    },
   ];
 
   // Display label + color-pair for each tier. Kept separate from the
@@ -1486,6 +1494,13 @@
         markets: "e.g. US, global — where this work will run",
         challenge: "e.g. new launch, repositioning, the category all sounds the same, need to find the truth nobody else is saying",
         timeline: "e.g. campaign needed this quarter, pitch next week",
+      },
+      "david-ogilvy": {
+        product: "e.g. the brand or product — what are we advertising, and what's the one demonstrable truth about it?",
+        audience: "e.g. who is the specific reader — what do they read, what do they worry about, what proof would they need",
+        markets: "e.g. US, global — where this work will run",
+        challenge: "e.g. new launch needs long-copy discipline, the category is full of puffery, need a claim we can actually defend",
+        timeline: "e.g. print campaign this quarter, long-copy launch next month",
       },
     };
 

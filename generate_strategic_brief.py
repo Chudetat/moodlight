@@ -913,6 +913,10 @@ _AGENT_CROSS_SELL = {
         ("The Copywriter", "Turn Bernbach's campaign direction into finished headlines, social posts, and ad copy."),
         ("The Comms Planner", "Map where and when to deploy the work — channel-by-channel, flight-by-flight."),
     ],
+    "david-ogilvy": [
+        ("The Copywriter", "Adapt Ogilvy's long-copy discipline into shorter channel-specific executions without losing the claim."),
+        ("The Data Strategist", "Instrument the proof points behind Ogilvy's claim so the evidence holds up under scrutiny."),
+    ],
 }
 
 
@@ -954,6 +958,7 @@ _AGENT_SLUG_BY_LABEL = {
     "The Global Creative Council": "creative-council",
     "The Focus Group": "focus-group",
     "Bill Bernbach": "bill-bernbach",
+    "David Ogilvy": "david-ogilvy",
 }
 
 
