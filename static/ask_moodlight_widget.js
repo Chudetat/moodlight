@@ -729,6 +729,26 @@
       updateBadge();
 
       addResult(messages, "assistant", data.answer);
+
+      // Persist brief fields immediately so the marketplace can
+      // auto-fill even if the user scrolls down manually instead
+      // of clicking the CTA button.
+      if (data.brief_fields || data.detected_brand || data.question) {
+        var earlyFields = (data.brief_fields) ? Object.assign({}, data.brief_fields) : {};
+        if (!earlyFields.product && data.detected_brand) earlyFields.product = data.detected_brand;
+        if (!earlyFields.challenge && data.question) earlyFields.challenge = data.question;
+        window._mlParsedBriefFields = earlyFields;
+        try {
+          localStorage.setItem("ml_active_brief", JSON.stringify({
+            fields: earlyFields,
+            originalQuestion: data.question || "",
+            detectedBrand: data.detected_brand || "",
+            recommendedAgent: (data.recommended_agent && data.recommended_agent.id) || "",
+            timestamp: Date.now(),
+          }));
+        } catch (e) {}
+      }
+
       // Always attempt to show the handoff CTA. The backend emits a
       // structured `recommended_agent` on every answer now; if it's
       // missing we fall back to a generic brand-auditor nudge.
