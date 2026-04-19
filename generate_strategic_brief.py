@@ -909,6 +909,10 @@ _AGENT_CROSS_SELL = {
         ("The Audience Profiler", "Go deeper on who this audience actually is culturally before you retest."),
         ("The Brief Critic", "Stress-test the brief behind the creative before you spend on real research."),
     ],
+    "bill-bernbach": [
+        ("The Copywriter", "Turn Bernbach's campaign direction into finished headlines, social posts, and ad copy."),
+        ("The Comms Planner", "Map where and when to deploy the work — channel-by-channel, flight-by-flight."),
+    ],
 }
 
 
@@ -949,6 +953,7 @@ _AGENT_SLUG_BY_LABEL = {
     "The Referral Architect": "referral-architect",
     "The Global Creative Council": "creative-council",
     "The Focus Group": "focus-group",
+    "Bill Bernbach": "bill-bernbach",
 }
 
 
