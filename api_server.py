@@ -791,7 +791,7 @@ def _log_marketplace_run(email: str, agent: str, user_input: str, engine,
                     INSERT INTO marketplace_runs (email, agent, user_input, created_at, team_id, team_step)
                     VALUES (:email, :agent, :input, NOW(), :team_id, :team_step)
                 """),
-                {"email": email.lower().strip(), "agent": agent, "input": user_input[:500],
+                {"email": email.lower().strip(), "agent": agent, "input": user_input,
                  "team_id": team_id, "team_step": team_step},
             )
             conn.commit()
