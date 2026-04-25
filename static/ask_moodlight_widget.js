@@ -25,7 +25,6 @@
   let conversation = [];
   let isOpen = false;
   let queriesRemaining = 999;
-  let hasSearched = false;
   let paidToken = localStorage.getItem("ml_paid_token") || null;
   let isPaid = false;
 
@@ -196,34 +195,6 @@
     .ml-search-btn:hover { opacity: 0.85; transform: translateY(-50%) scale(1.05); }
     .ml-search-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: translateY(-50%); }
     .ml-search-btn svg { width: 18px; height: 18px; fill: white; }
-
-    /* ── Suggested prompts ── */
-    .ml-prompts {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 16px;
-      width: 100%;
-      max-width: 580px;
-    }
-    .ml-prompt-chip {
-      background: rgba(0, 0, 0, 0.04);
-      border: 1px solid rgba(0, 0, 0, 0.12);
-      border-radius: 12px;
-      padding: 10px 16px;
-      font-size: 13px;
-      line-height: 1.4;
-      color: rgba(45, 45, 45, 0.8);
-      cursor: pointer;
-      transition: all 0.2s;
-      font-family: 'Space Grotesk', sans-serif;
-      text-align: left;
-    }
-    .ml-prompt-chip:hover {
-      background: rgba(0, 0, 0, 0.08);
-      border-color: rgba(0, 0, 0, 0.18);
-      color: #2D2D2D;
-    }
 
     /* ── Results area ── */
     .ml-results {
@@ -576,54 +547,6 @@
     panel.id = "ml-widget-panel";
     panel.classList.add("inline-mode");
 
-    // Rotating prompt pools — one prompt picked from each slot on load
-    // so visitors see different agents across the 26-agent marketplace
-    const promptPools = [
-      [
-        "Build a Chief Creative Officer brief for Nike",
-        "Build a Cultural Strategist brief for Airbnb",
-        "Build a Comms Planner brief for a Peloton relaunch",
-        "Build a Full Deploy brief for Liquid Death",
-        "Build a Data Strategist brief for Allbirds",
-        "Build a Creative Technologist brief for Nothing",
-        "Build a Partnership Scout brief for Patagonia",
-        "Build a Referral Architect brief for Hims",
-        "Build a Paid Media Strategist brief for Allbirds",
-        "Build a Lifecycle Strategist brief for a subscription box",
-        "Build a Global Creative Council entry strategy for our Cannes case study",
-        "Build a Focus Group gut check on a new tagline",
-        "Build a Trend Forecaster brief for Rhode",
-        "Build a Pitch Builder deck for a new business win",
-        "Build a Crisis Advisor brief for Boeing",
-        "Build a Copywriter brief for a DTC product launch",
-      ],
-      [
-        "What's the cultural read on Microsoft right now?",
-        "What's shifting in Gen Z attention right now?",
-        "Where is the conversation moving on AI and labor?",
-        "What's the mood around luxury brands right now?",
-        "What's breaking in the creator economy this week?",
-        "What's the read on Gen Alpha vs Gen Z right now?",
-      ],
-      [
-        "Run a Brand Audit on Netflix",
-        "Run a Competitive Scout on Spotify",
-        "Run an Audience Profiler on Peloton",
-        "Run a Content Strategist on Glossier",
-        "Run a Social Strategist on Duolingo",
-        "Run a Funnel Doctor on a DTC checkout flow",
-        "Run an Experimentation Strategist on a landing page test",
-        "Run a Culture Translator on a brand entering Japan",
-        "Run a Focus Group on a pre-launch creative concept",
-        "Run a Global Creative Council on a case study headed to Cannes",
-        "Run a Brief Critic on a client brief",
-        "Run a SEO Strategist on Patagonia",
-      ],
-    ];
-    const suggestedPrompts = promptPools.map(
-      (pool) => pool[Math.floor(Math.random() * pool.length)]
-    );
-
     panel.innerHTML = `
       <div class="ml-search-container">
         <input class="ml-search-bar" id="ml-input" type="text"
@@ -633,10 +556,6 @@
         <button class="ml-search-btn" id="ml-send-btn" onclick="window._mlSend()">
           <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
         </button>
-      </div>
-
-      <div class="ml-prompts" id="ml-prompts">
-        ${suggestedPrompts.map((p) => `<div class="ml-prompt-chip" onclick="window._mlAsk(this.dataset.prompt)" data-prompt="${p.replace(/"/g, '&quot;')}">${p}</div>`).join("")}
       </div>
 
       <div class="ml-results" id="ml-messages"></div>
@@ -658,14 +577,6 @@
   }
 
   // ── Chat logic ──
-  window._mlAsk = function (promptOrEl) {
-    const input = document.getElementById("ml-input");
-    if (input) {
-      input.value = typeof promptOrEl === "string" ? promptOrEl : promptOrEl;
-      window._mlSend();
-    }
-  };
-
   window._mlSend = async function () {
     const input = document.getElementById("ml-input");
     const sendBtn = document.getElementById("ml-send-btn");
@@ -682,13 +593,6 @@
       addResult(messages, "assistant", "You've used all your purchased questions. Grab another pack to keep going.");
       showUnlockPrompt(messages);
       return;
-    }
-
-    // Hide suggested prompts after first search
-    if (!hasSearched) {
-      hasSearched = true;
-      const prompts = document.getElementById("ml-prompts");
-      if (prompts) prompts.style.display = "none";
     }
 
     // Add user query
