@@ -357,7 +357,7 @@
       }
       .ml-agent-card .ml-icon {
         font-size: 22px;
-        margin-bottom: 8px;
+        margin-bottom: 14px;
         display: block;
       }
       .ml-agent-card h3 {
