@@ -58,7 +58,7 @@
 
   // ── Styles ──
   const STYLES = `
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300..700&display=swap');
 
     /* ── Floating button ── */
     #ml-widget-btn {
@@ -100,7 +100,7 @@
       display: none;
       flex-direction: column;
       overflow: hidden;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Newsreader', Georgia, serif;
     }
     #ml-widget-panel.floating-mode.open { display: flex; }
 
@@ -113,7 +113,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Newsreader', Georgia, serif;
       padding: 12px 20px;
     }
 
@@ -126,7 +126,7 @@
       font-size: 56px;
       font-weight: 400;
       color: #2D2D2D;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Newsreader', Georgia, serif;
       letter-spacing: -0.5px;
       line-height: 1.1;
       display: flex;
@@ -160,7 +160,7 @@
       padding: 16px 56px 16px 24px;
       color: #2D2D2D;
       font-size: 16px;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Newsreader', Georgia, serif;
       outline: none;
       transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
       box-sizing: border-box;
@@ -289,7 +289,7 @@
       font-size: 13px;
       color: rgba(45, 45, 45, 0.5);
       cursor: pointer;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Newsreader', Georgia, serif;
       transition: all 0.2s;
     }
     .ml-new-question-btn:hover {
@@ -318,7 +318,7 @@
       font-weight: 600;
       color: #2D2D2D;
       margin-bottom: 6px;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Newsreader', Georgia, serif;
     }
     .ml-agent-cta-why {
       font-size: 13px;
@@ -343,7 +343,7 @@
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Newsreader', Georgia, serif;
       transition: opacity 0.2s, transform 0.2s;
       text-decoration: none;
     }
@@ -382,7 +382,7 @@
       padding: 5px 12px 5px 8px;
       font-size: 12px;
       font-weight: 500;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Newsreader', Georgia, serif;
       cursor: pointer;
       transition: background 0.15s, transform 0.15s;
     }
@@ -424,7 +424,7 @@
       padding: 12px 28px;
       font-size: 14px;
       font-weight: 500;
-      font-family: 'Space Grotesk', sans-serif;
+      font-family: 'Newsreader', Georgia, serif;
       cursor: pointer;
       transition: opacity 0.2s, transform 0.2s;
       margin-top: 8px;

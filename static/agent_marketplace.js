@@ -293,11 +293,11 @@
 
   function injectStyles() {
     const css = `
-      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300..700&display=swap');
 
       #ml-marketplace * { box-sizing: border-box; margin: 0; padding: 0; }
       #ml-marketplace {
-        font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: 'Newsreader', Georgia, serif;
         max-width: 720px;
         margin: 0 auto;
         color: #2D2D2D;
@@ -514,7 +514,7 @@
         color: #2D2D2D;
         outline: none;
         transition: border-color 0.2s, box-shadow 0.2s;
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: 'Newsreader', Georgia, serif;
       }
       .ml-field input:focus {
         border-color: rgba(107, 70, 193, 0.5);
@@ -534,7 +534,7 @@
         cursor: pointer;
         margin-top: 8px;
         transition: opacity 0.2s, transform 0.2s;
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: 'Newsreader', Georgia, serif;
         background: linear-gradient(135deg, #6B46C1, #1976D2);
       }
       .ml-submit-btn:hover { opacity: 0.9; transform: scale(1.01); }
@@ -661,7 +661,7 @@
         border-radius: 14px;
         cursor: pointer;
         margin-bottom: 48px;
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: 'Newsreader', Georgia, serif;
         background: linear-gradient(135deg, #6B46C1, #1976D2);
         transition: opacity 0.2s, transform 0.2s;
       }
@@ -685,7 +685,7 @@
         padding: 36px 32px;
         position: relative;
         box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: 'Newsreader', Georgia, serif;
         color: #2D2D2D;
       }
       .ml-team-close {
@@ -733,7 +733,7 @@
         color: #2D2D2D;
         outline: none;
         margin-bottom: 12px;
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: 'Newsreader', Georgia, serif;
       }
       .ml-team-picker-search:focus {
         border-color: rgba(107,70,193,0.5);
@@ -861,7 +861,7 @@
         background: rgba(0,0,0,0.04);
         color: #2D2D2D;
         outline: none;
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: 'Newsreader', Georgia, serif;
       }
       .ml-team-name-input:focus { border-color: rgba(107,70,193,0.5); }
       .ml-team-email-input {
@@ -873,7 +873,7 @@
         background: rgba(0,0,0,0.04);
         color: #2D2D2D;
         outline: none;
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: 'Newsreader', Georgia, serif;
       }
       .ml-team-email-input:focus { border-color: rgba(107,70,193,0.5); }
       .ml-team-save-btn, .ml-team-run-btn {
@@ -885,7 +885,7 @@
         border: none;
         border-radius: 28px;
         cursor: pointer;
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: 'Newsreader', Georgia, serif;
         transition: opacity 0.2s;
       }
       .ml-team-save-btn {
@@ -948,7 +948,7 @@
         font-weight: 600;
         border-radius: 8px;
         cursor: pointer;
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: 'Newsreader', Georgia, serif;
         border: none;
         transition: opacity 0.2s;
       }
