@@ -61,6 +61,14 @@ _stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 app = FastAPI(title="Moodlight Data API", docs_url="/api/docs", redoc_url=None)
 
+# Fail loud at startup if team ownership secret is missing — beats silent
+# 500s on every team-endpoint call.
+if not os.environ.get("TEAM_TOKEN_SECRET"):
+    raise RuntimeError(
+        "TEAM_TOKEN_SECRET environment variable must be set. "
+        "Generate one with: python3 -c \"import secrets; print(secrets.token_hex(32))\""
+    )
+
 # CORS — allow Next.js frontend and localhost dev
 ALLOWED_ORIGINS = [
     "https://moodlight.app",
@@ -789,6 +797,58 @@ def _get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+# ---------------------------------------------------------------------------
+# Team ownership tokens (HMAC-derived, stateless, per-email deterministic)
+# ---------------------------------------------------------------------------
+
+def _team_token_for_email(email: str) -> str:
+    """Compute the deterministic ownership token for an email.
+    Server-side only — requires TEAM_TOKEN_SECRET env var."""
+    import hmac as _hmac
+    import hashlib as _hashlib
+    secret = os.environ["TEAM_TOKEN_SECRET"].encode()
+    msg = email.lower().strip().encode()
+    return _hmac.new(secret, msg, _hashlib.sha256).hexdigest()
+
+
+def _verify_team_token(email: str, provided: str | None) -> bool:
+    """Constant-time comparison of provided token vs expected token for the email."""
+    import hmac as _hmac
+    if not provided or not email:
+        return False
+    return _hmac.compare_digest(_team_token_for_email(email), provided)
+
+
+def _get_team_token(request: Request) -> str | None:
+    """Extract team token from header (preferred) or query param (fallback)."""
+    return request.headers.get("X-Team-Token") or request.query_params.get("team_token")
+
+
+def _has_existing_teams(email: str, engine) -> bool:
+    """Check whether any teams exist for this email. Used to gate the bootstrap
+    exception on save_team — first save for an email is allowed without a token."""
+    with engine.connect() as conn:
+        return conn.execute(
+            sql_text("SELECT 1 FROM marketplace_teams WHERE email = :email LIMIT 1"),
+            {"email": email.lower().strip()},
+        ).first() is not None
+
+
+_recovery_ip_rate: dict = {}  # {ip: [timestamp, ...]}
+
+def _check_recovery_ip_rate(ip: str) -> bool:
+    """Allow max 3 recovery emails per IP per hour. Prevents enumeration spam
+    and protects user mailboxes from abuse."""
+    import time
+    now = time.time()
+    times = [t for t in _recovery_ip_rate.get(ip, []) if now - t < 3600]
+    if len(times) >= 3:
+        return False
+    times.append(now)
+    _recovery_ip_rate[ip] = times
+    return True
+
+
 def _capture_marketplace_email(email: str, engine):
     """Capture email for marketplace lead. Upserts into marketplace_access."""
     try:
@@ -981,7 +1041,10 @@ def _send_team_confirmation_email(email: str, team_name: str, agent_sequence: li
 
     # CTA — include email as URL param so teams load on any device
     from urllib.parse import quote
-    cta_url = f"https://www.moodlightintel.com/?team_email={quote(email)}"
+    cta_url = (
+        f"https://www.moodlightintel.com/?team_email={quote(email)}"
+        f"&team_token={_team_token_for_email(email)}"
+    )
     cta_html = (
         '<div style="text-align:center; margin:28px 0 12px 0;">'
         f'<a href="{cta_url}" '
@@ -1062,8 +1125,10 @@ class TeamRequest(BaseModel):
 
 
 @app.post("/api/marketplace/team")
-def save_team(req: TeamRequest, background_tasks: BackgroundTasks):
-    """Create or update a saved team."""
+def save_team(req: TeamRequest, request: Request, background_tasks: BackgroundTasks):
+    """Create or update a saved team. Token required EXCEPT for first save
+    for an email (bootstrap exception). Subsequent saves require a valid
+    X-Team-Token header (or team_token query param)."""
     if not req.email.strip() or "@" not in req.email:
         raise HTTPException(status_code=400, detail="Valid email is required")
     if not req.name.strip():
@@ -1078,6 +1143,13 @@ def save_team(req: TeamRequest, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=503, detail="Service temporarily unavailable")
 
     email = req.email.lower().strip()
+
+    # Token check — bootstrap exception only when no teams exist for this email.
+    # Once an email has any team, all subsequent ops require a valid token.
+    provided_token = _get_team_token(request)
+    if _has_existing_teams(email, engine):
+        if not _verify_team_token(email, provided_token):
+            raise HTTPException(status_code=401, detail="Invalid or missing team access token")
 
     # Capture email for lead database
     _capture_marketplace_email(email, engine)
@@ -1125,7 +1197,8 @@ def save_team(req: TeamRequest, background_tasks: BackgroundTasks):
                     _send_team_confirmation_email, email, req.name.strip(), list(req.agent_sequence),
                 )
 
-            # Return the saved team
+            # Return the saved team plus the ownership token. The widget stores
+            # owner_token in localStorage and sends it on subsequent team ops.
             row = conn.execute(
                 sql_text("SELECT id, name, agent_sequence, created_at, updated_at, last_run_at, run_count FROM marketplace_teams WHERE id = :id"),
                 {"id": team_id},
@@ -1134,6 +1207,7 @@ def save_team(req: TeamRequest, background_tasks: BackgroundTasks):
                 "id": row[0], "name": row[1], "agent_sequence": row[2],
                 "created_at": str(row[3]), "updated_at": str(row[4]),
                 "last_run_at": str(row[5]) if row[5] else None, "run_count": row[6],
+                "owner_token": _team_token_for_email(email),
             }
     except HTTPException:
         raise
@@ -1144,10 +1218,14 @@ def save_team(req: TeamRequest, background_tasks: BackgroundTasks):
 
 
 @app.get("/api/marketplace/teams")
-def list_teams(email: str = Query(...)):
-    """List saved teams for a user."""
+def list_teams(request: Request, email: str = Query(...)):
+    """List saved teams for a user. Requires valid X-Team-Token header
+    (or team_token query param) matching the email."""
     if not email.strip() or "@" not in email:
         raise HTTPException(status_code=400, detail="Valid email is required")
+
+    if not _verify_team_token(email, _get_team_token(request)):
+        raise HTTPException(status_code=401, detail="Invalid or missing team access token")
 
     engine = get_engine()
     if not engine:
@@ -1178,10 +1256,13 @@ def list_teams(email: str = Query(...)):
 
 
 @app.delete("/api/marketplace/team/{team_id}")
-def delete_team(team_id: int, email: str = Query(...)):
-    """Delete a saved team. Email must match for auth."""
+def delete_team(team_id: int, request: Request, email: str = Query(...)):
+    """Delete a saved team. Requires valid X-Team-Token matching the email."""
     if not email.strip() or "@" not in email:
         raise HTTPException(status_code=400, detail="Valid email is required")
+
+    if not _verify_team_token(email, _get_team_token(request)):
+        raise HTTPException(status_code=401, detail="Invalid or missing team access token")
 
     engine = get_engine()
     if not engine:
@@ -1206,9 +1287,15 @@ def delete_team(team_id: int, email: str = Query(...)):
 
 
 @app.post("/api/marketplace/team/{team_id}/run-complete")
-def team_run_complete(team_id: int, email: str = Query(...)):
+def team_run_complete(team_id: int, request: Request, email: str = Query(...)):
     """Called by frontend after all steps in a team run complete.
-    Increments run_count and sets last_run_at."""
+    Increments run_count and sets last_run_at. Requires valid X-Team-Token."""
+    if not email.strip() or "@" not in email:
+        raise HTTPException(status_code=400, detail="Valid email is required")
+
+    if not _verify_team_token(email, _get_team_token(request)):
+        raise HTTPException(status_code=401, detail="Invalid or missing team access token")
+
     engine = get_engine()
     if not engine:
         raise HTTPException(status_code=503, detail="Service temporarily unavailable")
@@ -1231,6 +1318,97 @@ def team_run_complete(team_id: int, email: str = Query(...)):
         raise
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to update team")
+
+
+def _send_team_recovery_email(email: str):
+    """Email a recovery link with the team_token to restore access on a new
+    device. No-op if EMAIL credentials are missing."""
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    from email_templates import render_email, render_section
+    from urllib.parse import quote
+
+    sender = os.getenv("EMAIL_ADDRESS")
+    password = os.getenv("EMAIL_PASSWORD")
+    if not all([sender, password]):
+        return
+
+    token = _team_token_for_email(email)
+    cta_url = (
+        f"https://www.moodlightintel.com/?team_email={quote(email)}"
+        f"&team_token={token}"
+    )
+    cta_html = (
+        '<div style="text-align:center; margin:28px 0 12px 0;">'
+        f'<a href="{cta_url}" '
+        'style="display:inline-block; padding:14px 36px; background:linear-gradient(135deg,#6B46C1,#1976D2); '
+        'color:#fff; text-decoration:none; border-radius:10px; font-weight:600; font-size:15px; '
+        'font-family:Arial,sans-serif;">Restore Access</a>'
+        "</div>"
+    )
+
+    body_section = render_section(
+        "RESTORE ACCESS",
+        '<div style="font-size:14px; color:#555; line-height:1.7;">'
+        "Click the button below to restore access to your saved Moodlight teams "
+        "on this device. The link contains a secure token tied to this email."
+        "</div>",
+        color="#6B46C1",
+    )
+
+    html = render_email(
+        badge_text="ACCESS LINK",
+        badge_color="#6B46C1",
+        title="Restore your saved teams",
+        body_html=body_section + cta_html,
+        footer_text="Moodlight Intelligence Platform — Team Recovery",
+    )
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "Restore access to your Moodlight teams"
+    msg["From"] = sender
+    msg["To"] = email
+    msg.attach(MIMEText(html, "html"))
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender, password)
+            server.send_message(msg)
+    except Exception as e:
+        print(f"Team recovery email failed: {e}")
+
+
+def _send_team_recovery_email_if_eligible(email: str):
+    """Background task: send recovery email only if teams exist for this email.
+    Keeps the recover endpoint's response time uniform (no timing side-channel
+    revealing which emails are registered)."""
+    engine = get_engine()
+    if engine and _has_existing_teams(email, engine):
+        _send_team_recovery_email(email)
+
+
+class TeamRecoverRequest(BaseModel):
+    email: str
+
+
+@app.post("/api/marketplace/team/recover")
+def recover_team_access(req: TeamRecoverRequest, request: Request, background_tasks: BackgroundTasks):
+    """Email a recovery link with the team ownership token. Always returns 200
+    (don't leak which emails are registered). IP-rate-limited to prevent
+    enumeration spam and mailbox abuse."""
+    if not req.email.strip() or "@" not in req.email:
+        raise HTTPException(status_code=400, detail="Valid email is required")
+
+    if not _check_recovery_ip_rate(_get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Too many recovery requests. Please try again in an hour.")
+
+    email = req.email.lower().strip()
+    # Queue the eligibility check + send asynchronously. Response time is
+    # uniform regardless of whether the email is registered.
+    background_tasks.add_task(_send_team_recovery_email_if_eligible, email)
+
+    return {"status": "ok"}
 
 
 @app.post("/api/strategic-brief")

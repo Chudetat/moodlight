@@ -1736,10 +1736,12 @@
 
     let teamChain = [];
     let savedTeamsEmail = "";
-    // Restore email from localStorage or URL param (email CTA links)
+    // Restore email + ownership token from localStorage or URL param (email CTA links).
+    // Token is the HMAC-derived ownership proof required for all team operations.
     try {
       var params = new URLSearchParams(window.location.search);
       var urlEmail = params.get("team_email");
+      var urlToken = params.get("team_token");
       if (urlEmail && urlEmail.includes("@")) {
         savedTeamsEmail = urlEmail.toLowerCase().trim();
         localStorage.setItem("ml_team_email", savedTeamsEmail);
@@ -1747,7 +1749,49 @@
         var storedEmail = localStorage.getItem("ml_team_email");
         if (storedEmail) savedTeamsEmail = storedEmail;
       }
+      if (urlToken) {
+        localStorage.setItem("ml_team_token", urlToken);
+      }
+      // Strip token + email params from URL so they don't linger in browser
+      // history, referer headers, or shareable links.
+      if (urlEmail || urlToken) {
+        params.delete("team_email");
+        params.delete("team_token");
+        var newSearch = params.toString();
+        var newUrl = window.location.pathname + (newSearch ? "?" + newSearch : "") + window.location.hash;
+        try { window.history.replaceState({}, "", newUrl); } catch (e) {}
+      }
     } catch (e) {}
+
+    function getTeamToken() {
+      try { return localStorage.getItem("ml_team_token") || ""; } catch (e) { return ""; }
+    }
+    function setTeamToken(token) {
+      if (!token) return;
+      try { localStorage.setItem("ml_team_token", token); } catch (e) {}
+    }
+    function teamHeaders(extra) {
+      var headers = extra || {};
+      var token = getTeamToken();
+      if (token) headers["X-Team-Token"] = token;
+      return headers;
+    }
+    function handleTeamAuthError() {
+      var email = savedTeamsEmail || "";
+      if (!email) {
+        email = prompt("Enter the email you used to save your teams:");
+        if (!email || !email.includes("@")) return;
+        email = email.toLowerCase().trim();
+      }
+      if (!confirm("Your team access link has expired or isn't on this device. Email a recovery link to " + email + "?")) return;
+      fetch(API_BASE + "/api/marketplace/team/recover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email }),
+      })
+        .then(function () { alert("Recovery email sent. Check your inbox and click the link to restore access."); })
+        .catch(function () { alert("Failed to send recovery email. Try again in a few minutes."); });
+    }
 
     function agentById(id) {
       return AGENTS.find(function (a) { return a.id === id; });
@@ -1783,9 +1827,24 @@
       if (!email || !email.includes("@")) return;
       savedTeamsEmail = email.toLowerCase().trim();
       try { localStorage.setItem("ml_team_email", savedTeamsEmail); } catch (e) {}
-      fetch(API_BASE + "/api/marketplace/teams?email=" + encodeURIComponent(savedTeamsEmail))
-        .then(function (r) { return r.json(); })
+      // No token yet → silently skip (avoids prompting users who've never saved a team)
+      if (!getTeamToken()) {
+        savedTeamsSection.style.display = "none";
+        return;
+      }
+      fetch(API_BASE + "/api/marketplace/teams?email=" + encodeURIComponent(savedTeamsEmail), {
+        headers: teamHeaders(),
+      })
+        .then(function (r) {
+          if (r.status === 401) {
+            savedTeamsSection.style.display = "none";
+            handleTeamAuthError();
+            return null;
+          }
+          return r.json();
+        })
         .then(function (teams) {
+          if (teams === null) return;
           savedTeamsGrid.innerHTML = "";
           if (!teams || !teams.length) {
             savedTeamsSection.style.display = "none";
@@ -1852,8 +1911,14 @@
             delBtn.textContent = "\u00D7";
             delBtn.addEventListener("click", function () {
               if (!confirm("Delete team \"" + team.name + "\"?")) return;
-              fetch(API_BASE + "/api/marketplace/team/" + team.id + "?email=" + encodeURIComponent(savedTeamsEmail), { method: "DELETE" })
-                .then(function () { loadSavedTeams(savedTeamsEmail); });
+              fetch(API_BASE + "/api/marketplace/team/" + team.id + "?email=" + encodeURIComponent(savedTeamsEmail), {
+                method: "DELETE",
+                headers: teamHeaders(),
+              })
+                .then(function (r) {
+                  if (r.status === 401) { handleTeamAuthError(); return; }
+                  loadSavedTeams(savedTeamsEmail);
+                });
             });
             actions.appendChild(delBtn);
 
@@ -2093,20 +2158,31 @@
         if (existingTeam && existingTeam.id) body.id = existingTeam.id;
         fetch(API_BASE + "/api/marketplace/team", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: teamHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify(body),
         })
           .then(function (r) {
+            if (r.status === 401) {
+              handleTeamAuthError();
+              throw new Error("__handled_auth__");
+            }
             if (!r.ok) return r.json().then(function (d) { throw new Error(d.detail || "Failed to save"); });
             return r.json();
           })
           .then(function (team) {
+            // Save returns owner_token on success — store it so subsequent ops authenticate.
+            if (team && team.owner_token) setTeamToken(team.owner_token);
             savedTeamsEmail = emailInput.value.trim().toLowerCase();
             loadSavedTeams(savedTeamsEmail);
             teamOverlay.classList.remove("ml-visible");
             teamOverlay.innerHTML = "";
           })
           .catch(function (err) {
+            if (err && err.message === "__handled_auth__") {
+              saveBtn.disabled = false;
+              saveBtn.textContent = existingTeam ? "Update Team" : "Save Team";
+              return;
+            }
             alert(err.message || "Failed to save team");
             saveBtn.disabled = false;
             saveBtn.textContent = existingTeam ? "Update Team" : "Save Team";
@@ -2260,7 +2336,10 @@
 
         // Update team run count if saved team
         if (team.id && allSucceeded) {
-          fetch(API_BASE + "/api/marketplace/team/" + team.id + "/run-complete?email=" + encodeURIComponent(email), { method: "POST" }).catch(function () {});
+          fetch(API_BASE + "/api/marketplace/team/" + team.id + "/run-complete?email=" + encodeURIComponent(email), {
+            method: "POST",
+            headers: teamHeaders(),
+          }).catch(function () {});
           loadSavedTeams(email);
         }
 
