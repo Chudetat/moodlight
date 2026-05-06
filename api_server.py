@@ -764,6 +764,31 @@ def _check_marketplace_rate(email: str) -> bool:
     return True
 
 
+_marketplace_ip_rate: dict = {}  # {ip: [timestamp, ...]}
+
+def _check_marketplace_ip_rate(ip: str) -> bool:
+    """Allow max 15 marketplace runs per IP per hour. Closes the throwaway-email
+    bypass on the per-email limit. In-memory; resets on restart (matches the
+    existing _check_marketplace_rate pattern)."""
+    import time
+    now = time.time()
+    times = [t for t in _marketplace_ip_rate.get(ip, []) if now - t < 3600]
+    if len(times) >= 15:
+        return False
+    times.append(now)
+    _marketplace_ip_rate[ip] = times
+    return True
+
+
+def _get_client_ip(request: Request) -> str:
+    """Get client IP, trusting X-Forwarded-For from Railway's proxy.
+    Returns the leftmost (original client) IP if the header is present."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 def _capture_marketplace_email(email: str, engine):
     """Capture email for marketplace lead. Upserts into marketplace_access."""
     try:
@@ -820,7 +845,7 @@ def _email_marketplace_result(email: str, user_input: str, output: str, label: s
 
 
 @app.post("/api/marketplace/run")
-def marketplace_run(req: MarketplaceRequest, background_tasks: BackgroundTasks):
+def marketplace_run(req: MarketplaceRequest, request: Request, background_tasks: BackgroundTasks):
     """Public endpoint for the Moodlight Agent Marketplace on Squarespace.
     Runs agent synchronously, returns preview, emails full brief."""
     import importlib
@@ -838,7 +863,12 @@ def marketplace_run(req: MarketplaceRequest, background_tasks: BackgroundTasks):
     if not engine:
         raise HTTPException(status_code=503, detail="Service temporarily unavailable")
 
-    # Rate limit — 3 per email per hour
+    # IP rate limit — 15 per IP per hour. Closes the throwaway-email bypass
+    # on the per-email limit below.
+    if not _check_marketplace_ip_rate(_get_client_ip(request)):
+        raise HTTPException(status_code=429, detail="Too many requests from this network. Please try again in an hour.")
+
+    # Email rate limit — 3 per email per hour
     if not _check_marketplace_rate(req.email):
         raise HTTPException(status_code=429, detail="You've reached the limit. Please try again in an hour.")
 
