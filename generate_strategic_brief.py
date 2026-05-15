@@ -128,27 +128,11 @@ def _build_enrichment(engine, username: str, user_need: str, df: pd.DataFrame) -
                         f"---"
                     )
 
-        # Load competitive snapshot
-        with engine.connect() as conn:
-            comp_row = conn.execute(
-                sql_text(
-                    "SELECT snapshot_data FROM competitive_snapshots "
-                    "WHERE LOWER(brand_name) = :brand "
-                    "ORDER BY created_at DESC LIMIT 1"
-                ),
-                {"brand": brand_lower},
-            ).fetchone()
+        # Load competitive snapshot — computed on-demand
+        from competitive_analyzer import get_competitive_snapshot
+        snap = get_competitive_snapshot(engine, brand_lower)
 
-        if comp_row:
-            snapshot = comp_row[0]
-            if isinstance(snapshot, str):
-                try:
-                    snap = json.loads(snapshot)
-                except (json.JSONDecodeError, TypeError):
-                    snap = {}
-            else:
-                snap = snapshot or {}
-
+        if snap:
             comp_lines = []
             sov = snap.get("share_of_voice", {})
             if sov:

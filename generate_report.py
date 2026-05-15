@@ -235,26 +235,12 @@ def prepare_report_context(engine, subject, days=7, subject_type="brand"):
 
     context += "\n"
 
-    # --- Competitive Intelligence (brand only) ---
+    # --- Competitive Intelligence (brand only) — computed on-demand ---
     if subject_type == "brand":
         try:
-            competitive_df = pd.read_sql(
-                sql_text("SELECT * FROM competitive_snapshots "
-                         "WHERE LOWER(brand_name) = :subject "
-                         "ORDER BY created_at DESC LIMIT 1"),
-                engine, params={"subject": subject_lower},
-            )
-            if not competitive_df.empty:
-                row = competitive_df.iloc[0]
-                snapshot = row.get("snapshot_data", "{}")
-                if isinstance(snapshot, str):
-                    try:
-                        snap = json.loads(snapshot)
-                    except (json.JSONDecodeError, TypeError):
-                        snap = {}
-                else:
-                    snap = snapshot
-
+            from competitive_analyzer import get_competitive_snapshot
+            snap = get_competitive_snapshot(engine, subject_lower)
+            if snap:
                 context += "COMPETITIVE LANDSCAPE:\n"
                 sov = snap.get("share_of_voice", {})
                 if sov:

@@ -386,32 +386,13 @@ def get_competitive(brand: str):
     engine = _require_engine()
     brand_lower = brand.lower()
     try:
-        df = pd.read_sql(
-            sql_text(
-                "SELECT * FROM competitive_snapshots "
-                "WHERE LOWER(brand_name) = :subject "
-                "ORDER BY created_at DESC LIMIT 1"
-            ),
-            engine,
-            params={"subject": brand_lower},
-        )
-        if df.empty:
+        from competitive_analyzer import get_competitive_snapshot
+        snapshot = get_competitive_snapshot(engine, brand_lower)
+        if snapshot is None:
             return {"brand": brand, "snapshot": None}
-
-        row = df.iloc[0]
-        snapshot_raw = row.get("snapshot_data", "{}")
-        if isinstance(snapshot_raw, str):
-            try:
-                snapshot = json.loads(snapshot_raw)
-            except (json.JSONDecodeError, TypeError):
-                snapshot = {}
-        else:
-            snapshot = snapshot_raw
-
         return {
             "brand": brand,
             "snapshot": snapshot,
-            "created_at": str(row.get("created_at", "")),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

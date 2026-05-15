@@ -336,26 +336,12 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
     except Exception as e:
         print(f"  Intelligence context - metrics failed: {e}")
 
-    # --- Competitive Intelligence (brand only) ---
+    # --- Competitive Intelligence (brand only) — computed on-demand ---
     if brand:
         try:
-            brand_lower = brand.lower()
-            comp_df = pd.read_sql(
-                sql_text("SELECT snapshot_data FROM competitive_snapshots "
-                         "WHERE LOWER(brand_name) = :subject "
-                         "ORDER BY created_at DESC LIMIT 1"),
-                engine, params={"subject": brand_lower},
-            )
-            if not comp_df.empty:
-                snapshot = comp_df.iloc[0]["snapshot_data"]
-                if isinstance(snapshot, str):
-                    try:
-                        snap = json.loads(snapshot)
-                    except (json.JSONDecodeError, TypeError):
-                        snap = {}
-                else:
-                    snap = snapshot or {}
-
+            from competitive_analyzer import get_competitive_snapshot
+            snap = get_competitive_snapshot(engine, brand)
+            if snap:
                 comp_lines = ["Competitive Intelligence:"]
                 sov = snap.get("share_of_voice", {})
                 if sov:
