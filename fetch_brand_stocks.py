@@ -1,14 +1,19 @@
 #!/usr/bin/env python
 """
 fetch_brand_stocks.py
-Fetches 60-minute intraday stock data for watchlist brand tickers
-from AlphaVantage and stores bars in the brand_stocks table.
+Fetches daily stock bars for watchlist brand tickers from AlphaVantage
+(TIME_SERIES_DAILY, free endpoint) and stores them in the brand_stocks table.
 Also stores daily summary metrics to metric_snapshots.
 
 Tickers: NVDA (NVIDIA), AMZN (Amazon), DIS (Disney), LMT (Lockheed Martin).
 FIFA has no public ticker — skipped.
 
-Skips on weekends and outside US market hours (9:30 AM - 4:00 PM ET).
+Note: AlphaVantage migrated TIME_SERIES_INTRADAY to a premium-only endpoint,
+which made this script silently no-op for an extended period. Switched to
+TIME_SERIES_DAILY (still free) which returns one bar per trading day —
+sufficient for stock-as-cultural-signal use cases (no intraday granularity
+needed). is_market_hours() check is informational only; daily data is
+available outside market hours (last completed trading day).
 """
 
 import os
@@ -83,14 +88,14 @@ def ensure_brand_stocks_table(engine):
         print(f"  Table creation failed: {e}")
 
 
-def fetch_intraday(ticker):
-    """Fetch 60-min intraday bars from AlphaVantage. Returns list of bar dicts or None."""
+def fetch_daily(ticker):
+    """Fetch daily bars from AlphaVantage TIME_SERIES_DAILY (free endpoint).
+    Returns list of bar dicts (one per trading day) or None."""
     url = "https://www.alphavantage.co/query"
     params = {
-        "function": "TIME_SERIES_INTRADAY",
+        "function": "TIME_SERIES_DAILY",
         "symbol": ticker,
-        "interval": "60min",
-        "outputsize": "compact",
+        "outputsize": "compact",  # last 100 trading days
         "apikey": ALPHAVANTAGE_API_KEY,
     }
 
@@ -107,9 +112,9 @@ def fetch_intraday(ticker):
             print(f"    API message for {ticker}: {msg}")
             return None
 
-        time_series = data.get("Time Series (60min)", {})
+        time_series = data.get("Time Series (Daily)", {})
         if not time_series:
-            print(f"    No intraday data for {ticker}")
+            print(f"    No daily data for {ticker}")
             return None
 
         bars = []
@@ -134,7 +139,7 @@ def fetch_intraday(ticker):
 
 
 def store_bars(engine, brand_name, ticker, bars):
-    """Store intraday bars to brand_stocks table with ON CONFLICT skip."""
+    """Store daily bars to brand_stocks table with ON CONFLICT skip."""
     from sqlalchemy import text
     stored = 0
     try:
@@ -225,11 +230,11 @@ def main():
         sys.exit(0)
 
     if not is_market_hours():
-        print("Outside US market hours — fetching most recent available data")
+        print("Outside US market hours — daily data still available for last completed trading day")
 
     ensure_brand_stocks_table(engine)
 
-    print("Fetching intraday brand stock data...")
+    print("Fetching daily brand stock data...")
     fetched = 0
 
     for i, (brand_name, ticker) in enumerate(BRAND_TICKER_MAP.items()):
@@ -237,7 +242,7 @@ def main():
             time.sleep(RATE_LIMIT_SLEEP)
 
         print(f"  Fetching {brand_name} ({ticker})...")
-        bars = fetch_intraday(ticker)
+        bars = fetch_daily(ticker)
         if bars:
             stored = store_bars(engine, brand_name, ticker, bars)
             store_daily_summary(engine, brand_name, bars)

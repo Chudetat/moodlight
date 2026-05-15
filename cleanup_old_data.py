@@ -27,7 +27,7 @@ def cleanup(engine):
         ("social_scored", "created_at", 30, None),
         ("metric_snapshots", "snapshot_date", 90, "scope NOT IN ('economic', 'commodity')"),
         ("pipeline_runs", "started_at", 30, None),
-        ("brand_stocks", "bar_datetime", 7, None),
+        ("brand_stocks", "bar_datetime", 30, None),
         ("alerts", "timestamp", 90, None),
     ]
 
