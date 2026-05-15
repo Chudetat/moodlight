@@ -181,7 +181,7 @@ def _load_recent_news_social(engine, brand_names, lookback_days=7):
     return df_news, df_social
 
 
-def get_competitive_snapshot(engine, brand_name, max_cache_age_minutes=60, lookback_days=7):
+def get_competitive_snapshot(engine, brand_name, max_cache_age_minutes=60, lookback_days=None):
     """Get competitive snapshot for a brand — from runtime cache or computed on-demand.
 
     Replaces legacy pre-computed cache reads. The competitive_snapshots table is now
@@ -190,17 +190,23 @@ def get_competitive_snapshot(engine, brand_name, max_cache_age_minutes=60, lookb
     competitors + pure-pandas VLDS/SOV computation). Subsequent queries within
     max_cache_age_minutes hit the cache and return in milliseconds.
 
+    Adaptive lookback (when lookback_days=None, default): starts at 7 days; if total
+    mentions across brand + competitors < 50, expands to 14 days; if still <50,
+    expands to 30 days (max — bounded by news_scored retention). Mega-brands stay
+    at 7-day responsiveness; niche brands get the depth they need for confident SOV.
+
     Args:
         engine: SQLAlchemy engine
         brand_name: brand to compute competitive context for
         max_cache_age_minutes: cache hit window (default 60). Beyond this, recompute.
-        lookback_days: news/social lookback window for SOV/VLDS computation
+        lookback_days: fixed lookback in days, OR None for adaptive (default)
 
     Returns:
         dict with same shape as legacy snapshot_data JSON
             { brand_name: {vlds, mention_count}, ..., share_of_voice: {...}, competitive_gaps: {...} }
         or None if no competitors discoverable or no substrate data available.
     """
+    import pandas as pd
     from sqlalchemy import text
 
     # 1. Cache hit path — return fresh-enough cached snapshot
@@ -238,9 +244,29 @@ def get_competitive_snapshot(engine, brand_name, max_cache_age_minutes=60, lookb
     # Filter substrate to only rows mentioning the brand or its competitors —
     # ~100K-row loads otherwise dominate the compute time.
     all_brand_names = [brand_name] + [c["competitor_name"] for c in competitors]
-    df_news, df_social = _load_recent_news_social(engine, all_brand_names, lookback_days)
+
+    # Adaptive lookback ladder: only when caller didn't pin a specific window.
+    # Mega-brands have enough signal at 7d; niche brands need 14d or 30d to
+    # produce statistically meaningful SOV. 30d matches news_scored retention
+    # (max possible substrate depth).
+    MIN_MENTIONS = 50
+    ladder = [lookback_days] if lookback_days is not None else [7, 14, 30]
+
+    df_news = pd.DataFrame()
+    df_social = pd.DataFrame()
+    chosen_window = ladder[-1]
+    for window in ladder:
+        df_news, df_social = _load_recent_news_social(engine, all_brand_names, window)
+        total_rows = len(df_news) + len(df_social)
+        chosen_window = window
+        if total_rows >= MIN_MENTIONS:
+            break
+
     if df_news.empty and df_social.empty:
         return None
+
+    print(f"  Competitive snapshot for '{brand_name}': lookback={chosen_window}d, "
+          f"{len(df_news)} news + {len(df_social)} social rows")
 
     snapshot = compute_competitive_snapshot(df_news, df_social, brand_name, competitors)
 
