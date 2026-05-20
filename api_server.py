@@ -848,21 +848,21 @@ def _capture_marketplace_email(email: str, engine):
 
 
 def _log_marketplace_run(email: str, agent: str, user_input: str, engine,
-                         team_id: int = None, team_step: int = None):
+                         team_id: int = None, team_step: int = None, output: str = None):
     """Log a marketplace agent run for analytics."""
     try:
         with engine.connect() as conn:
             conn.execute(
                 sql_text("""
-                    INSERT INTO marketplace_runs (email, agent, user_input, created_at, team_id, team_step)
-                    VALUES (:email, :agent, :input, NOW(), :team_id, :team_step)
+                    INSERT INTO marketplace_runs (email, agent, user_input, created_at, team_id, team_step, output)
+                    VALUES (:email, :agent, :input, NOW(), :team_id, :team_step, :output)
                 """),
                 {"email": email.lower().strip(), "agent": agent, "input": user_input,
-                 "team_id": team_id, "team_step": team_step},
+                 "team_id": team_id, "team_step": team_step, "output": output},
             )
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"_log_marketplace_run failed (run not logged): {e}")
 
 
 def _build_marketplace_input(req: MarketplaceRequest) -> str:
@@ -936,7 +936,7 @@ def marketplace_run(req: MarketplaceRequest, request: Request, background_tasks:
 
     # Log the run
     _log_marketplace_run(req.email, req.agent, user_input, engine,
-                         team_id=req.team_id, team_step=req.team_step)
+                         team_id=req.team_id, team_step=req.team_step, output=output)
 
     # Email full brief in background (don't block response)
     label = _AGENT_LABELS.get(req.agent, req.agent)
