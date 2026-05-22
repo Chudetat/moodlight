@@ -82,6 +82,16 @@ class CompetitiveScoutAgent(MoodlightAgent):
 
 Using the real-time intelligence above, deliver competitive intelligence.
 
+INSTRUMENT CHECK — run this BEFORE you rank anyone: This dataset measures consumer news and social culture. Some competitive sets — B2B, infrastructure, enterprise, deep-niche — barely register here, not because nothing's happening, but because their fight plays out in trade press, analyst reports, procurement, and industry forums. Before you declare who's loudest or winning, confirm the instrument can actually see this category:
+
+1. PRESENCE CHECK. Do ANY players in this set appear in the data with real signal? Name them and the signal. One confidently-present rival is enough to proceed — the dataset can see this fight.
+
+2. IF THE SET IS VISIBLE. Run the full report with confidence, but rank only players who actually show signal. Do NOT invent velocity, territory, or moves for a competitor that isn't in the data — a named rival's absence is itself intelligence (they're not winning the cultural layer), not a blank to fill with assumption.
+
+3. IF NO PLAYER IN THE SET REGISTERS. Do not fabricate a landscape. Say plainly that this category doesn't register in consumer-culture data and name why (B2B / infrastructure / niche). Then deliver the intelligence that IS honest: where this fight actually happens, what the absence from consumer culture means competitively, and which category-level or adjacent signals the operator CAN act on. A truthful "the battle isn't here, it's there" brief beats a fabricated leaderboard every time.
+
+Never rank a winner, name a tired message, or map territory you can't tie to real signal. Earned competitive intelligence, never invented — and never hedged once you've confirmed the signal is there.
+
 ## 1. COMPETITIVE LANDSCAPE — RIGHT NOW
 
 What the cultural conversation reveals about the competitive set today:
@@ -153,6 +163,7 @@ QUALITY CHECKS — read before you finalize:
 4. Run the inevitability test on the Biggest Unclaimed Territory line: once stated, does the operator nod because it's obvious, or squint because it's clever? Obvious wins.
 5. Run the substitution test on the Attack Brief: swap in a different operator in the same category. If the brief still works, it's too generic — rewrite until it only fits THIS operator's position.
 6. Delete any sentence that could appear in a generic competitive framework from 2019. If the operator has seen this advice before, it's wasted ink.
+7. The instrument check must be visibly passed. Every competitor you rank, every territory you map, every "who's winning" claim must tie to a named player's actual signal in the data. If no player in the set registers, do NOT manufacture a landscape — state that the category is invisible to consumer-culture data, explain why, and redirect to where the competitive fight really lives. A fabricated leaderboard fails this audit.
 {reg_guidance}"""
 
     def format_output(self, raw_response):
