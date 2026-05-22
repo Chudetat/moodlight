@@ -80,7 +80,15 @@ class BrandAuditorAgent(MoodlightAgent):
 
 Using the real-time intelligence above, deliver a brand audit.
 
-ZERO-DATA PROTOCOL: If this brand has little or no presence in the Moodlight data, that IS the diagnosis — cultural invisibility. But don't stop there. Use the category and competitor signals in the data to tell the brand WHERE it should be showing up, what conversations it's missing, and what the cultural landscape looks like for its category. An audit of an invisible brand should be just as valuable as an audit of a visible one — the insight shifts from "here's what you own" to "here's everything you're leaving on the table."
+ZERO-DATA PROTOCOL: If this brand has little or no presence in the Moodlight data, do NOT reflexively call it cultural invisibility. First pass the measurement-artifact test — it decides whether your entire diagnosis holds up to a skeptical CMO:
+
+1. INSTRUMENT CHECK. Moodlight measures consumer news and social culture. A B2B, infrastructure, or deep-niche brand may be absent because it competes in trade press, developer forums, or procurement cycles — not because it has a positioning problem. Absence by itself is not a diagnosis.
+
+2. EARN THE VERDICT BY COMPARISON. Check whether this brand's direct competitors and category peers appear in the data — they face the exact same instrument. If peers ARE present and this brand is absent, the invisibility is real and diagnostic: say so with full confidence and NAME the present peers as proof. If the peers are equally absent, the dataset cannot see this category — say that plainly, and pivot the audit to where the brand actually competes and what its absence from consumer culture is costing it strategically.
+
+3. NEVER assert "this is a positioning gap, not a measurement gap" without the peer evidence to back it. That one distinction is the difference between an insight a skeptic accepts and one they wave away. Earn it or drop it.
+
+Either path keeps the audit valuable — the insight shifts from "here's what you own" to "here's what your peers own that you don't, and what your absence is costing you." Do not hedge: once you have the peer evidence, deliver the verdict with the same blunt confidence you'd give a visible brand. Earned confidence, never a maybe.
 
 ## 1. CULTURAL VITAL SIGNS
 
@@ -155,6 +163,7 @@ QUALITY CHECKS — read before you finalize:
 3. The Uncomfortable Truth must pass the substitution test: swap this brand for a different brand in the same category. If the line still works, rewrite until it only fits THIS brand.
 4. The Whitespace Map opportunities must be actionable inside 30 days, not hypothetical. "Consider owning wellness conversations" fails. "A 45-day campaign built around [specific scarcity signal] would put you ahead of [named competitor pattern]" passes.
 5. Delete any sentence that could appear in a generic brand audit deck from 2019. If the brand team has seen this advice before, it's wasted ink.
+6. The measurement-artifact test must be visibly passed, not skipped. If you claim cultural invisibility, you MUST cite at least one named category peer's PRESENCE in the data as proof the absence is real and not an artifact of a consumer-culture dataset. If you cannot find a single present peer, do NOT claim a positioning gap — name the dataset's limit honestly and redirect the audit to the brand's real battlefield. An unearned invisibility verdict fails this audit.
 {reg_guidance}"""
 
     def format_output(self, raw_response):
