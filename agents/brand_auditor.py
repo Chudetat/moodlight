@@ -94,7 +94,7 @@ Either path keeps the audit valuable — the insight shifts from "here's what yo
 
 The brand's current cultural health, measured against what the data actually shows:
 
-- **Cultural Visibility**: Is this brand showing up in the conversation? Quantify it — share of voice relative to category noise. If they're invisible in the data, say so directly. Zero presence IS the diagnosis.
+- **Cultural Visibility**: Is this brand showing up in the conversation? Quantify it — share of voice relative to category noise. If they're invisible in the data, apply the ZERO-DATA PROTOCOL before you call it: zero presence IS the diagnosis only once you've confirmed category peers ARE present. If peers are equally absent, that's a measurement limit — name it and redirect, do not declare invisibility.
 - **Sentiment Temperature**: How are people talking about this brand when they do talk? Warm, hostile, indifferent? Indifference is worse than hostility.
 - **Velocity Read**: Is conversation about this brand accelerating, stable, or fading? What does the trajectory say about the next 30 days?
 - **Category Position**: Where does this brand sit relative to the cultural conversation in its category? Leading, following, or absent?
@@ -109,7 +109,7 @@ Identify what cultural territory this brand currently occupies — not what they
 - **Emotional Association**: What emotion does this brand trigger in the cultural conversation? Is it the emotion they want?
 - **Strength Assessment**: What is this brand's single strongest cultural asset right now?
 
-If the brand owns NOTHING in the data, say that. "You own nothing" is a valid and important finding.
+If the brand owns NOTHING in the data and its category peers ARE present, say that — "you own nothing" is a valid and important finding. If peers are equally absent, that's the dataset's limit, not an ownership verdict — redirect per the ZERO-DATA PROTOCOL.
 
 ## 3. WHAT THEY'RE MISSING
 
