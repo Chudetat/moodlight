@@ -632,7 +632,7 @@
       if (data.is_paid) isPaid = true;
       updateBadge();
 
-      addResult(messages, "assistant", data.answer);
+      var answerEl = addResult(messages, "assistant", data.answer);
 
       // Persist brief fields immediately so the marketplace can
       // auto-fill even if the user scrolls down manually instead
@@ -658,6 +658,14 @@
       // missing we fall back to a generic brand-auditor nudge.
       showAgentCta(messages, data);
       showNewQuestionBtn(messages);
+      // Position the view at the TOP of the answer (not the bottom/CTA) so the
+      // user reads the response from the start, then can scroll down to the
+      // "Your next move" handoff.
+      if (answerEl) {
+        requestAnimationFrame(function () {
+          answerEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
     } catch (err) {
       typing.remove();
       addResult(messages, "assistant", "Connection error. Please try again.");
@@ -784,7 +792,6 @@
       teamEl.appendChild(teamBtn);
 
       container.appendChild(teamEl);
-      container.scrollTop = container.scrollHeight;
       return;  // Team CTA takes priority — don't show single-agent CTA
     }
 
@@ -942,7 +949,6 @@
     }
 
     container.appendChild(el);
-    container.scrollTop = container.scrollHeight;
   }
 
   window._mlClear = function () {
@@ -983,13 +989,11 @@
   };
 
   function addResult(container, role, text) {
+    const el = document.createElement("div");
     if (role === "user") {
-      const el = document.createElement("div");
       el.className = "ml-result-user";
       el.innerHTML = `<div class="ml-result-user-icon">Q</div> ${escapeHtml(text)}`;
-      container.appendChild(el);
     } else {
-      const el = document.createElement("div");
       el.className = "ml-result-card";
       // Markdown rendering: bold, italic, line breaks, bullet lists
       el.innerHTML = text
@@ -1000,9 +1004,15 @@
         .replace(/<\/ul>\s*<ul>/g, "")
         .replace(/\n\n/g, "</p><p>")
         .replace(/\n/g, "<br>");
-      container.appendChild(el);
     }
-    container.scrollTop = container.scrollHeight;
+    container.appendChild(el);
+    // Only auto-scroll for the user's question (so it + the typing indicator
+    // come into view). The assistant answer is positioned by the caller at the
+    // TOP of the answer after the CTA renders — never jump to the bottom.
+    if (role === "user") {
+      container.scrollTop = container.scrollHeight;
+    }
+    return el;
   }
 
   function escapeHtml(text) {
