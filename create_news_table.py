@@ -17,6 +17,7 @@ with engine.connect() as conn:
             link TEXT,
             source TEXT,
             topic TEXT,
+            audience TEXT,
             engagement FLOAT DEFAULT 0,
             country TEXT,
             intensity FLOAT,

@@ -478,6 +478,33 @@ FEEDS: List[tuple[str, str]] = [
 
 ]
 
+# B2B / enterprise / trade feeds — tagged audience="b2b" at ingestion so the
+# single unified pipeline can blend B2C and B2B signal at query time.
+B2B_FEEDS: List[tuple[str, str]] = [
+    # Marketing / adtech / agency trade
+    ("Digiday", "https://digiday.com/feed/"),
+    ("AdExchanger", "https://www.adexchanger.com/feed/"),
+    ("Marketing Dive", "https://www.marketingdive.com/feeds/news/"),
+    ("Adweek", "https://www.adweek.com/feed/"),
+    ("MarTech", "https://martech.org/feed/"),
+
+    # Enterprise tech / SaaS / IT
+    ("VentureBeat", "https://venturebeat.com/feed/"),
+    ("The Register", "https://www.theregister.com/headlines.atom"),
+    ("ZDNET", "https://www.zdnet.com/news/rss.xml"),
+    ("CIO Dive", "https://www.ciodive.com/feeds/news/"),
+    ("InfoWorld", "https://www.infoworld.com/feed/"),
+    ("SaaStr", "https://www.saastr.com/feed/"),
+
+    # B2B operations / workplace / supply chain
+    ("HR Dive", "https://www.hrdive.com/feeds/news/"),
+    ("Supply Chain Dive", "https://www.supplychaindive.com/feeds/news/"),
+]
+
+# Fold B2B feeds into the main feed list; remember their source tags for audience tagging.
+FEEDS = FEEDS + B2B_FEEDS
+B2B_SOURCE_TAGS = {source.lower().replace(" ", "_") for source, _ in B2B_FEEDS}
+
 OUTPUT_CSV = "news.csv"
 MAX_ITEMS_PER_FEED = 30
 
@@ -935,8 +962,26 @@ UK_EU_BRANDS = [
     "Booking Holdings", "TUI", "Accor", "InterContinental",
 ]
 
+# -------------------------------
+# B2B / ENTERPRISE QUERIES
+# -------------------------------
+B2B_QUERIES = [
+    # Enterprise SaaS / vendors
+    "enterprise software", "B2B software", "SaaS company", "cloud platform",
+    "Salesforce", "ServiceNow", "Snowflake", "Databricks", "Workday",
+    "HubSpot", "Atlassian", "Datadog", "MongoDB", "Okta", "Palo Alto Networks",
+    # Martech / adtech (agency-world signal)
+    "martech platform", "adtech", "marketing automation", "customer data platform",
+    "retail media network", "programmatic advertising",
+    # Analyst / category signals
+    "Gartner Magic Quadrant", "Forrester Wave", "enterprise AI adoption",
+    "account based marketing", "go to market strategy",
+    # B2B operations / procurement
+    "enterprise procurement", "vendor consolidation", "IT spending",
+]
+
 # Combine all query lists
-ALL_NEWSAPI_QUERIES = GOOGLE_NEWS_QUERIES + EXPANDED_BRANDS + TOPIC_QUERIES + COMPETITOR_QUERIES + UK_EU_BRANDS
+ALL_NEWSAPI_QUERIES = GOOGLE_NEWS_QUERIES + EXPANDED_BRANDS + TOPIC_QUERIES + COMPETITOR_QUERIES + UK_EU_BRANDS + B2B_QUERIES
 
 def get_google_news_feeds() -> List[tuple[str, str]]:
     """Generate Google News RSS feeds for brand queries - DEPRECATED, use NewsAPI instead"""
@@ -1039,6 +1084,7 @@ def fetch_newsapi_brands() -> List[Dict[str, Any]]:
                     "link": url,
                     "source": f"newsapi_{brand_match.lower().replace(' ', '_')}",
                     "topic": classify_topic(text),
+                    "audience": classify_audience(text),
                     "engagement": 0,
                     "country": detect_country(text),
                     "intensity": calculate_intensity(text),
@@ -1118,6 +1164,32 @@ def classify_topic(text: str) -> str:
                 return topic
 
     return "other"
+
+# -------------------------------
+# Audience classification (B2C vs B2B)
+# -------------------------------
+# Tags each item so the unified pipeline can blend consumer + B2B signal at
+# query time. b2b is triggered by a B2B-leaning source OR B2B keyword signal;
+# everything else defaults to b2c. ("both" is a query-layer concept, not set here.)
+B2B_KEYWORDS = [
+    "b2b", "saas", "enterprise software", "enterprise tech", "cloud platform",
+    "procurement", "go-to-market", "go to market", "account-based", "account based",
+    "martech", "adtech", "ad tech", "marketing automation", "customer data platform",
+    "retail media", "programmatic", "developer platform", "developer tools",
+    "gartner", "forrester", "idc", "magic quadrant",
+    "ciso", "vp of sales", "head of marketing", "chief marketing officer",
+    "supply chain", "logistics provider", "wholesale", "distributor",
+    "earnings call", "10-k", "10-q", "8-k", "annual report", "quarterly report",
+]
+B2B_PATTERN = re.compile(r'\b(?:' + '|'.join(re.escape(kw) for kw in B2B_KEYWORDS) + r')\b')
+
+def classify_audience(text: str, source: str = "") -> str:
+    """Tag item as 'b2b' or 'b2c' for the unified B2C/B2B pipeline."""
+    if source and source in B2B_SOURCE_TAGS:
+        return "b2b"
+    if B2B_PATTERN.search(text.lower()):
+        return "b2b"
+    return "b2c"
 
 # -------------------------------
 # Country detection
@@ -1452,6 +1524,7 @@ def fetch_feed(source: str, url: str) -> List[Dict[str, Any]]:
                 "link": link,
                 "source": source.lower().replace(" ", "_"),
                 "topic": topic,
+                "audience": classify_audience(text, source.lower().replace(" ", "_")),
                 "engagement": 0,
                 "country": country,
                 "intensity": intensity,

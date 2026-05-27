@@ -72,7 +72,7 @@ def save_to_db(csv_path: str, table_name: str):
         df["created_at"] = pd.to_datetime(df["created_at"], format="mixed", utc=True, errors="coerce")
 
     # Only keep columns that exist in table
-    valid_cols = ["id", "text", "created_at", "link", "source", "topic",
+    valid_cols = ["id", "text", "created_at", "link", "source", "topic", "audience",
                   "engagement", "country", "intensity", "empathy_score",
                   "empathy_label", "emotion_top_1", "emotion_top_2", "emotion_top_3"]
     df_clean = df[[c for c in valid_cols if c in df.columns]].copy()
@@ -109,6 +109,13 @@ def save_to_db(csv_path: str, table_name: str):
                 df_clean.to_sql(table_name, engine, if_exists="replace", index=False, chunksize=25)
                 print(f"✅ Created new table: {table_name}")
             else:
+                # Ensure newer columns exist on pre-existing tables (idempotent).
+                # Gated on the column being present in this batch, so it only
+                # touches tables that actually carry the field (e.g. news_data).
+                if "audience" in df_clean.columns:
+                    with engine.connect() as mig_conn:
+                        mig_conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS audience TEXT"))
+                        mig_conn.commit()
                 # Delete rows with matching IDs, then append
                 if "id" in df_clean.columns and len(df_clean) > 0:
                     new_ids = df_clean["id"].dropna().tolist()
