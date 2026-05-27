@@ -101,7 +101,7 @@ What the cultural conversation reveals about the competitive set today:
 - **Who's Fading**: Which competitor is losing cultural relevance? What does their declining velocity or density tell you about their trajectory?
 - **The Surprise Player**: Is there an unexpected brand or entrant showing up in this category's cultural conversation?
 
-End with: "Current leader: [brand] — but [one sentence on vulnerability]"
+End with, ONLY if the instrument check confirmed at least one player is present: "Current leader: [brand] — but [one sentence on vulnerability]". If no player in the set registers (instrument check branch 3), do NOT name a leader — end instead with: "No player owns this culturally — the fight is in [trade press / analyst coverage / procurement / industry forums]", and keep the section honest about the dataset's limit rather than ranking absent brands.
 
 ## 2. TERRITORY MAP
 
