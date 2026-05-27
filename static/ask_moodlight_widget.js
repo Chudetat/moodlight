@@ -249,10 +249,17 @@
     .ml-typing-bar {
       display: flex;
       gap: 5px;
+      align-items: center;
       padding: 20px 24px;
       background: rgba(0, 0, 0, 0.03);
       border: 1px solid rgba(0, 0, 0, 0.08);
       border-radius: 12px;
+    }
+    .ml-typing-text {
+      margin-left: 8px;
+      font-size: 13px;
+      font-style: italic;
+      color: rgba(0, 0, 0, 0.45);
     }
     .ml-typing-dot {
       width: 8px;
@@ -604,9 +611,26 @@
     // Typing indicator
     const typing = document.createElement("div");
     typing.className = "ml-typing-bar";
-    typing.innerHTML = '<div class="ml-typing-dot"></div><div class="ml-typing-dot"></div><div class="ml-typing-dot"></div>';
+    typing.innerHTML = '<div class="ml-typing-dot"></div><div class="ml-typing-dot"></div><div class="ml-typing-dot"></div><span class="ml-typing-text"></span>';
     messages.appendChild(typing);
     messages.scrollTop = messages.scrollHeight;
+
+    // Rotating loading copy — accurate to what Moodlight actually does (no inflated claims).
+    const mlLoadingMsgs = [
+      "Reading the cultural conversation…",
+      "Scanning news, social & markets…",
+      "Triangulating the signals…",
+      "Separating signal from noise…",
+      "Finding the pattern…",
+      "Pressure-testing the read…",
+    ];
+    const mlTypingText = typing.querySelector(".ml-typing-text");
+    let mlMsgIdx = 0;
+    if (mlTypingText) mlTypingText.textContent = mlLoadingMsgs[0];
+    const mlLoadingTimer = setInterval(function () {
+      mlMsgIdx = (mlMsgIdx + 1) % mlLoadingMsgs.length;
+      if (mlTypingText) mlTypingText.textContent = mlLoadingMsgs[mlMsgIdx];
+    }, 2200);
 
     try {
       const res = await fetch(API_BASE + "/api/ask", {
@@ -671,6 +695,7 @@
       typing.remove();
       addResult(messages, "assistant", "Connection error. Please try again.");
     } finally {
+      clearInterval(mlLoadingTimer);
       input.disabled = false;
       sendBtn.disabled = false;
       input.placeholder = "Follow up, or ask Moodlight to build a brief for a specific agent...";
