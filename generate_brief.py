@@ -529,7 +529,7 @@ Overall market mood: {mood} (sentiment: {avg_sentiment:.2f}/1.0)
             """), engine)
             if not stock_df.empty:
                 # Staleness guard — skip if data is older than 5 days
-                latest_date = pd.to_datetime(stock_df["snapshot_date"]).max()
+                latest_date = pd.to_datetime(stock_df["snapshot_date"], utc=True).max()
                 if latest_date < (datetime.now(timezone.utc) - timedelta(days=5)):
                     print("  Brand stock data is stale (>5 days old) — skipping")
                     stock_df = pd.DataFrame()

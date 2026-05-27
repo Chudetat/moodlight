@@ -236,7 +236,7 @@ def load_market_context():
             price_df = brand_df[brand_df["metric_name"] == "stock_price"]
             chg_df = brand_df[brand_df["metric_name"] == "stock_change_pct"]
             if not price_df.empty:
-                latest_date = pd.to_datetime(price_df["snapshot_date"]).max()
+                latest_date = pd.to_datetime(price_df["snapshot_date"], utc=True).max()
                 if latest_date < (datetime.now(timezone.utc) - timedelta(days=5)):
                     price_df = pd.DataFrame()
             if not price_df.empty:

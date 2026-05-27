@@ -506,7 +506,7 @@ def _load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
         )
         if not stocks_df.empty:
             # Staleness guard — skip if data is older than 5 days
-            latest_date = pd.to_datetime(stocks_df["snapshot_date"]).max()
+            latest_date = pd.to_datetime(stocks_df["snapshot_date"], utc=True).max()
             if latest_date < (datetime.now(timezone.utc) - timedelta(days=5)):
                 print("  Brand stock data is stale (>5 days old) — skipping")
                 stocks_df = pd.DataFrame()

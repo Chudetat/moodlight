@@ -569,7 +569,7 @@ HIGH-ENGAGEMENT CONTENT (What's resonating now - with engagement scores):
                 chg_df = brand_df[brand_df["metric_name"] == "stock_change_pct"]
                 if not price_df.empty:
                     # Staleness guard — skip if data is older than 5 days
-                    latest_date = pd.to_datetime(price_df["snapshot_date"]).max()
+                    latest_date = pd.to_datetime(price_df["snapshot_date"], utc=True).max()
                     if latest_date < (datetime.now(timezone.utc) - timedelta(days=5)):
                         print("  Brand stock data is stale (>5 days old) — skipping")
                         price_df = pd.DataFrame()
