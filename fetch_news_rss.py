@@ -1624,7 +1624,7 @@ def main():
         print("\nNo new items fetched")
         if existing_df.empty:
             print("No existing data either - writing empty CSV")
-            columns = ["id", "text", "created_at", "link", "source", "topic", "engagement", "country", "intensity"]
+            columns = ["id", "text", "created_at", "link", "source", "topic", "audience", "engagement", "country", "intensity"]
             df = pd.DataFrame(columns=columns)
             df.to_csv(OUTPUT_CSV, index=False, quoting=csv.QUOTE_NONNUMERIC)
             print(f"Saved empty file to {OUTPUT_CSV}")
@@ -1645,7 +1645,7 @@ def main():
     all_rows = deduplicate_entries(all_rows)
 
     # Create DataFrame from new entries
-    columns = ["id", "text", "created_at", "link", "source", "topic", "engagement", "country", "intensity"]
+    columns = ["id", "text", "created_at", "link", "source", "topic", "audience", "engagement", "country", "intensity"]
     new_df = pd.DataFrame(all_rows, columns=columns)
 
     # Combine with existing data
