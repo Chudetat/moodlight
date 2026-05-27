@@ -1672,8 +1672,10 @@ async def ask_moodlight(req: AskRequest, request: Request):
     _record_request(client_ip)
     queries_remaining = 999
 
-    # Log the query (and its answer) for analytics + QA
-    _log_query(question, client_ip, is_paid, brand_name, topic_name, clean_answer, recommended_agent or "")
+    # Log the query (and its answer) for analytics + QA.
+    # recommended_agent is a dict ({"id","name","why",...}) or falsy — store its id string.
+    rec_agent_id = recommended_agent.get("id") if isinstance(recommended_agent, dict) else (recommended_agent or "")
+    _log_query(question, client_ip, is_paid, brand_name, topic_name, clean_answer, rec_agent_id or "")
 
     # Check if the question references one of the user's saved teams
     recommended_team = _find_matching_team(req.email, question)
