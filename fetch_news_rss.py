@@ -499,6 +499,12 @@ B2B_FEEDS: List[tuple[str, str]] = [
     # B2B operations / workplace / supply chain
     ("HR Dive", "https://www.hrdive.com/feeds/news/"),
     ("Supply Chain Dive", "https://www.supplychaindive.com/feeds/news/"),
+
+    # Design / creative / branding / typography trade (niche-vertical B2B)
+    ("Design Week", "https://www.designweek.co.uk/feed/"),
+    ("PRINT Magazine", "https://www.printmag.com/feed/"),
+    ("The Dieline", "https://thedieline.com/feed"),
+    ("Creative Bloq", "https://www.creativebloq.com/feeds.xml"),
 ]
 
 # Fold B2B feeds into the main feed list; remember their source tags for audience tagging.
