@@ -106,24 +106,28 @@ Return a JSON object with these fields:
 - "topic": specific topic if time-sensitive, e.g. "AI", "layoffs", "tariffs" (or null)
 - "needs_web": true if the query mentions "yesterday", "today", "this week", "recent", "latest", or asks about current/breaking events
 - "needs_report": true ONLY if the user asks for a "report", "deep dive", "full analysis", "intelligence report", or "analyze [brand/topic] in depth". NOT for strategic brief prompts, campaign briefs, or general conversation requests. (default false)
+- "audience": classify the QUERY's angle, NOT just the company's type. "b2b" = the question is about enterprise/professional/vendor/buyer dynamics. "b2c" = about consumers, the general public, or cultural/brand perception. "both" = it genuinely spans both, OR a B2B company is making a consumer-facing move (sponsorship, brand campaign, cultural moment), OR a consumer brand is making a B2B/wholesale/investor move. A B2B company doing something consumer-facing (e.g., a SaaS firm sponsoring an F1 team) is "both", not "b2b". A consumer brand's general perception (e.g., "how is Nike perceived") is "b2c". Default to "both" only when truly unclear.
 
 Example: "What happened at yesterday's Super Bowl?"
-{"brand": null, "event": "Super Bowl 2026", "topic": null, "needs_web": true, "needs_report": false}
+{"brand": null, "event": "Super Bowl 2026", "topic": null, "needs_web": true, "needs_report": false, "audience": "b2c"}
 
 Example: "How is Nike doing?"
-{"brand": "Nike", "event": null, "topic": null, "needs_web": false, "needs_report": false}
+{"brand": "Nike", "event": null, "topic": null, "needs_web": false, "needs_report": false, "audience": "b2c"}
 
 Example: "Generate a report on Tesla"
-{"brand": "Tesla", "event": null, "topic": null, "needs_web": false, "needs_report": true}
+{"brand": "Tesla", "event": null, "topic": null, "needs_web": false, "needs_report": true, "audience": "b2c"}
+
+Example: "How do IT buyers view Okta?"
+{"brand": "Okta", "event": null, "topic": null, "needs_web": false, "needs_report": false, "audience": "b2b"}
 
 Example: "Deep dive on AI trends for the last 30 days"
-{"brand": null, "event": null, "topic": "AI", "needs_web": false, "needs_report": true}
+{"brand": null, "event": null, "topic": "AI", "needs_web": false, "needs_report": true, "audience": "both"}
 
 Example: "Generate a prompt for the strategic brief generator"
-{"brand": null, "event": null, "topic": null, "needs_web": false, "needs_report": false}
+{"brand": null, "event": null, "topic": null, "needs_web": false, "needs_report": false, "audience": "both"}
 
 Example: "Now create a brief based on those challenges"
-{"brand": null, "event": null, "topic": null, "needs_web": false, "needs_report": false}
+{"brand": null, "event": null, "topic": null, "needs_web": false, "needs_report": false, "audience": "both"}
 
 Return ONLY valid JSON, no explanation.""",
             messages=[{"role": "user", "content": user_message}]
@@ -134,10 +138,13 @@ Return ONLY valid JSON, no explanation.""",
             result = result.split("\n", 1)[1].rsplit("```", 1)[0].strip()
         parsed = json.loads(result)
         parsed["brand"] = _normalize_brand(parsed.get("brand"))
+        # Normalize audience to one of {b2c, b2b, both}; default to "both".
+        aud = str(parsed.get("audience") or "both").strip().lower()
+        parsed["audience"] = aud if aud in ("b2c", "b2b", "both") else "both"
         return parsed
     except Exception as e:
         print(f"[classifier] detect_search_topic failed: {type(e).__name__}: {e}")
-        return {"brand": None, "event": None, "topic": None, "needs_web": False, "needs_report": False}
+        return {"brand": None, "event": None, "topic": None, "needs_web": False, "needs_report": False, "audience": "both"}
 
 
 def detect_brand_query(user_message: str, client: Anthropic) -> str:
@@ -565,6 +572,8 @@ def _build_dashboard_context(engine, df_all: pd.DataFrame, brand_name: str, topi
                     meta.append(f"empathy: {row.get('empathy_score', 'N/A')}")
                 elif "empathy_label" in brand_posts.columns:
                     meta.append(f"empathy: {row.get('empathy_label', 'N/A')}")
+                if "audience" in brand_posts.columns and pd.notna(row.get("audience")):
+                    meta.append(f"audience: {row.get('audience')}")
                 if meta:
                     entry += f" ({', '.join(meta)})"
                 brand_lines.append(entry)
@@ -586,6 +595,9 @@ def _build_dashboard_context(engine, df_all: pd.DataFrame, brand_name: str, topi
             if "topic" in brand_posts.columns:
                 brand_topics = brand_posts["topic"].value_counts().head(5).to_dict()
                 brand_parts.append(f"Brand Topics: {brand_topics}")
+            if "audience" in brand_posts.columns:
+                brand_aud = brand_posts["audience"].value_counts().to_dict()
+                brand_parts.append(f"Brand Signal Audience Mix (b2c/b2b): {brand_aud}")
 
             brand_parts.append("[END BRAND-SPECIFIC SIGNALS]")
             brand_section = "\n\n".join(brand_parts)
@@ -736,6 +748,11 @@ def _build_dashboard_context(engine, df_all: pd.DataFrame, brand_name: str, topi
         source_dist = df_all["source"].value_counts().head(10).to_dict()
         verified_parts.append(f"Source Distribution: {source_dist}")
 
+    # Audience mix (b2c = consumer culture, b2b = enterprise/professional/trade)
+    if "audience" in df_all.columns:
+        aud_mix = df_all["audience"].value_counts().to_dict()
+        verified_parts.append(f"Signal Audience Mix (b2c = consumer culture, b2b = enterprise/professional/trade): {aud_mix}")
+
     # Date range and totals
     if "created_at" in df_all.columns:
         verified_parts.append(f"Date Range: {df_all['created_at'].min()} to {df_all['created_at'].max()}")
@@ -773,7 +790,7 @@ def _build_dashboard_context(engine, df_all: pd.DataFrame, brand_name: str, topi
 # System prompt (verbatim from app.py:5317-5477)
 # ---------------------------------------------------------------------------
 
-def _get_system_prompt(data_context: str, total_posts: int, date_range: str) -> str:
+def _get_system_prompt(data_context: str, total_posts: int, date_range: str, audience: str = "both") -> str:
     """Build the full system prompt for Ask Moodlight dashboard chat."""
     current_date = datetime.now().strftime("%B %d, %Y")
 
@@ -786,6 +803,13 @@ PRIORITY HIERARCHY (in order of importance):
 
 TRAINING DATA BAN — ABSOLUTE:
 You are a REAL-TIME intelligence engine. Your ONLY sources of truth are: (1) the dashboard data context provided below, and (2) web search results from the current period. You must NEVER inject facts, events, corporate actions, controversies, or narratives from your training data. Your training knowledge is stale — it could be months or years old — and presenting it as current intelligence destroys the product's credibility. If neither the dashboard data nor web results contain information about what the user asked, deliver strategic reasoning and frameworks only. Do not fill gaps with training-data "knowledge" about what a brand did, what happened in their market, or what their competitors are doing. A response that says "here's how to think about this strategically" is infinitely better than one that confidently presents a 4-year-old event as today's intelligence.
+
+AUDIENCE WEIGHTING (B2C / B2B):
+This query reads as **{audience}**-oriented. Tracked signal is tagged by audience (b2c = consumer culture; b2b = enterprise/professional/trade buyers). Weight your read accordingly:
+- "b2c": lead with consumer-culture signal; treat B2B signal as secondary context.
+- "b2b": lead with the B2B/enterprise/trade signal; do NOT force consumer-culture metrics that don't speak to professional buyers.
+- "both": surface BOTH the consumer angle AND the B2B angle explicitly, and commit to each — do not blur them into a generic middle. A dual-nature opportunity (e.g., a B2B brand making a consumer play, or vice versa) is exactly where two distinct reads add the most value.
+If the slice you should weight toward is thin or absent in the tracked signal, say so plainly and pivot to category/adjacent signal or web intelligence — never fabricate B2B (or consumer) signal that isn't there.
 
 HIGHEST PRIORITY INSTRUCTION: Never cite general dashboard metrics in brand-specific or category-specific analysis. This includes global mood scores, total topic counts, overall empathy averages, and engagement numbers from unrelated topics. If a metric was not specifically measured from data about the brand or category the user asked about, it must not appear in the response — not even as "broader cultural context" framing. Do not say "Global mood has cratered to X" and then build a category strategy around that number. The global score reflects ALL discourse, not the category being analyzed. An insight without data is always better than an insight with misattributed data.
 
@@ -1086,6 +1110,7 @@ def ask_moodlight(
     topic_name = search_info.get("topic") or ""
     needs_web = search_info.get("needs_web", False)
     needs_report = search_info.get("needs_report", False)
+    audience_val = search_info.get("audience") or "both"
 
     # Carry forward context from previous turn
     if brand_name or topic_name:
@@ -1158,7 +1183,7 @@ def ask_moodlight(
     if "created_at" in df_all.columns and not df_all.empty:
         date_range = f"{df_all['created_at'].min()} to {df_all['created_at'].max()}"
 
-    system_prompt = _get_system_prompt(data_context, len(df_all), date_range)
+    system_prompt = _get_system_prompt(data_context, len(df_all), date_range, audience=audience_val)
 
     # --- Build messages (include conversation history) ---
     messages = []
