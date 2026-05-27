@@ -658,12 +658,13 @@
       // missing we fall back to a generic brand-auditor nudge.
       showAgentCta(messages, data);
       showNewQuestionBtn(messages);
-      // Position the view at the TOP of the answer (not the bottom/CTA) so the
-      // user reads the response from the start, then can scroll down to the
-      // "Your next move" handoff.
+      // Align the answer's TOP to the top of the scroll container (#ml-messages,
+      // the overflow-y:auto element) so the user reads the response from the
+      // start. Deterministic scrollTop on the known scroller — not a racey
+      // smooth scrollIntoView that can be overridden by other appends.
       if (answerEl) {
         requestAnimationFrame(function () {
-          answerEl.scrollIntoView({ behavior: "smooth", block: "start" });
+          messages.scrollTop += answerEl.getBoundingClientRect().top - messages.getBoundingClientRect().top;
         });
       }
     } catch (err) {
@@ -684,7 +685,6 @@
     el.className = "ml-new-question";
     el.innerHTML = '<button class="ml-new-question-btn" onclick="window._mlClear()">Ask a new question</button>';
     container.appendChild(el);
-    container.scrollTop = container.scrollHeight;
   }
 
   // Display title lookup for every marketplace agent — keyed by the
