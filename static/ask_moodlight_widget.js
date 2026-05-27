@@ -630,7 +630,7 @@
     const mlLoadingTimer = setInterval(function () {
       mlMsgIdx = (mlMsgIdx + 1) % mlLoadingMsgs.length;
       if (mlTypingText) mlTypingText.textContent = mlLoadingMsgs[mlMsgIdx];
-    }, 2200);
+    }, 2600);
 
     try {
       const res = await fetch(API_BASE + "/api/ask", {
