@@ -28,10 +28,21 @@ load_dotenv()
 
 app = FastAPI(title="Ask Moodlight API", docs_url=None, redoc_url=None)
 
-# Serve static files (widget JS)
+# Serve static files (widget JS). JS is served with Cache-Control: no-cache so
+# browsers always revalidate it (a cheap 304 via ETag/Last-Modified when
+# unchanged) and code fixes propagate to every visitor immediately — no manual
+# ?v= cache-busting needed. Non-JS assets (logos/images) keep normal caching.
+class _RevalidateJSStatic(StaticFiles):
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        if path.endswith(".js"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(_static_dir):
-    app.mount("/static", StaticFiles(directory=_static_dir), name="static")
+    app.mount("/static", _RevalidateJSStatic(directory=_static_dir), name="static")
 
 # CORS — locked to sales site + localhost for dev
 ALLOWED_ORIGINS = [
