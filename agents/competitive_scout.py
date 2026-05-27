@@ -86,6 +86,8 @@ INSTRUMENT CHECK — run this BEFORE you rank anyone: This dataset measures cons
 
 1. PRESENCE CHECK. Do ANY players in this set appear in the data with real signal? Name them and the signal. One confidently-present rival is enough to proceed — the dataset can see this fight.
 
+1b. AUDIENCE-AWARE PRESENCE. The signal is tagged b2c (consumer culture) vs b2b (enterprise/professional/trade) — consult the SIGNAL AUDIENCE MIX and any brand "Audience Mix (b2c/b2b)" line. For a B2B competitive set, check the B2B-tagged signal specifically: if players register there, run the full report on that B2B layer (procurement, analyst/trade narrative, practitioner sentiment) rather than declaring the set invisible. A set absent from consumer culture but present in B2B signal is visible to the right half of the instrument — use it. Only when the set is thin in BOTH consumer AND b2b signal do you fall to branch 3.
+
 2. IF THE SET IS VISIBLE. Run the full report with confidence, but rank only players who actually show signal. Do NOT invent velocity, territory, or moves for a competitor that isn't in the data — a named rival's absence is itself intelligence (they're not winning the cultural layer), not a blank to fill with assumption.
 
 3. IF NO PLAYER IN THE SET REGISTERS. Do not fabricate a landscape. Say plainly that this category doesn't register in consumer-culture data and name why (B2B / infrastructure / niche). Then deliver the intelligence that IS honest: where this fight actually happens, what the absence from consumer culture means competitively, and which category-level or adjacent signals the operator CAN act on. A truthful "the battle isn't here, it's there" brief beats a fabricated leaderboard every time.

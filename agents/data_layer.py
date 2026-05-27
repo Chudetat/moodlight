@@ -61,6 +61,10 @@ def build_intelligence_snapshot(df):
         df["source"].value_counts().head(10).to_string()
         if "source" in df.columns else "No source data"
     )
+    snapshot["audience_mix"] = (
+        df["audience"].value_counts().to_string()
+        if "audience" in df.columns else "No audience data"
+    )
     snapshot["total_posts"] = len(df)
     return snapshot
 
@@ -483,6 +487,10 @@ def _build_marketplace_enrichment(user_need, df):
     ) if top_emo else "N/A"
 
     mention_count = len(brand_df)
+    aud_split = (
+        brand_df["audience"].value_counts().to_dict()
+        if "audience" in brand_df.columns else {}
+    )
 
     return (
         f"BRAND INTELLIGENCE — {brand_phrase.upper()} ({mention_count} mentions in data):\n"
@@ -493,6 +501,7 @@ def _build_marketplace_enrichment(user_need, df):
         f"  Scarcity: {sc_label} [raw: {sc:.2f}]\n"
         f"  Top Emotions: {emo_str}\n"
         f"  Empathy: {emp_label}\n"
+        f"  Audience Mix (b2c/b2b): {aud_split}\n"
         f"---"
     )
 
@@ -518,6 +527,8 @@ def assemble_full_context(df, snapshot, headlines, vlds_data=None,
         if not scarcity_df.empty else "No scarcity data available"
     )
 
+    audience_mix = snapshot.get('audience_mix', 'No audience data')
+
     context = f"""
 MOODLIGHT INTELLIGENCE SNAPSHOT
 ================================
@@ -536,6 +547,9 @@ GEOGRAPHIC HOTSPOTS:
 
 SOURCE DISTRIBUTION (which publications/platforms are driving conversation):
 {snapshot['source_dist']}
+
+SIGNAL AUDIENCE MIX (b2c = consumer culture, b2b = enterprise/professional/trade; most tracked signal is consumer — consult this before reading any B2B brand's low/zero presence as cultural invisibility):
+{audience_mix}
 
 VELOCITY & LONGEVITY (Which topics are rising fast vs. enduring):
 {velocity_data}
