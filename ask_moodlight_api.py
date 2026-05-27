@@ -135,9 +135,14 @@ def _ensure_ask_queries_table():
                     is_paid BOOLEAN DEFAULT FALSE,
                     detected_brand VARCHAR(200),
                     detected_topic VARCHAR(200),
+                    answer TEXT,
+                    recommended_agent VARCHAR(200),
                     created_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """))
+            # Idempotent column adds for pre-existing tables (QA answer-logging)
+            conn.execute(sql_text("ALTER TABLE ask_queries ADD COLUMN IF NOT EXISTS answer TEXT"))
+            conn.execute(sql_text("ALTER TABLE ask_queries ADD COLUMN IF NOT EXISTS recommended_agent VARCHAR(200)"))
             conn.execute(sql_text(
                 "CREATE INDEX IF NOT EXISTS idx_ask_queries_created ON ask_queries (created_at DESC)"
             ))
@@ -149,8 +154,9 @@ def _ensure_ask_queries_table():
 _ask_queries_table_ready = False
 
 
-def _log_query(question: str, ip: str, is_paid: bool, brand: str = "", topic: str = ""):
-    """Log a query to the ask_queries table (fire-and-forget)."""
+def _log_query(question: str, ip: str, is_paid: bool, brand: str = "", topic: str = "",
+               answer: str = "", recommended_agent: str = ""):
+    """Log a query (and its answer) to the ask_queries table (fire-and-forget)."""
     global _ask_queries_table_ready
     engine = _get_engine()
     if not engine:
@@ -162,14 +168,16 @@ def _log_query(question: str, ip: str, is_paid: bool, brand: str = "", topic: st
         from sqlalchemy import text as sql_text
         with engine.connect() as conn:
             conn.execute(sql_text(
-                "INSERT INTO ask_queries (question, ip_hash, is_paid, detected_brand, detected_topic) "
-                "VALUES (:question, :ip_hash, :is_paid, :brand, :topic)"
+                "INSERT INTO ask_queries (question, ip_hash, is_paid, detected_brand, detected_topic, answer, recommended_agent) "
+                "VALUES (:question, :ip_hash, :is_paid, :brand, :topic, :answer, :rec_agent)"
             ), {
                 "question": question,
                 "ip_hash": _hash_ip(ip),
                 "is_paid": is_paid,
                 "brand": brand or None,
                 "topic": topic or None,
+                "answer": answer or None,
+                "rec_agent": recommended_agent or None,
             })
             conn.commit()
     except Exception as e:
@@ -1641,8 +1649,8 @@ async def ask_moodlight(req: AskRequest, request: Request):
     _record_request(client_ip)
     queries_remaining = 999
 
-    # Log the query for analytics
-    _log_query(question, client_ip, is_paid, brand_name, topic_name)
+    # Log the query (and its answer) for analytics + QA
+    _log_query(question, client_ip, is_paid, brand_name, topic_name, clean_answer, recommended_agent or "")
 
     # Check if the question references one of the user's saved teams
     recommended_team = _find_matching_team(req.email, question)

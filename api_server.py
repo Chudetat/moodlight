@@ -1899,7 +1899,7 @@ def admin_ask_queries(payload: dict = Depends(require_auth)):
         with engine.connect() as conn:
             rows = conn.execute(sql_text(
                 "SELECT id, question, detected_brand, detected_topic, "
-                "is_paid, ip_hash, created_at "
+                "is_paid, ip_hash, created_at, answer, recommended_agent "
                 "FROM ask_queries ORDER BY created_at DESC LIMIT 200"
             )).fetchall()
 
@@ -1916,6 +1916,8 @@ def admin_ask_queries(payload: dict = Depends(require_auth)):
                 "is_paid": r[4],
                 "ip_hash": r[5],
                 "created_at": r[6].isoformat() if r[6] else None,
+                "answer": r[7],
+                "recommended_agent": r[8],
             })
             if r[4]:
                 paid_count += 1
