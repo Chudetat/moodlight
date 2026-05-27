@@ -617,12 +617,12 @@
 
     // Rotating loading copy — accurate to what Moodlight actually does (no inflated claims).
     const mlLoadingMsgs = [
-      "Reading the cultural conversation…",
-      "Scanning news, social & markets…",
-      "Triangulating the signals…",
-      "Separating signal from noise…",
-      "Finding the pattern…",
-      "Pressure-testing the read…",
+      "Scanning…",
+      "Triangulating…",
+      "Synthesizing…",
+      "Reading…",
+      "Connecting…",
+      "Surfacing…",
     ];
     const mlTypingText = typing.querySelector(".ml-typing-text");
     let mlMsgIdx = 0;
