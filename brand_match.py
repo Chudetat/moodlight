@@ -43,6 +43,16 @@ BRAND_CATALOG = {
                              "petroleum", "lng", "station", "refinery"]},
     "virgin":   {"require": ["atlantic", "galactic", "media", "mobile", "records",
                              "active", "voyages", "branson", "airline"]},
+    "visa":     {"require": ["payment", "payments", "mastercard", "fintech", "credit card",
+                             "debit card", "card network", "card processing", "card issuer",
+                             "digital payment", "swipe", "transaction"]},
+    "peloton":  {"require": ["interactive", "pton", "treadmill", "fitness", "workout",
+                             "instructor", "trainer", "tread", "exercise bike",
+                             "stock", "shares", "earnings", "revenue", "nasdaq", "ipo"]},
+    "high noon": {"require": ["seltzer", "vodka", "gallo", "hard seltzer", "drink",
+                              "rtd", "flavor", "flavour", "abv", "beverage", "cocktail", "alcohol"]},
+    "delta":    {"require": ["airline", "airlines", "flight", "flights", "skymiles",
+                             "delta air", "aircraft", "layover", "basic economy", "fare", "nonstop", "jet"]},
 }
 
 
