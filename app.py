@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import re
 import streamlit as st
+from brand_match import resolve_brand_match
 try:
     from db_helper import load_df_from_db
     HAS_DB = True
@@ -5133,8 +5134,7 @@ if _has_ask_access and (prompt := st.chat_input("Ask a question about the data..
             has_brand_signals = False
 
             if brand_name and "text" in df_all.columns:
-                brand_lower = brand_name.lower()
-                brand_mask = df_all["text"].str.lower().str.contains(brand_lower, na=False)
+                brand_mask = resolve_brand_match(df_all["text"], brand_name)
                 brand_posts = df_all[brand_mask]
 
                 if len(brand_posts) > 0:
