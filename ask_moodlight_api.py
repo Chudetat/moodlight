@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from anthropic import Anthropic
+from brand_match import resolve_brand_match
 
 load_dotenv()
 
@@ -1549,8 +1550,7 @@ async def ask_moodlight(req: AskRequest, request: Request):
     # 4. Build brand-specific signals
     brand_section = ""
     if brand_name and not df_all.empty and "text" in df_all.columns:
-        brand_lower = brand_name.lower()
-        brand_mask = df_all["text"].str.lower().str.contains(brand_lower, na=False)
+        brand_mask = resolve_brand_match(df_all["text"], brand_name)
         brand_posts = df_all[brand_mask]
 
         if len(brand_posts) > 0:
