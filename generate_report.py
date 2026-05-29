@@ -10,6 +10,7 @@ import json
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 from anthropic import Anthropic
+from brand_match import resolve_brand_match
 from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
@@ -96,6 +97,16 @@ def prepare_report_context(engine, subject, days=7, subject_type="brand"):
             )
     except Exception as e:
         print(f"  Could not load social data: {e}")
+
+    # The SQL above is a coarse substring fetch (LIKE '%subject%'); filter brand
+    # reports to genuine word-boundary + catalog matches so a report on "Corona"
+    # excludes coronavirus, "Delta" excludes Delta Force, etc. (Topic reports
+    # match the topic column exactly and don't need this.)
+    if subject_type == "brand":
+        if not news_df.empty and "text" in news_df.columns:
+            news_df = news_df[resolve_brand_match(news_df["text"], subject)]
+        if not social_df.empty and "text" in social_df.columns:
+            social_df = social_df[resolve_brand_match(social_df["text"], subject)]
 
     context += "SIGNAL DATA:\n"
     context += f"  News articles mentioning '{subject}': {len(news_df)}\n"
