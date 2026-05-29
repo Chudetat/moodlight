@@ -452,11 +452,15 @@ def _build_marketplace_enrichment(user_need, df):
     text_lower = df["text"].str.lower()
     brand_df = df[text_lower.str.contains(brand_phrase.lower(), na=False)].copy()
 
-    # If too few results with full phrase, try the longest keyword
-    if len(brand_df) < 5 and search_terms:
-        longest_term = max(search_terms, key=len)
-        if len(longest_term) >= 4:
-            brand_df = df[text_lower.str.contains(longest_term, na=False)].copy()
+    # If the exact phrase is too sparse, broaden by requiring ALL significant
+    # words to co-occur (e.g. "victoria" AND "beer") — never fall back to a
+    # single common word, which floods the match with same-name namesakes
+    # (Victoria's Secret, Victoria Beckham, the Australian state, etc.).
+    if len(brand_df) < 5 and len(search_terms) > 1:
+        mask = pd.Series(True, index=df.index)
+        for term in search_terms:
+            mask &= text_lower.str.contains(term, na=False, regex=False)
+        brand_df = df[mask].copy()
 
     if len(brand_df) < 5:
         return ""
