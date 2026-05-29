@@ -14,6 +14,7 @@ import requests
 import feedparser
 import pandas as pd
 from datetime import datetime, timezone, timedelta
+from brand_match import resolve_brand_match
 from typing import Optional
 
 from anthropic import Anthropic
@@ -555,8 +556,7 @@ def _build_dashboard_context(engine, df_all: pd.DataFrame, brand_name: str, topi
     # --- Brand-specific signals ---
     brand_section = ""
     if brand_name and "text" in df_all.columns:
-        brand_lower = brand_name.lower()
-        brand_mask = df_all["text"].str.lower().str.contains(brand_lower, na=False)
+        brand_mask = resolve_brand_match(df_all["text"], brand_name)
         brand_posts = df_all[brand_mask]
 
         if len(brand_posts) > 0:
