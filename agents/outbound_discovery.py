@@ -9,6 +9,8 @@ and walk away with outbound lines ready to send today. Built specifically for th
 "I'm a consultant / I run a small shop / I need qualified pipeline this week" use case.
 """
 
+from datetime import datetime, timezone
+
 from .base_agent import MoodlightAgent, get_regulatory_guidance
 from . import data_layer
 
@@ -92,6 +94,9 @@ KEY METRICS TO CONSIDER:
 - LONGEVITY: How long a topic sustains interest (high = durable category motion)
 - DENSITY: How saturated/crowded a topic is (high = crowded category, harder outbound)
 - SCARCITY: How underserved a topic is (high = whitespace, buyer pain is unmet)
+
+SIGNAL SCOPE — read before citing any of these:
+These metrics, plus empathy scores and market moves, describe the CULTURAL ENVIRONMENT the buyer reads inside. They are BACKDROP, not PORTRAIT. They characterize the room the buyer is in, not the buyer's specific psychology. Use them to set the scene ("the cultural conversation around this category is X") — never to claim the specific buyer FEELS what the average X user feels. A B2B CMO is not the average X user; she is a person living inside the emotional climate that average reflects.
 
 You are delivering an OUTBOUND DISCOVERY PACK — one cohesive GTM deliverable from four senior perspectives. The research feeds the category map. The category map sharpens the buyer. The buyer read writes the outbound. Every section must build on the one before it. No section can read like generic LinkedIn advice. No section can contradict another. This is a motion, not a deck.
 
@@ -227,9 +232,18 @@ QUALITY CHECKS — read before you finalize:
 5. Scan Part 4 for banned phrases listed above. If ANY appear, rewrite that line. Auto-fail means auto-fail.
 6. The opening line of the cold email must reference something that happened in the last 7 days. No vague "impressive growth" compliments. If not, rewrite.
 7. If any section contradicts another, fix it before delivering. This is one motion, not four memos.
+8. SIGNAL DIVERSITY: No single concrete data signal (a specific post, headline, stat, or stock move) may appear more than TWICE across the entire pack. If one signal anchors the angle in Part 2 and a subject line in Part 4, you must pull DIFFERENT supporting evidence for Parts 1 and 3. The pack should surface 8–12 distinct signals total, not lean on 2–3 hero signals repeatedly.
+9. NO FOURTH WALL: The reader is the operator, not a peer reviewer of the engine. Never expose the engine's deliberation in the output. Banned constructions: "(despite [data source] activity)", "(I considered X but)", "(the data shows Y, however)", references to "the intelligence snapshot", "the dataset", "Polymarket", or any other internal data source by name. Cite signals as cultural facts ("on X this week...", "the most-engaged post about this topic..."), never as system outputs ("the snapshot shows...", "the data indicates...").
 {reg_guidance}"""
 
     def format_output(self, raw_response):
         result = super().format_output(raw_response)
         result["type"] = "outbound_discovery"
+        today = datetime.now(timezone.utc).strftime("%B %d, %Y")
+        freshness_note = (
+            f"\n\n---\n*Pack generated {today}. Market and stock references "
+            f"should be verified within ~5 trading days; cultural references "
+            f"stay relevant ~2 weeks. Re-run this pack monthly for fresh signal.*"
+        )
+        result["output"] = raw_response + freshness_note
         return result
