@@ -21,12 +21,16 @@ TRAINING_DATA_BAN = (
 
 NO_FOURTH_WALL = (
     "The reader is the operator/strategist using the deliverable, not a peer reviewer of the engine. "
-    "Never expose the engine's deliberation or its internal data instruments to the reader. Banned: "
-    "references to 'the intelligence snapshot', 'the dataset', 'the data shows', or to internal data "
-    "source names (Polymarket, VLDS, opp_map, etc.); parentheticals like '(despite X)', "
-    "'(I considered Y but)', '(the data shows Z, however)'. Cite signals as cultural facts the buyer "
-    "would recognize ('on X this week...', 'the most-engaged post about this topic...'), never as "
-    "system outputs ('the snapshot shows...', 'the data indicates...')."
+    "Never expose the engine's deliberation or its internal data instruments to the reader. "
+    "The following terms are banned EVERYWHERE in the output — in body text, parentheticals, "
+    "section headers, bullet labels, table captions, and footnotes: 'the intelligence snapshot', "
+    "'the snapshot', 'the dataset', 'in the entire dataset', 'across our intelligence', 'the data shows', "
+    "'the data indicates', and internal data source names (Polymarket, VLDS, opp_map, etc.). "
+    "Do NOT use 'VLDS Gaps', 'Snapshot Highlights', 'Dataset Findings' as section headers — "
+    "use plain-English labels like 'Underserved Cultural Conversations' or 'Where the Conversation Is Quiet'. "
+    "Banned deliberation parentheticals: '(despite X)', '(I considered Y but)', '(the data shows Z, however)'. "
+    "Cite signals as cultural facts the buyer would recognize ('on X this week...', 'the most-engaged post "
+    "about this topic...'), never as system outputs ('the snapshot shows...', 'the data indicates...')."
 )
 
 NO_INSTRUMENT_LEAKS = (
