@@ -19,6 +19,26 @@ TRAINING_DATA_BAN = (
     "If the data doesn't cover something, build from what IS there. Never fill gaps with training-data knowledge."
 )
 
+NO_FOURTH_WALL = (
+    "The reader is the operator/strategist using the deliverable, not a peer reviewer of the engine. "
+    "Never expose the engine's deliberation or its internal data instruments to the reader. Banned: "
+    "references to 'the intelligence snapshot', 'the dataset', 'the data shows', or to internal data "
+    "source names (Polymarket, VLDS, opp_map, etc.); parentheticals like '(despite X)', "
+    "'(I considered Y but)', '(the data shows Z, however)'. Cite signals as cultural facts the buyer "
+    "would recognize ('on X this week...', 'the most-engaged post about this topic...'), never as "
+    "system outputs ('the snapshot shows...', 'the data indicates...')."
+)
+
+NO_INSTRUMENT_LEAKS = (
+    "Never quote your own metric values to the reader. Banned parenthetical and bracketed patterns: "
+    "'(scarcity 0.42)', '(MEDIUM opportunity)', '(363 mentions)', '(65K engagement)', '(density 0.85)', "
+    "'(velocity 0.72)', '(longevity 0.83)', '(empathy 0.1/100)', '[OPPORTUNITY]', '[HIGH OPPORTUNITY]', "
+    "or any exposure of system scores, percentiles, raw counts, or data-layer tags. Cite signals as "
+    "content the buyer would recognize — 'this week's most-shared piece on X', 'the cultural "
+    "conversation around responsible AI is accelerating but underserved' — NOT as instrumented data "
+    "points. Engagement counts and scarcity scores belong in your analysis, never in the deliverable."
+)
+
 INEVITABILITY_BAR = (
     "THE BAR — read before you write anything: Every non-trivial insight you ship must be "
     "INNOVATIVE AND INEVITABLE. Innovative means no other tool or agency in this category "
@@ -67,7 +87,10 @@ class MoodlightAgent:
 
     def _build_system_prompt(self):
         """Combine agent-specific system prompt with universal directives."""
-        return f"{self.system_prompt}\n\n{TRAINING_DATA_BAN}\n\n{INEVITABILITY_BAR}"
+        return (
+            f"{self.system_prompt}\n\n{TRAINING_DATA_BAN}\n\n"
+            f"{NO_FOURTH_WALL}\n\n{NO_INSTRUMENT_LEAKS}\n\n{INEVITABILITY_BAR}"
+        )
 
     def _render_upstream_context(self, upstream_context):
         """Render upstream agent outputs from prior runs in this session as
