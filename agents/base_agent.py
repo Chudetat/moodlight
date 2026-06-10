@@ -81,11 +81,25 @@ def get_regulatory_guidance(user_input):
     return ""
 
 
+def _extract_text(response):
+    """Concatenate the response's text blocks, skipping any non-text blocks.
+
+    Opus models return a single text block (content[0]). Adaptive-thinking
+    models (e.g. Fable 5) prepend a thinking block, so content[0] is NOT the
+    deliverable — we must select by block type rather than position.
+    """
+    return "".join(
+        block.text for block in response.content
+        if getattr(block, "type", None) == "text"
+    ).strip()
+
+
 class MoodlightAgent:
     """Base class for Moodlight AI agents."""
 
     agent_name = "base"
     model = "claude-opus-4-6"
+    fallback_model = None  # if set, used when the primary model refuses or returns no text
     max_tokens = 4000
     system_prompt = ""
 
@@ -179,16 +193,29 @@ class MoodlightAgent:
             raise RuntimeError("ANTHROPIC_API_KEY not set")
 
         client = Anthropic(api_key=api_key)
+        system = self._build_system_prompt()
 
-        print(f"  [{self.agent_name}] Calling Claude ({self.model})...")
-        response = client.messages.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            system=self._build_system_prompt(),
-            messages=[{"role": "user", "content": prompt}],
-        )
+        def _call(model):
+            print(f"  [{self.agent_name}] Calling Claude ({model})...")
+            return client.messages.create(
+                model=model,
+                max_tokens=self.max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": prompt}],
+            )
 
-        raw = response.content[0].text
+        response = _call(self.model)
+        raw = _extract_text(response)
+
+        # Adaptive-thinking models (e.g. Fable 5) return a refusal as a successful
+        # response (stop_reason == "refusal"), and could in rare cases yield no text
+        # block. Fall back to the configured model so the user never gets empty output.
+        if self.fallback_model and (response.stop_reason == "refusal" or not raw):
+            print(f"  [{self.agent_name}] {self.model} returned stop_reason="
+                  f"{response.stop_reason!r}; falling back to {self.fallback_model}")
+            response = _call(self.fallback_model)
+            raw = _extract_text(response)
+
         elapsed = (datetime.now(timezone.utc) - start).total_seconds()
         print(f"  [{self.agent_name}] Complete in {elapsed:.1f}s")
 

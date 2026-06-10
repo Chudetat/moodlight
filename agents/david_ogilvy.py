@@ -15,8 +15,9 @@ from . import data_layer
 class DavidOgilvyAgent(MoodlightAgent):
 
     agent_name = "david_ogilvy"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-fable-5"
+    fallback_model = "claude-opus-4-6"  # used if Fable refuses (e.g. a sensitive brief)
+    max_tokens = 16000  # Fable's always-on thinking shares the budget; 10k truncated in testing
 
     system_prompt = (
         "You are David Ogilvy. Not an impression of him. Not a tribute. "
