@@ -866,17 +866,26 @@ def _log_marketplace_run(email: str, agent: str, user_input: str, engine,
 
 
 def _build_marketplace_input(req: MarketplaceRequest) -> str:
-    """Assemble form fields into a single user_input string."""
-    parts = [f"launch/promote {req.product}"]
+    """Assemble form fields into a single user_input string.
+
+    Fields are emitted as labeled lines rather than stitched into a sentence.
+    The form is auto-filled verbatim from the Ask Moodlight brief block, whose
+    field values can run several sentences each; a connective-sentence template
+    ("launch/promote X targeting Y in Z") turned those into a grammatically
+    broken run-on. Labeled lines mirror the **Field:** block the Ask answer
+    already produces, so long verbatim values read cleanly as a structured
+    brief to the agent.
+    """
+    parts = [f"Product/Service: {req.product}"]
     if req.audience:
-        parts.append(f"targeting {req.audience}")
+        parts.append(f"Target Audience: {req.audience}")
     if req.markets:
-        parts.append(f"in {req.markets}")
+        parts.append(f"Markets/Geography: {req.markets}")
     if req.challenge:
-        parts.append(f"with the challenge of {req.challenge}")
+        parts.append(f"Key Challenge: {req.challenge}")
     if req.timeline:
-        parts.append(f"timeline/budget: {req.timeline}")
-    return " ".join(parts)
+        parts.append(f"Timeline/Budget: {req.timeline}")
+    return "\n".join(parts)
 
 
 def _email_marketplace_result(email: str, user_input: str, output: str, label: str, agent_id: str = None):

@@ -663,8 +663,7 @@
       // of clicking the CTA button.
       if (data.brief_fields || data.detected_brand || data.question) {
         var earlyFields = (data.brief_fields) ? Object.assign({}, data.brief_fields) : {};
-        if (!earlyFields.product && data.detected_brand) earlyFields.product = data.detected_brand;
-        if (!earlyFields.challenge && data.question) earlyFields.challenge = data.question;
+        earlyFields = mlBackfillBriefFields(earlyFields, data.answer, data.detected_brand, data.question);
         window._mlParsedBriefFields = earlyFields;
         try {
           localStorage.setItem("ml_active_brief", JSON.stringify({
@@ -750,6 +749,39 @@
     "david-ogilvy": "David Ogilvy",
   };
 
+  // Resolve the brief fields used to auto-fill the marketplace form.
+  //
+  // When the answer emits the verbatim structured brief block
+  // (**Product/Service:** ... **Timeline/Budget:**), those five lines map 1:1
+  // to the form inputs and are exactly what the user just read — so they are
+  // the source of truth and OVERRIDE the backend's Haiku paraphrase. This keeps
+  // the autofill identical to the on-screen brief (and recovers fields the
+  // backend extractor can miss, e.g. Timeline/Budget, which lives only in the
+  // trailing block of a long answer).
+  //
+  // When a field is absent from the answer the regex simply doesn't match,
+  // leaving the backend (Haiku) value in place — which is the intended source
+  // for general answers that don't emit the structured block. product/challenge
+  // then fall back to detected brand / raw question as a last resort.
+  function mlBackfillBriefFields(fields, answer, detectedBrand, question) {
+    fields = Object.assign({}, fields || {});
+    answer = answer || "";
+    var fieldPatterns = {
+      product: /\*\*Product\/Service:\*\*\s*(.+)/i,
+      audience: /\*\*Target Audience:\*\*\s*(.+)/i,
+      markets: /\*\*Markets\/Geography:\*\*\s*(.+)/i,
+      challenge: /\*\*Key Challenge:\*\*\s*(.+)/i,
+      timeline: /\*\*Timeline\/Budget:\*\*\s*(.+)/i,
+    };
+    for (var key in fieldPatterns) {
+      var m = answer.match(fieldPatterns[key]);
+      if (m) fields[key] = m[1].trim();
+    }
+    if (!fields.product && detectedBrand) fields.product = detectedBrand;
+    if (!fields.challenge && question) fields.challenge = question;
+    return fields;
+  }
+
   function showAgentCta(container, data) {
     const existing = container.querySelector(".ml-agent-cta");
     if (existing) existing.remove();
@@ -783,8 +815,8 @@
       // instead of dumping the raw question into form fields
       var detectedBrand = (data && data.detected_brand) || "";
       var rawQuestion = (data && data.question) || "";
-      var parsedFields = (data && data.brief_fields) || {};
-      if (!parsedFields.product && detectedBrand) parsedFields.product = detectedBrand;
+      var parsedFields = (data && data.brief_fields) ? Object.assign({}, data.brief_fields) : {};
+      parsedFields = mlBackfillBriefFields(parsedFields, (data && data.answer) || "", detectedBrand, rawQuestion);
 
       var teamBtn = document.createElement("button");
       teamBtn.className = "ml-agent-cta-btn";
@@ -831,32 +863,11 @@
     // Use structured brief fields from the backend (Haiku extraction)
     // when available. Fall back to inline regex parsing, then raw
     // brand/question as last resort.
-    var parsedFields = (data && data.brief_fields) ? Object.assign({}, data.brief_fields) : {};
     var answer = (data && data.answer) || "";
-    if (!parsedFields.product || !parsedFields.challenge) {
-      var fieldPatterns = {
-        product: /\*\*Product\/Service:\*\*\s*(.+)/i,
-        audience: /\*\*Target Audience:\*\*\s*(.+)/i,
-        markets: /\*\*Markets\/Geography:\*\*\s*(.+)/i,
-        challenge: /\*\*Key Challenge:\*\*\s*(.+)/i,
-        timeline: /\*\*Timeline\/Budget:\*\*\s*(.+)/i,
-      };
-      for (var key in fieldPatterns) {
-        if (!parsedFields[key]) {
-          var m = answer.match(fieldPatterns[key]);
-          if (m) parsedFields[key] = m[1].trim();
-        }
-      }
-    }
-
     var detectedBrand = (data && data.detected_brand) || "";
     var rawQuestion = (data && data.question) || "";
-    if (!parsedFields.product && detectedBrand) {
-      parsedFields.product = detectedBrand;
-    }
-    if (!parsedFields.challenge && rawQuestion) {
-      parsedFields.challenge = rawQuestion;
-    }
+    var parsedFields = (data && data.brief_fields) ? Object.assign({}, data.brief_fields) : {};
+    parsedFields = mlBackfillBriefFields(parsedFields, answer, detectedBrand, rawQuestion);
 
     // Build the CTA card
     var el = document.createElement("div");

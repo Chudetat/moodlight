@@ -1470,6 +1470,21 @@ def _find_matching_team(email: str | None, question: str) -> dict | None:
         return None
 
 
+def _brief_excerpt_for_extraction(answer: str) -> str:
+    """Bound the answer text sent to the field extractor.
+
+    The structured brief block (Product/Service ... Timeline/Budget) is always
+    appended at the END of the answer. A plain head-window truncation can cut it
+    off — which silently dropped fields like Timeline/Budget that exist only in
+    that trailing block. For long answers, send head + tail so the opening prose
+    (used to synthesize audience/challenge) AND the trailing structured block are
+    both visible to the extractor.
+    """
+    if len(answer) <= 6000:
+        return answer
+    return answer[:3000] + "\n\n[...]\n\n" + answer[-3000:]
+
+
 def _extract_brief_fields(answer: str, question: str, detected_brand: str | None, client: Anthropic) -> dict | None:
     """Use Haiku to extract structured brief fields from an Ask Moodlight answer."""
     try:
@@ -1487,7 +1502,7 @@ Given an intelligence brief and the user's original question, extract these fiel
 - "timeline": Any timing, urgency, or budget context mentioned (or null if none)
 
 Return ONLY valid JSON with these 5 keys. Use the intelligence in the brief to fill each field with substance — never repeat the raw question as a field value.""",
-            messages=[{"role": "user", "content": f"ORIGINAL QUESTION: {question}\n\nINTELLIGENCE BRIEF:\n{answer[:3000]}"}],
+            messages=[{"role": "user", "content": f"ORIGINAL QUESTION: {question}\n\nINTELLIGENCE BRIEF:\n{_brief_excerpt_for_extraction(answer)}"}],
         )
         result = response.content[0].text.strip()
         if result.startswith("```"):
