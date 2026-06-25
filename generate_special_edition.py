@@ -47,6 +47,7 @@ KNOWN_TOPICS = [
     "crime & safety", "war & foreign policy", "media & journalism",
     "race & ethnicity", "gender & sexuality", "business & corporate",
     "labor & work", "housing", "religion & values", "sports", "entertainment",
+    "food & dining",
 ]
 
 

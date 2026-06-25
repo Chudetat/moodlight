@@ -707,7 +707,7 @@ TOPIC_CATEGORIES = [
     "climate & environment", "healthcare & wellbeing", "immigration",
     "crime & safety", "war & foreign policy", "media & journalism",
     "business & corporate", "labor & work", "housing", "religion & values",
-    "sports", "entertainment", "other",
+    "sports", "entertainment", "food & dining", "other",
 ]
 
 FETCH_TIMEOUT = 300  # 5 minutes
@@ -2321,6 +2321,7 @@ with st.sidebar:
         "crime & safety", "war & foreign policy", "media & journalism",
         "race & ethnicity", "gender & sexuality", "business & corporate",
         "labor & work", "housing", "religion & values", "sports", "entertainment",
+        "food & dining",
     ]
 
     _watchlist_topics = []

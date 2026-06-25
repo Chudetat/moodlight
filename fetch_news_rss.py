@@ -1136,6 +1136,17 @@ TOPIC_KEYWORDS = {
     "religion & values": ["religion", "church", "faith", "spiritual", "bible", "religious", "muslim", "christian"],
     "sports": ["sports", "team", "player", "athlete", "championship", "football", "basketball", "nba", "nfl", "nhl", "mlb", "ncaa", "college sports", "sports media", "nil", "transfer portal", "free agency", "draft", "playoff", "super bowl", "world series", "stanley cup", "march madness", "espn", "sports betting", "sportsbook"],
     "entertainment": ["movie", "film", "tv", "music", "concert", "celebrity", "actor", "entertainment", "box office", "streaming", "netflix", "disney", "hbo", "theatrical", "studio", "producer", "director", "showrunner", "writers room", "production", "premiere", "franchise", "sequel", "reboot", "adaptation"],
+    "food & dining": ["restaurant", "restaurants", "fast food", "fast-food", "quick service",
+        "quick-service", "qsr", "drive-thru", "drive thru", "drive-through", "fast casual",
+        "fast-casual", "casual dining", "diner", "eatery", "food service", "foodservice",
+        "value meal", "combo meal", "happy meal", "dollar menu", "value menu", "food truck",
+        "ghost kitchen", "food delivery", "doordash", "uber eats", "grubhub", "restaurant chain",
+        "burger chain", "mcdonald's", "mcdonalds", "burger king", "wendy's", "wendys", "taco bell",
+        "kfc", "chipotle", "starbucks", "dunkin", "chick-fil-a", "popeyes", "domino's", "dominos",
+        "pizza hut", "wingstop", "shake shack", "panera", "sweetgreen", "dutch bros",
+        "raising cane's", "raising canes", "whataburger", "in-n-out", "arby's", "arbys",
+        "five guys", "culver's", "culvers", "panda express", "jimmy john's", "jimmy johns",
+        "jack in the box", "hardee's", "hardees", "carl's jr", "del taco"],
 }
 
 # Pre-compile word-boundary regex patterns for each topic.
@@ -1157,6 +1168,7 @@ def classify_topic(text: str) -> str:
         "healthcare & wellbeing",
         "crime & safety",
         "immigration",
+        "food & dining",
     ]
 
     for topic in priority_topics:

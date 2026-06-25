@@ -53,6 +53,13 @@ BRAND_CATALOG = {
                               "rtd", "flavor", "flavour", "abv", "beverage", "cocktail", "alcohol"]},
     "delta":    {"require": ["airline", "airlines", "flight", "flights", "skymiles",
                              "delta air", "aircraft", "layover", "basic economy", "fare", "nonstop", "jet"]},
+    # QSR homonyms (cold-verified vs live data Jun 2026): "subway" is mostly NYC
+    # transit + "Subway Series" baseball (~44 of 249 are the sandwich brand);
+    # "sonic" is overwhelmingly the hedgehog/Sega/supersonic (~3 of 401 are the
+    # drive-in), so require yields ~nothing -> honest no-signal, not namesake noise.
+    "subway":   {"require": ["sandwich", "sandwiches", "footlong", "foot-long", "eat fresh",
+                             "sub shop", "subway restaurant", "deli"]},
+    "sonic":    {"require": ["drive-in", "drive in", "limeade", "slush", "tots", "sonic drive"]},
 }
 
 

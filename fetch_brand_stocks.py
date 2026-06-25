@@ -33,6 +33,17 @@ BRAND_TICKER_MAP = {
     "Amazon": "AMZN",
     "Disney": "DIS",
     "Lockheed Martin": "LMT",
+    # QSR / fast food (added Jun 2026 for QSR-client demos). Sub-brands ride their
+    # public parent: KFC/Taco Bell/Pizza Hut -> YUM; Burger King/Popeyes -> QSR.
+    "McDonald's": "MCD",
+    "Starbucks": "SBUX",
+    "Chipotle": "CMG",
+    "Yum Brands": "YUM",
+    "Restaurant Brands": "QSR",
+    "Wendy's": "WEN",
+    "Domino's": "DPZ",
+    "Wingstop": "WING",
+    "Cava": "CAVA",
 }
 
 RATE_LIMIT_SLEEP = 15

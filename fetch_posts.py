@@ -235,6 +235,17 @@ TOPIC_KEYWORDS = {
     "terrorism & extremism": ["terrorism", "terrorist", "terror attack", "bombing", "suicide bomber", "isis", "isil", "al qaeda", "al-qaeda", "hezbollah", "taliban", "extremist", "extremism", "jihad", "jihadist", "radicalization", "militant", "insurgent", "hostage", "kidnapping"],
     "humanitarian crises & migration": ["humanitarian crisis", "refugee", "displaced", "displacement", "migration", "migrant crisis", "asylum seeker", "genocide", "ethnic cleansing", "war crime", "atrocity", "mass grave", "humanitarian aid", "refugee camp", "internally displaced", "humanitarian disaster"],
     "disinformation & propaganda": ["disinformation", "misinformation", "fake news", "propaganda", "troll farm", "bot network", "election interference", "foreign interference", "information warfare", "psyop", "psychological operation", "influence campaign", "state media", "deepfake", "manipulated media"],
+    "food & dining": ["restaurant", "restaurants", "fast food", "fast-food", "quick service",
+        "quick-service", "qsr", "drive-thru", "drive thru", "drive-through", "fast casual",
+        "fast-casual", "casual dining", "diner", "eatery", "food service", "foodservice",
+        "value meal", "combo meal", "happy meal", "dollar menu", "value menu", "food truck",
+        "ghost kitchen", "food delivery", "doordash", "uber eats", "grubhub", "restaurant chain",
+        "burger chain", "mcdonald's", "mcdonalds", "burger king", "wendy's", "wendys", "taco bell",
+        "kfc", "chipotle", "starbucks", "dunkin", "chick-fil-a", "popeyes", "domino's", "dominos",
+        "pizza hut", "wingstop", "shake shack", "panera", "sweetgreen", "dutch bros",
+        "raising cane's", "raising canes", "whataburger", "in-n-out", "arby's", "arbys",
+        "five guys", "culver's", "culvers", "panda express", "jimmy john's", "jimmy johns",
+        "jack in the box", "hardee's", "hardees", "carl's jr", "del taco"],
 }
 
 # Pre-compile word-boundary regex patterns for each topic.
@@ -266,6 +277,7 @@ def classify_topic(text: str) -> str:
         "infrastructure & supply chain",
         "humanitarian crises & migration",
         "disinformation & propaganda",
+        "food & dining",
     ]
 
     for topic in priority_topics:

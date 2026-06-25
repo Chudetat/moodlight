@@ -40,6 +40,15 @@ BRAND_TICKERS = {
     "amazon": "AMZN",
     "disney": "DIS",
     "lockheed martin": "LMT",
+    "mcdonald's": "MCD",
+    "starbucks": "SBUX",
+    "chipotle": "CMG",
+    "yum brands": "YUM",
+    "restaurant brands": "QSR",
+    "wendy's": "WEN",
+    "domino's": "DPZ",
+    "wingstop": "WING",
+    "cava": "CAVA",
 }
 
 

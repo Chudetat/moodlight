@@ -93,6 +93,7 @@ def calculate_topic_breadth(topic_name):
         'technology & ai': 0.75,
         'education': 0.7,
         'crime & safety': 0.6,
+        'food & dining': 0.55,
         'sports': 0.4,
         'entertainment': 0.3,
         'other': 0.5,
