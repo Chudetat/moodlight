@@ -19,13 +19,18 @@ social -> fetch_posts) so the result matches what the live pipeline would produc
 import os
 import sys
 import json
-import psycopg2
-from psycopg2.extras import execute_values
-
-import fetch_news_rss as frss
-import fetch_posts as fp
 
 APPLY = "--apply" in sys.argv
+
+# Neutralize argv BEFORE importing the pipeline modules: fetch_posts.py runs
+# argparse.parse_args() at import time and would reject our --apply flag.
+_saved_argv = sys.argv
+sys.argv = [sys.argv[0]]
+import psycopg2
+from psycopg2.extras import execute_values
+import fetch_news_rss as frss
+import fetch_posts as fp
+sys.argv = _saved_argv
 
 
 def get_db():
@@ -74,7 +79,7 @@ def backfill(conn, table, classify):
             execute_values(
                 w,
                 f"UPDATE {table} AS t SET topic = v.new_topic "
-                f"FROM (VALUES %s) AS v(id, new_topic) WHERE t.id = v.id::bigint",
+                f"FROM (VALUES %s) AS v(id, new_topic) WHERE t.id = v.id",
                 batch,
             )
         conn.commit()
