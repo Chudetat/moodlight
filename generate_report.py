@@ -276,7 +276,7 @@ def prepare_report_context(engine, subject, days=7, subject_type="brand"):
             print(f"  Could not load competitive data: {e}")
             context += "COMPETITIVE LANDSCAPE: Could not load competitive data.\n"
 
-    return context
+    return context, len(news_df) + len(social_df)
 
 
 def generate_intelligence_report(engine, subject, days=7, subject_type="brand"):
@@ -296,11 +296,33 @@ def generate_intelligence_report(engine, subject, days=7, subject_type="brand"):
     if engine is None:
         return "Error: Could not connect to database."
 
-    context = prepare_report_context(engine, subject, days, subject_type)
+    context, signal_count = prepare_report_context(engine, subject, days, subject_type)
 
     start_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%B %d")
     end_date = datetime.now(timezone.utc).strftime("%B %d, %Y")
     date_range = f"{start_date} - {end_date}"
+
+    # Guard: never fabricate a report over zero signal. If the substrate has no
+    # genuine matches for this subject (a free-text/multi-topic query, an untracked
+    # brand, or a homonym correctly filtered out), return an honest no-signal report
+    # instead of forcing Claude to synthesize analysis from a void.
+    if signal_count == 0:
+        return (
+            f"INTELLIGENCE REPORT: {subject}\n"
+            f"Period: {date_range}\n\n"
+            f"NO SIGNAL FOUND\n\n"
+            f"Moodlight captured 0 news articles and 0 social posts for "
+            f"\"{subject}\" in this period, so no analysis can be produced.\n\n"
+            f"This usually means one of:\n"
+            f"- \"{subject}\" is not a single tracked brand or topic — e.g. it's a "
+            f"free-text question or multi-topic phrase rather than a brand/topic name.\n"
+            f"- It is a common-word/homonym brand whose genuine mentions were "
+            f"correctly filtered out by disambiguation.\n"
+            f"- There was genuinely no coverage in the window.\n\n"
+            f"No VLDS, competitive, or strategic conclusions can be drawn from zero "
+            f"signal. To investigate this subject, use Ask Moodlight (which adds live "
+            f"web search) or re-run with a specific tracked brand or topic name."
+        )
 
     prompt = f"""You are a senior strategic intelligence analyst preparing a comprehensive intelligence report.
 
