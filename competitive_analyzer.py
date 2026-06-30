@@ -9,7 +9,7 @@ import os
 import json
 from dotenv import load_dotenv
 from vlds_helper import calculate_brand_vlds
-from alert_detector import _filter_by_brand
+from brand_match import resolve_brand_match
 
 load_dotenv()
 
@@ -39,10 +39,16 @@ def compute_competitive_snapshot(df_news, df_social, brand_name, competitors):
     total_mentions = 0
 
     for name in all_names:
-        brand_df = pd.concat([
-            _filter_by_brand(df_news, name),
-            _filter_by_brand(df_social, name),
-        ], ignore_index=True)
+        # Word-boundary + catalog disambiguation (resolve_brand_match) so share of
+        # voice doesn't count homonyms: "corona" must co-occur with a beer term and
+        # excludes coronavirus/Coronation, etc. Previously used naive substring
+        # (_filter_by_brand), which inflated common-word brands. This now matches the
+        # signal-side matcher used in generate_report.py / ask_moodlight_api.py.
+        parts = []
+        for df in (df_news, df_social):
+            if not df.empty and "text" in df.columns:
+                parts.append(df[resolve_brand_match(df["text"], name)])
+        brand_df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
 
         mention_count = len(brand_df)
         total_mentions += mention_count
