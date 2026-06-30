@@ -1,9 +1,13 @@
 /**
  * Moodlight Agent Marketplace — Embeddable widget for Squarespace.
  *
+ * Cache-bust version: v=30 (Jun 30, 2026 — fix: status messages were silently
+ *   hidden by an inline display:none overriding the class; rate-limit/errors now show).
+ *   Squarespace embed must use ?v=30 to pick this up.
+ *
  * Usage:
  *   <div id="moodlight-marketplace"></div>
- *   <script src="https://moodlight-api-production.up.railway.app/static/agent_marketplace.js"></script>
+ *   <script src="https://moodlight-api-production.up.railway.app/static/agent_marketplace.js?v=30"></script>
  */
 
 (function () {
@@ -1137,7 +1141,6 @@
           // is selected.
           submitBtn.disabled = false;
           statusEl.className = "ml-status";
-          statusEl.style.display = "none";
 
           // Update placeholders for this agent
           const ph = agentPlaceholders[agent.id] || defaultPlaceholders;
@@ -1601,8 +1604,11 @@
 
       // Hide form, show loading animation
       submitBtn.disabled = true;
+      // Visibility is class-driven (.ml-status = hidden; .ml-error/.ml-success = block).
+      // Do NOT set inline display:none here — inline style overrides the class and
+      // silently hides the error/success message after a run (the rate-limit
+      // "no message" bug). Resetting className to "ml-status" already hides it.
       statusEl.className = "ml-status";
-      statusEl.style.display = "none";
       previewSection.className = "ml-preview-section";
 
       loadingSection.innerHTML = '<div class="ml-spinner"></div><div class="ml-step"></div>';
