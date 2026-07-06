@@ -390,6 +390,30 @@ def accuracy_report(engine):
     ])
 
 
+def report_detail(engine):
+    """Per-call listing with a STATUS column (open first, then by due date)."""
+    df = pd.read_sql(
+        sql_text("""
+            SELECT id, COALESCE(outcome_status, 'open') AS status,
+                   due_date, source, statement
+            FROM predictions
+            ORDER BY (outcome_status IS NOT NULL),
+                     due_date ASC NULLS LAST, id ASC
+        """),
+        engine,
+    )
+    if df.empty:
+        return "  (no predictions logged yet)"
+    lines = [f"  {'ID':<5} {'STATUS':<11} {'DUE':<12} {'SOURCE':<20} CALL"]
+    for _, r in df.iterrows():
+        stmt = str(r["statement"])
+        stmt = (stmt[:58] + "…") if len(stmt) > 58 else stmt
+        due = str(r["due_date"]) if _na(r["due_date"]) is not None else "—"
+        src = str(_na(r["source"]) or "—")[:20]
+        lines.append(f"  #{int(r['id']):<4} {r['status']:<11} {due:<12} {src:<20} {stmt}")
+    return "\n".join(lines)
+
+
 # ── CLI / worker ────────────────────────────────────────────────────────────
 
 def _cli_log(engine, args):
@@ -444,6 +468,8 @@ def main():
         _cli_resolve(engine, sys.argv[2:])
     elif cmd == "report":
         print(accuracy_report(engine))
+        print()
+        print(report_detail(engine))
     else:
         # None, "due", or the worker's job name ("prediction-log") -> daily pass
         _daily_pass(engine)
