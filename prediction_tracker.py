@@ -235,9 +235,15 @@ def _capture_evidence(engine, brand=None, topic=None, top_n=EVIDENCE_TOP_N):
 
 
 def log_prediction(engine, statement, brand=None, topic=None, confidence=None,
-                   horizon_days=None, source="manual", capture=True):
+                   horizon_days=None, source="manual", capture=True,
+                   prediction_date=None, evidence_override=None):
     """Log a curated, falsifiable call + a self-contained evidence snapshot.
-    Returns the new prediction id, or None if it was a duplicate for today."""
+    Returns the new prediction id, or None if it was a duplicate for that date.
+
+    prediction_date: override the call's date, for logging historical calls from
+        dated artifacts (e.g. past Radar emails). Defaults to today.
+    evidence_override: store this dict as the evidence instead of a live-DB
+        snapshot (for historical calls, pass the dated source document itself)."""
     ensure_predictions_table(engine)
     statement = (statement or "").strip()
     if not statement:
@@ -245,10 +251,16 @@ def log_prediction(engine, statement, brand=None, topic=None, confidence=None,
 
     brand, topic = _na(brand), _na(topic)
     today = datetime.now(timezone.utc).date()
-    due = today + timedelta(days=int(horizon_days)) if horizon_days else None
+    pdate = prediction_date or today
+    due = pdate + timedelta(days=int(horizon_days)) if horizon_days else None
     shash = hashlib.md5(statement.lower().encode("utf-8")).hexdigest()
 
-    evidence = _capture_evidence(engine, brand, topic) if capture else None
+    if evidence_override is not None:
+        evidence = _json_safe(evidence_override)
+    elif capture:
+        evidence = _capture_evidence(engine, brand, topic)
+    else:
+        evidence = None
 
     with engine.connect() as conn:
         result = conn.execute(
@@ -266,7 +278,7 @@ def log_prediction(engine, statement, brand=None, topic=None, confidence=None,
                 "statement": statement, "shash": shash,
                 "brand": brand, "topic": topic,
                 "confidence": confidence, "horizon": horizon_days,
-                "pdate": today, "due": due,
+                "pdate": pdate, "due": due,
                 "evidence": json.dumps(evidence) if evidence is not None else None,
                 "source": source,
             },
@@ -307,24 +319,32 @@ def capture_from_alert(engine, alert_id, statement=None, horizon_days=None, conf
     )
 
 
-def resolve_prediction(engine, prediction_id, status, summary="", capture_outcome=True):
-    """Mark a call resolved. status in {played_out, missed, partial}."""
+def resolve_prediction(engine, prediction_id, status, summary="", capture_outcome=True,
+                       resolved_date=None, outcome_evidence_override=None):
+    """Mark a call resolved. status in {played_out, missed, partial}.
+
+    resolved_date: override the resolution date (for historical resolutions).
+    outcome_evidence_override: store this dict as the outcome evidence instead of a
+        live-DB snapshot (for historical calls, pass the verified external markers)."""
     ensure_predictions_table(engine)
     status = (status or "").strip().lower()
     if status not in VALID_OUTCOMES:
         raise ValueError(f"status must be one of {sorted(VALID_OUTCOMES)}")
 
-    outcome_ev = None
-    if capture_outcome:
+    if outcome_evidence_override is not None:
+        outcome_ev = _json_safe(outcome_evidence_override)
+    elif capture_outcome:
         row = pd.read_sql(
             sql_text("SELECT brand, topic FROM predictions WHERE id = :id"),
             engine, params={"id": int(prediction_id)},
         )
-        if not row.empty:
-            outcome_ev = _capture_evidence(
-                engine, _na(row.iloc[0]["brand"]), _na(row.iloc[0]["topic"])
-            )
+        outcome_ev = _capture_evidence(
+            engine, _na(row.iloc[0]["brand"]), _na(row.iloc[0]["topic"])
+        ) if not row.empty else None
+    else:
+        outcome_ev = None
 
+    rdate = resolved_date or datetime.now(timezone.utc).date()
     with engine.connect() as conn:
         result = conn.execute(
             sql_text("""
@@ -339,7 +359,7 @@ def resolve_prediction(engine, prediction_id, status, summary="", capture_outcom
             {
                 "status": status, "summary": summary,
                 "oev": json.dumps(outcome_ev) if outcome_ev is not None else None,
-                "rdate": datetime.now(timezone.utc).date(),
+                "rdate": rdate,
                 "id": int(prediction_id),
             },
         )
@@ -416,6 +436,11 @@ def report_detail(engine):
 
 # ── CLI / worker ────────────────────────────────────────────────────────────
 
+def _parse_date(s):
+    """Parse a YYYY-MM-DD CLI date string into a date."""
+    return datetime.strptime(s, "%Y-%m-%d").date()
+
+
 def _cli_log(engine, args):
     p = argparse.ArgumentParser(prog="prediction_tracker.py log")
     p.add_argument("statement")
@@ -424,9 +449,22 @@ def _cli_log(engine, args):
     p.add_argument("--horizon", type=int, help="time horizon in days")
     p.add_argument("--confidence", type=int, help="1-10")
     p.add_argument("--source", default="manual")
+    p.add_argument("--date", help="override call date YYYY-MM-DD (historical calls)")
+    p.add_argument("--no-capture", action="store_true",
+                   help="skip live-DB evidence capture (use for historical calls)")
+    p.add_argument("--evidence-note",
+                   help="text evidence to store instead of a live-DB snapshot "
+                        "(e.g. the dated source document for a historical call)")
     ns = p.parse_args(args)
+    pdate = _parse_date(ns.date) if ns.date else None
+    ev_override = None
+    if ns.evidence_note:
+        ev_override = {"note": ns.evidence_note, "manual_entry": True,
+                       "source_document": ns.source}
     log_prediction(engine, ns.statement, brand=ns.brand, topic=ns.topic,
-                   confidence=ns.confidence, horizon_days=ns.horizon, source=ns.source)
+                   confidence=ns.confidence, horizon_days=ns.horizon, source=ns.source,
+                   capture=not ns.no_capture, prediction_date=pdate,
+                   evidence_override=ev_override)
 
 
 def _cli_resolve(engine, args):
@@ -434,8 +472,18 @@ def _cli_resolve(engine, args):
     p.add_argument("id", type=int)
     p.add_argument("status", help="played_out | missed | partial")
     p.add_argument("summary", nargs="?", default="")
+    p.add_argument("--date", help="override resolution date YYYY-MM-DD")
+    p.add_argument("--no-capture", action="store_true",
+                   help="skip live-DB outcome capture (use for historical calls)")
+    p.add_argument("--evidence-note",
+                   help="text outcome evidence to store (e.g. verified external markers)")
     ns = p.parse_args(args)
-    resolve_prediction(engine, ns.id, ns.status, ns.summary)
+    rdate = _parse_date(ns.date) if ns.date else None
+    oev_override = ({"note": ns.evidence_note, "manual_entry": True}
+                    if ns.evidence_note else None)
+    resolve_prediction(engine, ns.id, ns.status, ns.summary,
+                       capture_outcome=not ns.no_capture, resolved_date=rdate,
+                       outcome_evidence_override=oev_override)
 
 
 def _daily_pass(engine):
