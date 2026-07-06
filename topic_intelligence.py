@@ -34,6 +34,16 @@ def ensure_snapshot_table(engine):
         conn.commit()
 
 
+def _num(x):
+    """Coerce a pandas/numpy scalar to a native Python float (or None).
+    psycopg2 cannot bind numpy scalars — passing np.float64 raised
+    'schema "np" does not exist' and silently killed every VLDS snapshot."""
+    try:
+        return float(x) if x is not None and pd.notna(x) else None
+    except (TypeError, ValueError):
+        return None
+
+
 def save_vlds_snapshot(engine):
     """Snapshot current VLDS scores into history table. Called after calculate scripts run."""
     ensure_snapshot_table(engine)
@@ -81,7 +91,9 @@ def save_vlds_snapshot(engine):
                     density_score = EXCLUDED.density_score,
                     scarcity_score = EXCLUDED.scarcity_score,
                     post_count = EXCLUDED.post_count
-            """), {"date": today, "topic": topic, "vel": vel, "lon": lon, "den": den, "scar": scar, "pc": pc})
+            """), {"date": today, "topic": topic,
+                   "vel": _num(vel), "lon": _num(lon), "den": _num(den), "scar": _num(scar),
+                   "pc": (int(pc) if pc is not None and pd.notna(pc) else None)})
 
         conn.commit()
         print(f"  Saved VLDS snapshot for {len(topics)} topics ({today})")
