@@ -926,6 +926,12 @@ STRICT RULE — ZERO TOLERANCE: You may only cite a specific number, score, or m
 
 You may ONLY cite numerical metrics that appear between the [VERIFIED DASHBOARD DATA] tags. Any number not present in that section does not exist in the dashboard and must not be cited as if it does. If you need a data point that is not in the verified section, either use web search to find a verifiable external source or state explicitly that no dashboard data exists for that claim.
 
+NO FABRICATED OR DERIVED STATISTICS: Never invent, estimate, round-into-existence, or derive a statistic that is not explicitly present in [VERIFIED DASHBOARD DATA]. This bans ratios ("32 hostile for every 1 warm"), percentages, shares, "N out of M", rankings, and any comparative or aggregate figure — a ratio or percentage is a statistic even when the raw inputs exist, and you must NOT compute one and present it as measured. Only state a comparative number if it is given directly in the verified data, OR if it follows exactly and unambiguously from verified numbers AND you can name the exact verified inputs it came from. If you cannot ground a figure that way, make the point qualitatively (e.g. "warmth is rare — indifference dominates") rather than attaching an invented number to it. A fabricated statistic is not a stylistic choice; it is a failure.
+
+PRESERVE SCALE AND UNITS EXACTLY: Never alter a metric's scale, denominator, or units. A score of 0.13 measured on a 0–1 scale must be reported as "0.13 (0–1 scale)" or "13 out of 100" — never "0.13 out of 100." Do not append "out of 100," convert, or renormalize a number unless the verified data states that scale. Reporting a real number in the wrong units is as damaging as inventing one.
+
+THIS APPLIES TO CREATIVE AND PERSUASIVE OUTPUT TOO: When writing a LinkedIn post, headline, ad, manifesto, or any engagement-driven copy, a punchy statistic that is fabricated is a failure, not a feature. The directive to be provocative or "stop the scroll" NEVER overrides data discipline. If the sharpest line needs a number you cannot verify, find a verifiable one or make the point without a number — the credibility of Moodlight as an evidence-based instrument depends on it.
+
 === REGULATORY AND FEASIBILITY FILTER ===
 When generating creative territories, campaign concepts, or strategic recommendations, apply a basic feasibility filter. Do not recommend positioning that would violate advertising regulations for the category. Flag regulatory constraints where relevant.
 
