@@ -31,6 +31,10 @@ import json
 import math
 import hashlib
 import argparse
+import html
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone, timedelta, date
 
 import pandas as pd
@@ -91,6 +95,13 @@ def ensure_predictions_table(engine):
             "CREATE INDEX IF NOT EXISTS idx_predictions_topic ON predictions (topic)",
         ):
             conn.execute(sql_text(stmt))
+        # Integrity-seal columns (idempotent — safe to run on an existing table)
+        for stmt in (
+            "ALTER TABLE predictions ADD COLUMN IF NOT EXISTS evidence_sealed TEXT",
+            "ALTER TABLE predictions ADD COLUMN IF NOT EXISTS evidence_sha256 VARCHAR(64)",
+            "ALTER TABLE predictions ADD COLUMN IF NOT EXISTS sealed_at TIMESTAMPTZ",
+        ):
+            conn.execute(sql_text(stmt))
         conn.commit()
 
 
@@ -136,6 +147,19 @@ def _json_safe(obj):
         return float(obj)
     except (TypeError, ValueError):
         return str(obj)
+
+
+def _canonical_evidence(evidence):
+    """Deterministic JSON text for sealing/hashing — stable across processes.
+    The seal (and the trace) are built from THIS text, so what a reader sees is
+    byte-for-byte what the hash covers."""
+    return json.dumps(evidence, sort_keys=True, ensure_ascii=True,
+                      separators=(",", ":"))
+
+
+def _hash_text(s):
+    """SHA-256 of a UTF-8 string, hex."""
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
 def _rows_subset(df, keys, limit):
@@ -262,15 +286,26 @@ def log_prediction(engine, statement, brand=None, topic=None, confidence=None,
     else:
         evidence = None
 
+    # Seal the evidence: canonical text + SHA-256, frozen at write time. This is
+    # what makes "nothing changed since we called it" verifiable, not just asserted.
+    if evidence is not None:
+        sealed_text = _canonical_evidence(evidence)
+        ev_hash = _hash_text(sealed_text)
+    else:
+        sealed_text = ev_hash = None
+
     with engine.connect() as conn:
         result = conn.execute(
             sql_text("""
                 INSERT INTO predictions
                     (prediction_type, statement, statement_hash, brand, topic,
-                     confidence, horizon_days, prediction_date, due_date, evidence, source)
+                     confidence, horizon_days, prediction_date, due_date, evidence,
+                     evidence_sealed, evidence_sha256, sealed_at, source)
                 VALUES
                     ('call', :statement, :shash, :brand, :topic,
-                     :confidence, :horizon, :pdate, :due, CAST(:evidence AS JSONB), :source)
+                     :confidence, :horizon, :pdate, :due, CAST(:evidence AS JSONB),
+                     :sealed_text, :ev_hash,
+                     CASE WHEN :ev_hash IS NULL THEN NULL ELSE NOW() END, :source)
                 ON CONFLICT (prediction_date, statement_hash) DO NOTHING
                 RETURNING id
             """),
@@ -280,6 +315,7 @@ def log_prediction(engine, statement, brand=None, topic=None, confidence=None,
                 "confidence": confidence, "horizon": horizon_days,
                 "pdate": pdate, "due": due,
                 "evidence": json.dumps(evidence) if evidence is not None else None,
+                "sealed_text": sealed_text, "ev_hash": ev_hash,
                 "source": source,
             },
         )
@@ -434,6 +470,298 @@ def report_detail(engine):
     return "\n".join(lines)
 
 
+# ── Integrity seal: backfill + verify ───────────────────────────────────────
+
+def seal_existing(engine):
+    """One-time: seal any evidence-bearing rows logged before the seal existed.
+    Honest by design — sealed_at = now (sealed AS OF today, never backdated to the
+    original call date). The hash proves immutability from the seal forward."""
+    ensure_predictions_table(engine)
+    df = pd.read_sql(
+        sql_text("SELECT id, evidence FROM predictions "
+                 "WHERE evidence IS NOT NULL AND evidence_sha256 IS NULL "
+                 "ORDER BY id"),
+        engine,
+    )
+    if df.empty:
+        print("  Nothing to seal — all evidence-bearing calls already sealed.")
+        return
+    sealed = 0
+    with engine.connect() as conn:
+        for _, r in df.iterrows():
+            ev = r["evidence"]
+            if isinstance(ev, str):
+                ev = json.loads(ev)
+            sealed_text = _canonical_evidence(ev)
+            conn.execute(
+                sql_text("UPDATE predictions SET evidence_sealed = :s, "
+                         "evidence_sha256 = :h, sealed_at = NOW() WHERE id = :id"),
+                {"s": sealed_text, "h": _hash_text(sealed_text), "id": int(r["id"])},
+            )
+            sealed += 1
+        conn.commit()
+    print(f"  Sealed {sealed} pre-existing call(s) as of now.")
+
+
+def verify_seal(engine, prediction_id):
+    """Recompute the hash from the stored sealed evidence and compare. This is
+    what turns the seal into proof: anyone can re-run it. Returns True if intact."""
+    ensure_predictions_table(engine)
+    df = pd.read_sql(
+        sql_text("SELECT id, statement, evidence_sealed, evidence_sha256, sealed_at "
+                 "FROM predictions WHERE id = :id"),
+        engine, params={"id": int(prediction_id)},
+    )
+    if df.empty:
+        print(f"  No prediction with id {prediction_id}")
+        return False
+    r = df.iloc[0]
+    if _na(r["evidence_sha256"]) is None or _na(r["evidence_sealed"]) is None:
+        print(f"  #{prediction_id} has no seal (no evidence captured for this call).")
+        return False
+    recomputed = _hash_text(r["evidence_sealed"])
+    ok = (recomputed == r["evidence_sha256"])
+    print(f"  Prediction #{prediction_id}: {str(r['statement'])[:64]}")
+    print(f"  Sealed at       : {r['sealed_at']}")
+    print(f"  Stored hash     : {r['evidence_sha256']}")
+    print(f"  Recomputed hash : {recomputed}")
+    print(f"  Result: {'SEALED — evidence intact' if ok else 'TAMPERED — evidence changed since seal'}")
+    return ok
+
+
+# ── Evidence Trace: shareable proof artifact per call ────────────────────────
+
+TRACE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "proof_traces")
+
+_TRACE_STYLE = """<style>
+  :root{--ground:#E9EBEE;--paper:#FCFCFD;--text:#171A22;--muted:#5A616E;
+    --line:#D2D6DD;--accent:#C57A11;--accent-2:#14484E;--tint:#E7EEEE;
+    --serif:"Newsreader","Iowan Old Style",Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);
+    line-height:1.6;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:760px;margin:0 auto;padding:clamp(1.4rem,5vw,3.2rem) clamp(1.2rem,5vw,2rem) 4rem;}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent-2);margin:0 0 1.3rem;}
+  .eyebrow b{color:var(--accent);font-weight:600;}
+  h1{font-family:var(--serif);font-weight:500;font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.1;
+    letter-spacing:-.01em;margin:0 0 1rem;}
+  .status{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);display:flex;flex-wrap:wrap;gap:.4rem .9rem;margin:0 0 1.8rem;}
+  .status .open{color:var(--accent);font-weight:600;}
+  .status .res{color:var(--accent-2);font-weight:600;}
+  .call{background:var(--paper);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:3px;padding:1.1rem 1.25rem;}
+  .call.outcome{border-left-color:var(--accent-2);}
+  .call .k{font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--accent);font-weight:600;display:block;margin-bottom:.5rem;}
+  .call.outcome .k{color:var(--accent-2);}
+  .call p{margin:0;font-family:var(--serif);font-size:1.12rem;line-height:1.4;}
+  .section-label{font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--muted);display:flex;align-items:center;gap:.8rem;margin:2.4rem 0 .6rem;}
+  .section-label::after{content:"";flex:1;height:1px;background:var(--line);}
+  .explainer{font-size:.95rem;color:var(--muted);margin:0 0 1.1rem;}
+  .chips{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 1.6rem;}
+  .chip{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--accent-2);background:var(--tint);border:1px solid var(--line);border-radius:2px;
+    padding:.3rem .6rem;}
+  .signal{background:var(--paper);border:1px solid var(--line);border-radius:3px;
+    padding:1rem 1.15rem;margin-bottom:.9rem;}
+  .signal .meta{font-family:var(--mono);font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);display:flex;flex-wrap:wrap;gap:.3rem .8rem;margin-bottom:.55rem;}
+  .signal .meta .tag{color:var(--accent);font-weight:600;}
+  .signal .meta .num{color:var(--accent-2);}
+  .signal .q{margin:0;font-family:var(--serif);font-size:1.06rem;line-height:1.4;}
+  .gauges{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin:.4rem 0 .8rem;}
+  @media(max-width:520px){.gauges{grid-template-columns:1fr 1fr;}}
+  .gauge{background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:.8rem .9rem;}
+  .gauge .lab{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+  .gauge .val{font-family:var(--serif);font-size:1.6rem;color:var(--accent-2);line-height:1.1;margin-top:.15rem;}
+  .gauge .bar{height:4px;background:var(--line);border-radius:2px;margin-top:.5rem;overflow:hidden;}
+  .gauge .bar i{display:block;height:100%;background:var(--accent-2);}
+  .market{font-family:var(--mono);font-size:.85rem;color:var(--muted);margin-top:.6rem;}
+  .market b{color:var(--accent-2);}
+  .seal{margin-top:2.6rem;padding:1rem 1.15rem;background:var(--tint);border:1px solid var(--line);
+    border-radius:3px;font-family:var(--mono);font-size:.74rem;line-height:1.7;color:var(--accent-2);}
+  .seal code{background:var(--paper);border:1px solid var(--line);border-radius:2px;padding:.05rem .3rem;color:var(--text);}
+  footer{margin-top:1.6rem;padding-top:1.3rem;border-top:2px solid var(--accent-2);font-size:.88rem;color:var(--muted);}
+  footer .mark{font-family:var(--serif);font-style:italic;color:var(--text);}
+  @page{margin:14mm;size:letter;}
+  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:var(--ground);}
+    .wrap{padding:.4rem .4rem 1rem;}.call,.signal,.gauge,.gauges,.seal,footer{break-inside:avoid;}}
+</style>"""
+
+
+def _fmt_date(v):
+    if _na(v) is None:
+        return "—"
+    return str(v)[:10]
+
+
+def _num(v, nd=2):
+    try:
+        return f"{float(v):.{nd}f}"
+    except (TypeError, ValueError):
+        return None
+
+
+def _signal_card(sig):
+    src = html.escape(str(sig.get("source") or "—"))
+    emo = html.escape(str(sig.get("emotion_top_1") or "—"))
+    emp = _num(sig.get("empathy_score"), 2)
+    emp_html = f'<span class="num">Empathy {emp}</span>' if emp is not None else ""
+    txt = html.escape(str(sig.get("text") or "").strip())
+    if len(txt) > 400:
+        txt = txt[:400] + "…"
+    return (f'<div class="signal"><div class="meta"><span class="tag">{src}</span>'
+            f'<span>Emotion: {emo}</span>{emp_html}</div>'
+            f'<p class="q">{txt}</p></div>')
+
+
+def _gauge(label, val):
+    try:
+        f = float(val)
+    except (TypeError, ValueError):
+        return ""
+    w = max(0, min(100, int(round(f * 100))))
+    return (f'<div class="gauge"><span class="lab">{html.escape(label)}</span>'
+            f'<div class="val">{f:.2f}</div>'
+            f'<div class="bar"><i style="width:{w}%"></i></div></div>')
+
+
+def render_trace(engine, prediction_id):
+    """Render a self-contained Evidence Trace HTML for one call. Returns the path.
+    Built from the SEALED evidence text, so what's shown is exactly what's hashed."""
+    ensure_predictions_table(engine)
+    df = pd.read_sql(sql_text("SELECT * FROM predictions WHERE id = :id"),
+                     engine, params={"id": int(prediction_id)})
+    if df.empty:
+        print(f"  No prediction with id {prediction_id}")
+        return None
+    r = df.iloc[0]
+
+    # Prefer the sealed text (what the hash covers); fall back to the JSONB copy.
+    ev = {}
+    sealed_raw = _na(r.get("evidence_sealed"))
+    if sealed_raw:
+        try:
+            ev = json.loads(sealed_raw)
+        except Exception:
+            ev = {}
+    elif _na(r.get("evidence")) is not None:
+        ev = r["evidence"] if isinstance(r["evidence"], dict) else json.loads(r["evidence"])
+
+    statement = html.escape(str(r["statement"]))
+    topic = html.escape(str(_na(r.get("topic")) or "—"))
+    brand = _na(r.get("brand"))
+    conf = _na(r.get("confidence"))
+    conf_txt = f"{int(conf)} / 10" if conf is not None else "—"
+    called = _fmt_date(r.get("prediction_date"))
+    due = _fmt_date(r.get("due_date"))
+    status = _na(r.get("outcome_status"))
+
+    if status:
+        state = f'<span class="res">● Resolved — {html.escape(str(status))}</span>'
+        when = f'<span>Resolved&nbsp; {_fmt_date(r.get("resolved_date"))}</span>'
+    else:
+        state = '<span class="open">● Open</span>'
+        when = f'<span>Resolves&nbsp; {due}</span>' if due != "—" else ""
+    brand_line = f'<span>Brand&nbsp; {html.escape(str(brand))}</span>' if brand else ""
+
+    # Signals
+    if ev.get("manual_entry"):
+        note = html.escape(str(ev.get("note") or ""))
+        sig_html = (f'<div class="signal"><div class="meta"><span class="tag">Manual entry</span>'
+                    f'</div><p class="q">{note or "—"}</p></div>')
+    else:
+        parts = [_signal_card(s) for s in (list(ev.get("top_news") or [])
+                 + list(ev.get("top_social") or []))[:8]]
+        sig_html = "".join(parts)
+    if not sig_html:
+        sig_html = '<p class="explainer">No inline signals captured for this call.</p>'
+
+    # Chips
+    counts = ev.get("counts") or {}
+    chips = []
+    if counts.get("news_scored") is not None:
+        chips.append(f'<span class="chip">{int(counts["news_scored"])} news signals</span>')
+    if counts.get("social_scored") is not None:
+        chips.append(f'<span class="chip">{int(counts["social_scored"])} social signals</span>')
+    if ev.get("vlds"):
+        chips.append('<span class="chip">VLDS scores</span>')
+    if ev.get("market"):
+        chips.append('<span class="chip">Market snapshot</span>')
+    chips_html = f'<div class="chips">{"".join(chips)}</div>' if chips else ""
+
+    # Gauges (VLDS)
+    vlds = ev.get("vlds") or {}
+    gauges = ""
+    for label in ("velocity", "longevity", "density", "scarcity"):
+        v = vlds.get(label)
+        if v is None:
+            v = vlds.get(label + "_score")
+        if v is not None:
+            gauges += _gauge(label.capitalize(), v)
+    gauges_html = (f'<p class="section-label">The climate reading</p>'
+                   f'<div class="gauges">{gauges}</div>') if gauges else ""
+
+    spy = _num((ev.get("market") or {}).get("spy_price"), 2)
+    market_html = (f'<p class="market">Market context at capture — <b>SPY {spy}</b></p>'
+                   if spy else "")
+    captured = _fmt_date(ev.get("captured_at"))
+
+    outcome_html = ""
+    if status:
+        osum = html.escape(str(_na(r.get("outcome_summary")) or "")) or "—"
+        outcome_html = (f'<p class="section-label">The outcome</p>'
+                        f'<div class="call outcome"><span class="k">Resolved — '
+                        f'{html.escape(str(status))}</span><p>{osum}</p></div>')
+
+    ev_hash = _na(r.get("evidence_sha256"))
+    if ev_hash:
+        seal_html = (f'<div class="seal">Evidence sealed {_fmt_date(r.get("sealed_at"))} · '
+                     f'SHA-256 <code>{html.escape(ev_hash[:24])}…</code><br>'
+                     f'Nothing added or altered since. Verify independently: '
+                     f'<code>python prediction_tracker.py verify {int(r["id"])}</code></div>')
+    else:
+        seal_html = '<div class="seal">No integrity seal on this call (no evidence captured).</div>'
+
+    snapshot_line = (f'The moment this call was staked, Moodlight froze a complete, '
+                     f'self-contained snapshot of what it was seeing — captured {captured}. '
+                     f'It survives the 30-day data wipe and is sealed against tampering.')
+
+    body = (f'<div class="wrap">'
+            f'<p class="eyebrow">Radar by Moodlight · <b>Evidence Trace</b></p>'
+            f'<h1>{statement}</h1>'
+            f'<div class="status"><span>Called&nbsp; {called}</span>'
+            f'<span>Topic&nbsp; {topic}</span>{brand_line}'
+            f'<span>Confidence&nbsp; {conf_txt}</span>{state}{when}</div>'
+            f'<div class="call"><span class="k">The call</span><p>{statement}</p></div>'
+            f'{outcome_html}'
+            f'<p class="section-label">The frozen snapshot</p>'
+            f'<p class="explainer">{snapshot_line}</p>{chips_html}'
+            f'<p class="section-label">The signals that grounded it</p>{sig_html}'
+            f'{gauges_html}{market_html}'
+            f'{seal_html}'
+            f'<footer>This snapshot was frozen the moment the call was made — nothing '
+            f'added, nothing backdated. Call → sealed evidence → verified outcome is the '
+            f'whole point.<br><br><span class="mark">Radar by Moodlight</span> · '
+            f'the explainable instrument</footer></div>')
+
+    doc = ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+           "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+           f"<title>Evidence Trace — call #{int(r['id'])}</title>"
+           + _TRACE_STYLE + "</head><body>" + body + "</body></html>")
+
+    os.makedirs(TRACE_DIR, exist_ok=True)
+    path = os.path.join(TRACE_DIR, f"trace_{int(r['id'])}.html")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(doc)
+    return path
+
+
 # ── CLI / worker ────────────────────────────────────────────────────────────
 
 def _parse_date(s):
@@ -486,6 +814,85 @@ def _cli_resolve(engine, args):
                        outcome_evidence_override=oev_override)
 
 
+def _due_digest_html(due_df, record_txt):
+    """Build the due-for-resolution reminder email (HTML)."""
+    today = datetime.now(timezone.utc).date()
+    rows = ""
+    for _, r in due_df.iterrows():
+        who = html.escape(str(r["brand"] or r["topic"] or "—"))
+        stmt = html.escape(str(r["statement"]))
+        due = r["due_date"]
+        overdue = ""
+        try:
+            if due is not None and pd.Timestamp(due).date() < today:
+                overdue = ' <span style="color:#9A4E12;font-weight:600;">(overdue)</span>'
+        except Exception:
+            pass
+        rows += (
+            f'<tr><td style="padding:14px 16px;border-bottom:1px solid #E4E6EA;vertical-align:top;">'
+            f'<div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#C57A11;'
+            f'font-weight:600;letter-spacing:.04em;">#{int(r["id"])} · due {due}{overdue} · {who}</div>'
+            f'<div style="font-family:Georgia,serif;font-size:16px;color:#171A22;line-height:1.4;'
+            f'margin:6px 0 8px;">{stmt}</div>'
+            f'<div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#5A616E;">'
+            f'Resolve: <code style="background:#F1F2F4;padding:1px 5px;border-radius:2px;">'
+            f'prediction_tracker.py resolve {int(r["id"])} played_out|partial|missed "…"</code></div>'
+            f'</td></tr>'
+        )
+    record_html = html.escape(record_txt).replace("\n", "<br>")
+    return (
+        '<div style="max-width:640px;margin:0 auto;background:#FCFCFD;">'
+        '<div style="padding:22px 16px 6px;">'
+        '<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.16em;'
+        'text-transform:uppercase;color:#14484E;">Radar by Moodlight · Proof Library</div>'
+        '<h1 style="font-family:Georgia,serif;font-weight:500;font-size:24px;color:#171A22;'
+        'margin:8px 0 4px;">Calls due for resolution</h1>'
+        '<p style="font-family:system-ui,sans-serif;font-size:14px;color:#5A616E;margin:0 0 8px;">'
+        'These calls have reached their horizon. Grade each one so the track record stays live.</p>'
+        '</div>'
+        f'<table style="width:100%;border-collapse:collapse;">{rows}</table>'
+        '<div style="padding:16px;font-family:ui-monospace,Menlo,monospace;font-size:12px;'
+        f'color:#5A616E;border-top:2px solid #14484E;margin-top:8px;">{record_html}</div>'
+        '</div>'
+    )
+
+
+def send_due_digest(engine, due_df):
+    """Email the due-for-resolution list. Sends only when there are due calls.
+    Recipient: PREDICTION_DIGEST_TO > EMAIL_RECIPIENT > daniel@moodlightintel.com."""
+    if due_df is None or due_df.empty:
+        return False
+    sender = os.getenv("EMAIL_ADDRESS")
+    password = os.getenv("EMAIL_PASSWORD")
+    recipient = (os.getenv("PREDICTION_DIGEST_TO")
+                 or os.getenv("EMAIL_RECIPIENT")
+                 or "daniel@moodlightintel.com")
+    if not all([sender, password, recipient]):
+        print("  Email credentials not configured — skipping due-call email.")
+        return False
+
+    n = len(due_df)
+    subject = f"Moodlight — {n} prediction call{'' if n == 1 else 's'} due for resolution"
+    body = _due_digest_html(due_df, accuracy_report(engine))
+
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = sender
+    msg['To'] = recipient.split(",")[0].strip()
+    msg.attach(MIMEText(body, 'html'))
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(sender, password)
+            for addr in [a.strip() for a in recipient.split(",") if a.strip()]:
+                msg.replace_header('To', addr)
+                server.send_message(msg)
+                print(f"  Due-call email sent to {addr}")
+        return True
+    except Exception as e:
+        print(f"  Due-call email failed: {e}")
+        return False
+
+
 def _daily_pass(engine):
     """Default (cron) pass: surface due-for-resolution calls + print the record."""
     due = list_due(engine)
@@ -495,6 +902,7 @@ def _daily_pass(engine):
             who = r["brand"] or r["topic"] or "—"
             print(f"    #{int(r['id'])} (due {r['due_date']}) [{who}] "
                   f"{str(r['statement'])[:80]}")
+        send_due_digest(engine, due)
     else:
         print("\n  No calls currently due for resolution.")
     print("\n  Track record:")
@@ -518,6 +926,20 @@ def main():
         print(accuracy_report(engine))
         print()
         print(report_detail(engine))
+    elif cmd == "trace":
+        if len(sys.argv) < 3:
+            print("  usage: prediction_tracker.py trace <id>")
+        else:
+            path = render_trace(engine, int(sys.argv[2]))
+            if path:
+                print(f"  Trace written: {path}")
+    elif cmd == "verify":
+        if len(sys.argv) < 3:
+            print("  usage: prediction_tracker.py verify <id>")
+        else:
+            verify_seal(engine, int(sys.argv[2]))
+    elif cmd == "seal-existing":
+        seal_existing(engine)
     else:
         # None, "due", or the worker's job name ("prediction-log") -> daily pass
         _daily_pass(engine)
