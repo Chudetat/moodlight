@@ -16,6 +16,17 @@ import pandas as pd
 from datetime import datetime, timezone, timedelta
 from vlds_helper import calculate_brand_vlds
 
+# ── Brand-alert volume floors ────────────────────────────────────────────────
+# Brand velocity / share-of-voice / saturation / mention-surge are ratios or
+# recency distributions computed on brand-filtered rows. On a tiny base they
+# amplify noise — a 1→3 mention move reads as a "critical velocity spike," and a
+# few mentions apiece makes share-of-voice swing wildly ("competitor overtook
+# you"). Require a real mention count before firing. brand_white_space is the one
+# alert where LOW volume is the point, so it gets a lower floor.
+# (See the Constellation Brands measurement artifact, Jul 2026.)
+MIN_BRAND_MENTIONS = 20
+WHITE_SPACE_MIN_MENTIONS = 10
+
 
 def _normalize_empathy(avg: float) -> int:
     """Normalize GoEmotions empathy score to 0-100 scale.
@@ -469,12 +480,17 @@ def detect_brand_vlds_alerts(df_news, df_social, brand_name, username,
         _filter_by_brand(df_social, brand_name),
     ], ignore_index=True)
 
-    if brand_df.empty or len(brand_df) < 5:
+    # Below WHITE_SPACE_MIN_MENTIONS there isn't enough signal to say anything.
+    # brand_white_space is allowed down to this floor (low volume IS its point);
+    # velocity / saturation / narrative-fading require MIN_BRAND_MENTIONS.
+    if brand_df.empty or len(brand_df) < WHITE_SPACE_MIN_MENTIONS:
         return alerts, None
 
     vlds = calculate_brand_vlds(brand_df)
     if not vlds:
         return alerts, None
+
+    enough = len(brand_df) >= MIN_BRAND_MENTIONS
 
     t_ws = thresholds.get("brand_white_space", {}) if thresholds else {}
     t_vs = thresholds.get("brand_velocity_spike", {}) if thresholds else {}
@@ -502,7 +518,7 @@ def detect_brand_vlds_alerts(df_news, df_social, brand_name, username,
     # Velocity Spike
     velocity = vlds.get("velocity", 0.5)
     vs_threshold = t_vs.get("critical", 0.7)
-    if vs_threshold and velocity > vs_threshold:
+    if enough and vs_threshold and velocity > vs_threshold:
         alerts.append(_make_alert(
             alert_type="brand_velocity_spike",
             severity="critical",
@@ -518,7 +534,7 @@ def detect_brand_vlds_alerts(df_news, df_social, brand_name, username,
         ))
 
     # Narrative Fading (skip if VLDS version changed to prevent false alerts)
-    if prev_vlds and prev_vlds.get("_vlds_version", 1) == vlds.get("_vlds_version", 1):
+    if enough and prev_vlds and prev_vlds.get("_vlds_version", 1) == vlds.get("_vlds_version", 1):
         prev_longevity = prev_vlds.get("longevity", 0)
         curr_longevity = vlds.get("longevity", 0)
         nf_from = t_nf.get("warning", 0.6)
@@ -545,7 +561,7 @@ def detect_brand_vlds_alerts(df_news, df_social, brand_name, username,
     # Saturation Warning
     density = vlds.get("density", 0)
     sat_threshold = t_sat.get("warning", 0.7)
-    if sat_threshold and density > sat_threshold:
+    if enough and sat_threshold and density > sat_threshold:
         alerts.append(_make_alert(
             alert_type="brand_saturation",
             severity="warning",
@@ -585,9 +601,11 @@ def detect_brand_mention_surge(df_news, df_social, brand_name, username,
         today_count = daily.iloc[-1]
         baseline = daily.iloc[:-1].mean()
 
-        is_surge = (
+        # Absolute floor on both branches: a "surge" to a handful of mentions is
+        # noise. Require MIN_BRAND_MENTIONS today regardless of the ratio.
+        is_surge = today_count >= MIN_BRAND_MENTIONS and (
             (baseline >= 2 and today_count > baseline * multiplier) or
-            (baseline < 2 and today_count >= 5)
+            (baseline < 2)
         )
         if is_surge:
             alert_type = "brand_news_surge" if label == "news" else "brand_social_buzz"
@@ -672,7 +690,7 @@ def detect_brand_crisis(df_news, df_social, brand_name, username, thresholds=Non
         _filter_by_brand(df_social, brand_name),
     ], ignore_index=True)
 
-    if brand_df.empty or len(brand_df) < 5:
+    if brand_df.empty or len(brand_df) < MIN_BRAND_MENTIONS:
         return alerts
 
     if "created_at" not in brand_df.columns or "empathy_score" not in brand_df.columns:
@@ -781,8 +799,18 @@ def detect_share_of_voice_shift(current_snapshot, previous_snapshot,
     brand_curr = curr_sov.get(brand_name, 0)
     brand_prev = prev_sov.get(brand_name, 0)
 
+    # Volume floor: share-of-voice percentages are meaningless on a tiny mention
+    # base. Require the brand (and each competitor) to clear MIN_BRAND_MENTIONS raw
+    # mentions before a "competitor overtook you" alert can fire.
+    brand_mentions = (current_snapshot.get(brand_name) or {}).get("mention_count", 0)
+    if brand_mentions < MIN_BRAND_MENTIONS:
+        return alerts
+
     for comp_name in curr_sov:
         if comp_name == brand_name:
+            continue
+        comp_mentions = (current_snapshot.get(comp_name) or {}).get("mention_count", 0)
+        if comp_mentions < MIN_BRAND_MENTIONS:
             continue
         comp_curr = curr_sov.get(comp_name, 0)
         comp_prev = prev_sov.get(comp_name, 0)

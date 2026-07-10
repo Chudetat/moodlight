@@ -12,7 +12,8 @@ import json
 import numpy as np
 import pandas as pd
 from datetime import datetime, timezone, timedelta
-from alert_detector import _make_alert, _filter_by_brand, _filter_by_topic
+from alert_detector import (_make_alert, _filter_by_brand, _filter_by_topic,
+                            MIN_BRAND_MENTIONS)
 from vlds_helper import calculate_brand_vlds
 
 
@@ -683,6 +684,15 @@ def run_predictive_detectors(engine, df_news, df_social, df_markets,
                 trend = compute_trend(engine, "brand", brand_name, extra)
                 if trend:
                     brand_trends[extra] = trend
+
+            # Volume floor: skip thin-signal brands entirely. Velocity / compound
+            # trends on a handful of mentions are small-sample noise amplification.
+            brand_mentions = sum(
+                (brand_trends.get(mk) or {}).get("current_value", 0)
+                for mk in ("mention_count_news", "mention_count_social")
+            )
+            if brand_mentions < MIN_BRAND_MENTIONS:
+                continue
 
             # Check brand threshold approaches
             for metric_name, (alert_type, level) in BRAND_METRIC_THRESHOLDS.items():
