@@ -1568,6 +1568,16 @@ async def ask_moodlight(req: AskRequest, request: Request):
 
     client_ip = request.headers.get("x-forwarded-for", request.client.host)
 
+    # Enforce the free daily limit (paid tokens bypass). This check was defined but
+    # never called, so the widget was effectively unlimited — a public LLM endpoint
+    # that bills real tokens must have a real ceiling. Enforced at entry now.
+    if not is_paid and not _check_rate_limit(client_ip):
+        return AskResponse(
+            answer=(f"You've reached today's free limit of {RATE_LIMIT} questions. "
+                    "Come back tomorrow, or grab a question pack to keep exploring."),
+            queries_remaining=0,
+        )
+
     question = req.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
@@ -1731,9 +1741,9 @@ async def ask_moodlight(req: AskRequest, request: Request):
     # and surface it as structured handoff data for the widget.
     clean_answer, recommended_agent = _extract_routing(answer)
 
-    # Record request for analytics (no limit enforced)
+    # Record this (allowed) request; the limit was already enforced at entry.
     _record_request(client_ip)
-    queries_remaining = 999
+    queries_remaining = 999 if is_paid else max(0, RATE_LIMIT - len(_rate_store[_hash_ip(client_ip)]))
 
     # Log the query (and its answer) for analytics + QA.
     # recommended_agent is a dict ({"id","name","why",...}) or falsy — store its id string.
