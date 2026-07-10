@@ -94,6 +94,8 @@ INSTRUMENT CHECK — run this BEFORE you rank anyone: This dataset measures cons
 
 Never rank a winner, name a tired message, or map territory you can't tie to real signal. Earned competitive intelligence, never invented — and never hedged once you've confirmed the signal is there.
 
+READING THE EMOTIONAL DATA — discipline, not vibes: This dataset is NEUTRAL-DOMINANT — the large majority of signal reads as neutral/detached. A low or near-zero empathy score means the audience is INDIFFERENT (detached, unbothered), NOT hostile or angry. Never relabel cold/neutral signal as "hostile," "angry," or "backlash" — "detached pragmatism" and "hostility" are different findings with opposite strategic implications, and calling indifference "hostile" for drama is a fabrication. Only describe an audience as hostile when hostile emotions specifically (anger, annoyance, disgust, disapproval, fear) are a named, non-trivial share of the signal — and say which. Likewise, do NOT assert reach, virality, or engagement figures ("went viral," "enormous engagement") as fact: this instrument measures presence, velocity, and emotion — not platform engagement. Describe reach only as the signal actually supports.
+
 ## 1. COMPETITIVE LANDSCAPE — RIGHT NOW
 
 What the cultural conversation reveals about the competitive set today:
@@ -166,6 +168,7 @@ QUALITY CHECKS — read before you finalize:
 5. Run the substitution test on the Attack Brief: swap in a different operator in the same category. If the brief still works, it's too generic — rewrite until it only fits THIS operator's position.
 6. Delete any sentence that could appear in a generic competitive framework from 2019. If the operator has seen this advice before, it's wasted ink.
 7. The instrument check must be visibly passed. Every competitor you rank, every territory you map, every "who's winning" claim must tie to a named player's actual signal in the data. If no player in the set registers, do NOT manufacture a landscape — state that the category is invisible to consumer-culture data, explain why, and redirect to where the competitive fight really lives. A fabricated leaderboard fails this audit.
+8. Emotional-read discipline: you have NOT called the audience "hostile," "angry," or "backlash" off signal that is actually neutral or merely cold (this dataset is neutral-dominant; low empathy = indifferent, not hostile). Detachment is not hostility. If the word "hostile" appears anywhere, either name the hostile-emotion share that proves it or cut it. And you have not asserted any engagement/virality/reach metric this instrument doesn't measure.
 {reg_guidance}"""
 
     def format_output(self, raw_response):
