@@ -362,33 +362,36 @@ def radar_to_html(radar_md):
     # Bold
     html_body = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_body)
 
-    # Topic labels: ALL CAPS lines (3+ words, all uppercase/spaces/punctuation)
-    # These become large styled visual blocks with left orange border
-    html_body = re.sub(
-        r'^([A-Z][A-Z\s\'\'\-&,]{6,})$',
-        r'<div style="margin-top: 35px; margin-bottom: 14px; padding: 14px 18px; '
-        r'border-left: 4px solid #F97316; background: #1a1a1a;">'
-        r'<span style="color: #F97316; font-size: 20px; font-weight: bold; '
-        r'letter-spacing: 2px;">\1</span></div>',
-        html_body,
-        flags=re.MULTILINE
-    )
+    # Topic labels: ALL CAPS lines (3+ words) become styled blocks — each a clickable
+    # "deep dive" that opens the Ask Moodlight widget pre-loaded with that undercurrent.
+    # THE UNDERCURRENT / THE THREAD keep the distinct full-orange treatment.
+    from urllib.parse import quote
+    WIDGET_PAGE_URL = "https://www.moodlightintel.com/"  # public Ask widget lives here
 
-    # Special section: THE UNDERCURRENT (distinct styling — full orange background)
-    for header in ["THE UNDERCURRENT", "THE THREAD"]:
-        styled = (
-            f'<div style="margin-top: 40px; margin-bottom: 14px; padding: 14px 18px; '
-            f'background: #F97316; border-radius: 4px;">'
-            f'<span style="color: white; font-size: 18px; font-weight: bold; '
-            f'letter-spacing: 2px;">{header}</span></div>'
-        )
-        html_body = html_body.replace(
+    def _wrap_topic(m):
+        label = m.group(1).strip()
+        href = f"{WIDGET_PAGE_URL}?mlq={quote(label)}"
+        dig = ('<span style="font-size: 13px; font-weight: normal; '
+               'letter-spacing: 1px; opacity: 0.7;"> &nbsp;&rarr; deep dive</span>')
+        if label in ("THE UNDERCURRENT", "THE THREAD"):
+            return (
+                f'<div style="margin-top: 40px; margin-bottom: 14px; padding: 14px 18px; '
+                f'background: #F97316; border-radius: 4px;">'
+                f'<a href="{href}" style="text-decoration: none; color: #ffffff;">'
+                f'<span style="color: #ffffff; font-size: 18px; font-weight: bold; '
+                f'letter-spacing: 2px;">{label}</span>{dig}</a></div>'
+            )
+        return (
             f'<div style="margin-top: 35px; margin-bottom: 14px; padding: 14px 18px; '
             f'border-left: 4px solid #F97316; background: #1a1a1a;">'
+            f'<a href="{href}" style="text-decoration: none; color: #F97316;">'
             f'<span style="color: #F97316; font-size: 20px; font-weight: bold; '
-            f'letter-spacing: 2px;">{header}</span></div>',
-            styled
+            f'letter-spacing: 2px;">{label}</span>{dig}</a></div>'
         )
+
+    html_body = re.sub(
+        r'^([A-Z][A-Z\s\'\'\-&,]{6,})$', _wrap_topic, html_body, flags=re.MULTILINE
+    )
 
     # Inline labels
     html_body = re.sub(

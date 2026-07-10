@@ -1069,10 +1069,40 @@
     }
   }
 
+  // Radar deep-dive hand-off: a ?mlq=<topic> link from the Radar email opens the
+  // widget and auto-runs a deep-dive query on that undercurrent. Additive and gated
+  // — with no mlq param, the widget behaves exactly as before.
+  function maybeDeepDive() {
+    let topic = null;
+    try { topic = urlParams.get("mlq"); } catch (e) { return; }
+    if (!topic) return;
+    // Clean the URL so a refresh/back doesn't re-fire the query.
+    try {
+      const clean = window.location.href.split("?")[0];
+      window.history.replaceState({}, "", clean);
+    } catch (e) {}
+    const q = 'Deep dive on "' + topic + '": what’s driving it, where it’s ' +
+              'heading, why it matters — and the signals underneath.';
+    setTimeout(function () {
+      const input = document.getElementById("ml-input");
+      const panel = document.getElementById("ml-widget-panel");
+      if (!input || !panel) return;
+      isOpen = true;
+      panel.classList.add("open");
+      input.value = q;
+      if (typeof window._mlSend === "function") window._mlSend();
+    }, 350);
+  }
+
+  function _mlInit() {
+    renderWidget();
+    maybeDeepDive();
+  }
+
   // ── Init ──
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", renderWidget);
+    document.addEventListener("DOMContentLoaded", _mlInit);
   } else {
-    renderWidget();
+    _mlInit();
   }
 })();
