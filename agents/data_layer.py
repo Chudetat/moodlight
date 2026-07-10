@@ -50,7 +50,8 @@ def build_intelligence_snapshot(df):
         if "empathy_label" in df.columns else "No empathy data"
     )
     snapshot["avg_empathy"] = (
-        f"{df['empathy_score'].mean():.1f}/100"
+        f"{df['empathy_score'].mean():.3f} on a 0-1 scale "
+        f"(typical item range ~0.03-0.15; higher = warmer)"
         if "empathy_score" in df.columns else "N/A"
     )
     snapshot["geo_dist"] = (
