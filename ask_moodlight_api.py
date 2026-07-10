@@ -2,7 +2,7 @@
 """
 Ask Moodlight API — FastAPI endpoint for embedding on moodlightintel.com.
 Replicates the Ask Moodlight intelligence engine for public demo access.
-Rate-limited to 3 queries per visitor per day.
+Rate-limited to 25 queries per visitor per day.
 """
 
 import os
@@ -71,7 +71,7 @@ STRIPE_ASK_PRICE_ID = os.getenv("STRIPE_ASK_PRICE_ID", "")
 SITE_URL = "https://moodlightintel.com"
 
 # Rate limiting: {ip_hash: [(timestamp, count)]}
-RATE_LIMIT = 3  # free queries per visitor per day
+RATE_LIMIT = 25  # free queries per visitor per day (raised from 3 to unblock the Radar deep-dive links; still caps public-endpoint abuse/cost)
 PAID_QUERIES = 10  # queries per purchase
 _rate_store: dict[str, list[float]] = defaultdict(list)
 
@@ -810,6 +810,23 @@ def load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
             + "\n\n[END MOODLIGHT INTELLIGENCE HISTORY]")
 
 
+def _normalize_empathy_score(avg: float) -> int:
+    """Normalize raw GoEmotions empathy (0-1) to a 0-100 mood scale.
+    Mirrors ask_engine._normalize_empathy_score — kept in sync deliberately
+    (the widget is a parallel service, not a shared import). Without this, the
+    raw 0-1 mean (~0.13) is compared against 0-100 thresholds and every answer
+    reads 'Very Cold' — the exact scale bug fixed in the agent data_layer."""
+    if avg <= 0.04:
+        score = int(round(avg / 0.04 * 50))
+    elif avg <= 0.10:
+        score = int(round(50 + (avg - 0.04) / 0.06 * 15))
+    elif avg <= 0.30:
+        score = int(round(65 + (avg - 0.10) / 0.20 * 20))
+    else:
+        score = int(round(85 + (avg - 0.30) / 0.70 * 15))
+    return min(100, max(0, score))
+
+
 def build_verified_data(df_all: pd.DataFrame) -> str:
     """Build verified dashboard data section from DataFrame."""
     if df_all.empty:
@@ -820,9 +837,10 @@ def build_verified_data(df_all: pd.DataFrame) -> str:
     # Global mood score
     if "empathy_score" in df_all.columns:
         avg_empathy = df_all["empathy_score"].mean()
-        label = ("Very Cold" if avg_empathy < 35 else "Detached" if avg_empathy < 50
-                 else "Warm" if avg_empathy < 70 else "Highly Empathetic")
-        verified_parts.append(f"Global Mood Score (ACROSS ALL TOPICS — NOT specific to any brand or category): {avg_empathy:.0f}/100 ({label})")
+        mood = _normalize_empathy_score(avg_empathy)  # raw 0-1 empathy -> 0-100 mood
+        label = ("Very Cold" if mood < 35 else "Detached" if mood < 50
+                 else "Warm" if mood < 70 else "Highly Empathetic")
+        verified_parts.append(f"Global Mood Score (ACROSS ALL TOPICS — NOT specific to any brand or category): {mood}/100 ({label})")
 
     # Topic breakdown with VLDS metrics (cached, DB-first, CSV fallback)
     topic_density_map, topic_velocity_map, topic_longevity_map = _load_vlds_maps()
@@ -897,7 +915,7 @@ def build_verified_data(df_all: pd.DataFrame) -> str:
     # Empathy
     if "empathy_score" in df_all.columns:
         avg_empathy_detail = df_all["empathy_score"].mean()
-        verified_parts.append(f"Empathy Score (GLOBAL AVERAGE across all topics — NOT specific to any brand or category): {avg_empathy_detail:.2f}/100")
+        verified_parts.append(f"Empathy Score (GLOBAL AVERAGE across all topics — NOT specific to any brand or category): {avg_empathy_detail:.3f} on a 0-1 raw scale (typical range 0.03-0.15; higher = warmer). This is the raw input to the normalized Global Mood Score above — do NOT report it as 'out of 100'.")
     if "empathy_label" in df_all.columns:
         empathy_dist = df_all["empathy_label"].value_counts().to_dict()
         verified_parts.append(f"Empathy Distribution (ALL topics combined): {empathy_dist}")
