@@ -747,7 +747,7 @@ RULES:
 2. Use the user-provided context as primary source material when available. Build the narrative around it.
 3. Connect topic-specific sentiment to the economic backdrop when meaningful.
 4. Keep it under 1,200 words. Dense, not padded.
-5. Empathy scores: 0.04 = cold/hostile, 0.10 = detached/neutral, 0.30 = warm, 0.30+ = highly empathetic.
+5. Empathy scores: 0.04 = cold/indifferent, 0.10 = detached/neutral, 0.30 = warm, 0.30+ = highly empathetic.
 6. If topic-specific DB data is sparse, lean heavily on user-provided context. Be transparent about data availability.
 
 OUTPUT FORMAT — use this structure with markdown. You may adapt section headers to fit the topic:

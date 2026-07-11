@@ -425,7 +425,7 @@ def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFr
 IMPORTANT - Empathy Score interpretation:
 - Empathy scores measure how WARMLY/SUPPORTIVELY people discuss a topic, NOT whether the topic itself is positive
 - Higher scores = people engaging with nuance, compassion, constructive dialogue
-- Lower scores = hostile, dismissive, or inflammatory discourse
+- Lower scores = detached / indifferent, low-warmth discourse (not necessarily hostile)
 - A tragic topic (e.g., disaster) can have HIGH empathy if people discuss it with compassion
 
 Data: {data_summary}
@@ -440,7 +440,7 @@ Be specific about what is driving the scores. Reference actual events from the h
         "empathy_distribution": f"""Based on this empathy distribution and the relevant headlines below, explain in 2-3 sentences why discourse skews warm or cold.
 
 IMPORTANT - Empathy Score interpretation (0-100 scale):
-- Below 35 = Very Cold/Hostile tone (inflammatory, dismissive discourse)
+- Below 35 = Very Cold/Indifferent tone (detached, low-empathy discourse — not necessarily hostile)
 - 35-50 = Detached/Neutral tone
 - 50-70 = Warm/Supportive tone (constructive, empathetic discussion)
 - Above 70 = Highly Empathetic tone
@@ -473,7 +473,7 @@ IMPORTANT:
 
 IMPORTANT - Social Mood Score interpretation:
 - The Social Mood score (0-100) measures EMPATHETIC TONE in discourse, NOT topic positivity
-- Below 35 = Very Cold/Hostile tone
+- Below 35 = Very Cold/Indifferent tone
 - 35-50 = Detached/Neutral tone
 - 50-70 = Warm/Supportive tone (people discussing topics with empathy)
 - Above 70 = Highly Empathetic tone
@@ -499,7 +499,7 @@ What macro forces, geopolitical events, or sector shifts explain the divergence 
 
 IMPORTANT - Empathy Score context:
 - High empathy = warm, supportive, nuanced tone in how people engage
-- Low empathy = hostile, inflammatory, dismissive tone
+- Low empathy = detached / indifferent, low-warmth tone (not necessarily hostile)
 - This measures discourse tone, not topic positivity
 
 Data: {data_summary}
@@ -512,12 +512,12 @@ What patterns emerge about viral mechanics? Does warmth or hostility drive more 
         "mood_history": f"""Based on this 7-day mood history and headlines from days with significant mood shifts, explain in 2-3 sentences what events caused the changes in public sentiment.
 
 IMPORTANT - Mood Score interpretation (0-100 scale):
-- Below 35 = Very Cold/Hostile discourse
+- Below 35 = Very Cold/Indifferent discourse
 - 35-50 = Detached/Neutral
 - 50-70 = Warm/Supportive
 - Above 70 = Highly Empathetic
 - A spike UP means discourse became MORE empathetic/constructive
-- A dip DOWN means discourse became MORE hostile/inflammatory
+- A dip DOWN means discourse became MORE detached / lower-warmth (colder, not necessarily hostile)
 - This measures tone, not whether news was good or bad
 
 Data: {data_summary}
@@ -588,7 +588,7 @@ What's driving the biggest movers? How do these price changes specifically impac
 
 IMPORTANT - Social Mood Score interpretation:
 - The Social Mood score (0-100) measures EMPATHETIC TONE in discourse, NOT topic positivity
-- Below 35 = Very Cold/Hostile tone
+- Below 35 = Very Cold/Indifferent tone
 - 35-50 = Detached/Neutral tone
 - 50-70 = Warm/Supportive tone (people discussing topics with empathy)
 - Above 70 = Highly Empathetic tone

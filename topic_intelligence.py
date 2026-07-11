@@ -430,7 +430,7 @@ def _label_empathy(score):
     elif score >= 0.04:
         return "detached/neutral"
     else:
-        return "cold/hostile"
+        return "cold/indifferent"
 
 
 def _label_delta(delta):

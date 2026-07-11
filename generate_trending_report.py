@@ -835,7 +835,7 @@ RULES:
 2. Use the VLDS framework data for each brand. Explain what velocity, longevity, density, and scarcity mean in context.
 3. Connect brand trends to the market backdrop when meaningful.
 4. Keep it under 1,500 words. Dense, not padded.
-5. Empathy scores: 0.04 = cold/hostile, 0.10 = detached/neutral, 0.30 = warm, 0.30+ = highly empathetic.
+5. Empathy scores: 0.04 = cold/indifferent, 0.10 = detached/neutral, 0.30 = warm, 0.30+ = highly empathetic.
 6. The leaderboard table MUST use exact numbers from the data.
 7. Each brand section should tell a story — not just list data points. Why is this brand trending? What does it mean?
 

@@ -947,7 +947,7 @@ RULES:
 
 6. THE MARKET SNAPSHOT SHOULD BE BRIEF. Include all major indices and any notable commodity or brand stock moves, but keep it to a few lines. Don't build the whole newsletter around market numbers — they're context, not the main event. When prediction markets disagree with social sentiment or market moves, that divergence IS the story.
 
-7. EMPATHY SCORE REFERENCE: 0.04 = cold/hostile, 0.10 = detached/neutral, 0.30 = warm, 0.30+ = highly empathetic.
+7. EMPATHY SCORE REFERENCE: 0.04 = cold/indifferent, 0.10 = detached/neutral, 0.30 = warm, 0.30+ = highly empathetic.
 
 8. KEEP IT UNDER 800 WORDS. Every sentence should earn its spot. If you can cut a sentence without losing meaning, cut it.
 

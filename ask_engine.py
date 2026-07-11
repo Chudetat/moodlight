@@ -48,7 +48,7 @@ def _compute_world_mood(df: pd.DataFrame):
     avg = df["empathy_score"].mean()
     score = _normalize_empathy_score(avg)
     if score < 35:
-        label = "Very Cold / Hostile"
+        label = "Very Cold / Indifferent"
     elif score < 50:
         label = "Detached / Neutral"
     elif score < 70:
@@ -856,7 +856,7 @@ Date range: {date_range}
 
 === EMPATHY/MOOD SCORE INTERPRETATION ===
 CRITICAL: The empathy and mood scores measure TONE OF DISCOURSE, not topic positivity.
-- Below 35 = Very Cold/Hostile tone (inflammatory, dismissive discourse)
+- Below 35 = Very Cold/Indifferent tone (detached, low-empathy discourse — not necessarily hostile)
 - 35-50 = Detached/Neutral tone
 - 50-70 = Warm/Supportive tone (constructive, empathetic discussion)
 - Above 70 = Highly Empathetic tone

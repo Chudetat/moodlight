@@ -739,7 +739,7 @@ RULES:
 1. Every claim must be grounded in the data provided. No training data.
 2. Be concise — this is a 1-2 page brief. Dense and high-signal.
 3. The VLDS table must use exact scores from the data.
-4. Empathy scores: 0.04 = cold/hostile, 0.10 = detached/neutral, 0.30 = warm, 0.30+ = highly empathetic.
+4. Empathy scores: 0.04 = cold/indifferent, 0.10 = detached/neutral, 0.30 = warm, 0.30+ = highly empathetic.
 5. Frame insights as actionable strategic intelligence, not academic analysis.
 6. The tone should make the reader think "I need this data every week."
 7. Only include sections for which data is provided. If no competitive or market data exists, omit those sections entirely.

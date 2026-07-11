@@ -1036,7 +1036,7 @@ def compute_world_mood(df: pd.DataFrame) -> tuple[int | None, str | None, str]:
     score = normalize_empathy_score(avg)
 
     if score < 35:
-        label = "Very Cold / Hostile"
+        label = "Very Cold / Indifferent"
         emoji = "🥶"
     elif score < 50:
         label = "Detached / Neutral"
@@ -1543,7 +1543,7 @@ def generate_chart_explanation(chart_type: str, data_summary: str, df: pd.DataFr
 IMPORTANT - Empathy Score interpretation:
 - Empathy scores measure how WARMLY/SUPPORTIVELY people discuss a topic, NOT whether the topic itself is positive
 - Higher scores = people engaging with nuance, compassion, constructive dialogue
-- Lower scores = hostile, dismissive, or inflammatory discourse
+- Lower scores = detached / indifferent, low-warmth discourse (not necessarily hostile)
 - A tragic topic (e.g., disaster) can have HIGH empathy if people discuss it with compassion
 
 Data: {data_summary}
@@ -1558,7 +1558,7 @@ Be specific about what is driving the scores. Reference actual events from the h
         "empathy_distribution": f"""Based on this empathy distribution and the relevant headlines below, explain in 2-3 sentences why discourse skews warm or cold.
 
 IMPORTANT - Empathy Score interpretation (0-100 scale):
-- Below 35 = Very Cold/Hostile tone (inflammatory, dismissive discourse)
+- Below 35 = Very Cold/Indifferent tone (detached, low-empathy discourse — not necessarily hostile)
 - 35-50 = Detached/Neutral tone
 - 50-70 = Warm/Supportive tone (constructive, empathetic discussion)
 - Above 70 = Highly Empathetic tone
@@ -1579,7 +1579,7 @@ What events or dynamics are driving the tone of coverage? Be specific about what
 
 IMPORTANT - Social Mood Score interpretation:
 - The Social Mood score (0-100) measures EMPATHETIC TONE in discourse, NOT topic positivity
-- Below 35 = Very Cold/Hostile tone
+- Below 35 = Very Cold/Indifferent tone
 - 35-50 = Detached/Neutral tone
 - 50-70 = Warm/Supportive tone (people discussing topics with empathy)
 - Above 70 = Highly Empathetic tone
@@ -1600,7 +1600,7 @@ Is social sentiment leading or lagging the market? What specific events explain 
 
 IMPORTANT - Empathy Score context:
 - High empathy = warm, supportive, nuanced tone in how people engage
-- Low empathy = hostile, inflammatory, dismissive tone
+- Low empathy = detached / indifferent, low-warmth tone (not necessarily hostile)
 - This measures discourse tone, not topic positivity
 
 Data: {data_summary}
@@ -1613,12 +1613,12 @@ What patterns emerge about viral mechanics? Does warmth or hostility drive more 
         "mood_history": f"""Based on this 7-day mood history and headlines from days with significant mood shifts, explain in 2-3 sentences what events caused the changes in public sentiment.
 
 IMPORTANT - Mood Score interpretation (0-100 scale):
-- Below 35 = Very Cold/Hostile discourse
+- Below 35 = Very Cold/Indifferent discourse
 - 35-50 = Detached/Neutral
 - 50-70 = Warm/Supportive
 - Above 70 = Highly Empathetic
 - A spike UP means discourse became MORE empathetic/constructive
-- A dip DOWN means discourse became MORE hostile/inflammatory
+- A dip DOWN means discourse became MORE detached / lower-warmth (colder, not necessarily hostile)
 - This measures tone, not whether news was good or bad
 
 Data: {data_summary}
@@ -1689,7 +1689,7 @@ What's driving the biggest movers? How do these price changes specifically impac
 
 IMPORTANT - Social Mood Score interpretation:
 - The Social Mood score (0-100) measures EMPATHETIC TONE in discourse, NOT topic positivity
-- Below 35 = Very Cold/Hostile tone
+- Below 35 = Very Cold/Indifferent tone
 - 35-50 = Detached/Neutral tone
 - 50-70 = Warm/Supportive tone (people discussing topics with empathy)
 - Above 70 = Highly Empathetic tone
@@ -3020,7 +3020,7 @@ else:
         st.metric("Global Mood Score", world_score)
     with c2:
         st.markdown(f"**{world_emoji} {world_label}**  \n*Based on {len(df_recent)} posts*")
-    st.caption("50 = neutral · Above 50 = warm/supportive · Below 50 = hostile/negative")
+    st.caption("50 = neutral · Above 50 = warm/supportive · Below 50 = cold/detached")
 
 st.caption(f"X query: *{custom_query.strip() or '[default timeline]'}*")
 
@@ -4050,7 +4050,7 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
             st.caption(f"• **{row['topic']}** - {row['label']} ({row['avg_empathy']:.2f})")
 
     with col2:
-        st.markdown("**🥶 Coldest/Most Hostile Topics**")
+        st.markdown("**🥶 Coldest / Most Detached Topics**")
         bottom_empathetic = topic_avg.nsmallest(3, 'avg_empathy')
         for _, row in bottom_empathetic.iterrows():
             st.caption(f"• **{row['topic']}** - {row['label']} ({row['avg_empathy']:.2f})")
@@ -4745,7 +4745,7 @@ if "created_at" in df_all.columns and "empathy_score" in df_all.columns:
         daily = daily.rename(columns={'mean': 'mood_score'})
         daily["mood_score"] = daily["mood_score"].apply(normalize_empathy_score)
         daily["label"] = daily["mood_score"].apply(
-            lambda x: "Very Cold / Hostile" if x < 35 else
+            lambda x: "Very Cold / Indifferent" if x < 35 else
                       "Detached / Neutral" if x < 50 else
                       "Warm / Supportive" if x < 70 else
                       "Highly Empathetic"
@@ -5374,7 +5374,7 @@ You are a REAL-TIME intelligence engine. Your ONLY sources of truth are: (1) the
 
 HIGHEST PRIORITY INSTRUCTION: Never cite general dashboard metrics in brand-specific or category-specific analysis. This includes global mood scores, total topic counts, overall empathy averages, and engagement numbers from unrelated topics. If a metric was not specifically measured from data about the brand or category the user asked about, it must not appear in the response — not even as "broader cultural context" framing. Do not say "Global mood has cratered to X" and then build a category strategy around that number. The global score reflects ALL discourse, not the category being analyzed. An insight without data is always better than an insight with misattributed data.
 
-CRITICAL DATA INTEGRITY RULE: When citing specific metrics — density scores, empathy scores, post counts, velocity scores, scarcity scores, longevity scores, emotion counts, or any numerical value — you may ONLY cite numbers that appear in the data context provided below. Do not generate plausible-looking metrics. Do not round, estimate, or inflate numbers that are not explicitly present in your data context. If the data shows 184 curiosity posts, say 184 — not 241. If empathy is 48.7% cold/hostile, say 48.7% — not 53%. If you need a data point to support an argument and it does not exist in the data context, say so explicitly: 'No dashboard signal on this yet' or 'No category-specific data available.' Then make the argument on strategic reasoning alone. The worst thing you can do is hallucinate a metric that looks like it came from the dashboard. The user is looking at the same dashboard. If your numbers don't match, the entire product loses credibility.
+CRITICAL DATA INTEGRITY RULE: When citing specific metrics — density scores, empathy scores, post counts, velocity scores, scarcity scores, longevity scores, emotion counts, or any numerical value — you may ONLY cite numbers that appear in the data context provided below. Do not generate plausible-looking metrics. Do not round, estimate, or inflate numbers that are not explicitly present in your data context. If the data shows 184 curiosity posts, say 184 — not 241. If empathy is 48.7% cold/indifferent, say 48.7% — not 53%. If you need a data point to support an argument and it does not exist in the data context, say so explicitly: 'No dashboard signal on this yet' or 'No category-specific data available.' Then make the argument on strategic reasoning alone. The worst thing you can do is hallucinate a metric that looks like it came from the dashboard. The user is looking at the same dashboard. If your numbers don't match, the entire product loses credibility.
 
 TOPIC-LEVEL METRIC RULE — ZERO TOLERANCE: The dashboard does NOT provide per-topic or per-category mood scores, empathy scores, or sentiment breakdowns. These scores DO NOT EXIST for individual topics or categories. The only exception is the [BRAND-SPECIFIC SIGNALS] section, which appears only when a specific brand is detected in the data.
 
@@ -5417,7 +5417,7 @@ Date range: {df_all['created_at'].min() if 'created_at' in df_all.columns else '
 
 === EMPATHY/MOOD SCORE INTERPRETATION ===
 CRITICAL: The empathy and mood scores measure TONE OF DISCOURSE, not topic positivity.
-- Below 35 = Very Cold/Hostile tone (inflammatory, dismissive discourse)
+- Below 35 = Very Cold/Indifferent tone (detached, low-empathy discourse — not necessarily hostile)
 - 35-50 = Detached/Neutral tone
 - 50-70 = Warm/Supportive tone (constructive, empathetic discussion)
 - Above 70 = Highly Empathetic tone
