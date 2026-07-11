@@ -663,7 +663,7 @@ End with: "Territory Recommendation: [specific territory] because [data-backed r
 Based on the empathy distribution and emotional climate in the data, identify the timing zone:
 - **Warm / Highly Empathetic dominant**: Optimal engagement window — audiences are receptive and emotionally open. Recommendation: ENGAGE NOW
 - **Detached / Neutral dominant**: Audiences are disengaged; wait for a positive emotional shift or proceed with extra sensitivity and compelling hooks
-- **Cold / Hostile dominant**: Defensive positioning only — high negativity means campaigns risk backlash
+- **Cold / Indifferent dominant (the dataset's usual baseline)**: Low empathy here means the audience is INDIFFERENT/detached, not hostile — this is the normal baseline, not a warning. Proceed with work that earns attention; do NOT treat it as backlash risk. Genuine backlash risk applies only when hostile emotions specifically (anger, annoyance, disgust, disapproval) are a named, non-trivial share of the signal.
 - **Mixed with strong positive emotions (joy, hope, excitement)**: Good window despite mixed empathy — lean into the dominant positive emotion as your entry point
 
 Factor in Velocity (how fast topics are moving) and Longevity (how long they'll last).
