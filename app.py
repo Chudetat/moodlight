@@ -695,7 +695,7 @@ FILTER_DAYS = 7
 # Global constants
 # -------------------------------
 EMPATHY_LEVELS = [
-    "Cold / Hostile",
+    "Cold / Indifferent",
     "Detached / Neutral",
     "Warm / Supportive",
     "Highly Empathetic",
@@ -4028,7 +4028,7 @@ if "topic" in df_filtered.columns and "empathy_score" in df_filtered.columns and
                               scale=alt.Scale(domain=EMPATHY_LEVELS),
                               legend=alt.Legend(
                                   symbolType="square",
-                                  labelExpr='{"Cold / Hostile": "🥶 Cold / Hostile", "Detached / Neutral": "😐 Detached / Neutral", "Warm / Supportive": "🙂 Warm / Supportive", "Highly Empathetic": "❤️ Highly Empathetic"}[datum.label]'
+                                  labelExpr='{"Cold / Hostile": "🥶 Cold / Indifferent", "Cold / Indifferent": "🥶 Cold / Indifferent", "Detached / Neutral": "😐 Detached / Neutral", "Warm / Supportive": "🙂 Warm / Supportive", "Highly Empathetic": "❤️ Highly Empathetic"}[datum.label]'
                               )),
                 tooltip=[
                     "topic", 

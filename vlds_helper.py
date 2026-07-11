@@ -8,7 +8,7 @@ import math
 import pandas as pd
 
 EMPATHY_LEVELS = [
-    "Cold / Hostile",
+    "Cold / Indifferent",
     "Detached / Neutral",
     "Warm / Supportive",
     "Highly Empathetic",

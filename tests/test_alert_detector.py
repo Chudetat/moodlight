@@ -226,8 +226,8 @@ class TestDetectBrandCrisis:
 class TestEmpathyLabel:
     def test_boundaries(self):
         from score_empathy import empathy_label
-        assert empathy_label(0.0) == "Cold / Hostile"
-        assert empathy_label(0.24) == "Cold / Hostile"
+        assert empathy_label(0.0) == "Cold / Indifferent"
+        assert empathy_label(0.24) == "Cold / Indifferent"
         assert empathy_label(0.25) == "Detached / Neutral"
         assert empathy_label(0.49) == "Detached / Neutral"
         assert empathy_label(0.5) == "Warm / Supportive"
@@ -250,4 +250,4 @@ class TestEmpathyLabel:
 
     def test_clamps_below_zero(self):
         from score_empathy import empathy_label
-        assert empathy_label(-0.5) == "Cold / Hostile"
+        assert empathy_label(-0.5) == "Cold / Indifferent"

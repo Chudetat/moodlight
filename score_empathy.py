@@ -35,7 +35,7 @@ DEFAULT_OUTPUT_CSV = "social_scored.csv"
 # Empathy labeling
 # -------------------------------
 EMPATHY_LEVELS = [
-    "Cold / Hostile",
+    "Cold / Indifferent",
     "Detached / Neutral",
     "Warm / Supportive",
     "Highly Empathetic",

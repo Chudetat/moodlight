@@ -11,7 +11,7 @@ class TestEmpathyLevels:
 
     def test_level_names(self):
         from score_empathy import EMPATHY_LEVELS
-        assert "Cold / Hostile" in EMPATHY_LEVELS
+        assert "Cold / Indifferent" in EMPATHY_LEVELS
         assert "Detached / Neutral" in EMPATHY_LEVELS
         assert "Warm / Supportive" in EMPATHY_LEVELS
         assert "Highly Empathetic" in EMPATHY_LEVELS
@@ -46,18 +46,18 @@ class TestEmpathyLabelDetailed:
 
     def test_just_below_boundaries(self):
         from score_empathy import empathy_label
-        assert empathy_label(0.249) == "Cold / Hostile"
+        assert empathy_label(0.249) == "Cold / Indifferent"
         assert empathy_label(0.499) == "Detached / Neutral"
         assert empathy_label(0.749) == "Warm / Supportive"
 
     def test_extremes(self):
         from score_empathy import empathy_label
-        assert empathy_label(0.0) == "Cold / Hostile"
+        assert empathy_label(0.0) == "Cold / Indifferent"
         assert empathy_label(1.0) == "Highly Empathetic"
 
     def test_midpoints(self):
         from score_empathy import empathy_label
-        assert empathy_label(0.125) == "Cold / Hostile"
+        assert empathy_label(0.125) == "Cold / Indifferent"
         assert empathy_label(0.375) == "Detached / Neutral"
         assert empathy_label(0.625) == "Warm / Supportive"
         assert empathy_label(0.875) == "Highly Empathetic"
@@ -70,5 +70,5 @@ class TestEmpathyLabelDetailed:
     def test_out_of_range_clamped(self):
         from score_empathy import empathy_label
         # Values outside [0,1] should be clamped
-        assert empathy_label(-1.0) == "Cold / Hostile"
+        assert empathy_label(-1.0) == "Cold / Indifferent"
         assert empathy_label(2.0) == "Highly Empathetic"
