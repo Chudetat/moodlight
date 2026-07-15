@@ -106,7 +106,7 @@ Return a JSON object with these fields:
 - "event": specific event if mentioned, e.g. "Super Bowl", "Olympics", "CES", "election" (or null)
 - "topic": specific topic if time-sensitive, e.g. "AI", "layoffs", "tariffs" (or null)
 - "needs_web": true if the query mentions "yesterday", "today", "this week", "recent", "latest", or asks about current/breaking events
-- "needs_report": true ONLY if the user asks for a "report", "deep dive", "full analysis", "intelligence report", or "analyze [brand/topic] in depth". NOT for strategic brief prompts, campaign briefs, or general conversation requests. (default false)
+- "needs_report": true ONLY if the user literally asks for a report/deep-dive DELIVERABLE — "generate a report", "deep dive", "full analysis", "intelligence report", or "analyze [brand/topic] in depth". A prompt that asks you to READ or ANALYZE a cultural conversation/moment/trend, or to give a POV/read/strategy on one ("read the cultural conversation around X", "what POV should a brand hold", "where is X shifting") is a STRATEGIC QUESTION, not a report — set needs_report=false. NOT for strategic brief prompts, campaign briefs, or general conversation requests. (default false)
 - "audience": classify the QUERY's angle, NOT just the company's type. "b2b" = the question is about enterprise/professional/vendor/buyer dynamics. "b2c" = about consumers, the general public, or cultural/brand perception. "both" = it genuinely spans both, OR a B2B company is making a consumer-facing move (sponsorship, brand campaign, cultural moment), OR a consumer brand is making a B2B/wholesale/investor move. A B2B company doing something consumer-facing (e.g., a SaaS firm sponsoring an F1 team) is "both", not "b2b". A consumer brand's general perception (e.g., "how is Nike perceived") is "b2c". Default to "both" only when truly unclear.
 
 Example: "What happened at yesterday's Super Bowl?"
@@ -123,6 +123,9 @@ Example: "How do IT buyers view Okta?"
 
 Example: "Deep dive on AI trends for the last 30 days"
 {"brand": null, "event": null, "topic": "AI", "needs_web": false, "needs_report": true, "audience": "both"}
+
+Example: "Read the cultural conversation around health and hygiene now — where is it shifting and what POV should a brand hold?"
+{"brand": null, "event": null, "topic": "health and hygiene", "needs_web": true, "needs_report": false, "audience": "b2c"}
 
 Example: "Generate a prompt for the strategic brief generator"
 {"brand": null, "event": null, "topic": null, "needs_web": false, "needs_report": false, "audience": "both"}
@@ -1264,17 +1267,19 @@ def ask_moodlight(
             report_text = generate_intelligence_report(
                 engine, report_subject, days=report_days, subject_type=report_type
             )
-            return {
-                "response": report_text,
-                "search_info": search_info,
-                "report_generated": True,
-            }
+            # Only return the substrate-only report when it actually has signal. A
+            # "NO SIGNAL FOUND" report is a dead-end for a thin subject — fall through
+            # to the conversational path (web + full context + conviction mode) so the
+            # user gets a real strategic answer, not an empty report. (The lead demo
+            # prompts phrased "read the conversation around X" landed here otherwise.)
+            if report_text and "NO SIGNAL FOUND" not in report_text:
+                return {
+                    "response": report_text,
+                    "search_info": search_info,
+                    "report_generated": True,
+                }
         except Exception as e:
-            return {
-                "response": f"Could not generate report: {e}",
-                "search_info": search_info,
-                "report_generated": False,
-            }
+            print(f"Report generation failed, falling through to conversational: {e}")
 
     # --- Web search ---
     search_query = brand_name or event_name or topic_name
