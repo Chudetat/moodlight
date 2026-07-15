@@ -858,28 +858,10 @@ def _build_dashboard_context(engine, df_all: pd.DataFrame, brand_name: str, topi
     # directional question ("where is X strengthening vs fatiguing") be answered with
     # measured direction instead of a static point-in-time read. Non-fatal.
     try:
-        import math
-        from topic_intelligence import compute_topic_intelligence, format_intelligence_context
-
-        def _usable_delta(t):
-            # Only surface a topic when its core VLDS values are finite AND it has a
-            # real, non-trivial delta. Until snapshot history is deep enough, deltas
-            # come back nan / "new_to_radar" — injecting those feeds the model garbage
-            # ("raw: nan, falling") and manufactures fake direction. Skip them.
-            raws = [t.get("velocity"), t.get("density"), t.get("scarcity")]
-            if not all(isinstance(v, (int, float)) and math.isfinite(v) for v in raws):
-                return False
-            deltas = [t.get("velocity_delta"), t.get("density_delta"),
-                      t.get("scarcity_delta"), t.get("empathy_delta")]
-            return any(isinstance(v, (int, float)) and math.isfinite(v) and abs(v) > 1e-9
-                       for v in deltas)
-
-        _ti = [t for t in (compute_topic_intelligence(engine) or []) if _usable_delta(t)]
-        if _ti:
-            context_parts.append(
-                "[TOPIC INTELLIGENCE — DIRECTIONAL DELTAS: what is strengthening vs. fatiguing over time]\n\n"
-                + format_intelligence_context(_ti, top_n=8)
-            )
+        from topic_intelligence import format_ask_directional_deltas
+        _deltas = format_ask_directional_deltas(engine)
+        if _deltas:
+            context_parts.append(_deltas)
     except Exception as e:
         print(f"Topic intelligence load failed (non-fatal): {e}")
 

@@ -501,3 +501,52 @@ def format_intelligence_context(topics, top_n=10):
             lines.append(f"  {t['topic']}: {t['consecutive_days_appeared']} consecutive days")
 
     return "\n".join(lines)
+
+
+def format_ask_directional_deltas(engine, top_n=10):
+    """Compact directional-delta block for the Ask context.
+
+    Unlike format_intelligence_context (Brief/Radar), this surfaces ONLY the
+    dimensions that are actually finite. The VLDS source tables (topic_longevity/
+    density/scarcity) don't cover every topic on every dimension, so a topic can
+    have a real velocity delta but nan scarcity — this shows the real signal
+    (e.g. "healthcare & wellbeing: conversation rising, velocity 0.81 delta +0.47")
+    and NEVER emits nan. Returns "" when there is no usable directional signal.
+    """
+    import math
+    try:
+        vlds = compute_vlds_deltas(engine)
+    except Exception:
+        return ""
+    if vlds is None or vlds.empty:
+        return ""
+
+    def _dir(d, hi=0.05):
+        if not (isinstance(d, (int, float)) and math.isfinite(d)):
+            return None
+        return "rising" if d > hi else "cooling" if d < -hi else "steady"
+
+    rows = []
+    for _, t in vlds.iterrows():
+        v, vd = t.get("velocity"), t.get("velocity_delta")
+        if (isinstance(v, (int, float)) and math.isfinite(v)
+                and isinstance(vd, (int, float)) and math.isfinite(vd)):
+            rows.append((abs(vd), t))
+    if not rows:
+        return ""
+    rows.sort(key=lambda x: -x[0])
+
+    lines = []
+    for _, t in rows[:top_n]:
+        seg = [f"conversation {_dir(t['velocity_delta'])} "
+               f"(velocity {t['velocity']:.2f}, Δ{t['velocity_delta']:+.2f})"]
+        dd = _dir(t.get("density_delta"))
+        if dd and isinstance(t.get("density"), (int, float)) and math.isfinite(t["density"]):
+            seg.append(f"crowdedness {dd} (Δ{t['density_delta']:+.2f})")
+        lines.append(f"  {t['topic']}: " + "; ".join(seg))
+
+    return (
+        "[TOPIC INTELLIGENCE — DIRECTIONAL DELTAS: what is strengthening vs. fatiguing over time]\n"
+        "(velocity = how fast the conversation is growing; Δ = change vs. the prior VLDS snapshot)\n"
+        + "\n".join(lines)
+    )
