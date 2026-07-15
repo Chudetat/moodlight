@@ -60,6 +60,16 @@ BRAND_CATALOG = {
     "subway":   {"require": ["sandwich", "sandwiches", "footlong", "foot-long", "eat fresh",
                              "sub shop", "subway restaurant", "deli"]},
     "sonic":    {"require": ["drive-in", "drive in", "limeade", "slush", "tots", "sonic drive"]},
+    # Reckitt common-word Powerbrands (added Jul 2026, health-hygiene substrate):
+    # "finish" the verb (race/finish line, season finale, "finish the job") and
+    # "vanish"/"vanished" (disappear) are overwhelmingly namesakes. Require the
+    # dish / laundry-stain category so genuine brand mentions survive and noise
+    # drops to honest no-signal. Category-standard require terms; tune vs live
+    # data once ingestion accumulates. (Veet is distinctive -> no catalog entry.)
+    "finish":   {"require": ["dishwasher", "dishwashing", "dish soap", "dish detergent",
+                             "detergent", "rinse aid", "dishwasher tablet", "dishwasher pod", "reckitt"]},
+    "vanish":   {"require": ["stain", "stains", "stain remover", "laundry", "oxi action",
+                             "detergent", "whitening", "carpet cleaner", "fabric", "reckitt"]},
 }
 
 
