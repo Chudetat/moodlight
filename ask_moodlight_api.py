@@ -517,133 +517,47 @@ def fetch_brand_news(brand_name: str, max_results: int = 10) -> list:
         return []
 
 
-def load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
-    """Load historical alerts, metric trends, and competitive data."""
-    if engine is None:
-        return ""
+# Word-boundaried market/finance/economy intent. Only when a query carries this
+# intent do we inject the market/stock/economic/commodity/prediction-market
+# blocks — otherwise they are irrelevant noise. Without this gate those blocks
+# fire on EVERY Ask call, so a health/hygiene/agency prompt (with no in-substrate
+# brand) gets a dump of the tracked (QSR-heavy) stock roster and the model
+# anchors on it. See the Reckitt -> McDonald's/Starbucks demo failure.
+_MARKET_INTENT_RE = re.compile(
+    r"\b(?:"
+    r"stocks?|stock market|shares?|share price|shareholders?|equit(?:y|ies)|"
+    r"nasdaq|s&p|dow jones|wall street|market cap|bull market|bear market|"
+    r"invest(?:ing|ment|or|ors)?|trading|traders?|earnings|valuations?|ipo|"
+    r"tickers?|dividends?|bonds?|treasury yields?|"
+    r"economy|econom(?:ic|ics)|inflation|cpi|gdp|recession|"
+    r"interest rates?|federal reserve|the fed|"
+    r"commodit(?:y|ies)|oil price|gold price|"
+    r"financial performance|market performance|stock performance|sector rotation"
+    r")\b",
+    re.IGNORECASE,
+)
 
-    from sqlalchemy import text as _sql_text
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-    cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+
+def _is_market_relevant(question, brand=None, topic=None) -> bool:
+    """True only when the query genuinely concerns markets/finance/the economy.
+
+    Gates the market/stock/economic/commodity/prediction-market context so those
+    blocks don't inject on unrelated (e.g. health, hygiene, agency) prompts.
+    Word-boundaried so 'marketing'/'market research' do NOT trigger it.
+    """
+    haystack = " ".join(str(x) for x in (question, brand, topic) if x)
+    return bool(_MARKET_INTENT_RE.search(haystack))
+
+
+def _load_market_context(engine) -> list:
+    """Market/financial context blocks — signal-log track record, Polymarket,
+    market indices, economic indicators, commodities, brand stocks.
+
+    Extracted from load_intelligence_context and injected ONLY when the query
+    is market-relevant (see _is_market_relevant). Returns a list of formatted
+    sections for the caller to extend into its parts list.
+    """
     parts = []
-
-    # Historical alerts
-    try:
-        if brand:
-            brand_lower = brand.lower()
-            result = pd.read_sql(
-                _sql_text("SELECT alert_type, severity, title, summary, timestamp "
-                          "FROM alerts WHERE timestamp >= :cutoff "
-                          "AND (LOWER(brand) = :subject OR LOWER(title) LIKE :pattern) "
-                          "ORDER BY timestamp DESC LIMIT 10"),
-                engine, params={"cutoff": cutoff, "subject": brand_lower,
-                                "pattern": f"%{brand_lower}%"},
-            )
-        elif topic:
-            topic_lower = topic.lower()
-            result = pd.read_sql(
-                _sql_text("SELECT alert_type, severity, title, summary, timestamp "
-                          "FROM alerts WHERE timestamp >= :cutoff "
-                          "AND (LOWER(topic) = :subject OR LOWER(title) LIKE :pattern) "
-                          "ORDER BY timestamp DESC LIMIT 10"),
-                engine, params={"cutoff": cutoff, "subject": topic_lower,
-                                "pattern": f"%{topic_lower}%"},
-            )
-        else:
-            result = pd.read_sql(
-                _sql_text("SELECT alert_type, severity, title, summary, timestamp "
-                          "FROM alerts WHERE timestamp >= :cutoff "
-                          "ORDER BY timestamp DESC LIMIT 10"),
-                engine, params={"cutoff": cutoff},
-            )
-
-        if not result.empty:
-            alert_lines = [f"Recent Alerts ({len(result)}):"]
-            for _, row in result.iterrows():
-                sev = row.get("severity", "info")
-                title = row.get("title", "Untitled")
-                summary = str(row.get("summary", ""))[:150]
-                ts = str(row.get("timestamp", ""))[:16]
-                alert_lines.append(f"  - [{sev.upper()}] {title} ({ts}): {summary}")
-            parts.append("\n".join(alert_lines))
-    except Exception as e:
-        print(f"  Intelligence context - alerts failed: {e}")
-
-    # Metric trends
-    try:
-        if brand:
-            metrics_df = pd.read_sql(
-                _sql_text("SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
-                          "WHERE snapshot_date >= :cutoff AND scope = 'brand' AND LOWER(scope_name) = :subject "
-                          "ORDER BY snapshot_date"),
-                engine, params={"cutoff": cutoff_date, "subject": brand.lower()},
-            )
-        elif topic:
-            metrics_df = pd.read_sql(
-                _sql_text("SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
-                          "WHERE snapshot_date >= :cutoff AND scope = 'topic' AND LOWER(scope_name) = :subject "
-                          "ORDER BY snapshot_date"),
-                engine, params={"cutoff": cutoff_date, "subject": topic.lower()},
-            )
-        else:
-            metrics_df = pd.read_sql(
-                _sql_text("SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
-                          "WHERE snapshot_date >= :cutoff AND scope = 'global' "
-                          "ORDER BY snapshot_date"),
-                engine, params={"cutoff": cutoff_date},
-            )
-
-        if not metrics_df.empty:
-            trend_lines = ["Metric Trends:"]
-            for metric_name in metrics_df["metric_name"].unique():
-                m = metrics_df[metrics_df["metric_name"] == metric_name]
-                if len(m) >= 2:
-                    first_val = m.iloc[0]["metric_value"]
-                    last_val = m.iloc[-1]["metric_value"]
-                    change = last_val - first_val
-                    direction = "up" if change > 0 else "down" if change < 0 else "flat"
-                    trend_lines.append(f"  {metric_name}: {first_val:.3f} -> {last_val:.3f} ({direction})")
-            if len(trend_lines) > 1:
-                parts.append("\n".join(trend_lines))
-    except Exception as e:
-        print(f"  Intelligence context - metrics failed: {e}")
-
-    # Competitive intelligence (brand only) — computed on-demand
-    if brand:
-        try:
-            from competitive_analyzer import get_competitive_snapshot
-            snap = get_competitive_snapshot(engine, brand)
-            if snap:
-                comp_lines = ["Competitive Intelligence:"]
-                sov = snap.get("share_of_voice", {})
-                if sov:
-                    comp_lines.append("  Share of Voice:")
-                    for name, pct in sorted(sov.items(), key=lambda x: -x[1]):
-                        comp_lines.append(f"    {name}: {pct:.1f}%")
-
-                vlds_comp = snap.get("vlds_comparison", {})
-                if vlds_comp:
-                    comp_lines.append("  VLDS Comparison:")
-                    _vlds_labels = {
-                        "velocity": lambda v: "accelerating" if v > 0.6 else "building" if v > 0.3 else "quiet",
-                        "longevity": lambda v: "enduring" if v > 0.6 else "moderate" if v > 0.3 else "fading",
-                        "density": lambda v: "saturated" if v > 0.6 else "moderate" if v > 0.3 else "uncrowded",
-                        "scarcity": lambda v: "high opportunity" if v > 0.6 else "moderate" if v > 0.3 else "low opportunity",
-                    }
-                    for comp_name, metrics in vlds_comp.items():
-                        if isinstance(metrics, dict):
-                            metric_parts = [
-                                f"{k}: {_vlds_labels.get(k, lambda x: f'{x:.2f}')(v)} [{v:.2f}]"
-                                for k, v in metrics.items()
-                                if isinstance(v, (int, float))
-                            ]
-                            if metric_parts:
-                                comp_lines.append(f"    {comp_name}: {', '.join(metric_parts)}")
-
-                if len(comp_lines) > 1:
-                    parts.append("\n".join(comp_lines))
-        except Exception as e:
-            print(f"  Intelligence context - competitive failed: {e}")
 
     # Signal log (prediction track record)
     try:
@@ -801,6 +715,147 @@ def load_intelligence_context(engine, brand=None, topic=None, days=30) -> str:
             print(f"  Intelligence context - brand stocks: {len(stk_df['scope_name'].unique())} brands loaded")
     except Exception as e:
         print(f"  Intelligence context - brand stocks failed: {e}")
+
+    return parts
+
+
+def load_intelligence_context(engine, brand=None, topic=None, days=30, market_relevant: bool = True) -> str:
+    """Load historical alerts, metric trends, and competitive data.
+
+    market_relevant gates the market/stock/economic/commodity/prediction-market
+    blocks (see _load_market_context) — pass False for non-financial queries.
+    """
+    if engine is None:
+        return ""
+
+    from sqlalchemy import text as _sql_text
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+    parts = []
+
+    # Historical alerts
+    try:
+        if brand:
+            brand_lower = brand.lower()
+            result = pd.read_sql(
+                _sql_text("SELECT alert_type, severity, title, summary, timestamp "
+                          "FROM alerts WHERE timestamp >= :cutoff "
+                          "AND (LOWER(brand) = :subject OR LOWER(title) LIKE :pattern) "
+                          "ORDER BY timestamp DESC LIMIT 10"),
+                engine, params={"cutoff": cutoff, "subject": brand_lower,
+                                "pattern": f"%{brand_lower}%"},
+            )
+        elif topic:
+            topic_lower = topic.lower()
+            result = pd.read_sql(
+                _sql_text("SELECT alert_type, severity, title, summary, timestamp "
+                          "FROM alerts WHERE timestamp >= :cutoff "
+                          "AND (LOWER(topic) = :subject OR LOWER(title) LIKE :pattern) "
+                          "ORDER BY timestamp DESC LIMIT 10"),
+                engine, params={"cutoff": cutoff, "subject": topic_lower,
+                                "pattern": f"%{topic_lower}%"},
+            )
+        else:
+            result = pd.read_sql(
+                _sql_text("SELECT alert_type, severity, title, summary, timestamp "
+                          "FROM alerts WHERE timestamp >= :cutoff "
+                          "ORDER BY timestamp DESC LIMIT 10"),
+                engine, params={"cutoff": cutoff},
+            )
+
+        if not result.empty:
+            alert_lines = [f"Recent Alerts ({len(result)}):"]
+            for _, row in result.iterrows():
+                sev = row.get("severity", "info")
+                title = row.get("title", "Untitled")
+                summary = str(row.get("summary", ""))[:150]
+                ts = str(row.get("timestamp", ""))[:16]
+                alert_lines.append(f"  - [{sev.upper()}] {title} ({ts}): {summary}")
+            parts.append("\n".join(alert_lines))
+    except Exception as e:
+        print(f"  Intelligence context - alerts failed: {e}")
+
+    # Metric trends
+    try:
+        if brand:
+            metrics_df = pd.read_sql(
+                _sql_text("SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
+                          "WHERE snapshot_date >= :cutoff AND scope = 'brand' AND LOWER(scope_name) = :subject "
+                          "ORDER BY snapshot_date"),
+                engine, params={"cutoff": cutoff_date, "subject": brand.lower()},
+            )
+        elif topic:
+            metrics_df = pd.read_sql(
+                _sql_text("SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
+                          "WHERE snapshot_date >= :cutoff AND scope = 'topic' AND LOWER(scope_name) = :subject "
+                          "ORDER BY snapshot_date"),
+                engine, params={"cutoff": cutoff_date, "subject": topic.lower()},
+            )
+        else:
+            metrics_df = pd.read_sql(
+                _sql_text("SELECT metric_name, metric_value, snapshot_date FROM metric_snapshots "
+                          "WHERE snapshot_date >= :cutoff AND scope = 'global' "
+                          "ORDER BY snapshot_date"),
+                engine, params={"cutoff": cutoff_date},
+            )
+
+        if not metrics_df.empty:
+            trend_lines = ["Metric Trends:"]
+            for metric_name in metrics_df["metric_name"].unique():
+                m = metrics_df[metrics_df["metric_name"] == metric_name]
+                if len(m) >= 2:
+                    first_val = m.iloc[0]["metric_value"]
+                    last_val = m.iloc[-1]["metric_value"]
+                    change = last_val - first_val
+                    direction = "up" if change > 0 else "down" if change < 0 else "flat"
+                    trend_lines.append(f"  {metric_name}: {first_val:.3f} -> {last_val:.3f} ({direction})")
+            if len(trend_lines) > 1:
+                parts.append("\n".join(trend_lines))
+    except Exception as e:
+        print(f"  Intelligence context - metrics failed: {e}")
+
+    # Competitive intelligence (brand only) — computed on-demand
+    if brand:
+        try:
+            from competitive_analyzer import get_competitive_snapshot
+            snap = get_competitive_snapshot(engine, brand)
+            if snap:
+                comp_lines = ["Competitive Intelligence:"]
+                sov = snap.get("share_of_voice", {})
+                if sov:
+                    comp_lines.append("  Share of Voice:")
+                    for name, pct in sorted(sov.items(), key=lambda x: -x[1]):
+                        comp_lines.append(f"    {name}: {pct:.1f}%")
+
+                vlds_comp = snap.get("vlds_comparison", {})
+                if vlds_comp:
+                    comp_lines.append("  VLDS Comparison:")
+                    _vlds_labels = {
+                        "velocity": lambda v: "accelerating" if v > 0.6 else "building" if v > 0.3 else "quiet",
+                        "longevity": lambda v: "enduring" if v > 0.6 else "moderate" if v > 0.3 else "fading",
+                        "density": lambda v: "saturated" if v > 0.6 else "moderate" if v > 0.3 else "uncrowded",
+                        "scarcity": lambda v: "high opportunity" if v > 0.6 else "moderate" if v > 0.3 else "low opportunity",
+                    }
+                    for comp_name, metrics in vlds_comp.items():
+                        if isinstance(metrics, dict):
+                            metric_parts = [
+                                f"{k}: {_vlds_labels.get(k, lambda x: f'{x:.2f}')(v)} [{v:.2f}]"
+                                for k, v in metrics.items()
+                                if isinstance(v, (int, float))
+                            ]
+                            if metric_parts:
+                                comp_lines.append(f"    {comp_name}: {', '.join(metric_parts)}")
+
+                if len(comp_lines) > 1:
+                    parts.append("\n".join(comp_lines))
+        except Exception as e:
+            print(f"  Intelligence context - competitive failed: {e}")
+
+    # Market / financial context — only when the query carries market intent.
+    # (Prevents the tracked, QSR-heavy stock roster from hijacking non-financial
+    # answers — the Reckitt -> McDonald's/Starbucks failure mode.)
+    if market_relevant:
+        parts.extend(_load_market_context(engine))
 
     if not parts:
         return ""
@@ -1222,6 +1277,9 @@ GENERAL QUESTIONS (no brand mentioned):
 - Reference specific data points, scores, counts, percentages
 - Name specific topics, sources, or headlines
 - Be direct and actionable
+
+SCOPE DISCIPLINE — ANSWER THE SUBJECT THAT WAS ASKED ABOUT:
+Match your framing to the question's actual subject. A question about a CATEGORY, a PORTFOLIO of brands, or a CULTURAL theme is NOT a request for a competitive brief about one company — answer it at the level asked. NEVER manufacture a brand-versus-brand comparison out of companies that merely appear in the data (names in the intelligence history, a market/stock table, or trending topics). If the specific brand, portfolio, or category the user asked about has no tracked signal, say so and reason from web results and cultural logic — do NOT pivot to unrelated brands you happen to have data on and present them as the answer. Substituting a different subject because you have data on it is the fastest way to destroy credibility in a live demo.
 
 BRAND-SPECIFIC QUESTIONS:
 When a user asks about a specific brand or company, you are producing a COMPETITIVE INTELLIGENCE BRIEF, not a cultural trend report. Follow these rules:
@@ -1657,7 +1715,14 @@ async def ask_moodlight(req: AskRequest, request: Request):
             brand_parts.append("[END BRAND-SPECIFIC SIGNALS]")
             brand_section = "\n\n".join(brand_parts)
         else:
-            brand_section = f"[NO BRAND-SPECIFIC SIGNALS FOUND FOR {brand_name.upper()} — USE WEB SEARCH FOR BRAND INTELLIGENCE]"
+            brand_section = (
+                f"[NO MOODLIGHT SUBSTRATE DATA ON {brand_name.upper()}]\n"
+                f"'{brand_name}' does not appear in the tracked cultural signal. Do NOT substitute or "
+                f"pivot to other brands that merely appear in the data (e.g. companies in the intelligence "
+                f"history or a market/stock table) — presenting another brand's data as if it were "
+                f"{brand_name}'s is a credibility failure. Rely on web search results and the CATEGORY/cultural "
+                f"signal relevant to {brand_name}'s space, or state plainly that there is no tracked signal on it."
+            )
 
     # 5. Web section
     web_section = ""
@@ -1679,6 +1744,7 @@ async def ask_moodlight(req: AskRequest, request: Request):
         try:
             intel_context = load_intelligence_context(
                 engine, brand=brand_name or None, topic=topic_name or None, days=30,
+                market_relevant=_is_market_relevant(question, brand_name, topic_name),
             )
         except Exception as e:
             print(f"WARNING: loading intelligence context failed: {e}")
