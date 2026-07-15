@@ -891,6 +891,13 @@ TOPIC_QUERIES = [
     # Geopolitical / Intelligence & Threats
     "espionage", "cyberattack critical infrastructure",
     "disinformation campaign", "election interference",
+
+    # Health / Hygiene / Everyday Wellness (Reckitt category + adjacent space where
+    # "protection/self-care" mindshare migrates — for the CPG/health-hygiene substrate)
+    "hand sanitizer", "household disinfectant", "cold and flu season", "germ protection",
+    "sexual wellness market", "condom sales", "pain relief medication", "heartburn remedy",
+    "immune support supplement", "air purifier home", "self-care wellness trend",
+    "hygiene habits", "everyday wellness consumer",
 ]
 
 # -------------------------------
@@ -962,6 +969,11 @@ UK_EU_BRANDS = [
     "Carrefour", "Auchan", "Lidl", "Aldi", "Metro AG",
     "Inditex", "H&M Group", "Ikea", "Decathlon",
     "Nestle", "Danone", "Unilever", "AB InBev", "Heineken",
+
+    # Reckitt (health & hygiene CPG) — Powerbrands. Distinctive names as-is;
+    # common-word brands qualified so NewsAPI doesn't pull namesake noise.
+    "Reckitt", "Lysol", "Dettol", "Durex", "Mucinex", "Nurofen", "Gaviscon",
+    "Strepsils", "Harpic", "Veet", "Finish dishwasher", "Vanish stain remover",
 
     # EU Airlines / Travel
     "Lufthansa", "Air France-KLM", "British Airways", "Ryanair", "easyJet",
@@ -1123,7 +1135,19 @@ TOPIC_KEYWORDS = {
     "creative & design": ["design", "designer", "creative", "art direction", "illustration", "graphic"],
     "technology & ai": ["technology", "tech", "software", "hardware", "ai", "artificial intelligence", "startup", "mobile app", "apps", "digital", "computing", "algorithm"],
     "climate & environment": ["climate", "environment", "warming", "emissions", "pollution", "flood", "weather", "storm", "wildfire"],
-    "healthcare & wellbeing": ["healthcare", "hospital", "doctor", "mental health", "vaccine", "covid", "medical", "pandemic", "wellness", "telehealth", "prescription", "clinical trial", "fda approval", "dermatology", "psychiatrist", "psychology", "sleep apnea", "obesity", "diabetes", "autoimmune", "alzheimer", "dementia", "parkinson", "autism", "adhd", "antidepressant", "ssri", "glp-1", "ozempic", "wegovy", "mounjaro", "zepbound", "semaglutide", "tirzepatide", "novo nordisk", "eli lilly", "peptide", "peptides", "biohacking", "biohack", "longevity", "rapamycin", "metformin", "autophagy", "intermittent fasting", "testosterone", "estrogen", "menopause", "hrt", "cortisol", "microbiome", "probiotic", "creatine", "vitamin", "nutrition", "keto", "ketogenic", "sauna", "cold plunge", "ice bath", "yoga", "pilates"],
+    "healthcare & wellbeing": ["healthcare", "hospital", "doctor", "mental health", "vaccine", "covid", "medical", "pandemic", "wellness", "telehealth", "prescription", "clinical trial", "fda approval", "dermatology", "psychiatrist", "psychology", "sleep apnea", "obesity", "diabetes", "autoimmune", "alzheimer", "dementia", "parkinson", "autism", "adhd", "antidepressant", "ssri", "glp-1", "ozempic", "wegovy", "mounjaro", "zepbound", "semaglutide", "tirzepatide", "novo nordisk", "eli lilly", "peptide", "peptides", "biohacking", "biohack", "longevity", "rapamycin", "metformin", "autophagy", "intermittent fasting", "testosterone", "estrogen", "menopause", "hrt", "cortisol", "microbiome", "probiotic", "creatine", "vitamin", "nutrition", "keto", "ketogenic", "sauna", "cold plunge", "ice bath", "yoga", "pilates",
+        # Health/hygiene, OTC remedies, sexual & everyday-wellness — Reckitt Powerbrand
+        # categories + adjacent (added Jul 15 2026 for the health-hygiene/CPG substrate).
+        # Distinctive brand names only; common-word brands (Finish/Vanish/Veet) excluded
+        # to avoid misrouting non-brand articles.
+        "hygiene", "disinfect", "disinfectant", "sanitize", "sanitizer", "hand sanitizer",
+        "antibacterial", "antiseptic", "germs", "germ", "disinfecting wipes",
+        "cold and flu", "flu season", "congestion", "decongestant", "cough", "cough syrup",
+        "sore throat", "throat lozenge", "runny nose", "ibuprofen", "pain reliever", "painkiller",
+        "heartburn", "antacid", "acid reflux", "indigestion", "bloating",
+        "condom", "condoms", "sexual health", "sexual wellness", "contraception", "safe sex",
+        "immune system", "immunity", "immune support", "air purifier",
+        "lysol", "dettol", "mucinex", "nurofen", "gaviscon", "strepsils", "durex", "harpic"],
     "immigration": ["immigration", "migrant", "refugee", "asylum", "border", "visa", "deportation"],
     "crime & safety": ["crime", "police", "shooting", "violence", "homicide", "murder", "robbery", "arrest"],
     "war & foreign policy": ["war", "wars", "warfare", "warzone", "conflict", "military", "israel", "gaza", "ukraine", "russia", "attack", "troops", "nuclear", "invasion", "missile", "sanctions", "diplomatic", "airstrike", "nato", "deterrence", "deployment", "mobilization", "escalation", "proxy", "insurgency", "occupation", "ceasefire", "armistice", "defense spending", "arms", "weapons", "drone strike", "espionage", "intelligence", "counterterrorism", "border tension", "territorial"],

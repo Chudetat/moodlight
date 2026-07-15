@@ -212,7 +212,19 @@ TOPIC_KEYWORDS = {
     "creative & design": ["design", "designer", "creative", "art direction", "illustration", "graphic design", "animation"],
     "technology & ai": ["technology", "tech", "software", "hardware", "startup", "ai", "artificial intelligence", "chatbot", "machine learning", "mobile app", "apps", "digital", "computing", "algorithm"],
     "climate & environment": ["climate", "environment", "global warming", "emissions", "carbon", "pollution", "wildfire", "flood", "drought", "hurricane", "weather"],
-    "healthcare & wellbeing": ["healthcare", "hospital", "doctor", "nurse", "mental health", "therapy", "wellbeing", "vaccine", "covid", "medical", "wellness", "telehealth", "prescription", "clinical trial", "fda approval", "dermatology", "psychiatrist", "psychology", "sleep apnea", "obesity", "diabetes", "autoimmune", "alzheimer", "dementia", "parkinson", "autism", "adhd", "antidepressant", "ssri", "glp-1", "ozempic", "wegovy", "mounjaro", "zepbound", "semaglutide", "tirzepatide", "novo nordisk", "eli lilly", "peptide", "peptides", "biohacking", "biohack", "longevity", "rapamycin", "metformin", "autophagy", "intermittent fasting", "testosterone", "estrogen", "menopause", "hrt", "cortisol", "microbiome", "probiotic", "creatine", "vitamin", "nutrition", "keto", "ketogenic", "sauna", "cold plunge", "ice bath", "yoga", "pilates"],
+    "healthcare & wellbeing": ["healthcare", "hospital", "doctor", "nurse", "mental health", "therapy", "wellbeing", "vaccine", "covid", "medical", "wellness", "telehealth", "prescription", "clinical trial", "fda approval", "dermatology", "psychiatrist", "psychology", "sleep apnea", "obesity", "diabetes", "autoimmune", "alzheimer", "dementia", "parkinson", "autism", "adhd", "antidepressant", "ssri", "glp-1", "ozempic", "wegovy", "mounjaro", "zepbound", "semaglutide", "tirzepatide", "novo nordisk", "eli lilly", "peptide", "peptides", "biohacking", "biohack", "longevity", "rapamycin", "metformin", "autophagy", "intermittent fasting", "testosterone", "estrogen", "menopause", "hrt", "cortisol", "microbiome", "probiotic", "creatine", "vitamin", "nutrition", "keto", "ketogenic", "sauna", "cold plunge", "ice bath", "yoga", "pilates",
+        # Health/hygiene, OTC remedies, sexual & everyday-wellness — Reckitt Powerbrand
+        # categories + adjacent (added Jul 15 2026 for the health-hygiene/CPG substrate).
+        # Distinctive brand names only; common-word brands (Finish/Vanish/Veet) excluded
+        # to avoid misrouting non-brand articles.
+        "hygiene", "disinfect", "disinfectant", "sanitize", "sanitizer", "hand sanitizer",
+        "antibacterial", "antiseptic", "germs", "germ", "disinfecting wipes",
+        "cold and flu", "flu season", "congestion", "decongestant", "cough", "cough syrup",
+        "sore throat", "throat lozenge", "runny nose", "ibuprofen", "pain reliever", "painkiller",
+        "heartburn", "antacid", "acid reflux", "indigestion", "bloating",
+        "condom", "condoms", "sexual health", "sexual wellness", "contraception", "safe sex",
+        "immune system", "immunity", "immune support", "air purifier",
+        "lysol", "dettol", "mucinex", "nurofen", "gaviscon", "strepsils", "durex", "harpic"],
     "immigration": ["immigration", "migrant", "refugee", "asylum", "border", "visa", "deportation"],
     "crime & safety": ["crime", "criminal", "police", "law enforcement", "homicide", "shooting", "safety", "violence", "murder", "arrest"],
     "war & foreign policy": ["war", "wars", "warfare", "warzone", "conflict", "military", "army", "airstrike", "troops", "israel", "gaza", "ukraine", "russia", "nato", "ceasefire", "foreign policy", "attack", "invasion", "missile", "sanctions", "diplomatic"],
