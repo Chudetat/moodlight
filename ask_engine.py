@@ -850,6 +850,36 @@ def _build_dashboard_context(engine, df_all: pd.DataFrame, brand_name: str, topi
     except Exception as e:
         print(f"Intelligence context load failed (non-fatal): {e}")
 
+    # Topic intelligence (delta / novelty layer) — the "what changed / strengthening
+    # vs fatiguing over time" signal. Was never wired into Ask; this is what lets a
+    # directional question ("where is X strengthening vs fatiguing") be answered with
+    # measured direction instead of a static point-in-time read. Non-fatal.
+    try:
+        import math
+        from topic_intelligence import compute_topic_intelligence, format_intelligence_context
+
+        def _usable_delta(t):
+            # Only surface a topic when its core VLDS values are finite AND it has a
+            # real, non-trivial delta. Until snapshot history is deep enough, deltas
+            # come back nan / "new_to_radar" — injecting those feeds the model garbage
+            # ("raw: nan, falling") and manufactures fake direction. Skip them.
+            raws = [t.get("velocity"), t.get("density"), t.get("scarcity")]
+            if not all(isinstance(v, (int, float)) and math.isfinite(v) for v in raws):
+                return False
+            deltas = [t.get("velocity_delta"), t.get("density_delta"),
+                      t.get("scarcity_delta"), t.get("empathy_delta")]
+            return any(isinstance(v, (int, float)) and math.isfinite(v) and abs(v) > 1e-9
+                       for v in deltas)
+
+        _ti = [t for t in (compute_topic_intelligence(engine) or []) if _usable_delta(t)]
+        if _ti:
+            context_parts.append(
+                "[TOPIC INTELLIGENCE — DIRECTIONAL DELTAS: what is strengthening vs. fatiguing over time]\n\n"
+                + format_intelligence_context(_ti, top_n=8)
+            )
+    except Exception as e:
+        print(f"Topic intelligence load failed (non-fatal): {e}")
+
     return "\n\n".join(context_parts)
 
 
@@ -940,6 +970,13 @@ GENERAL QUESTIONS (no brand mentioned):
 
 SCOPE DISCIPLINE — ANSWER THE SUBJECT THAT WAS ASKED ABOUT:
 Match your framing to the question's actual subject. A question about a CATEGORY, a PORTFOLIO of brands, or a CULTURAL theme is NOT a request for a competitive brief about one company — answer it at the level asked. NEVER manufacture a brand-versus-brand comparison out of companies that merely appear in the data (names in the intelligence history, a market/stock table, or trending topics). If the specific brand, portfolio, or category the user asked about has no tracked signal, say so and reason from web results and cultural logic — do NOT pivot to unrelated brands you happen to have data on and present them as the answer. Substituting a different subject because you have data on it is the fastest way to destroy credibility in a live demo.
+
+CONVICTION MODE — EARN A POINT OF VIEW, DON'T STOP AT DESCRIPTION:
+When the question asks for a strategic read, a POV, or "what should they do," escalate through three levels and expose your reasoning so it can be challenged:
+1. READOUT — what the signal literally shows. Necessary, never sufficient; a dashboard stops here.
+2. PATTERN — the single underlying force that connects the signals and explains why they move together.
+3. CONVICTION — the point of view a leader would act on, stated with a spine, plus the reasoning that got you there.
+If you have DIRECTIONAL signal — a delta, something strengthening or fatiguing over time (see the TOPIC INTELLIGENCE — DIRECTIONAL DELTAS section) — lead with the direction and what it implies, not just the current state; say where it is heading and why. Never fabricate a delta you do not have: if there is no directional signal in the data, make the call on strategic logic and be explicit that the direction is a read, not a measurement.
 
 BRAND-SPECIFIC QUESTIONS:
 When a user asks about a specific brand or company, you are producing a COMPETITIVE INTELLIGENCE BRIEF, not a cultural trend report. Follow these rules:
