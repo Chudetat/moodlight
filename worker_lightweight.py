@@ -62,6 +62,10 @@ JOBS = {
         "module": "generate_radar",
         "label": "Radar (Daily Societal Patterns)",
     },
+    "vlds-snapshot": {
+        "module": "run_vlds_snapshot",
+        "label": "VLDS Daily Snapshot (delta-layer freshness)",
+    },
     "trade": {
         "module": "trade_executor",
         "label": "Trade Analyst + Executor (Daily)",
