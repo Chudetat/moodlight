@@ -61,6 +61,11 @@ JOBS = {
     "radar": {
         "module": "generate_radar",
         "label": "Radar (Daily Societal Patterns)",
+        # Write the daily VLDS snapshot before radar runs, so the delta layer stays
+        # fresh off the existing daily worker-radar cron (no separate service needed).
+        # Non-blocking: a snapshot failure emails but does not stop radar. Safe order —
+        # compute_vlds_deltas compares to a snapshot <=24h old, never today's.
+        "pre": ["run_vlds_snapshot"],
     },
     "vlds-snapshot": {
         "module": "run_vlds_snapshot",
@@ -120,6 +125,19 @@ def main():
     print(f"Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
     print(f"Job: {job_name}")
     print("=" * 60)
+
+    # Pre-steps: independent helper jobs run before the main module. A pre-step
+    # failure is emailed but does NOT block the main job (e.g. radar still runs
+    # even if the VLDS snapshot write fails).
+    for pre_name in job.get("pre", []):
+        try:
+            print(f"  [pre-step] running {pre_name}...")
+            __import__(pre_name).main()
+            print(f"  [pre-step] {pre_name} done.")
+        except Exception:
+            pre_err = traceback.format_exc()
+            print(f"  [pre-step] {pre_name} FAILED (non-blocking):\n{pre_err}")
+            send_failure_email(f"{job_label} / pre-step {pre_name}", pre_err)
 
     try:
         mod = __import__(module_name)
