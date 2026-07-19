@@ -24,6 +24,7 @@ from urllib.parse import quote
 import pandas as pd
 from anthropic import Anthropic
 from dotenv import load_dotenv
+from brand_match import resolve_brand_match
 
 load_dotenv()
 
@@ -57,18 +58,18 @@ BRAND_TICKERS = {
 # ---------------------------------------------------------------------------
 
 def _filter_by_brand(df, brand_name):
-    """Filter a dataframe to rows mentioning a brand in title or text.
+    """Filter a dataframe to rows genuinely mentioning a brand in title/text/source.
 
-    Same pattern as alert_detector._filter_by_brand.
-    Uses regex=False to avoid warnings on brand names with special chars.
+    Same pattern as alert_detector._filter_by_brand: catalog-disambiguated matcher
+    (word-boundary + homonym require/exclude rules) instead of naive substring, so
+    trending brand reads aren't inflated by namesakes/verbs.
     """
     if df.empty:
         return pd.DataFrame()
-    brand_lower = brand_name.lower()
     mask = pd.Series(False, index=df.index)
     for col in ["title", "text", "source"]:
         if col in df.columns:
-            mask = mask | df[col].str.contains(brand_lower, case=False, na=False, regex=False)
+            mask = mask | resolve_brand_match(df[col], brand_name)
     return df[mask]
 
 

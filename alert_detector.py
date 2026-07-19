@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 from vlds_helper import calculate_brand_vlds
+from brand_match import resolve_brand_match
 
 # ── Brand-alert volume floors ────────────────────────────────────────────────
 # Brand velocity / share-of-voice / saturation / mention-surge are ratios or
@@ -460,14 +461,19 @@ def detect_geopolitical_risk_escalation(df_news, engine=None, thresholds=None):
 # ---------------------------------------------------------------------------
 
 def _filter_by_brand(df, brand_name):
-    """Filter a dataframe to rows mentioning a brand in title or text."""
+    """Filter a dataframe to rows genuinely mentioning a brand in title/text/source.
+
+    Catalog-disambiguated matcher (word-boundary + homonym require/exclude rules)
+    instead of naive substring, so alerts aren't triggered by namesakes/verbs
+    (Finish the verb, Dove the bird, coronavirus). Same matcher used by the
+    competitive snapshot, Ask signal, and the report generators.
+    """
     if df.empty:
         return pd.DataFrame()
-    brand_lower = brand_name.lower()
     mask = pd.Series(False, index=df.index)
     for col in ["title", "text", "source"]:
         if col in df.columns:
-            mask = mask | df[col].str.contains(brand_lower, case=False, na=False)
+            mask = mask | resolve_brand_match(df[col], brand_name)
     return df[mask]
 
 
