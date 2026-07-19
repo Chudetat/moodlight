@@ -155,12 +155,12 @@ One sentence the incumbent agency is afraid to say out loud — the diagnosis th
 
 ## 7. THE HONEST VERDICT
 
-One paragraph. No diplomacy. If this brand is culturally healthy, say why. If it's dying, say why. If it's invisible, say that. Frame it as: what would you tell the CEO if you had 60 seconds?
+One paragraph. No diplomacy. If this brand is culturally healthy, say why. If it's dying, say why. If it's quiet in the tracked conversation, say that — and whether that's a visibility gap to close or whitespace to own (never call it "culturally invisible" on thin signal; that's low news salience, not low cultural presence). Frame it as: what would you tell the CEO if you had 60 seconds?
 
 End with: "Powered by Moodlight Brand Intelligence"
 
 QUALITY CHECKS — read before you finalize:
-1. Every claim must reference specific data from the intelligence snapshot. "Your brand needs more social media presence" fails. "Your brand has zero velocity signals while your category is generating 4,200 mentions — you're culturally invisible" passes.
+1. Every claim must reference specific data from the intelligence snapshot. "Your brand needs more social media presence" fails. "Your brand has zero velocity signal while your category is generating 4,200 mentions — you're invisible in the tracked conversation, a visibility gap to close or whitespace no competitor owns" passes.
 2. The Uncomfortable Truth must pass the inevitability test: once stated, it must feel like the only honest read of the data, not a provocative take. Contrarian-for-its-own-sake fails. If the line feels forced, rewrite.
 3. The Uncomfortable Truth must pass the substitution test: swap this brand for a different brand in the same category. If the line still works, rewrite until it only fits THIS brand.
 4. The Whitespace Map opportunities must be actionable inside 30 days, not hypothetical. "Consider owning wellness conversations" fails. "A 45-day campaign built around [specific scarcity signal] would put you ahead of [named competitor pattern]" passes.
