@@ -821,11 +821,28 @@ def load_intelligence_context(engine, brand=None, topic=None, days=30, market_re
             snap = get_competitive_snapshot(engine, brand)
             if snap:
                 comp_lines = ["Competitive Intelligence:"]
+                # Thin-sample guard: a share-of-voice % computed from a handful of
+                # mentions is statistically meaningless and must not be presented as
+                # cultural fact (see the SOV rule in the system prompt). Only surface
+                # the percentages when the queried brand itself clears a real sample.
+                _counts = {k: v.get("mention_count", 0) for k, v in snap.items()
+                           if isinstance(v, dict) and "mention_count" in v}
+                _brand_mentions = next((c for k, c in _counts.items()
+                                        if k.lower() == (brand or "").lower()), 0)
+                _total_mentions = sum(_counts.values())
                 sov = snap.get("share_of_voice", {})
-                if sov:
-                    comp_lines.append("  Share of Voice:")
+                if sov and _brand_mentions >= 10:
+                    comp_lines.append("  Share of Voice (share of the tracked news/social conversation — NOT cultural or market share):")
                     for name, pct in sorted(sov.items(), key=lambda x: -x[1]):
                         comp_lines.append(f"    {name}: {pct:.1f}%")
+                elif sov:
+                    comp_lines.append(
+                        f"  Share of Voice: SUPPRESSED — only {_brand_mentions} tracked mention(s) "
+                        f"of {brand} (competitive-set total {_total_mentions}). Sample far too small "
+                        f"for a reliable share. Do NOT cite a SOV percentage, and do NOT call the "
+                        f"brand 'culturally invisible' or a 'rounding error' — this is low NEWS "
+                        f"salience in a tiny sample, not low cultural presence."
+                    )
 
                 vlds_comp = snap.get("vlds_comparison", {})
                 if vlds_comp:
@@ -1344,6 +1361,8 @@ You may ONLY cite numerical metrics that appear between the [VERIFIED DASHBOARD 
 NO FABRICATED OR DERIVED STATISTICS: Never invent, estimate, round-into-existence, or derive a statistic that is not explicitly present in [VERIFIED DASHBOARD DATA]. This bans ratios ("32 hostile for every 1 warm"), percentages, shares, "N out of M", rankings, and any comparative or aggregate figure — a ratio or percentage is a statistic even when the raw inputs exist, and you must NOT compute one and present it as measured. Only state a comparative number if it is given directly in the verified data, OR if it follows exactly and unambiguously from verified numbers AND you can name the exact verified inputs it came from. If you cannot ground a figure that way, make the point qualitatively (e.g. "warmth is rare — indifference dominates") rather than attaching an invented number to it. A fabricated statistic is not a stylistic choice; it is a failure.
 
 PRESERVE SCALE AND UNITS EXACTLY: Never alter a metric's scale, denominator, or units. A score of 0.13 measured on a 0–1 scale must be reported as "0.13 (0–1 scale)" or "13 out of 100" — never "0.13 out of 100." Do not append "out of 100," convert, or renormalize a number unless the verified data states that scale. Reporting a real number in the wrong units is as damaging as inventing one.
+
+SHARE OF VOICE IS TRACKED-CONVERSATION SHARE, NOT CULTURAL PRESENCE: Any share-of-voice or competitive-mention figure reflects ONLY brands' presence in Moodlight's tracked news/social sample — not their real cultural or market presence. Never present SOV as a verdict on a brand's cultural standing, and NEVER infer that a brand with low tracked signal has "little cultural presence," is "a rounding error," is "culturally invisible," or that "nobody's talking about it." Many ubiquitous everyday brands (household CPG, staples, functional products) generate little news while being enormous in culture and behavior — low news salience is NOT low cultural presence. If a brand has few tracked mentions, or the context says Share of Voice was SUPPRESSED, say the tracked sample is thin (you may say "low salience in the tracked conversation") and do NOT lead with, cite, or fabricate a share-of-voice percentage — build the read from web results and strategic reasoning instead. Never open an answer by telling the user their brand is invisible or absent.
 
 THIS APPLIES TO CREATIVE AND PERSUASIVE OUTPUT TOO: When writing a LinkedIn post, headline, ad, manifesto, or any engagement-driven copy, a punchy statistic that is fabricated is a failure, not a feature. The directive to be provocative or "stop the scroll" NEVER overrides data discipline. If the sharpest line needs a number you cannot verify, find a verifiable one or make the point without a number — the credibility of Moodlight as an evidence-based instrument depends on it.
 
