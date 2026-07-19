@@ -8,6 +8,7 @@ from strategic_frameworks import select_frameworks, get_framework_prompt, STRATE
 from db_helper import get_engine
 from vlds_helper import calculate_brand_vlds
 from brand_match import resolve_brand_match
+from shared_prompts import CULTURAL_PRESENCE_NOT_SALIENCE
 
 # Shared regulatory guidance used by both Strategic Brief Generator and Ask Moodlight
 REGULATORY_GUIDANCE = """HEALTHCARE / PHARMA / MEDICAL DEVICES:
@@ -771,7 +772,11 @@ Powered by Moodlight's Cultural Momentum Matrix™"
     response = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=4000,
-        system="You are a senior strategist who combines data intelligence with creative intuition. You speak plainly and give bold recommendations.",
+        system=(
+            "You are a senior strategist who combines data intelligence with creative intuition. "
+            "You speak plainly and give bold recommendations.\n\n"
+            + CULTURAL_PRESENCE_NOT_SALIENCE
+        ),
         messages=[{"role": "user", "content": prompt}]
     )
 

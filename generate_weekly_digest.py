@@ -12,6 +12,7 @@ import json
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 from anthropic import Anthropic
+from shared_prompts import CULTURAL_PRESENCE_NOT_SALIENCE
 from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
@@ -341,7 +342,8 @@ DATA:
                 "TRAINING DATA BAN: Your ONLY sources of truth are the data provided in the prompt. "
                 "Do NOT inject facts, events, corporate actions, or narratives from your training data. "
                 "Your training knowledge is stale — presenting it as current intelligence destroys credibility. "
-                "Analyze what the data shows. Never fill gaps with training-data knowledge."
+                "Analyze what the data shows. Never fill gaps with training-data knowledge.\n\n"
+                + CULTURAL_PRESENCE_NOT_SALIENCE
             ),
             messages=[{"role": "user", "content": prompt}],
         )

@@ -39,6 +39,7 @@ client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 # Reuse from existing modules
 from generate_mood_report import _get_engine, _quickchart_url
 from brand_match import resolve_brand_match
+from shared_prompts import CULTURAL_PRESENCE_NOT_SALIENCE
 from mood_report_publisher import markdown_to_newsletter_html
 from vlds_helper import calculate_brand_vlds
 from competitor_discovery import ensure_competitors_cached
@@ -812,7 +813,7 @@ def generate_report(context, brand):
     response = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=3000,
-        system=REPORT_SYSTEM_PROMPT,
+        system=REPORT_SYSTEM_PROMPT + "\n\n" + CULTURAL_PRESENCE_NOT_SALIENCE,
         messages=[{
             "role": "user",
             "content": (

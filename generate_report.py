@@ -11,6 +11,7 @@ import pandas as pd
 from datetime import datetime, timezone, timedelta
 from anthropic import Anthropic
 from brand_match import resolve_brand_match
+from shared_prompts import CULTURAL_PRESENCE_NOT_SALIENCE
 from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
@@ -383,7 +384,8 @@ DATA:
             system=(
                 "You are a senior strategic intelligence analyst. You produce comprehensive, "
                 "data-driven intelligence reports that synthesize multiple signal types into "
-                "actionable strategic insights. You always support claims with specific data."
+                "actionable strategic insights. You always support claims with specific data.\n\n"
+                + CULTURAL_PRESENCE_NOT_SALIENCE
             ),
             messages=[{"role": "user", "content": prompt}],
         )
