@@ -249,15 +249,14 @@ def prepare_report_context(engine, subject, days=7, subject_type="brand"):
     # --- Competitive Intelligence (brand only) — computed on-demand ---
     if subject_type == "brand":
         try:
-            from competitive_analyzer import get_competitive_snapshot
+            from competitive_analyzer import get_competitive_snapshot, format_share_of_voice_lines
             snap = get_competitive_snapshot(engine, subject_lower)
             if snap:
                 context += "COMPETITIVE LANDSCAPE:\n"
-                sov = snap.get("share_of_voice", {})
-                if sov:
-                    context += "  Share of Voice:\n"
-                    for name, pct in sorted(sov.items(), key=lambda x: -x[1]):
-                        context += f"    {name}: {pct:.1f}%\n"
+                # Guarded SOV (one source of truth): honest rows when reliable,
+                # suppression/caveat line when thin, nothing when no SOV.
+                for line in format_share_of_voice_lines(snap, subject_lower):
+                    context += line + "\n"
 
                 vlds_comp = snap.get("vlds_comparison", {})
                 if vlds_comp:

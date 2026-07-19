@@ -285,6 +285,81 @@ def get_competitive_snapshot(engine, brand_name, max_cache_age_minutes=60, lookb
     return snapshot
 
 
+def _brand_mention_count(snapshot, brand):
+    """The queried brand's own mention count within a snapshot (0 if not found).
+    Case-insensitive key match; skips the aggregate keys."""
+    target = (brand or "").strip().lower()
+    for k, v in (snapshot or {}).items():
+        if k in ("share_of_voice", "competitive_gaps"):
+            continue
+        if isinstance(v, dict) and str(k).strip().lower() == target:
+            try:
+                return int(v.get("mention_count", 0) or 0)
+            except (TypeError, ValueError):
+                return 0
+    return 0
+
+
+def share_of_voice_decision(snapshot, brand, min_mentions=10):
+    """Single source of truth for whether a share-of-voice readout is trustworthy.
+
+    SOV computed from a handful of mentions is statistically meaningless and must
+    never be presented as cultural fact (the Tropicana/Samyang failure mode). This
+    returns a RENDERING DECISION each surface applies in its own format — text
+    surfaces add a caveat line, chart surfaces suppress the chart.
+
+    Returns dict:
+      reliable        bool  — brand clears min_mentions AND an SOV dict exists
+      brand_mentions  int   — the queried brand's own tracked-mention count
+      total_mentions  int   — total across the competitive set
+      sov             dict  — {name: pct} (render ONLY when reliable)
+      note            str   — honest framing for the not-reliable case ("" when reliable)
+    """
+    if not isinstance(snapshot, dict):
+        return {"reliable": False, "brand_mentions": 0, "total_mentions": 0, "sov": {}, "note": ""}
+    sov = snapshot.get("share_of_voice", {}) or {}
+    counts = {
+        k: int(v.get("mention_count", 0) or 0)
+        for k, v in snapshot.items()
+        if isinstance(v, dict) and "mention_count" in v
+    }
+    brand_mentions = _brand_mention_count(snapshot, brand)
+    total = sum(counts.values())
+    reliable = bool(sov) and brand_mentions >= min_mentions
+    note = "" if reliable else (
+        f"Share of Voice: SUPPRESSED — only {brand_mentions} tracked mention(s) of "
+        f"{brand} (competitive-set total {total}). Sample far too small for a reliable "
+        f"share. Do NOT cite a SOV percentage, and do NOT call the brand 'culturally "
+        f"invisible' or a 'rounding error' — this is low NEWS salience in a tiny sample, "
+        f"not low cultural presence."
+    )
+    return {
+        "reliable": reliable,
+        "brand_mentions": brand_mentions,
+        "total_mentions": total,
+        "sov": sov,
+        "note": note,
+    }
+
+
+def format_share_of_voice_lines(snapshot, brand, min_mentions=10, indent="  "):
+    """Text-surface convenience over share_of_voice_decision().
+
+    Returns a list of strings: the honestly-labeled SOV rows when reliable, a
+    single suppression/caveat line when not, and an EMPTY list when there is no
+    SOV data at all. Drop-in for the report / Ask SOV blocks.
+    """
+    d = share_of_voice_decision(snapshot, brand, min_mentions=min_mentions)
+    if not d["sov"]:
+        return []
+    if d["reliable"]:
+        lines = [f"{indent}Share of Voice (share of the tracked news/social conversation — NOT cultural or market share):"]
+        for name, pct in sorted(d["sov"].items(), key=lambda x: -x[1]):
+            lines.append(f"{indent}  {name}: {pct:.1f}%")
+        return lines
+    return [f"{indent}{d['note']}"]
+
+
 def generate_competitive_insight(engine, snapshot, brand_name):
     """Generate an AI-powered competitive positioning analysis.
 

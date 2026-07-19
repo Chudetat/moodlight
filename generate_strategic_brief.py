@@ -129,16 +129,16 @@ def _build_enrichment(engine, username: str, user_need: str, df: pd.DataFrame) -
                     )
 
         # Load competitive snapshot — computed on-demand
-        from competitive_analyzer import get_competitive_snapshot
+        from competitive_analyzer import get_competitive_snapshot, format_share_of_voice_lines
         snap = get_competitive_snapshot(engine, brand_lower)
 
         if snap:
             comp_lines = []
-            sov = snap.get("share_of_voice", {})
-            if sov:
-                comp_lines.append("  Share of Voice:")
-                for name, pct in sorted(sov.items(), key=lambda x: -x[1]):
-                    comp_lines.append(f"    {name}: {pct:.1f}%")
+            # Guarded SOV: honest rows when the brand clears the reliability
+            # threshold, an explicit suppression/caveat line when it's thin, and
+            # nothing when there's no SOV at all. One source of truth in
+            # competitive_analyzer.share_of_voice_decision().
+            comp_lines.extend(format_share_of_voice_lines(snap, brand_lower))
 
             vlds_comp = snap.get("vlds_comparison", {})
             if vlds_comp:

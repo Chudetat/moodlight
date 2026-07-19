@@ -213,11 +213,14 @@ def prepare_weekly_context(alerts_df, metrics_df, competitive_df, vlds_frames=No
             else:
                 snap = snapshot
 
-            sov = snap.get("share_of_voice", {})
-            if sov:
-                context += f"\n  {brand} Share of Voice:\n"
-                for name, pct in sorted(sov.items(), key=lambda x: -x[1])[:5]:
+            from competitive_analyzer import share_of_voice_decision
+            sov_dec = share_of_voice_decision(snap, brand)
+            if sov_dec["reliable"]:
+                context += f"\n  {brand} Share of Voice (share of tracked conversation, NOT cultural or market share):\n"
+                for name, pct in sorted(sov_dec["sov"].items(), key=lambda x: -x[1])[:5]:
                     context += f"    {name}: {pct:.1f}%\n"
+            elif sov_dec["sov"]:
+                context += f"\n  {sov_dec['note']}\n"
     else:
         context += "COMPETITIVE: No competitive snapshots available.\n"
 

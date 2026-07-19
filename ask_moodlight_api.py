@@ -821,28 +821,13 @@ def load_intelligence_context(engine, brand=None, topic=None, days=30, market_re
             snap = get_competitive_snapshot(engine, brand)
             if snap:
                 comp_lines = ["Competitive Intelligence:"]
-                # Thin-sample guard: a share-of-voice % computed from a handful of
-                # mentions is statistically meaningless and must not be presented as
-                # cultural fact (see the SOV rule in the system prompt). Only surface
-                # the percentages when the queried brand itself clears a real sample.
-                _counts = {k: v.get("mention_count", 0) for k, v in snap.items()
-                           if isinstance(v, dict) and "mention_count" in v}
-                _brand_mentions = next((c for k, c in _counts.items()
-                                        if k.lower() == (brand or "").lower()), 0)
-                _total_mentions = sum(_counts.values())
-                sov = snap.get("share_of_voice", {})
-                if sov and _brand_mentions >= 10:
-                    comp_lines.append("  Share of Voice (share of the tracked news/social conversation — NOT cultural or market share):")
-                    for name, pct in sorted(sov.items(), key=lambda x: -x[1]):
-                        comp_lines.append(f"    {name}: {pct:.1f}%")
-                elif sov:
-                    comp_lines.append(
-                        f"  Share of Voice: SUPPRESSED — only {_brand_mentions} tracked mention(s) "
-                        f"of {brand} (competitive-set total {_total_mentions}). Sample far too small "
-                        f"for a reliable share. Do NOT cite a SOV percentage, and do NOT call the "
-                        f"brand 'culturally invisible' or a 'rounding error' — this is low NEWS "
-                        f"salience in a tiny sample, not low cultural presence."
-                    )
+                # Thin-sample SOV guard, folded into the shared decision helper
+                # (competitive_analyzer.share_of_voice_decision) so both Ask twins
+                # and all four report generators apply one identical rule: honest
+                # rows when the queried brand clears a real sample, an explicit
+                # suppression/caveat line when it's thin, nothing when no SOV.
+                from competitive_analyzer import format_share_of_voice_lines
+                comp_lines.extend(format_share_of_voice_lines(snap, brand))
 
                 vlds_comp = snap.get("vlds_comparison", {})
                 if vlds_comp:

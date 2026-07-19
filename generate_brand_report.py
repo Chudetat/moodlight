@@ -450,11 +450,16 @@ def build_report_context(brand, data):
         comp_names = [c["competitor_name"] for c in competitors]
         lines.append(f"  Competitors analyzed: {', '.join(comp_names)}")
 
-        # Share of voice table
-        lines.append("  Share of Voice:")
-        for name, pct in sov.items():
-            marker = " (target)" if name == brand else ""
-            lines.append(f"    {name}: {pct}%{marker}")
+        # Share of voice table — guarded by shared reliability decision
+        from competitive_analyzer import share_of_voice_decision
+        sov_dec = share_of_voice_decision(snapshot, brand)
+        if sov_dec["reliable"]:
+            lines.append("  Share of Voice (share of tracked conversation, NOT cultural or market share):")
+            for name, pct in sorted(sov_dec["sov"].items(), key=lambda x: -x[1]):
+                marker = " (target)" if name == brand else ""
+                lines.append(f"    {name}: {pct}%{marker}")
+        elif sov_dec["sov"]:
+            lines.append(f"  {sov_dec['note']}")
 
         # VLDS comparison
         lines.append("  VLDS Comparison:")
@@ -665,7 +670,11 @@ def build_report_charts(brand, data):
     # 5. SOV Doughnut — share of voice per brand (only if competitive data exists)
     snapshot = data.get("competitive_snapshot")
     if snapshot:
-        sov = snapshot.get("share_of_voice", {})
+        # Suppress the SOV doughnut entirely on thin signal — a chart implies
+        # a reliable share, so there's no honest "caveat" form for a chart.
+        from competitive_analyzer import share_of_voice_decision
+        sov_dec = share_of_voice_decision(snapshot, brand)
+        sov = sov_dec["sov"] if sov_dec["reliable"] else {}
         if sov and len(sov) >= 2:
             sov_labels = list(sov.keys())
             sov_values = list(sov.values())
