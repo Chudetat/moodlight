@@ -38,6 +38,7 @@ client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 # Reuse from existing modules
 from generate_mood_report import _get_engine, _quickchart_url
+from brand_match import resolve_brand_match
 from mood_report_publisher import markdown_to_newsletter_html
 from vlds_helper import calculate_brand_vlds
 from competitor_discovery import ensure_competitors_cached
@@ -93,16 +94,19 @@ def _fetch_live_quote(ticker):
 
 
 def _filter_by_brand(df, brand_name):
-    """Filter a dataframe to rows mentioning a brand in title or text."""
+    """Filter a dataframe to rows genuinely mentioning a brand in title/text/source.
+
+    Uses the catalog-disambiguated matcher (word-boundary + homonym require/exclude
+    rules) per column instead of naive substring, so common-word/namesake brands
+    (Finish, Vanish, Dove, Corona) aren't inflated by the English word or an
+    unrelated proper noun — same matcher the competitive snapshot and Ask signal use.
+    """
     if df.empty:
         return pd.DataFrame()
-    brand_lower = brand_name.lower()
     mask = pd.Series(False, index=df.index)
     for col in ["title", "text", "source"]:
         if col in df.columns:
-            mask = mask | df[col].str.contains(
-                brand_lower, case=False, na=False, regex=False
-            )
+            mask = mask | resolve_brand_match(df[col], brand_name)
     return df[mask]
 
 

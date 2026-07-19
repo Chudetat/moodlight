@@ -7,6 +7,7 @@ from sqlalchemy import text as sql_text
 from strategic_frameworks import select_frameworks, get_framework_prompt, STRATEGIC_FRAMEWORKS
 from db_helper import get_engine
 from vlds_helper import calculate_brand_vlds
+from brand_match import resolve_brand_match
 
 # Shared regulatory guidance used by both Strategic Brief Generator and Ask Moodlight
 REGULATORY_GUIDANCE = """HEALTHCARE / PHARMA / MEDICAL DEVICES:
@@ -91,7 +92,10 @@ def _build_enrichment(engine, username: str, user_need: str, df: pd.DataFrame) -
 
         # Compute VLDS v2 for matched brand
         if "text" in df.columns:
-            brand_df = df[df["text"].str.lower().str.contains(brand_lower, na=False)].copy()
+            # Catalog-disambiguated match (word-boundary + homonym rules) so the
+            # brand's velocity/density/empathy aren't inflated by namesakes —
+            # same matcher the competitive snapshot and Ask signal use.
+            brand_df = df[resolve_brand_match(df["text"], matched_brand)].copy()
             if "created_at" in brand_df.columns:
                 brand_df = brand_df.dropna(subset=["created_at"])
             if len(brand_df) >= 5:
