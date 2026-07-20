@@ -1697,10 +1697,12 @@ async def ask_moodlight(req: AskRequest, request: Request):
                     meta.append(f"source: {row.get('source', 'N/A')}")
                 if "created_at" in brand_posts.columns:
                     meta.append(f"date: {row.get('created_at', 'N/A')}")
-                if "empathy_score" in brand_posts.columns:
-                    meta.append(f"empathy: {row.get('empathy_score', 'N/A')}")
-                elif "empathy_label" in brand_posts.columns:
-                    meta.append(f"empathy: {row.get('empathy_label', 'N/A')}")
+                # Prefer the descriptive label over the raw 0-1 score: a bare raw
+                # empathy number (e.g. 0.05) reads as "cold out of 100" to the model.
+                if "empathy_label" in brand_posts.columns and pd.notna(row.get("empathy_label")):
+                    meta.append(f"empathy: {row.get('empathy_label')}")
+                elif "empathy_score" in brand_posts.columns:
+                    meta.append(f"empathy: {row.get('empathy_score', 'N/A')} (raw 0-1 scale, higher=warmer)")
                 if "audience" in brand_posts.columns and pd.notna(row.get("audience")):
                     meta.append(f"audience: {row.get('audience')}")
                 if meta:
@@ -1716,8 +1718,8 @@ async def ask_moodlight(req: AskRequest, request: Request):
                 brand_empathy = brand_posts["empathy_label"].value_counts().to_dict()
                 brand_parts.append(f"Brand Sentiment: {brand_empathy}")
             if "empathy_score" in brand_posts.columns and len(brand_posts) > 0:
-                brand_avg = brand_posts["empathy_score"].mean()
-                brand_parts.append(f"Brand Average Empathy: {brand_avg:.2f}/100")
+                brand_avg = _normalize_empathy_score(brand_posts["empathy_score"].mean())
+                brand_parts.append(f"Brand Average Empathy: {brand_avg}/100")
             if "emotion_top_1" in brand_posts.columns:
                 brand_emotions = brand_posts["emotion_top_1"].value_counts().head(5).to_dict()
                 brand_parts.append(f"Brand Emotions: {brand_emotions}")
