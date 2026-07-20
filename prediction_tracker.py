@@ -406,6 +406,129 @@ def resolve_prediction(engine, prediction_id, status, summary="", capture_outcom
         print(f"  No prediction with id {prediction_id}")
 
 
+def _evidence_digest(ev, limit=6):
+    """Compact an evidence snapshot into a short text block for the draft prompt —
+    top signal texts + counts + VLDS/metric highlights, without dumping raw JSON."""
+    if not isinstance(ev, dict):
+        return "  (no structured evidence)"
+    lines = []
+    if ev.get("captured_at"):
+        lines.append(f"  captured_at: {ev['captured_at']}")
+    if ev.get("counts"):
+        lines.append(f"  row counts: {ev['counts']}")
+    for key, label in (("top_news", "news"), ("top_social", "social")):
+        rows = ev.get(key) or []
+        if rows:
+            lines.append(f"  top {label}:")
+            for row in rows[:limit]:
+                txt = str(row.get("text", "")).replace("\n", " ").strip()[:200]
+                lines.append(f"    - [{row.get('created_at', '')}] ({row.get('source', '')}) {txt}")
+    vlds = ev.get("vlds")
+    if isinstance(vlds, dict):
+        keep = {k: vlds[k] for k in ("topic", "velocity_score", "density_score",
+                                     "scarcity_score", "longevity_score", "snapshot_date")
+                if k in vlds}
+        if keep:
+            lines.append(f"  vlds: {keep}")
+    if isinstance(ev.get("metrics"), dict) and ev["metrics"]:
+        lines.append(f"  metrics: {json.dumps(ev['metrics'])[:400]}")
+    if ev.get("evidence_note"):
+        lines.append(f"  note: {ev['evidence_note']}")
+    return "\n".join(lines) if lines else "  (empty)"
+
+
+def draft_resolution(engine, prediction_id, model="claude-opus-4-6", max_tokens=2000):
+    """ASSISTED RESOLUTION (#3): draft a PROPOSED verdict for a due call, for a human
+    to accept or edit. READ-ONLY — writes nothing to the DB. The human still decides;
+    resolve_prediction() is the only path that persists a verdict (no auto-grading).
+
+    Pulls FRESH signal for the call's brand/topic at resolution time, sets it beside
+    the original prediction + its sealed evidence, and asks the model to propose
+    played_out / missed / partial with the specific markers behind it.
+    """
+    ensure_predictions_table(engine)
+    row = pd.read_sql(
+        sql_text("SELECT id, prediction_date, due_date, statement, brand, topic, "
+                 "confidence, evidence, outcome_status FROM predictions WHERE id = :id"),
+        engine, params={"id": int(prediction_id)},
+    )
+    if row.empty:
+        print(f"  No prediction with id {prediction_id}")
+        return None
+    r = row.iloc[0]
+    if _na(r["outcome_status"]):
+        print(f"  Note: #{prediction_id} is already resolved ({r['outcome_status']}). "
+              "Drafting for a second look — still writes nothing.")
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        print("  ANTHROPIC_API_KEY not set — cannot draft (this is the module's only LLM call).")
+        return None
+
+    brand, topic = _na(r["brand"]), _na(r["topic"])
+    fresh = _capture_evidence(engine, brand, topic)  # fresh signal at resolution time
+    try:
+        original = r["evidence"] if isinstance(r["evidence"], dict) else json.loads(r["evidence"] or "{}")
+    except Exception:
+        original = {}
+
+    import anthropic  # lazy import: keeps the cron/daily-pass path LLM-dependency-free
+    client = anthropic.Anthropic(api_key=api_key)
+
+    homonym_note = ""
+    if brand:
+        homonym_note = (f"\nNOTE: fresh signal for the brand was name-matched on '{brand}' "
+                        "(substring), so it may include same-name namesakes — discount "
+                        "anything not actually about the brand.")
+
+    system = (
+        "You are a rigorous forecasting analyst helping a human resolve a cultural "
+        "prediction. You DRAFT a proposed verdict for the human to accept or edit — you "
+        "do NOT decide. Be skeptical and honest: distinguish 'the predicted thing "
+        "actually happened' from 'there is merely signal in the space.' Signal presence "
+        "is not confirmation. If the evidence is insufficient to judge, say so and "
+        "propose 'partial' or recommend external verification. Never inflate a call to "
+        "played_out on thin or tangential evidence. Cite the SPECIFIC markers (dated "
+        "items, metric moves) behind your read."
+    )
+    prompt = f"""A falsifiable cultural prediction is now due for resolution. Draft a PROPOSED verdict for the human to accept or edit.
+
+THE CALL (made {r['prediction_date']}, due {r['due_date']}):
+"{r['statement']}"
+  brand: {brand or '—'} | topic: {topic or '—'} | confidence at call: {_na(r['confidence']) or '—'}/10
+
+ORIGINAL EVIDENCE (what was true when the call was made):
+{_evidence_digest(original)}
+
+FRESH SIGNAL (captured now, at resolution time):
+{_evidence_digest(fresh)}{homonym_note}
+
+Produce, in this exact structure:
+1. PROPOSED VERDICT: one of played_out | missed | partial
+2. CONFIDENCE IN THIS VERDICT: low | medium | high
+3. OUTCOME MARKERS: the 2-5 specific, dated signals (from FRESH SIGNAL or verifiable public record) that support the verdict — or state plainly that the in-dashboard signal is insufficient and external verification is needed.
+4. REASONING: 3-5 sentences. Explicitly separate 'the predicted event occurred' from 'the topic is merely active.'
+5. WHAT WOULD CHANGE THE VERDICT: the one piece of evidence that, if the human found it, would flip your read.
+
+Remember: this is a DRAFT. The human makes the final call and may edit freely."""
+
+    resp = client.messages.create(
+        model=model, max_tokens=max_tokens, system=system,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    draft = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text").strip()
+
+    print("=" * 60)
+    print(f"ASSISTED RESOLUTION DRAFT — prediction #{prediction_id}  (PROPOSED, not saved)")
+    print("=" * 60)
+    print(draft)
+    print("-" * 60)
+    print("This wrote NOTHING. To commit YOUR verdict (edit the summary as you see fit):")
+    print(f'  python3 prediction_tracker.py resolve {prediction_id} '
+          '<played_out|missed|partial> "<your summary>"')
+    return {"prediction_id": int(prediction_id), "draft": draft, "model": model}
+
+
 def list_due(engine):
     """Unresolved calls whose horizon has elapsed (ready to resolve)."""
     return pd.read_sql(
@@ -938,6 +1061,11 @@ def main():
             print("  usage: prediction_tracker.py verify <id>")
         else:
             verify_seal(engine, int(sys.argv[2]))
+    elif cmd == "draft":
+        if len(sys.argv) < 3:
+            print("  usage: prediction_tracker.py draft <id>")
+        else:
+            draft_resolution(engine, int(sys.argv[2]))
     elif cmd == "seal-existing":
         seal_existing(engine)
     else:
