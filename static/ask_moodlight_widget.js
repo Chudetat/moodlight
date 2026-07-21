@@ -570,6 +570,7 @@
     `;
 
     target.appendChild(panel);
+    mlShowRecentIfEmpty();
   }
 
   function togglePanel() {
@@ -579,6 +580,7 @@
       panel.classList.toggle("open", isOpen);
       if (isOpen) {
         setTimeout(() => document.getElementById("ml-input")?.focus(), 100);
+        mlShowRecentIfEmpty();
       }
     }
   }
@@ -657,6 +659,7 @@
       updateBadge();
 
       var answerEl = addResult(messages, "assistant", data.answer);
+      mlSaveRecent(question, data.answer);
 
       // Persist brief fields immediately so the marketplace can
       // auto-fill even if the user scrolls down manually instead
@@ -987,10 +990,88 @@
     container.appendChild(el);
   }
 
+  // ── Recent answers (localStorage) ──────────────────────────────────
+  // Free-tier users lose their output the moment they start a new question
+  // or reload the page — one user literally asked the engine to "resend the
+  // previous suggestions." Persist the last few Q&A pairs locally (no auth,
+  // no server) so they can re-open them. Same localStorage pattern already
+  // used for the brief handoff (ml_active_brief) and Team Builder.
+  var ML_RECENT_KEY = "ml_recent_answers";
+  var ML_RECENT_MAX = 10;
+
+  function mlLoadRecent() {
+    try {
+      var arr = JSON.parse(localStorage.getItem(ML_RECENT_KEY) || "[]");
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+
+  function mlSaveRecent(question, answer) {
+    if (!question || !answer) return;
+    try {
+      var arr = mlLoadRecent().filter(function (r) { return r && r.q !== question; });
+      arr.unshift({ q: question, a: answer, t: Date.now() });
+      if (arr.length > ML_RECENT_MAX) arr = arr.slice(0, ML_RECENT_MAX);
+      localStorage.setItem(ML_RECENT_KEY, JSON.stringify(arr));
+    } catch (e) {}
+  }
+
+  function mlRenderRecentInto(container) {
+    if (!container) return;
+    var existing = container.querySelector(".ml-recent");
+    if (existing) existing.remove();
+    var arr = mlLoadRecent();
+    if (!arr.length) return;
+    var wrap = document.createElement("div");
+    wrap.className = "ml-recent";
+    wrap.style.cssText = "margin-top:12px;";
+    var head = document.createElement("div");
+    head.textContent = "Recent questions";
+    head.style.cssText = "text-transform:uppercase;letter-spacing:.06em;color:#8a8a8a;font-size:10px;margin-bottom:4px;";
+    wrap.appendChild(head);
+    arr.forEach(function (r, i) {
+      var item = document.createElement("button");
+      item.type = "button";
+      item.className = "ml-recent-item";
+      item.textContent = r.q;
+      item.title = r.q;
+      item.style.cssText = "display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid rgba(0,0,0,.06);padding:8px 0;color:#3a3a3a;cursor:pointer;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+      item.onclick = function () { window._mlViewRecent(i); };
+      wrap.appendChild(item);
+    });
+    container.appendChild(wrap);
+  }
+
+  function mlShowRecentIfEmpty() {
+    var messages = document.getElementById("ml-messages");
+    if (messages && !messages.children.length) mlRenderRecentInto(messages);
+  }
+
+  // Re-open a stored answer read-only. Restores conversation context so a
+  // follow-up continues naturally from where they left off.
+  window._mlViewRecent = function (idx) {
+    var r = mlLoadRecent()[idx];
+    if (!r) return;
+    var messages = document.getElementById("ml-messages");
+    if (!messages) return;
+    messages.innerHTML = "";
+    conversation = [
+      { role: "user", content: r.q },
+      { role: "assistant", content: r.a },
+    ];
+    addResult(messages, "user", r.q);
+    addResult(messages, "assistant", r.a);
+    showNewQuestionBtn(messages);
+    messages.scrollTop = 0;
+  };
+
   window._mlClear = function () {
     conversation = [];
     const messages = document.getElementById("ml-messages");
-    if (messages) messages.innerHTML = "";
+    if (messages) {
+      messages.innerHTML = "";
+      mlRenderRecentInto(messages);
+    }
     const input = document.getElementById("ml-input");
     if (input) {
       input.value = "";
