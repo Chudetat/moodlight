@@ -1714,10 +1714,25 @@ async def ask_moodlight(req: AskRequest, request: Request):
                 f"Posts mentioning '{brand_name}': {len(brand_posts)}",
                 "\n".join(brand_lines),
             ]
+            # Sample-floor on brand sentiment. An empathy average (and even the
+            # label distribution) computed on a handful of posts is noise dressed
+            # as precision — a 2-post brand rendering "53/100" is the same
+            # measurement artifact the SOV guard already suppresses. Reuse the
+            # alert engine's volume floor so there is ONE source of truth; below
+            # it, hand the model an explicit caveat instead of a number.
+            from alert_detector import WHITE_SPACE_MIN_MENTIONS
+            _empathy_thin = len(brand_posts) < WHITE_SPACE_MIN_MENTIONS
             if "empathy_label" in brand_posts.columns:
                 brand_empathy = brand_posts["empathy_label"].value_counts().to_dict()
                 brand_parts.append(f"Brand Sentiment: {brand_empathy}")
-            if "empathy_score" in brand_posts.columns and len(brand_posts) > 0:
+            if _empathy_thin:
+                brand_parts.append(
+                    f"Brand Average Empathy: SUPPRESSED — only {len(brand_posts)} tracked "
+                    f"post(s), below the {WHITE_SPACE_MIN_MENTIONS}-mention floor. Do NOT cite a "
+                    "numeric empathy or mood score for this brand; treat the sentiment above as "
+                    "directional only and build the read from web results and strategic logic."
+                )
+            elif "empathy_score" in brand_posts.columns:
                 brand_avg = _normalize_empathy_score(brand_posts["empathy_score"].mean())
                 brand_parts.append(f"Brand Average Empathy: {brand_avg}/100")
             if "emotion_top_1" in brand_posts.columns:
