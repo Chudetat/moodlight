@@ -963,7 +963,29 @@ You MUST use most of them. The full signal data below provides additional contex
 markets, economic data, etc.) to add irony and contradiction to these stories.
 """
 
+    # Final dedup gate: the writer is the last line of defense. The mechanical pre-filter is blind to
+    # camelCase brand names (OpenAI/ChatGPT fragment to "Open"/"Chat" and get dropped), and the Haiku
+    # selector's skip-list is unreliable — so give the writer the already-sent list explicitly.
+    dedup_section = ""
+    recent_stories = _load_recent_story_history()
+    if recent_stories:
+        already = "\n".join(f"- {s['key']}" for s in recent_stories[:40])
+        dedup_section = f"""
+
+ALREADY SENT TO READERS IN THE LAST 3 BRIEFS — DO NOT WRITE ABOUT ANY OF THESE AGAIN:
+==========================================
+{already}
+==========================================
+These stories already went out. The reader gets this twice a day — writing about the SAME EVENT again,
+even with new wording, a different article, or a fresh angle, is a repeat and is FORBIDDEN. One repeat
+makes the whole brief look automated. The ONLY exception is a genuinely NEW development in the story
+(verdict delivered, deal signed, casualties reported) — NOT rehashed coverage, opinion, or follow-up
+analysis about the same event. If a curated story matches anything on this list, DROP IT and write
+about something else from the signal data instead.
+"""
+
     prompt = f"""Based on the curated stories and signal data below, write today's intelligence brief.
+{dedup_section}
 {curated_section}
 
 FULL SIGNAL DATA (for context, market data, prediction markets, and additional stories):
