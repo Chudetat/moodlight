@@ -1110,6 +1110,14 @@ _ROUTE_RE = re.compile(
 )
 
 
+def _extract_text(response):
+    """Concatenate the text blocks of a Claude response. Thinking-default models
+    (e.g. Opus 5) emit a thinking block first, so response.content[0] is NOT the
+    deliverable and response.content[0].text would raise AttributeError. This is
+    inert for single-text-block models (returns that block's text)."""
+    return "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
+
+
 def _extract_routing(answer: str):
     """
     Strip the <moodlight-route> block from the answer and return
@@ -1840,13 +1848,14 @@ async def ask_moodlight(req: AskRequest, request: Request):
     for _attempt in range(3):
         try:
             response = client.messages.create(
-                model="claude-opus-4-6",
-                max_tokens=4096,
+                model="claude-opus-5",
+                max_tokens=16000,
                 temperature=1.0,
                 system=system_prompt,
                 messages=messages,
+                extra_body={"output_config": {"effort": "medium"}},
             )
-            answer = response.content[0].text
+            answer = _extract_text(response)
             break
         except Exception as e:
             last_err = e
