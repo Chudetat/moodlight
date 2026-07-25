@@ -28,6 +28,14 @@ from generate_strategic_brief import REGULATORY_GUIDANCE
 # Helper: empathy normalization (same piecewise curve as app.py)
 # ---------------------------------------------------------------------------
 
+def _extract_text(response):
+    """Concatenate the text blocks of a Claude response. Thinking-default models
+    (e.g. Opus 5) emit a thinking block first, so response.content[0] is NOT the
+    deliverable and response.content[0].text would raise AttributeError. Inert for
+    single-text-block models (returns that block's text)."""
+    return "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
+
+
 def _normalize_empathy_score(avg: float) -> int:
     """Normalize GoEmotions empathy score to 0-100 scale."""
     if avg <= 0.04:
@@ -1344,12 +1352,13 @@ def ask_moodlight(
     # --- Call Claude ---
     try:
         response = client.messages.create(
-            model="claude-opus-4-6",
-            max_tokens=4096,
+            model="claude-opus-5",
+            max_tokens=16000,
             system=system_prompt,
             messages=messages,
+            extra_body={"output_config": {"effort": "medium"}},
         )
-        assistant_message = response.content[0].text
+        assistant_message = _extract_text(response)
     except Exception as e:
         assistant_message = f"Sorry, I encountered an error: {str(e)}"
 
