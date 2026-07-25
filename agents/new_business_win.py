@@ -16,7 +16,8 @@ from strategic_frameworks import select_frameworks, get_framework_prompt, STRATE
 class NewBusinessWinAgent(MoodlightAgent):
 
     agent_name = "new_business_win"
-    model = "claude-opus-4-6"
+    model = "claude-opus-5"
+    effort = "low"
     max_tokens = 16000
 
     system_prompt = (

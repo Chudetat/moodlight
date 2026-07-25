@@ -16,8 +16,9 @@ from . import data_layer
 class FunnelDoctorAgent(MoodlightAgent):
 
     agent_name = "funnel_doctor"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "low"
+    max_tokens = 16000
 
     system_prompt = (
         "You are a funnel doctor who has seen every broken conversion "

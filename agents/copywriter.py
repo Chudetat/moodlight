@@ -12,8 +12,9 @@ from . import data_layer
 class CopywriterAgent(MoodlightAgent):
 
     agent_name = "copywriter"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "low"
+    max_tokens = 16000
 
     system_prompt = (
         "You are a copywriter whose work has been stolen, screenshot, and shared "

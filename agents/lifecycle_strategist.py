@@ -16,8 +16,9 @@ from . import data_layer
 class LifecycleStrategistAgent(MoodlightAgent):
 
     agent_name = "lifecycle_strategist"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "low"
+    max_tokens = 16000
 
     system_prompt = (
         "You are a lifecycle strategist who has watched too many brands "

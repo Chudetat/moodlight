@@ -11,8 +11,9 @@ from . import data_layer
 class TrendForecasterAgent(MoodlightAgent):
 
     agent_name = "trend_forecaster"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "low"
+    max_tokens = 16000
 
     system_prompt = (
         "You are a cultural forecaster who has predicted every major shift "

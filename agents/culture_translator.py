@@ -12,8 +12,9 @@ from . import data_layer
 class CultureTranslatorAgent(MoodlightAgent):
 
     agent_name = "culture_translator"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "low"
+    max_tokens = 16000
 
     system_prompt = (
         "You are a cultural translator who has watched global brands "

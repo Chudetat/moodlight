@@ -17,8 +17,9 @@ from . import data_layer
 class ExperimentationStrategistAgent(MoodlightAgent):
 
     agent_name = "experimentation_strategist"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "low"
+    max_tokens = 16000
 
     system_prompt = (
         "You are an experimentation strategist who believes most growth "

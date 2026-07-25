@@ -17,8 +17,9 @@ from . import data_layer
 class PaidMediaStrategistAgent(MoodlightAgent):
 
     agent_name = "paid_media_strategist"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "low"
+    max_tokens = 16000
 
     system_prompt = (
         "You are a paid media strategist who has spent more money on ads "

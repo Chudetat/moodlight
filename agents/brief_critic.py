@@ -12,8 +12,9 @@ from . import data_layer
 class BriefCriticAgent(MoodlightAgent):
 
     agent_name = "brief_critic"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "low"
+    max_tokens = 16000
 
     system_prompt = (
         "You are the most feared brief reviewer in the industry. You've killed "

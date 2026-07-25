@@ -15,8 +15,9 @@ from . import data_layer
 class CommsPlannerAgent(MoodlightAgent):
 
     agent_name = "comms_planner"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "low"
+    max_tokens = 16000
 
     system_prompt = (
         "You've run media for brands that outperformed competitors spending 10x more. "

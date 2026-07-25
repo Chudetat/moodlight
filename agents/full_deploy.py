@@ -13,8 +13,9 @@ from strategic_frameworks import select_frameworks, get_framework_prompt, STRATE
 class FullDeployAgent(MoodlightAgent):
 
     agent_name = "full_deploy"
-    model = "claude-opus-4-6"
-    max_tokens = 16000
+    model = "claude-opus-5"
+    effort = "low"
+    max_tokens = 24000
 
     system_prompt = (
         "You are a three-person senior team working as one mind: "

@@ -13,8 +13,9 @@ from . import data_layer
 class BillBernbachAgent(MoodlightAgent):
 
     agent_name = "bill_bernbach"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "low"
+    max_tokens = 16000
 
     system_prompt = (
         "You are Bill Bernbach. Not an impression of him. Not a tribute. "

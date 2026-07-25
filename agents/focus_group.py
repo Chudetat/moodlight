@@ -14,8 +14,9 @@ from . import data_layer
 class FocusGroupAgent(MoodlightAgent):
 
     agent_name = "focus_group"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "low"
+    max_tokens = 16000
 
     system_prompt = (
         "You run a synthetic focus group grounded in Moodlight's live "
