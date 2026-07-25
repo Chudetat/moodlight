@@ -12,7 +12,8 @@ from . import data_layer
 class CreativeDirectorAgent(MoodlightAgent):
 
     agent_name = "creative_director"
-    model = "claude-opus-4-6"
+    model = "claude-opus-5"
+    effort = "low"
     max_tokens = 10000
 
     system_prompt = (

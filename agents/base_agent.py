@@ -103,6 +103,7 @@ class MoodlightAgent:
     agent_name = "base"
     model = "claude-opus-4-6"
     fallback_model = None  # if set, used when the primary model refuses or returns no text
+    effort = None  # "low"|"medium"|"high"|"xhigh"|"max"; None = API default (high). Used by effort-capable models (Opus 5, Opus 4.6+, Sonnet 5, etc.)
     max_tokens = 4000
     system_prompt = ""
 
@@ -200,13 +201,18 @@ class MoodlightAgent:
         system = self._build_system_prompt()
 
         def _call(model):
-            print(f"  [{self.agent_name}] Calling Claude ({model})...")
-            return client.messages.create(
-                model=model,
-                max_tokens=self.max_tokens,
-                system=system,
-                messages=[{"role": "user", "content": prompt}],
-            )
+            eff = f", effort={self.effort}" if self.effort else ""
+            print(f"  [{self.agent_name}] Calling Claude ({model}{eff})...")
+            kwargs = {
+                "model": model,
+                "max_tokens": self.max_tokens,
+                "system": system,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+            if self.effort:
+                # output_config passed via extra_body for compatibility with the pinned SDK
+                kwargs["extra_body"] = {"output_config": {"effort": self.effort}}
+            return client.messages.create(**kwargs)
 
         response = _call(self.model)
         raw = _extract_text(response)
