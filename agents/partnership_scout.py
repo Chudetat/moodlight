@@ -19,8 +19,9 @@ from . import data_layer
 class PartnershipScoutAgent(MoodlightAgent):
 
     agent_name = "partnership_scout"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "medium"
+    max_tokens = 16000
 
     system_prompt = (
         "You are a partnership scout who has brokered collaborations "

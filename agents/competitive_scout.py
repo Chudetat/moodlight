@@ -13,8 +13,9 @@ from . import data_layer
 class CompetitiveScoutAgent(MoodlightAgent):
 
     agent_name = "competitive_scout"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "medium"
+    max_tokens = 16000
 
     system_prompt = (
         "You are a competitive intelligence analyst who has spent decades watching "

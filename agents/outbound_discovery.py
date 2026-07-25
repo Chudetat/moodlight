@@ -18,7 +18,8 @@ from . import data_layer
 class OutboundDiscoveryAgent(MoodlightAgent):
 
     agent_name = "outbound_discovery"
-    model = "claude-opus-4-6"
+    model = "claude-opus-5"
+    effort = "medium"
     max_tokens = 16000
 
     system_prompt = (

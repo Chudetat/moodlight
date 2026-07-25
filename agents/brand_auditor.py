@@ -12,8 +12,9 @@ from . import data_layer
 class BrandAuditorAgent(MoodlightAgent):
 
     agent_name = "brand_auditor"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "medium"
+    max_tokens = 16000
 
     system_prompt = (
         "You are a brand diagnostician who has audited hundreds of brands across "

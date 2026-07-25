@@ -13,8 +13,9 @@ from . import data_layer
 class AudienceProfilerAgent(MoodlightAgent):
 
     agent_name = "audience_profiler"
-    model = "claude-opus-4-6"
-    max_tokens = 10000
+    model = "claude-opus-5"
+    effort = "medium"
+    max_tokens = 16000
 
     system_prompt = (
         "You are a cultural anthropologist who reads audiences through "
