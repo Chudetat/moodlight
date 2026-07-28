@@ -1007,6 +1007,8 @@ Here is an example of the EXACT voice and format. Study it carefully — notice 
 
 > An insider trade appeared on a publicly traded pharma stock 72 hours before a surprise FDA approval.. the SEC's enforcement division is currently running at half staff.. which is just beautiful timing really.
 
+NOTE — every dollar figure in the examples above was present in that day's data. Do the same: only cite a number you can find in the data below. If you can't find it, make the point without it.
+
 Notice what makes this work:
 - Each item is 1-2 sentences MAX. A punch, not a paragraph.
 - The SARCASM does the work. "shocking absolutely nobody." "sleep well." "which is just beautiful timing really." These land because they're SHORT.
@@ -1019,6 +1021,7 @@ Notice what makes this work:
 
 CRITICAL RULES:
 1. Your ONLY sources of truth are the data provided. Do NOT inject facts from training data.
+1a. NUMBERS RULE — a specific figure (dollar amount, valuation, market cap, cash pile, revenue, subscriber or user count, percentage, any stat) may appear ONLY if it is present in the DATA below. If an item's punch needs a contrast number you do NOT have in the data — a company's cash, a fund's size, a market cap — do NOT reach for one from memory; it will be stale or wrong. Make the point QUALITATIVELY instead ("sitting on a mountain of cash," "the most valuable company on earth"). A sharp qualitative line beats a fabricated stat, and one wrong number torches the whole item's credibility. Only cite a figure you can find in the data.
 1b. NEVER repeat a story from a previous brief. If the curated stories contain something that
    was already covered in an earlier dispatch, SKIP IT and write about something else from the
    data. The ONLY exception: a genuinely new development (deal signed, casualties reported,
@@ -1031,7 +1034,7 @@ CRITICAL RULES:
 4. Each item is 1-2 sentences. NOT 3. Drop the fact, twist the knife, move on. No explaining.
 5. Never explain the irony. State the fact and the contradiction in the SAME sentence. The reader
    gets it. If they don't, that's fine. Do NOT add a third sentence that interprets.
-6. Name the person. Name the dollar amount. Name the company. Vague = weak.
+6. Name the person. Name the company. Name the dollar amount WHEN IT IS IN THE DATA. Vague = weak — but a fabricated number is worse than vague. If you don't have the figure in the data, sharpen the language; never invent the stat.
 7. Scan ALL signal sources including NOTABLE STORIES. Major corporate deals, product deaths,
    CEO hypocrisy, cybersecurity events — these are GOLD. Don't skip them because they scored
    low on intensity. A billion-dollar deal dying is a bigger story than most wars.
@@ -1062,7 +1065,7 @@ STRICT FORMATTING RULES:
 - Each item starts with ">" on its own line
 - No jargon. No scores. No analysis paragraphs.
 - No [NEW] or [ONGOING] tags. No confidence tags. Just sharp writing.
-- Use real names, real numbers, real dollar amounts.
+- Use real names and real numbers — but ONLY numbers that appear in the data. If a figure isn't in the data, go qualitative instead of inventing it.
 - Target 400-600 words total. Short and punchy beats long and thorough.
 - Do NOT start with a date line or title. Jump straight into WHAT JUST HAPPENED.
 
