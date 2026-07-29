@@ -1673,8 +1673,8 @@ async def ask_moodlight(req: AskRequest, request: Request):
     question = req.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
-    if len(question) > 500:
-        raise HTTPException(status_code=400, detail="Question too long (500 char max).")
+    if len(question) > 2000:
+        raise HTTPException(status_code=400, detail="Question too long (2000 char max).")
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:

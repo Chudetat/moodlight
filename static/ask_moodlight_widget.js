@@ -534,7 +534,7 @@
         <div class="ml-search-container">
           <input class="ml-search-bar" id="ml-input" type="text"
                  placeholder="Ask about any brand, trend, or strategy..."
-                 maxlength="500" style="font-size: 14px; padding: 12px 48px 12px 18px;"
+                 maxlength="2000" style="font-size: 14px; padding: 12px 48px 12px 18px;"
                  onkeydown="if(event.key==='Enter')window._mlSend()">
           <button class="ml-search-btn" id="ml-send-btn" onclick="window._mlSend()" style="width: 36px; height: 36px;">
             <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
@@ -558,7 +558,7 @@
       <div class="ml-search-container">
         <input class="ml-search-bar" id="ml-input" type="text"
                placeholder="Ask about any brand, trend, or strategy..."
-               maxlength="500"
+               maxlength="2000"
                onkeydown="if(event.key==='Enter')window._mlSend()">
         <button class="ml-search-btn" id="ml-send-btn" onclick="window._mlSend()">
           <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
