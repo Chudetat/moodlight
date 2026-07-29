@@ -1060,8 +1060,22 @@
     wrap.className = "ml-recent";
     wrap.style.cssText = "margin-top:12px;";
     var head = document.createElement("div");
-    head.textContent = "Recent questions";
-    head.style.cssText = "text-transform:uppercase;letter-spacing:.06em;color:#8a8a8a;font-size:10px;margin-bottom:4px;";
+    head.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;";
+    var headLabel = document.createElement("span");
+    headLabel.textContent = "Recent questions";
+    headLabel.style.cssText = "text-transform:uppercase;letter-spacing:.06em;color:#8a8a8a;font-size:10px;";
+    var clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.textContent = "Clear";
+    clearBtn.style.cssText = "text-transform:uppercase;letter-spacing:.06em;color:#8a8a8a;font-size:10px;background:none;border:none;padding:0;cursor:pointer;";
+    clearBtn.onmouseover = function () { clearBtn.style.color = "#3a3a3a"; };
+    clearBtn.onmouseout = function () { clearBtn.style.color = "#8a8a8a"; };
+    clearBtn.onclick = function () {
+      try { localStorage.removeItem(ML_RECENT_KEY); } catch (e) {}
+      wrap.remove();  // list is now empty — remove the whole block
+    };
+    head.appendChild(headLabel);
+    head.appendChild(clearBtn);
     wrap.appendChild(head);
     arr.forEach(function (r, i) {
       var item = document.createElement("button");
