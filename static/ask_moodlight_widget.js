@@ -740,7 +740,7 @@
     btn.onclick = function () {
       el.remove();
       window._mlSend({
-        question: "Pressure-test the read above: give me the strongest counter-case, the biggest downside, and 2-3 distinct ways to play it with the tradeoff on each. Keep it tight.",
+        question: "Deepen the read above without undermining it. Three things: (1) take the strongest objection a skeptic would raise, then HANDLE it — say why the call still holds, or name the one condition that would flip it; don't leave the objection hanging. (2) the real downside to manage if the read is right. (3) 2-3 distinct ways to play it, with the tradeoff on each. Keep the conviction of the original read intact — this is stress-testing it, not second-guessing it. Keep it tight.",
         label: "Counter-case & options →",
       });
     };
