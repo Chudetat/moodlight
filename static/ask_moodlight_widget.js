@@ -730,7 +730,7 @@
     el.style.cssText = "margin-top: 8px;";
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = "Counter-case & Options →";
+    btn.textContent = "Pressure-test & Options →";
     btn.style.cssText =
       "display:inline-block; background:none; border:1px solid rgba(0,0,0,0.18);" +
       "border-radius:20px; padding:8px 20px; font-size:13px; color:rgba(45,45,45,0.85);" +
@@ -741,7 +741,7 @@
       el.remove();
       window._mlSend({
         question: "Deepen the read above without undermining it. Three things: (1) take the strongest objection a skeptic would raise, then HANDLE it — say why the call still holds, or name the one condition that would flip it; don't leave the objection hanging. (2) the real downside to manage if the read is right. (3) 2-3 distinct ways to play it, with the tradeoff on each. Keep the conviction of the original read intact — this is stress-testing it, not second-guessing it. Keep it tight.",
-        label: "Counter-case & options →",
+        label: "Pressure-test & options →",
       });
     };
     el.appendChild(btn);
