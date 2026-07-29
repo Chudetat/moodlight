@@ -586,13 +586,16 @@
   }
 
   // ── Chat logic ──
-  window._mlSend = async function () {
+  window._mlSend = async function (preset) {
     const input = document.getElementById("ml-input");
     const sendBtn = document.getElementById("ml-send-btn");
     const messages = document.getElementById("ml-messages");
     if (!input || !messages) return;
 
-    const question = input.value.trim();
+    // `preset` = {question, label} when fired by an action pill (e.g. Counter-case
+    // & Options): send the crafted prompt but display a clean label. Undefined for
+    // normal input.
+    const question = (preset && preset.question) || input.value.trim();
     if (!question) return;
     if (queriesRemaining <= 0 && !isPaid) {
       showUnlockPrompt(messages);
@@ -604,9 +607,9 @@
       return;
     }
 
-    // Add user query
-    addResult(messages, "user", question);
-    input.value = "";
+    // Add user query (preset action pills show a clean label, not the crafted prompt)
+    addResult(messages, "user", (preset && preset.label) || question);
+    if (!preset) input.value = "";
     input.disabled = true;
     sendBtn.disabled = true;
 
@@ -659,7 +662,7 @@
       updateBadge();
 
       var answerEl = addResult(messages, "assistant", data.answer);
-      mlSaveRecent(question, data.answer);
+      mlSaveRecent((preset && preset.label) || question, data.answer);
 
       // Persist brief fields immediately so the marketplace can
       // auto-fill even if the user scrolls down manually instead
@@ -683,6 +686,7 @@
       // structured `recommended_agent` on every answer now; if it's
       // missing we fall back to a generic brand-auditor nudge.
       showAgentCta(messages, data);
+      if (!preset) showDeepenPill(messages);
       showNewQuestionBtn(messages);
       // Align the answer's TOP to the top of the scroll container (#ml-messages,
       // the overflow-y:auto element) so the user reads the response from the
@@ -711,6 +715,36 @@
     const el = document.createElement("div");
     el.className = "ml-new-question";
     el.innerHTML = '<button class="ml-new-question-btn" onclick="window._mlClear()">Ask a new question</button>';
+    container.appendChild(el);
+  }
+
+  // On-demand "go deeper" pill. Fires a crafted follow-up (strongest counter-case
+  // + biggest downside + 2-3 ways to play it with tradeoffs) through the normal
+  // /api/ask flow so the sharp POV stays intact and the decision layer appends
+  // below it. Shown only on fresh answers; removes itself once used.
+  function showDeepenPill(container) {
+    const existing = container.querySelector(".ml-deepen");
+    if (existing) existing.remove();
+    const el = document.createElement("div");
+    el.className = "ml-deepen";
+    el.style.cssText = "margin-top: 8px;";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "Counter-case & Options →";
+    btn.style.cssText =
+      "display:inline-block; background:none; border:1px solid rgba(0,0,0,0.18);" +
+      "border-radius:20px; padding:8px 20px; font-size:13px; color:rgba(45,45,45,0.85);" +
+      "cursor:pointer; font-family:'Newsreader', Georgia, serif; transition:all 0.2s;";
+    btn.onmouseover = function () { btn.style.borderColor = "rgba(0,0,0,0.4)"; btn.style.color = "#2D2D2D"; };
+    btn.onmouseout = function () { btn.style.borderColor = "rgba(0,0,0,0.18)"; btn.style.color = "rgba(45,45,45,0.85)"; };
+    btn.onclick = function () {
+      el.remove();
+      window._mlSend({
+        question: "Pressure-test the read above: give me the strongest counter-case, the biggest downside, and 2-3 distinct ways to play it with the tradeoff on each. Keep it tight.",
+        label: "Counter-case & options →",
+      });
+    };
+    el.appendChild(btn);
     container.appendChild(el);
   }
 
