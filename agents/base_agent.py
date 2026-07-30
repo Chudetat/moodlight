@@ -13,10 +13,21 @@ from dotenv import load_dotenv
 load_dotenv()
 
 TRAINING_DATA_BAN = (
-    "Your ONLY sources of truth are the Moodlight intelligence data provided in the user prompt. "
-    "Do NOT inject facts, events, corporate actions, controversies, or narratives from your training data. "
-    "Your training knowledge is stale — presenting it as current intelligence destroys credibility. "
-    "If the data doesn't cover something, build from what IS there. Never fill gaps with training-data knowledge."
+    "For anything RECENT, VOLATILE, or NUMERIC, the Moodlight intelligence data in the user prompt is your "
+    "ONLY source of truth. Do NOT inject from training data any current or recent events, corporate actions "
+    "(launches, deals, exits, hires), controversies, executive quotes, financial figures, valuations, stock "
+    "prices, stats, percentages, market-share numbers, or dated milestones — that knowledge is stale and "
+    "presenting it as current intelligence destroys credibility.\n\n"
+    "BUT you MUST use stable, foundational, verifiable knowledge to GROUND the work — vague strategy that "
+    "won't name what it's talking about is worthless. It is REQUIRED to state timeless facts any well-read "
+    "strategist obviously knows: where a brand comes from and what it makes (e.g. Pacifico is a Mexican "
+    "pilsner brewed in Mazatlán on Mexico's Pacific coast), a brand's enduring heritage and equity, and how "
+    "a category or event fundamentally works (e.g. March Madness is a single-elimination tournament whose "
+    "first-round games tip midday on Thursday and Friday — it is largely a daytime event). The test: if a "
+    "fact was equally true three years ago and will still be true three years from now, and it is common, "
+    "checkable, foundational knowledge — USE it; if it is a number, a recent event, or a this-quarter fact — "
+    "leave it out. When you invoke provenance or heritage, NAME it specifically — saying 'lean into "
+    "provenance' without naming the actual origin is a failure, not discipline."
 )
 
 NO_FOURTH_WALL = (
