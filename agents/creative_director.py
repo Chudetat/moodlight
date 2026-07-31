@@ -154,14 +154,16 @@ End with: "Act now because: [one sentence]"
 - One that leads with aspiration
 - One that's provocative/contrarian
 
-**Campaign Concepts (3-4 concepts):**
-For each concept:
-- **Name**: A campaign name that could go on a brief
-- **The Concept**: One paragraph. What is it, what does it look like, why does it work right now? Must feel like it could ONLY exist this week.
-- **Why This Moment**: One sentence connecting it to a specific data signal
-- **Steal This Line**: One sentence ready for a deck. Must make someone uncomfortable to say out loud.
+**The Platform + Executions (ONE spine, not a menu of concepts):**
+From everything above, pick the SINGLE strongest, most ownable, most buildable idea — that is the platform. Lead with it and let it own the page. Then give 2-3 executions that PROVE and extend that one platform. Everything must live in ONE territory and ladder to the platform. Do NOT produce separate concepts in different territories — that is exactly the failure that makes an output read as disconnected and unclear.
+For the platform and each execution:
+- **Name**: the name IS the idea, not a label for it — a non-creative should get it on hearing it.
+- **What it is**: one tight paragraph — concrete, buildable next month, human-scale.
+- **Say it plainly**: one sentence a skeptical CMO could repeat back correctly. If it needs decoding, rewrite until it lands instantly.
+- **Would they buy it**: one line on why a real brand actually builds this — if it would get laughed out of a boardroom, cut it.
+- **Why now**: one line tying it to a live signal.
 
-Each concept should represent a genuinely different creative territory — not three versions of the same idea at different volume levels.
+End with one sentence naming the single platform.
 
 End with: "This is your starting point, not your ceiling."
 

@@ -84,6 +84,22 @@ INEVITABILITY_BAR = (
     "clever. Your job is to surface the answer the operator cannot un-see."
 )
 
+ONE_SPINE = (
+    "IDEA DISCIPLINE — applies whenever you propose ideas, concepts, or executions:\n"
+    "- ONE SPINE. Everything ladders to a single platform idea — one ownable territory, one mechanic. "
+    "Pick the strongest, most ownable, most buildable idea and make it the spine; every other idea must "
+    "be a proof or execution OF that spine, never a separate concept in a different territory. If two "
+    "ideas serve different insights, keep the stronger and cut the other. A scatter of half-connected "
+    "concepts across different territories reads as NO idea at all — it is the most common failure. "
+    "Fewer and deeper beats a menu: one platform plus two or three executions that prove it.\n"
+    "- THE BOARDROOM TEST. Every idea must survive a skeptical CMO asking 'would we actually buy and "
+    "build this?' Kill precious conceptual flexes ('spend real money on nothing'), commercially "
+    "illiterate stunts, and anything that would get laughed out of the room.\n"
+    "- THE PLAIN-SENTENCE TEST. State each idea in ONE plain sentence a non-creative could repeat back "
+    "correctly. If it needs decoding — a cryptic gesture, an oblique metaphor — rewrite until it lands "
+    "instantly. Clear and buildable beats clever and oblique, every time."
+)
+
 # Shared with the standalone report generators — single source of truth in shared_prompts.py
 from shared_prompts import CULTURAL_PRESENCE_NOT_SALIENCE
 
@@ -134,7 +150,7 @@ class MoodlightAgent:
         return (
             f"{self.system_prompt}\n\n{TRAINING_DATA_BAN}\n\n"
             f"{CULTURAL_PRESENCE_NOT_SALIENCE}\n\n"
-            f"{NO_FOURTH_WALL}\n\n{NO_INSTRUMENT_LEAKS}\n\n{NO_DATA_RECAP}\n\n{INEVITABILITY_BAR}"
+            f"{NO_FOURTH_WALL}\n\n{NO_INSTRUMENT_LEAKS}\n\n{NO_DATA_RECAP}\n\n{INEVITABILITY_BAR}\n\n{ONE_SPINE}"
         )
 
     def _render_upstream_context(self, upstream_context):
