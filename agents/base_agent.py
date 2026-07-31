@@ -54,6 +54,17 @@ NO_INSTRUMENT_LEAKS = (
     "points. Engagement counts and scarcity scores belong in your analysis, never in the deliverable."
 )
 
+NO_DATA_RECAP = (
+    "Lead with your thinking, not a summary of the inputs. The reader has the brief and does NOT "
+    "want the data read back to them. Do NOT open with — or dedicate a section to — a recap of the "
+    "situation, the signals, the emotional climate, the market data, or the headlines. If the "
+    "instructions below mandate a 'situation assessment', 'landscape', 'where to play', or 'timing' "
+    "section, keep it to two or three sentences of pointed insight and move on — never a full recap. "
+    "Use every data point as FUEL for a conclusion, cited in-line only where it drives a specific "
+    "point, never as standalone summary. Your first paragraph must be an insight the reader could not "
+    "have written themselves — not a description of what the data says."
+)
+
 INEVITABILITY_BAR = (
     "THE BAR — read before you write anything: Every non-trivial insight you ship must be "
     "INNOVATIVE AND INEVITABLE. Innovative means no other tool or agency in this category "
@@ -123,7 +134,7 @@ class MoodlightAgent:
         return (
             f"{self.system_prompt}\n\n{TRAINING_DATA_BAN}\n\n"
             f"{CULTURAL_PRESENCE_NOT_SALIENCE}\n\n"
-            f"{NO_FOURTH_WALL}\n\n{NO_INSTRUMENT_LEAKS}\n\n{INEVITABILITY_BAR}"
+            f"{NO_FOURTH_WALL}\n\n{NO_INSTRUMENT_LEAKS}\n\n{NO_DATA_RECAP}\n\n{INEVITABILITY_BAR}"
         )
 
     def _render_upstream_context(self, upstream_context):
@@ -142,11 +153,22 @@ class MoodlightAgent:
         parts = [
             "# PRIOR ANALYSIS FROM UPSTREAM AGENTS IN THIS SESSION",
             "",
-            "The user has already run one or more Moodlight agents on this same brief. "
-            "Their outputs are included below as additional grounding. Use this prior work "
-            "to sharpen and build on — do NOT repeat it. The brief that follows in the main "
-            "user prompt is still the source of truth; this section is additive context, not "
-            "a replacement for the brief.",
+            "The reader has ALREADY seen the agent output(s) below — on this same brief, moments "
+            "ago. They already have the situation, the signals, the emotional climate, the "
+            "headlines, and every data point cited. Your job is to ADVANCE the thinking, not "
+            "re-lay the groundwork. Hard rules:\n"
+            "1. Do NOT open with a situation assessment, landscape read, or data recap. If the "
+            "instructions below ask for one (a 'situation assessment', 'where to play', or "
+            "'timing' section), COMPRESS it to a single sentence that points back to the prior "
+            "agents' read — do not reproduce it. The agents above already set the table.\n"
+            "2. Do NOT re-cite signals, statistics, headlines, market moves, or framings the prior "
+            "agents already used. Assume the reader remembers them. Reference one in a few words "
+            "ONLY to build on it (e.g. 'given the flat emotional read already established…'), never "
+            "to re-explain it.\n"
+            "3. Every paragraph you write must be NET-NEW — the layer the prior agents did not "
+            "reach. If a paragraph could have appeared in one of their outputs, cut it.\n"
+            "Treat their work as established and build the next floor on top of it. The brief in "
+            "the main user prompt below is still the source of truth.",
             "",
         ]
         for item in entries:
