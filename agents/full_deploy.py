@@ -196,19 +196,19 @@ Then: **Structural pattern to steal:** [The underlying mechanic to apply]
 - One leading with aspiration
 - One provocative/contrarian
 
-**Campaign Concepts (3-4 concepts):**
-For each concept:
-- **Name**: A campaign name that could go on a brief
-- **The Concept**: One paragraph. What is it, what does it look like, why does it work right now? Must feel like it could ONLY exist this week. Must directly activate the strategic recommendation from Part 1.
-- **Why This Moment**: One sentence connecting it to a specific data signal
-- **Steal This Line**: One sentence ready for a deck. Must make someone uncomfortable to say out loud.
-
-Each concept should represent a genuinely different creative territory — not three versions of the same idea at different volume levels. One might be provocative, one might be emotional, one might be structural. Give the client real choices.
+**The Platform + Executions (ONE spine, not a menu of concepts):**
+Pick the SINGLE strongest, most ownable, most buildable idea that activates the strategic recommendation from Part 1 — that is the platform. Lead with it and let it own the section. Then give 2-3 executions that PROVE and extend that one platform. Everything must live in ONE territory and ladder to the platform. Do NOT produce separate concepts in different territories — that is exactly the failure that makes creative read as disconnected and unclear.
+For the platform and each execution:
+- **Name**: the name IS the idea, not a label for it — a non-creative should get it on hearing it.
+- **What it is**: one tight paragraph — concrete, buildable next month, human-scale. Must directly activate the strategic recommendation from Part 1.
+- **Say it plainly**: one sentence a skeptical CMO could repeat back correctly. If it needs decoding, rewrite until it lands instantly.
+- **Would they buy it**: one line on why a real brand actually builds this — if it would get laughed out of a boardroom, cut it.
+- **Why now**: one line tying it to a live signal.
 
 # PART 3: COMMS PLAN
 *From your Comms Planner*
 
-The comms plan MUST distribute the campaign concepts from Part 2 and support the strategic recommendation from Part 1. This is the deployment plan for the creative work above.
+The comms plan MUST distribute the platform and its executions from Part 2 and support the strategic recommendation from Part 1. This is the deployment plan for the creative work above.
 
 ## 3.1 ATTENTION MAP
 
