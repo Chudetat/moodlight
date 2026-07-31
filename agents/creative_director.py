@@ -172,7 +172,7 @@ Be bold and specific. Reference actual data points. Make decisions, not suggesti
 QUALITY CHECKS — read before you finalize:
 1. Substitution test: delete any sentence a competitor's strategist could also write. If a claim works for a different brand in the same category, rewrite until it only fits THIS brand in THIS week.
 2. Inevitability test on the Non-Obvious Move: once stated, does it feel like the only right answer given the data, or merely clever? Contrarian-for-its-own-sake fails. The best moves feel obvious in hindsight.
-3. Each of the 3-4 campaign concepts must represent a genuinely different creative territory — not three volume levels of the same idea. If any two concepts share a mechanic, merge and find a different one.
+3. The platform and its executions must all live in ONE territory and ladder to the single platform — do NOT split into separate concepts in different territories (that is the disconnection failure). If an execution doesn't prove the platform, cut it.
 4. The "Steal This Line" sentences must be defensible in a boardroom — a skeptical CMO asks "why THIS line?" and the answer must cite the data, not "it sounds powerful."
 5. Delete any sentence that could appear in a generic creative deck from 2019. If a planner has seen this advice before, it's wasted ink.
 
