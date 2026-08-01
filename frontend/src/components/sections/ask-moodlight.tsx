@@ -13,6 +13,7 @@ function ChatContent() {
   const { messages, addMessage, clearMessages } = useChatStore();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sharpen, setSharpen] = useState<{ options: string[]; original: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -22,13 +23,10 @@ function ChatContent() {
     });
   }, [messages]);
 
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault();
-    if (!input.trim() || loading) return;
-
-    const userMsg = input.trim();
-    setInput("");
-    addMessage({ role: "user", content: userMsg });
+  async function send(text: string, skipSharpen = false) {
+    if (!text.trim() || loading) return;
+    setSharpen(null);
+    addMessage({ role: "user", content: text });
     setLoading(true);
 
     try {
@@ -36,19 +34,26 @@ function ChatContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: userMsg,
+          message: text,
           username: username || "admin",
           conversation_history: messages.map((m) => ({
             role: m.role,
             content: m.content,
           })),
+          supports_sharpen: true,
+          skip_sharpen: skipSharpen,
         }),
       });
       const data = await res.json();
-      addMessage({
-        role: "assistant",
-        content: data.response || data.answer || JSON.stringify(data),
-      });
+      // Thin-query sharpener: vague query returned richer premises to pick from.
+      if (data.sharpen_options && data.sharpen_options.length) {
+        setSharpen({ options: data.sharpen_options, original: text });
+      } else {
+        addMessage({
+          role: "assistant",
+          content: data.response || data.answer || JSON.stringify(data),
+        });
+      }
     } catch {
       addMessage({
         role: "assistant",
@@ -57,6 +62,14 @@ function ChatContent() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    const userMsg = input.trim();
+    if (!userMsg || loading) return;
+    setInput("");
+    await send(userMsg, false);
   }
 
   return (
@@ -95,6 +108,32 @@ function ChatContent() {
             </div>
           </div>
         ))}
+        {sharpen && !loading && (
+          <div className="flex justify-start">
+            <div className="flex flex-col gap-2" style={{ maxWidth: "90%" }}>
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Sharpen your ask — pick an angle
+              </span>
+              {sharpen.options.map((opt, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => send(opt, true)}
+                  className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-left text-sm transition-colors hover:border-primary"
+                >
+                  {opt}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => send(sharpen.original, true)}
+                className="text-left text-xs text-muted-foreground underline"
+              >
+                Ask what I typed anyway
+              </button>
+            </div>
+          </div>
+        )}
         {loading && (
           <div className="flex justify-start">
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">

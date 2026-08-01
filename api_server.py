@@ -1580,6 +1580,8 @@ class AskRequest(BaseModel):
     username: str = "admin"
     conversation_history: list[dict] = []
     last_search_info: Optional[dict] = None
+    supports_sharpen: bool = False  # client can render thin-query sharpen options
+    skip_sharpen: bool = False  # user picked/edited a sharpened option — answer directly
 
 
 @app.post("/api/ask")
@@ -1590,6 +1592,17 @@ def ask(req: AskRequest, payload: dict = Depends(require_auth)):
     engine = _require_engine()
 
     from ask_engine import ask_moodlight
+
+    # Thin-query sharpener: if the query is vague, return 3 richer premises to pick
+    # from instead of answering it badly. Runs before synthesis; fails safe.
+    if req.supports_sharpen and not req.skip_sharpen:
+        try:
+            from ask_sharpen import triage_and_sharpen
+            sharpen = triage_and_sharpen(req.message, has_history=bool(req.conversation_history))
+        except Exception:
+            sharpen = {"thin": False, "options": []}
+        if sharpen["thin"]:
+            return {"answer": "", "response": "", "sharpen_options": sharpen["options"]}
 
     result = ask_moodlight(
         message=req.message,
