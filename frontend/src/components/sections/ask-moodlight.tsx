@@ -23,7 +23,7 @@ function ChatContent() {
     });
   }, [messages]);
 
-  async function send(text: string, skipSharpen = false) {
+  async function send(text: string, skipSharpen = false, pick?: string, original?: string) {
     if (!text.trim() || loading) return;
     setSharpen(null);
     addMessage({ role: "user", content: text });
@@ -42,6 +42,8 @@ function ChatContent() {
           })),
           supports_sharpen: true,
           skip_sharpen: skipSharpen,
+          sharpen_pick: pick,
+          sharpen_original: original,
         }),
       });
       const data = await res.json();
@@ -118,7 +120,7 @@ function ChatContent() {
                 <button
                   key={i}
                   type="button"
-                  onClick={() => send(opt, true)}
+                  onClick={() => send(opt, true, String(i + 1), sharpen.original)}
                   className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-left text-sm transition-colors hover:border-primary"
                 >
                   {opt}
@@ -126,7 +128,7 @@ function ChatContent() {
               ))}
               <button
                 type="button"
-                onClick={() => send(sharpen.original, true)}
+                onClick={() => send(sharpen.original, true, "original", sharpen.original)}
                 className="text-left text-xs text-muted-foreground underline"
               >
                 Ask what I typed anyway

@@ -1538,6 +1538,8 @@ class AskRequest(BaseModel):
     email: str | None = None  # optional — enables saved-team lookup
     supports_sharpen: bool = False  # client can render thin-query sharpen options
     skip_sharpen: bool = False  # user picked/edited a sharpened option — answer it directly
+    sharpen_pick: str | None = None  # diagnostic: '1'|'2'|'3'|'original' — which sharpen option was chosen
+    sharpen_original: str | None = None  # diagnostic: the thin query the pick came from
 
 
 class AskResponse(BaseModel):
@@ -1681,6 +1683,14 @@ async def ask_moodlight(req: AskRequest, request: Request):
     if len(question) > 2000:
         raise HTTPException(status_code=400, detail="Question too long (2000 char max).")
 
+    # Diagnostic (internal only): log the sharpener pick, if this request is one.
+    if req.sharpen_pick:
+        try:
+            from ask_sharpen import log_sharpen_event
+            log_sharpen_event("picked", "widget", req.sharpen_original or "", picked=req.sharpen_pick, picked_text=question)
+        except Exception:
+            pass
+
     # Thin-query sharpener: if the query is vague, offer 3 richer premises to pick
     # from instead of answering it badly. Runs BEFORE any expensive work and before
     # the query is recorded, so returning options costs the user nothing. Fails safe.
@@ -1691,6 +1701,11 @@ async def ask_moodlight(req: AskRequest, request: Request):
         except Exception:
             sharpen = {"thin": False, "options": []}
         if sharpen["thin"]:
+            try:
+                from ask_sharpen import log_sharpen_event
+                log_sharpen_event("shown", "widget", question, options=sharpen["options"])
+            except Exception:
+                pass
             return AskResponse(
                 answer="",
                 queries_remaining=(999 if is_paid else max(0, RATE_LIMIT - len(_rate_store[_hash_ip(client_ip)]))),

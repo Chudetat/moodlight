@@ -92,3 +92,44 @@ def triage_and_sharpen(question: str, has_history: bool = False) -> dict:
         return {"thin": True, "options": opts}
     except Exception:
         return {"thin": False, "options": []}
+
+
+def log_sharpen_event(kind, surface, thin_query, options=None, picked=None, picked_text=None):
+    """Best-effort diagnostic log to sharpen_events. Never raises — logging must
+    never break a request.
+
+    kind='shown'  -> the sharpener fired and offered options (one per thin query).
+    kind='picked' -> the user resolved: picked='1'|'2'|'3' (option index) or
+                     'original' (asked their original / hit the escape).
+
+    Aggregate adoption = count(picked) / count(shown); pick distribution shows
+    which reframes land. Internal only — never surfaced to the user."""
+    try:
+        import json
+        import psycopg2
+        dsn = os.environ.get("DATABASE_URL")
+        if not dsn:
+            return
+        conn = psycopg2.connect(dsn)
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS sharpen_events (
+                   id serial PRIMARY KEY,
+                   created_at timestamptz DEFAULT now(),
+                   kind varchar,
+                   surface varchar,
+                   thin_query text,
+                   options text,
+                   picked varchar,
+                   picked_text text
+               )"""
+        )
+        cur.execute(
+            "INSERT INTO sharpen_events (kind, surface, thin_query, options, picked, picked_text) "
+            "VALUES (%s, %s, %s, %s, %s, %s)",
+            (kind, surface, thin_query, json.dumps(options) if options else None, picked, picked_text),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
