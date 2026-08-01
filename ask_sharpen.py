@@ -130,6 +130,48 @@ def more_options(question, exclude=None, n=1):
         return []
 
 
+_EXPLORE_PROMPT = """You are a sharp strategist inside a cultural-intelligence tool. A user asked:
+"{q}"
+
+They just received this answer, which is grounded in Moodlight's live, real-time signal:
+---
+{answer}
+---
+
+Offer {n} genuinely sharp NEXT angles to explore — each a deeper cut or an adjacent territory the answer opened up, and each ANCHORED in the specific intelligence above (a signal, tension, number, or fact the answer surfaced). These must be angles only someone who read THIS answer and THIS week's live signal could pose — NOT generic "related questions." If an angle would read the same without Moodlight's data, cut it. Each must differ from the others and from anything here:
+{exclude}
+
+One sentence each, phrased the way the user would ask it. Return ONLY valid JSON: {{"options": ["..."]}}"""
+
+
+def explore_next(question, answer, exclude=None, n=3):
+    """After an answer, generate n sharp NEXT angles anchored in that answer's
+    live-signal intelligence (deepen with what Moodlight actually surfaced, never
+    generic). Never raises; returns [] on any issue."""
+    try:
+        if not answer or not answer.strip():
+            return []
+        excl = "\n".join(f"- {e}" for e in (exclude or [])) or "(none yet)"
+        client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        raw = _extract_text(
+            client.messages.create(
+                model=SHARPEN_MODEL,
+                max_tokens=500,
+                messages=[{"role": "user", "content": _EXPLORE_PROMPT.format(
+                    q=question, answer=answer.strip()[:2500], exclude=excl, n=n)}],
+            )
+        )
+        m = re.search(r"\{.*\}", raw, re.S)
+        if not m:
+            return []
+        opts = [o.strip() for o in json.loads(m.group(0)).get("options", []) if isinstance(o, str) and o.strip()]
+        excl_lower = {e.strip().lower() for e in (exclude or [])}
+        opts = [o for o in opts if o.lower() not in excl_lower]
+        return opts[:n]
+    except Exception:
+        return []
+
+
 def log_sharpen_event(kind, surface, thin_query, options=None, picked=None, picked_text=None):
     """Best-effort diagnostic log to sharpen_events. Never raises — logging must
     never break a request.

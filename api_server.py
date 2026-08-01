@@ -1584,8 +1584,9 @@ class AskRequest(BaseModel):
     skip_sharpen: bool = False  # user picked/edited a sharpened option — answer directly
     sharpen_pick: str | None = None  # diagnostic: '1'|'2'|'3'|'original' — which sharpen option was chosen
     sharpen_original: str | None = None  # diagnostic: the thin query the pick came from
-    sharpen_more: bool = False  # exploration loop: return 1 fresh option (no answer)
+    sharpen_more: bool = False  # exploration loop: return fresh option(s), no answer
     sharpen_exclude: list[str] | None = None  # options already shown — avoid repeats
+    explore_answer: str | None = None  # explore-next: ground the next angles in this answer
 
 
 @app.post("/api/ask")
@@ -1600,8 +1601,11 @@ def ask(req: AskRequest, payload: dict = Depends(require_auth)):
     # Exploration loop: return one fresh sharpened option (excluding those shown), no answer.
     if req.sharpen_more:
         try:
-            from ask_sharpen import more_options, log_sharpen_event
-            more = more_options(req.sharpen_original or req.message, exclude=req.sharpen_exclude or [], n=1)
+            from ask_sharpen import more_options, explore_next, log_sharpen_event
+            if req.explore_answer:
+                more = explore_next(req.sharpen_original or req.message, req.explore_answer, exclude=req.sharpen_exclude or [], n=3)
+            else:
+                more = more_options(req.sharpen_original or req.message, exclude=req.sharpen_exclude or [], n=1)
             if more:
                 log_sharpen_event("shown", "dashboard", req.sharpen_original or req.message, options=more)
         except Exception:

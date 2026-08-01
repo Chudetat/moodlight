@@ -609,7 +609,7 @@
 
     // Add user query (preset action pills show a clean label, not the crafted prompt)
     addResult(messages, "user", (preset && preset.label) || question);
-    if (!preset) input.value = "";
+    if (!preset) { input.value = ""; window._mlExplorePool = []; }
     input.disabled = true;
     sendBtn.disabled = true;
 
@@ -708,10 +708,13 @@
       showAgentCta(messages, data);
       if (!preset) showDeepenPill(messages);
       showNewQuestionBtn(messages);
-      // Exploration loop: after a sharpened pick is answered, re-offer the angles
-      // the user didn't take + one freshly generated, keeping the tray at three.
-      if (preset && preset.sharpen_pick && preset.sharpen_pick !== "original") {
+      // After the answer: a thin-query pick re-offers its sibling angles; every
+      // other answer gets grounded "explore next" angles drawn from the answer itself.
+      var _sp = preset && preset.sharpen_pick;
+      if (_sp && _sp !== "original" && _sp !== "explore") {
         mlRefreshSharpen(messages, preset.question);
+      } else if (data.answer) {
+        mlExploreNext(messages, question, data.answer);
       }
       // Align the answer's TOP to the top of the scroll container (#ml-messages,
       // the overflow-y:auto element) so the user reads the response from the
@@ -797,6 +800,54 @@
     state.currentTray = tray;
     state.shownPool = (state.shownPool || []).concat(extra);
     mlRenderSharpen(container, tray, state.original);
+  }
+
+  // Explore-next: after any answer, offer sharp NEXT angles drawn from that answer's
+  // live-signal intelligence (grounded, never generic). Loops as the user picks.
+  async function mlExploreNext(container, question, answer) {
+    if (!answer) return;
+    const pool = window._mlExplorePool || [];
+    let opts = [];
+    try {
+      const res = await fetch(API_BASE + "/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: question,
+          token: paidToken,
+          sharpen_more: true,
+          sharpen_original: question,
+          explore_answer: answer,
+          sharpen_exclude: pool,
+        }),
+      });
+      const d = await res.json();
+      opts = d.sharpen_options || [];
+    } catch (e) {}
+    if (!opts.length) return;
+    window._mlExplorePool = pool.concat(opts);
+    mlRenderExplore(container, opts, question);
+  }
+
+  function mlRenderExplore(container, options) {
+    const wrap = document.createElement("div");
+    wrap.className = "ml-sharpen ml-explore";
+    wrap.style.cssText = "margin:12px 0 4px;";
+    let html = '<div style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#8a8a8a;margin-bottom:8px;">Explore next</div>';
+    options.forEach(function (opt) {
+      const safe = String(opt).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+      html += '<button class="ml-sharpen-opt" data-q="' + encodeURIComponent(opt) + '" style="display:block;width:100%;text-align:left;margin:0 0 8px;padding:12px 14px;border:1px solid #e3e0d8;border-radius:12px;background:#fbfaf7;color:#1a1a1a;font-size:13.5px;line-height:1.45;cursor:pointer;">' + safe + '</button>';
+    });
+    wrap.innerHTML = html;
+    wrap.querySelectorAll(".ml-sharpen-opt").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const q = decodeURIComponent(btn.getAttribute("data-q"));
+        wrap.remove();
+        window._mlSend({ question: q, label: q, skip_sharpen: true, sharpen_pick: "explore", sharpen_original: q });
+      });
+    });
+    container.appendChild(wrap);
+    container.scrollTop = container.scrollHeight;
   }
 
   // On-demand "go deeper" pill. Fires a crafted follow-up (strongest counter-case

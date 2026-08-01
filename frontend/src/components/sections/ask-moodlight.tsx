@@ -14,6 +14,8 @@ function ChatContent() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sharpen, setSharpen] = useState<{ options: string[]; original: string; pool: string[] } | null>(null);
+  const [explore, setExplore] = useState<{ options: string[] } | null>(null);
+  const explorePool = useRef<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,11 +55,41 @@ function ChatContent() {
     if (tray.length) setSharpen({ options: tray, original, pool: [...prevPool, ...extra] });
   }
 
+  // Explore-next: after any answer, offer sharp NEXT angles drawn from that answer's
+  // live-signal intelligence (grounded, never generic). Loops as the user picks.
+  async function exploreNext(question: string, answer: string) {
+    if (!answer) return;
+    const pool = explorePool.current;
+    let opts: string[] = [];
+    try {
+      const res = await fetch("/api/proxy/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: question,
+          username: username || "admin",
+          conversation_history: [],
+          sharpen_more: true,
+          sharpen_original: question,
+          explore_answer: answer,
+          sharpen_exclude: pool,
+        }),
+      });
+      const d = await res.json();
+      opts = d.sharpen_options || [];
+    } catch {}
+    if (!opts.length) return;
+    explorePool.current = [...pool, ...opts];
+    setExplore({ options: opts });
+  }
+
   async function send(text: string, skipSharpen = false, pick?: string, original?: string) {
     if (!text.trim() || loading) return;
     const prevTray = sharpen?.options || [];
     const prevPool = sharpen?.pool || [];
     setSharpen(null);
+    setExplore(null);
+    if (!pick) explorePool.current = [];
     addMessage({ role: "user", content: text });
     setLoading(true);
 
@@ -83,14 +115,14 @@ function ChatContent() {
       if (data.sharpen_options && data.sharpen_options.length) {
         setSharpen({ options: data.sharpen_options, original: text, pool: data.sharpen_options });
       } else {
-        addMessage({
-          role: "assistant",
-          content: data.response || data.answer || JSON.stringify(data),
-        });
-        // After a sharpened pick is answered, re-offer the other angles + a fresh
-        // one (fire-and-forget so the answer isn't blocked on the +1 generation).
-        if (pick && pick !== "original") {
+        const answerText = data.response || data.answer || JSON.stringify(data);
+        addMessage({ role: "assistant", content: answerText });
+        // A thin-query pick re-offers its sibling angles; every other answer gets
+        // grounded "explore next" angles drawn from the answer. Fire-and-forget.
+        if (pick && pick !== "original" && pick !== "explore") {
           void refreshSharpen(text, prevTray, prevPool, original || text);
+        } else if (data.response || data.answer) {
+          void exploreNext(text, answerText);
         }
       }
     } catch {
@@ -170,6 +202,25 @@ function ChatContent() {
               >
                 Ask what I typed anyway
               </button>
+            </div>
+          </div>
+        )}
+        {explore && !loading && (
+          <div className="flex justify-start">
+            <div className="flex flex-col gap-2" style={{ maxWidth: "90%" }}>
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Explore next
+              </span>
+              {explore.options.map((opt, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => send(opt, true, "explore", opt)}
+                  className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-left text-sm transition-colors hover:border-primary"
+                >
+                  {opt}
+                </button>
+              ))}
             </div>
           </div>
         )}
