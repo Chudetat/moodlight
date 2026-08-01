@@ -94,6 +94,42 @@ def triage_and_sharpen(question: str, has_history: bool = False) -> dict:
         return {"thin": False, "options": []}
 
 
+_MORE_PROMPT = """You are a sharp creative strategist. A user is exploring angles on this query:
+"{q}"
+
+They have ALREADY seen these angles — do NOT repeat, reorder, or lightly reword any of them:
+{exclude}
+
+Give {n} genuinely NEW sharpened version(s): a different angle from every one above, adding a specific audience, a live cultural tension, a territory, or a point of view. One sentence each, phrased the way the user would ask it. No fluff.
+
+Return ONLY valid JSON: {{"options": ["..."]}}"""
+
+
+def more_options(question, exclude=None, n=1):
+    """Generate n fresh sharpened premises that differ from `exclude` (the ones
+    already shown). Powers the exploration loop after a pick. Never raises."""
+    try:
+        excl = "\n".join(f"- {e}" for e in (exclude or [])) or "(none yet)"
+        client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        raw = _extract_text(
+            client.messages.create(
+                model=SHARPEN_MODEL,
+                max_tokens=400,
+                messages=[{"role": "user", "content": _MORE_PROMPT.format(q=question, exclude=excl, n=n)}],
+            )
+        )
+        m = re.search(r"\{.*\}", raw, re.S)
+        if not m:
+            return []
+        opts = [o.strip() for o in json.loads(m.group(0)).get("options", []) if isinstance(o, str) and o.strip()]
+        # guard against near-dupes of excluded items
+        excl_lower = {e.strip().lower() for e in (exclude or [])}
+        opts = [o for o in opts if o.lower() not in excl_lower]
+        return opts[:n]
+    except Exception:
+        return []
+
+
 def log_sharpen_event(kind, surface, thin_query, options=None, picked=None, picked_text=None):
     """Best-effort diagnostic log to sharpen_events. Never raises — logging must
     never break a request.

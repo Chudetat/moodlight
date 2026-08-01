@@ -1540,6 +1540,8 @@ class AskRequest(BaseModel):
     skip_sharpen: bool = False  # user picked/edited a sharpened option — answer it directly
     sharpen_pick: str | None = None  # diagnostic: '1'|'2'|'3'|'original' — which sharpen option was chosen
     sharpen_original: str | None = None  # diagnostic: the thin query the pick came from
+    sharpen_more: bool = False  # exploration loop: return 1 fresh option (no answer)
+    sharpen_exclude: list[str] | None = None  # options already shown — avoid repeats
 
 
 class AskResponse(BaseModel):
@@ -1682,6 +1684,23 @@ async def ask_moodlight(req: AskRequest, request: Request):
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
     if len(question) > 2000:
         raise HTTPException(status_code=400, detail="Question too long (2000 char max).")
+
+    # Exploration loop: return one fresh sharpened option (excluding those already
+    # shown), no answer. Costs nothing but a Sonnet call — no rate-limit hit.
+    if req.sharpen_more:
+        try:
+            from ask_sharpen import more_options, log_sharpen_event
+            more = more_options(req.sharpen_original or question, exclude=req.sharpen_exclude or [], n=1)
+            if more:
+                log_sharpen_event("shown", "widget", req.sharpen_original or question, options=more)
+        except Exception:
+            more = []
+        return AskResponse(
+            answer="",
+            queries_remaining=(999 if is_paid else max(0, RATE_LIMIT - len(_rate_store[_hash_ip(client_ip)]))),
+            is_paid=is_paid,
+            sharpen_options=more,
+        )
 
     # Diagnostic (internal only): log the sharpener pick, if this request is one.
     if req.sharpen_pick:

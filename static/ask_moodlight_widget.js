@@ -666,6 +666,11 @@
       if (data.sharpen_options && data.sharpen_options.length) {
         queriesRemaining = data.queries_remaining;
         updateBadge();
+        window._mlSharpenState = {
+          original: question,
+          currentTray: data.sharpen_options.slice(),
+          shownPool: data.sharpen_options.slice(),
+        };
         mlRenderSharpen(messages, data.sharpen_options, question);
         return;
       }
@@ -703,6 +708,11 @@
       showAgentCta(messages, data);
       if (!preset) showDeepenPill(messages);
       showNewQuestionBtn(messages);
+      // Exploration loop: after a sharpened pick is answered, re-offer the angles
+      // the user didn't take + one freshly generated, keeping the tray at three.
+      if (preset && preset.sharpen_pick && preset.sharpen_pick !== "original") {
+        mlRefreshSharpen(messages, preset.question);
+      }
       // Align the answer's TOP to the top of the scroll container (#ml-messages,
       // the overflow-y:auto element) so the user reads the response from the
       // start. Deterministic scrollTop on the known scroller — not a racey
@@ -757,6 +767,36 @@
     });
     container.appendChild(wrap);
     container.scrollTop = container.scrollHeight;
+  }
+
+  // Exploration loop: after a sharpened pick is answered, re-offer the unpicked
+  // angles + one freshly generated (different from everything shown), keeping the
+  // tray at three. Loops as long as the user keeps picking.
+  async function mlRefreshSharpen(container, pickedText) {
+    const state = window._mlSharpenState;
+    if (!state || !state.original) return;
+    const leftovers = (state.currentTray || []).filter(function (o) { return o !== pickedText; });
+    let extra = [];
+    try {
+      const res = await fetch(API_BASE + "/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: state.original,
+          token: paidToken,
+          sharpen_more: true,
+          sharpen_original: state.original,
+          sharpen_exclude: state.shownPool,
+        }),
+      });
+      const d = await res.json();
+      extra = d.sharpen_options || [];
+    } catch (e) {}
+    const tray = leftovers.concat(extra).slice(0, 3);
+    if (!tray.length) return;
+    state.currentTray = tray;
+    state.shownPool = (state.shownPool || []).concat(extra);
+    mlRenderSharpen(container, tray, state.original);
   }
 
   // On-demand "go deeper" pill. Fires a crafted follow-up (strongest counter-case

@@ -13,7 +13,7 @@ function ChatContent() {
   const { messages, addMessage, clearMessages } = useChatStore();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sharpen, setSharpen] = useState<{ options: string[]; original: string } | null>(null);
+  const [sharpen, setSharpen] = useState<{ options: string[]; original: string; pool: string[] } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -23,8 +23,40 @@ function ChatContent() {
     });
   }, [messages]);
 
+  // Exploration loop: after a sharpened pick is answered, re-offer the unpicked
+  // angles + one freshly generated (excluding all shown), keeping the tray at three.
+  async function refreshSharpen(
+    pickedText: string,
+    prevTray: string[],
+    prevPool: string[],
+    original: string,
+  ) {
+    const leftovers = prevTray.filter((o) => o !== pickedText);
+    let extra: string[] = [];
+    try {
+      const res = await fetch("/api/proxy/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: original,
+          username: username || "admin",
+          conversation_history: [],
+          sharpen_more: true,
+          sharpen_original: original,
+          sharpen_exclude: prevPool,
+        }),
+      });
+      const d = await res.json();
+      extra = d.sharpen_options || [];
+    } catch {}
+    const tray = [...leftovers, ...extra].slice(0, 3);
+    if (tray.length) setSharpen({ options: tray, original, pool: [...prevPool, ...extra] });
+  }
+
   async function send(text: string, skipSharpen = false, pick?: string, original?: string) {
     if (!text.trim() || loading) return;
+    const prevTray = sharpen?.options || [];
+    const prevPool = sharpen?.pool || [];
     setSharpen(null);
     addMessage({ role: "user", content: text });
     setLoading(true);
@@ -49,12 +81,17 @@ function ChatContent() {
       const data = await res.json();
       // Thin-query sharpener: vague query returned richer premises to pick from.
       if (data.sharpen_options && data.sharpen_options.length) {
-        setSharpen({ options: data.sharpen_options, original: text });
+        setSharpen({ options: data.sharpen_options, original: text, pool: data.sharpen_options });
       } else {
         addMessage({
           role: "assistant",
           content: data.response || data.answer || JSON.stringify(data),
         });
+        // After a sharpened pick is answered, re-offer the other angles + a fresh
+        // one (fire-and-forget so the answer isn't blocked on the +1 generation).
+        if (pick && pick !== "original") {
+          void refreshSharpen(text, prevTray, prevPool, original || text);
+        }
       }
     } catch {
       addMessage({
