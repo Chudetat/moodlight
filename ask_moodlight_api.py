@@ -1536,6 +1536,8 @@ class AskRequest(BaseModel):
     conversation: list[dict] | None = None  # optional history
     token: str | None = None  # paid access token
     email: str | None = None  # optional — enables saved-team lookup
+    supports_sharpen: bool = False  # client can render thin-query sharpen options
+    skip_sharpen: bool = False  # user picked/edited a sharpened option — answer it directly
 
 
 class AskResponse(BaseModel):
@@ -1549,6 +1551,7 @@ class AskResponse(BaseModel):
     recommended_agent: dict | None = None
     recommended_team: dict | None = None  # saved team match
     brief_fields: dict | None = None  # extracted brief fields from answer
+    sharpen_options: list[str] | None = None  # thin-query sharpener: 3 richer premises to pick from
 
 
 def _find_matching_team(email: str | None, question: str) -> dict | None:
@@ -1677,6 +1680,24 @@ async def ask_moodlight(req: AskRequest, request: Request):
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
     if len(question) > 2000:
         raise HTTPException(status_code=400, detail="Question too long (2000 char max).")
+
+    # Thin-query sharpener: if the query is vague, offer 3 richer premises to pick
+    # from instead of answering it badly. Runs BEFORE any expensive work and before
+    # the query is recorded, so returning options costs the user nothing. Fails safe.
+    if req.supports_sharpen and not req.skip_sharpen:
+        try:
+            from ask_sharpen import triage_and_sharpen
+            sharpen = triage_and_sharpen(question, has_history=bool(req.conversation))
+        except Exception:
+            sharpen = {"thin": False, "options": []}
+        if sharpen["thin"]:
+            return AskResponse(
+                answer="",
+                queries_remaining=(999 if is_paid else max(0, RATE_LIMIT - len(_rate_store[_hash_ip(client_ip)]))),
+                is_paid=is_paid,
+                question=question,
+                sharpen_options=sharpen["options"],
+            )
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:

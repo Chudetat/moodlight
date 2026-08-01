@@ -644,6 +644,8 @@
         body: JSON.stringify({
           question, conversation, token: paidToken,
           email: (function () { try { return localStorage.getItem("ml_team_email") || undefined; } catch (e) { return undefined; } })(),
+          supports_sharpen: true,
+          skip_sharpen: !!(preset && preset.skip_sharpen),
         }),
       });
 
@@ -655,6 +657,17 @@
       }
 
       const data = await res.json();
+
+      // Thin-query sharpener: backend returned richer premises to pick from
+      // instead of an answer. Render the picker; no query was consumed. The
+      // finally{} block re-enables the input.
+      if (data.sharpen_options && data.sharpen_options.length) {
+        queriesRemaining = data.queries_remaining;
+        updateBadge();
+        mlRenderSharpen(messages, data.sharpen_options, question);
+        return;
+      }
+
       conversation.push({ role: "user", content: question });
       conversation.push({ role: "assistant", content: data.answer });
       queriesRemaining = data.queries_remaining;
@@ -716,6 +729,32 @@
     el.className = "ml-new-question";
     el.innerHTML = '<button class="ml-new-question-btn" onclick="window._mlClear()">Ask a new question</button>';
     container.appendChild(el);
+  }
+
+  // Thin-query sharpener UI: the query was vague, so the backend returned 3 richer
+  // premises. Picking one (or the escape) re-sends with skip_sharpen so it's
+  // answered directly. Contextual — generated from the user's actual query, not
+  // generic suggestion pills.
+  function mlRenderSharpen(container, options, originalQuestion) {
+    const wrap = document.createElement("div");
+    wrap.className = "ml-sharpen";
+    wrap.style.cssText = "margin:10px 0 4px;";
+    let html = '<div style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#8a8a8a;margin-bottom:8px;">Sharpen your ask &mdash; pick an angle</div>';
+    options.forEach(function (opt) {
+      const safe = String(opt).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+      html += '<button class="ml-sharpen-opt" data-q="' + encodeURIComponent(opt) + '" style="display:block;width:100%;text-align:left;margin:0 0 8px;padding:12px 14px;border:1px solid #e3e0d8;border-radius:12px;background:#fbfaf7;color:#1a1a1a;font-size:13.5px;line-height:1.45;cursor:pointer;">' + safe + '</button>';
+    });
+    html += '<button class="ml-sharpen-skip" data-q="' + encodeURIComponent(originalQuestion) + '" style="margin-top:2px;padding:0;border:none;background:none;color:#8a8a8a;font-size:12px;text-decoration:underline;cursor:pointer;">Ask what I typed anyway</button>';
+    wrap.innerHTML = html;
+    wrap.querySelectorAll(".ml-sharpen-opt, .ml-sharpen-skip").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const q = decodeURIComponent(btn.getAttribute("data-q"));
+        wrap.remove();
+        window._mlSend({ question: q, label: q, skip_sharpen: true });
+      });
+    });
+    container.appendChild(wrap);
+    container.scrollTop = container.scrollHeight;
   }
 
   // On-demand "go deeper" pill. Fires a crafted follow-up (strongest counter-case
