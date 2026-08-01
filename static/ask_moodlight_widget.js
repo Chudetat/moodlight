@@ -1227,14 +1227,16 @@
     if (messages && !messages.children.length) mlRenderRecentInto(messages);
   }
 
-  // Re-open a stored answer read-only. Restores conversation context so a
-  // follow-up continues naturally from where they left off.
+  // Re-open a stored answer and CONTINUE it. Restores the conversation context so
+  // a typed follow-up picks up the thread, makes the input clearly live (not
+  // read-only), and offers grounded "explore next" branches off the past answer.
   window._mlViewRecent = function (idx) {
     var r = mlLoadRecent()[idx];
     if (!r) return;
     var messages = document.getElementById("ml-messages");
     if (!messages) return;
     messages.innerHTML = "";
+    window._mlExplorePool = [];  // fresh explore pool for this re-opened thread
     conversation = [
       { role: "user", content: r.q },
       { role: "assistant", content: r.a },
@@ -1242,6 +1244,16 @@
     addResult(messages, "user", r.q);
     addResult(messages, "assistant", r.a);
     showNewQuestionBtn(messages);
+    // Grounded ways to branch from this past answer (reuses explore-next on the
+    // stored Q&A) — so you can pick a thread or type your own follow-up.
+    mlExploreNext(messages, r.q, r.a);
+    // Make it obvious the thread is live: enable + focus the input and invite a follow-up.
+    var input = document.getElementById("ml-input");
+    if (input) {
+      input.disabled = false;
+      input.placeholder = "Follow up on this…";
+      input.focus();
+    }
     messages.scrollTop = 0;
   };
 
