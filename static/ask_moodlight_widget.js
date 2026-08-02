@@ -754,7 +754,7 @@
   // premises. Picking one (or the escape) re-sends with skip_sharpen so it's
   // answered directly. Contextual — generated from the user's actual query, not
   // generic suggestion pills.
-  function mlRenderSharpen(container, options, originalQuestion) {
+  function mlRenderSharpen(container, options, originalQuestion, scroll) {
     const wrap = document.createElement("div");
     wrap.className = "ml-sharpen";
     wrap.style.cssText = "margin:10px 0 4px;";
@@ -773,7 +773,10 @@
       });
     });
     container.appendChild(wrap);
-    container.scrollTop = container.scrollHeight;
+    // Only pull the view down for the thin-query tray (it IS the content, no answer
+    // to read). Post-answer trays (the refresh loop) append silently so the user
+    // stays at the top of the answer they're reading.
+    if (scroll !== false) container.scrollTop = container.scrollHeight;
   }
 
   // Exploration loop: after a sharpened pick is answered, re-offer the unpicked
@@ -803,7 +806,7 @@
     if (!tray.length) return;
     state.currentTray = tray;
     state.shownPool = (state.shownPool || []).concat(extra);
-    mlRenderSharpen(container, tray, state.original);
+    mlRenderSharpen(container, tray, state.original, false);
   }
 
   // Explore-next: after any answer, offer sharp NEXT angles drawn from that answer's
@@ -851,7 +854,8 @@
       });
     });
     container.appendChild(wrap);
-    container.scrollTop = container.scrollHeight;
+    // Post-answer tray: append silently below the answer, don't yank the view down.
+
   }
 
   // "What does this mean for my brand?" — the conversion turn from a cultural
@@ -895,7 +899,7 @@
       inp.addEventListener("keydown", function (e) { if (e.key === "Enter") submit(); });
     });
     container.appendChild(wrap);
-    container.scrollTop = container.scrollHeight;
+    // Post-answer tray: append silently, keep the user at the top of the answer.
   }
 
   // On-demand "go deeper" pill. Fires a crafted follow-up (strongest counter-case
