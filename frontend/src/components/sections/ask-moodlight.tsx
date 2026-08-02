@@ -8,6 +8,12 @@ import { FeatureGate } from "@/components/layout/feature-gate";
 import { useChatStore } from "@/store/chat-store";
 import { useAuth } from "@/lib/hooks/use-auth";
 
+// Pressure-test follow-up (mirrors the widget): strengthens the read — handles the
+// strongest objection, names the real downside, gives 2-3 ways to play it — without
+// second-guessing it. Relies on conversation_history for "the read above".
+const PRESSURE_TEST_PROMPT =
+  "Deepen the read above without undermining it. Three things: (1) take the strongest objection a skeptic would raise, then HANDLE it — say why the call still holds, or name the one condition that would flip it; don't leave the objection hanging. (2) the real downside to manage if the read is right. (3) 2-3 distinct ways to play it, with the tradeoff on each. Keep the conviction of the original read intact — this is stress-testing it, not second-guessing it. Keep it tight.";
+
 function ChatContent() {
   const { username } = useAuth();
   const { messages, addMessage, clearMessages } = useChatStore();
@@ -16,6 +22,12 @@ function ChatContent() {
   const [sharpen, setSharpen] = useState<{ options: string[]; original: string; pool: string[] } | null>(null);
   const [explore, setExplore] = useState<{ options: string[] } | null>(null);
   const explorePool = useRef<string[]>([]);
+  // Post-answer affordances (pressure-test always; brand bridge only when the answer
+  // isn't already about a specific brand). `brand` = the detected brand for the last
+  // answer, from search_info; empty string means "cultural/topic answer".
+  const [postAnswer, setPostAnswer] = useState<{ brand: string } | null>(null);
+  const [bridgeOpen, setBridgeOpen] = useState(false);
+  const [bridgeValue, setBridgeValue] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMsgRef = useRef<HTMLDivElement>(null);
 
@@ -96,14 +108,19 @@ function ChatContent() {
     setExplore({ options: opts });
   }
 
-  async function send(text: string, skipSharpen = false, pick?: string, original?: string) {
+  async function send(text: string, skipSharpen = false, pick?: string, original?: string, label?: string) {
     if (!text.trim() || loading) return;
     const prevTray = sharpen?.options || [];
     const prevPool = sharpen?.pool || [];
     setSharpen(null);
     setExplore(null);
+    setPostAnswer(null);
+    setBridgeOpen(false);
+    setBridgeValue("");
     if (!pick) explorePool.current = [];
-    addMessage({ role: "user", content: text });
+    // Crafted actions (pressure-test, brand bridge) show a clean label in the thread,
+    // not the long prompt actually sent to the model.
+    addMessage({ role: "user", content: label ?? text });
     setLoading(true);
 
     try {
@@ -130,6 +147,9 @@ function ChatContent() {
       } else {
         const answerText = data.response || data.answer || JSON.stringify(data);
         addMessage({ role: "assistant", content: answerText });
+        // Post-answer affordances: pressure-test on every answer; brand bridge only
+        // when the answer isn't already about a specific brand (search_info.brand).
+        setPostAnswer({ brand: (data.search_info && data.search_info.brand) || "" });
         // A thin-query pick re-offers its sibling angles; every other answer gets
         // grounded "explore next" angles drawn from the answer. Fire-and-forget.
         if (pick && pick !== "original" && pick !== "explore") {
@@ -146,6 +166,23 @@ function ChatContent() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Pressure-test the last answer — the go-deeper utility (folded alongside explore).
+  function pressureTest() {
+    void send(PRESSURE_TEST_PROMPT, true, undefined, undefined, "Pressure-test & options →");
+  }
+
+  // Brand bridge: connect the cultural read above to the user's own brand, grounded
+  // in that brand's live signal. Mirrors the widget's crafted bridge query.
+  function submitBridge() {
+    const brand = bridgeValue.trim();
+    if (!brand) return;
+    const q =
+      `How does the cultural pattern above apply specifically to ${brand}? Using ${brand}'s own tracked signal, ` +
+      `give the real implications for ${brand} and the concrete moves it should make — connect the culture to the ` +
+      `brand, grounded in ${brand}'s actual situation, not a generic trend read.`;
+    void send(q, true, undefined, undefined, `What does this mean for ${brand}?`);
   }
 
   async function handleSend(e: React.FormEvent) {
@@ -238,6 +275,56 @@ function ChatContent() {
             </div>
           </div>
         )}
+        {postAnswer && !loading && !sharpen && (
+          <div className="flex justify-start">
+            <div className="flex flex-col gap-2" style={{ maxWidth: "90%" }}>
+              {/* Go deeper: pressure-test the read (objection-handling, not self-refute) */}
+              <button
+                type="button"
+                onClick={pressureTest}
+                className="self-start rounded-full border border-border px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+              >
+                Pressure-test &amp; options →
+              </button>
+              {/* Brand bridge — only when the answer isn't already about a specific brand */}
+              {!postAnswer.brand &&
+                (bridgeOpen ? (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Your brand or business
+                    </span>
+                    <div className="flex gap-2">
+                      <Input
+                        autoFocus
+                        value={bridgeValue}
+                        onChange={(e) => setBridgeValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            submitBridge();
+                          }
+                        }}
+                        placeholder="e.g. Modelo, or your company"
+                        maxLength={120}
+                        className="flex-1"
+                      />
+                      <Button type="button" onClick={submitBridge} disabled={!bridgeValue.trim()}>
+                        Go
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setBridgeOpen(true)}
+                    className="self-start rounded-lg border border-primary bg-primary/5 px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                  >
+                    What does this mean for my brand? →
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
         {loading && (
           <div className="flex justify-start">
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
@@ -265,7 +352,14 @@ function ChatContent() {
             type="button"
             variant="ghost"
             size="icon"
-            onClick={clearMessages}
+            onClick={() => {
+              clearMessages();
+              setSharpen(null);
+              setExplore(null);
+              setPostAnswer(null);
+              setBridgeOpen(false);
+              setBridgeValue("");
+            }}
             title="Clear chat"
           >
             <Trash2 className="h-4 w-4" />
