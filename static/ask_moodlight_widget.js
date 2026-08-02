@@ -708,6 +708,10 @@
       showAgentCta(messages, data);
       if (!preset) showDeepenPill(messages);
       showNewQuestionBtn(messages);
+      // The conversion turn: on a cultural/topic answer that isn't already about a
+      // specific brand (e.g. a Radar deep-dive), offer to connect it to the user's
+      // own brand — Moodlight then grounds it in that brand's live signal.
+      if (data.answer && !data.detected_brand) showBrandBridge(messages);
       // After the answer: a thin-query pick re-offers its sibling angles; every
       // other answer gets grounded "explore next" angles drawn from the answer itself.
       var _sp = preset && preset.sharpen_pick;
@@ -845,6 +849,50 @@
         wrap.remove();
         window._mlSend({ question: q, label: q, skip_sharpen: true, sharpen_pick: "explore", sharpen_original: q });
       });
+    });
+    container.appendChild(wrap);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // "What does this mean for my brand?" — the conversion turn from a cultural
+  // deep-dive to the user's own business. Distinct from explore-next (which goes
+  // deeper into the culture); this pivots to relevance. Reveals a brand input, then
+  // fires a crafted bridge query Ask grounds in that brand's own live signal PLUS
+  // the cultural read already in the thread.
+  function showBrandBridge(container) {
+    if (container.querySelector(".ml-brandbridge")) return; // no duplicates
+    var wrap = document.createElement("div");
+    wrap.className = "ml-brandbridge";
+    wrap.style.cssText = "margin:12px 0 4px;";
+    wrap.innerHTML =
+      '<button class="ml-bb-cta" style="display:block;width:100%;text-align:left;padding:12px 14px;' +
+      'border:1px solid #F97316;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:13.5px;' +
+      'font-weight:600;cursor:pointer;">What does this mean for my brand? &rarr;</button>';
+    wrap.querySelector(".ml-bb-cta").addEventListener("click", function () {
+      wrap.innerHTML =
+        '<div style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;' +
+        'color:#8a8a8a;margin-bottom:8px;">Your brand or business</div>' +
+        '<div style="display:flex;gap:8px;">' +
+        '<input class="ml-bb-input" type="text" maxlength="120" placeholder="e.g. Modelo, or your company" ' +
+        'style="flex:1;padding:10px 12px;border:1px solid #e3e0d8;border-radius:10px;font-size:14px;" />' +
+        '<button class="ml-bb-go" style="padding:10px 16px;border:none;border-radius:10px;' +
+        'background:#F97316;color:#ffffff;font-weight:600;cursor:pointer;">Go</button>' +
+        '</div>';
+      var inp = wrap.querySelector(".ml-bb-input");
+      var go = wrap.querySelector(".ml-bb-go");
+      inp.focus();
+      var submit = function () {
+        var brand = (inp.value || "").trim();
+        if (!brand) { inp.focus(); return; }
+        wrap.remove();
+        var q = "How does the cultural pattern above apply specifically to " + brand +
+          "? Using " + brand + "'s own tracked signal, give the real implications for " + brand +
+          " and the concrete moves it should make — connect the culture to the brand, grounded in " +
+          brand + "'s actual situation, not a generic trend read.";
+        window._mlSend({ question: q, label: "What does this mean for " + brand + "?", skip_sharpen: true });
+      };
+      go.addEventListener("click", submit);
+      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") submit(); });
     });
     container.appendChild(wrap);
     container.scrollTop = container.scrollHeight;
