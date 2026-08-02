@@ -607,6 +607,11 @@
       return;
     }
 
+    // Clear the previous turn's action zone up front so it doesn't linger while
+    // this answer is loading (it's rebuilt fresh once the answer lands).
+    var _staleActions = messages.querySelector(".ml-actions");
+    if (_staleActions) _staleActions.remove();
+
     // Add user query (preset action pills show a clean label, not the crafted prompt)
     addResult(messages, "user", (preset && preset.label) || question);
     if (!preset) { input.value = ""; window._mlExplorePool = []; }
@@ -702,24 +707,32 @@
         } catch (e) {}
       }
 
-      // Always attempt to show the handoff CTA. The backend emits a
-      // structured `recommended_agent` on every answer now; if it's
-      // missing we fall back to a generic brand-auditor nudge.
-      showAgentCta(messages, data);
-      if (!preset) showDeepenPill(messages);
-      showNewQuestionBtn(messages);
+      // One actions zone, rebuilt each turn and pinned to the bottom of the thread,
+      // so nothing strands mid-thread. Ordered slots (top→bottom): go deeper →
+      // brand bridge → agent handoff → reset. Async content fills its slot in place,
+      // so order holds no matter when a fetch resolves.
+      var slots = mlBuildActions(messages);
+      // Conversion tier: hand off to the matched marketplace agent/team. (Always
+      // renders; falls back to a generic brand-auditor nudge if none was matched.)
+      showAgentCta(slots.agent, data);
+      // Reset — always last, visually separated as the bottom of the zone.
+      showNewQuestionBtn(slots.reset);
       // The conversion turn: on a cultural/topic answer that isn't already about a
       // specific brand (e.g. a Radar deep-dive), offer to connect it to the user's
       // own brand — Moodlight then grounds it in that brand's live signal.
-      if (data.answer && !data.detected_brand) showBrandBridge(messages);
-      // After the answer: a thin-query pick re-offers its sibling angles; every
-      // other answer gets grounded "explore next" angles drawn from the answer itself.
+      if (data.answer && !data.detected_brand) showBrandBridge(slots.bridge);
+      // Go deeper — the single such surface now (the standalone pressure-test pill
+      // is folded into this group): a thin-query pick re-offers its sibling angles;
+      // every other answer gets grounded "explore next" angles drawn from the answer.
       var _sp = preset && preset.sharpen_pick;
       if (_sp && _sp !== "original" && _sp !== "explore") {
-        mlRefreshSharpen(messages, preset.question);
+        mlRefreshSharpen(slots.angles, preset.question);
       } else if (data.answer) {
-        mlExploreNext(messages, question, data.answer);
+        mlExploreNext(slots.angles, question, data.answer);
       }
+      // Pressure-test, folded into the go-deeper group: always available (even if
+      // explore angles are empty or still loading), rendered below the angles.
+      if (data.answer) showDeepenAction(slots.deepen);
       // Align the answer's TOP to the top of the scroll container (#ml-messages,
       // the overflow-y:auto element) so the user reads the response from the
       // start. Deterministic scrollTop on the known scroller — not a racey
@@ -740,6 +753,35 @@
       input.focus();
     }
   };
+
+  // Build (or rebuild) the single bottom-pinned actions zone. Fixed, ordered slots
+  // mean nothing strands mid-thread and the reset always sits last, regardless of
+  // which affordances fire or when their async content resolves. Slot order,
+  // top→bottom: go deeper (explore angles → pressure-test) → brand bridge →
+  // agent handoff → reset. Returns the slot elements to render into.
+  function mlBuildActions(container) {
+    const old = container.querySelector(".ml-actions");
+    if (old) old.remove();
+    const actions = document.createElement("div");
+    actions.className = "ml-actions";
+    actions.innerHTML =
+      '<div class="ml-actions-explore">' +
+        '<div class="ml-explore-angles"></div>' +
+        '<div class="ml-explore-deepen"></div>' +
+      '</div>' +
+      '<div class="ml-actions-bridge"></div>' +
+      '<div class="ml-actions-agent"></div>' +
+      '<div class="ml-actions-reset" style="border-top:1px solid rgba(0,0,0,0.08);margin-top:14px;padding-top:14px;"></div>';
+    container.appendChild(actions);
+    return {
+      zone: actions,
+      angles: actions.querySelector(".ml-explore-angles"),
+      deepen: actions.querySelector(".ml-explore-deepen"),
+      bridge: actions.querySelector(".ml-actions-bridge"),
+      agent: actions.querySelector(".ml-actions-agent"),
+      reset: actions.querySelector(".ml-actions-reset"),
+    };
+  }
 
   function showNewQuestionBtn(container) {
     const existing = container.querySelector(".ml-new-question");
@@ -902,19 +944,18 @@
     // Post-answer tray: append silently, keep the user at the top of the answer.
   }
 
-  // On-demand "go deeper" pill. Fires a crafted follow-up (strongest counter-case
-  // + biggest downside + 2-3 ways to play it with tradeoffs) through the normal
-  // /api/ask flow so the sharp POV stays intact and the decision layer appends
-  // below it. Shown only on fresh answers; removes itself once used.
-  function showDeepenPill(container) {
-    const existing = container.querySelector(".ml-deepen");
-    if (existing) existing.remove();
+  // Pressure-test action — the "go deeper" utility, now folded INTO the explore
+  // group (previously a standalone floating pill). Fires a crafted follow-up that
+  // handles the strongest objection + names the real downside + gives 2-3 ways to
+  // play it, without undermining the original read. Removes itself once used.
+  function showDeepenAction(container) {
+    if (container.querySelector(".ml-deepen")) return;
     const el = document.createElement("div");
     el.className = "ml-deepen";
-    el.style.cssText = "margin-top: 8px;";
+    el.style.cssText = "margin-top: 4px;";
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = "Pressure-test & Options →";
+    btn.textContent = "Pressure-test & options →";
     btn.style.cssText =
       "display:inline-block; background:none; border:1px solid rgba(0,0,0,0.18);" +
       "border-radius:20px; padding:8px 20px; font-size:13px; color:rgba(45,45,45,0.85);" +
@@ -1295,10 +1336,12 @@
     ];
     addResult(messages, "user", r.q);
     addResult(messages, "assistant", r.a);
-    showNewQuestionBtn(messages);
-    // Grounded ways to branch from this past answer (reuses explore-next on the
-    // stored Q&A) — so you can pick a thread or type your own follow-up.
-    mlExploreNext(messages, r.q, r.a);
+    // Same bottom-pinned actions zone as a live answer: grounded explore branches
+    // + a pressure-test up top, "Ask a new question" always last.
+    var _slots = mlBuildActions(messages);
+    showNewQuestionBtn(_slots.reset);
+    mlExploreNext(_slots.angles, r.q, r.a);
+    showDeepenAction(_slots.deepen);
     // Make it obvious the thread is live: enable + focus the input and invite a follow-up.
     var input = document.getElementById("ml-input");
     if (input) {
