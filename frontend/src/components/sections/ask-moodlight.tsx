@@ -17,12 +17,25 @@ function ChatContent() {
   const [explore, setExplore] = useState<{ options: string[] } | null>(null);
   const explorePool = useRef<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastMsgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
+    const container = scrollRef.current;
+    if (!container) return;
+    const last = messages[messages.length - 1];
+    // Mirror the widget: land at the TOP of a new answer so it reads from the
+    // start, instead of jumping to the bottom (past the output to the explore/
+    // brand trays below). The user's own message still scrolls to the bottom.
+    if (last?.role === "assistant" && lastMsgRef.current) {
+      requestAnimationFrame(() => {
+        const el = lastMsgRef.current;
+        if (!el) return;
+        container.scrollTop +=
+          el.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      });
+    } else {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    }
   }, [messages]);
 
   // Exploration loop: after a sharpened pick is answered, re-offer the unpicked
@@ -159,6 +172,7 @@ function ChatContent() {
         {messages.map((msg, i) => (
           <div
             key={i}
+            ref={i === messages.length - 1 ? lastMsgRef : undefined}
             className={`flex ${
               msg.role === "user" ? "justify-end" : "justify-start"
             }`}
