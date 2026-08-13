@@ -41,7 +41,30 @@ NO_FOURTH_WALL = (
     "use plain-English labels like 'Underserved Cultural Conversations' or 'Where the Conversation Is Quiet'. "
     "Banned deliberation parentheticals: '(despite X)', '(I considered Y but)', '(the data shows Z, however)'. "
     "Cite signals as cultural facts the buyer would recognize ('on X this week...', 'the most-engaged post "
-    "about this topic...'), never as system outputs ('the snapshot shows...', 'the data indicates...')."
+    "about this topic...'), never as system outputs ('the snapshot shows...', 'the data indicates...'). "
+    "ONE EXCEPTION: the SOURCE CHECK block specified below. That block is a provenance appendix for the "
+    "operator, not engine deliberation, and it is required. It must still obey this rule internally — use "
+    "the [SUBSTRATE] tag, never an internal data-source name."
+)
+
+SOURCE_CHECK = (
+    "SOURCE CHECK — the final section of every output, placed after the closing line:\n"
+    "End with a short block titled 'SOURCE CHECK' listing every LOAD-BEARING factual claim you made "
+    "about the real world — the claims the strategy collapses without. Always include, when present: "
+    "the brand's origin, founding date, founder, and what its name means; any claim about a competitor's "
+    "history, campaigns, or past strategy; any figure, percentage, share, count, or ranking; and any "
+    "claim about a law, holiday, tradition, or category convention.\n"
+    "One line per claim, stated as the bare claim with no commentary, each tagged:\n"
+    "  [SUBSTRATE] — it is present in the intelligence material in this prompt.\n"
+    "  [BRIEF] — it is present in the brief the user wrote.\n"
+    "  [RECALL] — you are stating it from your own knowledge and it is NOT in the material above.\n"
+    "If you cannot point to where a claim appears in this prompt, it is [RECALL] — including claims you "
+    "are certain of, and especially founding dates, anniversaries, and origin stories. Confidence is not "
+    "a source. A wrong origin story tagged [RECALL] costs a human ten seconds; the same claim untagged "
+    "reaches a client.\n"
+    "Keep it to twelve lines or fewer. Do NOT hedge the body of the work to compensate — the deliverable "
+    "stays declarative and in voice, and every piece of uncertainty lives in this block and nowhere else. "
+    "A load-bearing [RECALL] claim still belongs in the work. It just has to be checkable."
 )
 
 NO_INSTRUMENT_LEAKS = (
@@ -176,6 +199,7 @@ class MoodlightAgent:
             f"{self.system_prompt}\n\n{TRAINING_DATA_BAN}\n\n"
             f"{CULTURAL_PRESENCE_NOT_SALIENCE}\n\n"
             f"{NO_FOURTH_WALL}\n\n{NO_INSTRUMENT_LEAKS}\n\n{NO_DATA_RECAP}\n\n{INEVITABILITY_BAR}\n\n{ONE_SPINE}"
+            f"\n\n{SOURCE_CHECK}"
         )
 
     def _render_upstream_context(self, upstream_context):
