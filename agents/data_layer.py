@@ -6,11 +6,13 @@ so all agents pull from the same real-time intelligence.
 """
 
 import os
+import re
 import json
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import text as sql_text
 from db_helper import get_engine
+from brand_match import resolve_brand_match
 
 
 def load_combined_data(days=7):
@@ -426,6 +428,80 @@ def build_enrichment(username, user_need, df):
     return _build_marketplace_enrichment(user_need, df)
 
 
+# Field labels the marketplace brief emits. Longest-first so the alternation
+# matches "markets/geography" before "markets".
+_BRIEF_FIELD_LABELS = sorted(
+    (
+        "product/service", "product", "service", "brand", "company",
+        "target audience", "audience", "markets/geography", "markets",
+        "geography", "key challenge", "challenge", "objective", "goal",
+        "timeline/budget", "timeline", "budget",
+    ),
+    key=len,
+    reverse=True,
+)
+
+_LABEL_RE = re.compile(
+    r"\b(?:" + "|".join(re.escape(l) for l in _BRIEF_FIELD_LABELS) + r")\s*:",
+    re.IGNORECASE,
+)
+
+_BRAND_LABEL_RE = re.compile(
+    r"\b(?:product\s*/\s*service|product|service|brand|company)\s*:\s*",
+    re.IGNORECASE,
+)
+
+# Emitted when the brand and its category have no measurable presence in the
+# window. Replaces a silent `return ""`, which let agents present generic
+# cultural material as if it were a brand read.
+_NO_BRAND_SIGNAL_NOTICE = """BRAND INTELLIGENCE — {brand}: NO LIVE SIGNAL IN THIS WINDOW
+---
+  This brand and its category registered no measurable volume in the current
+  window. There is NO real-time brand or category read available for this request.
+  HOW TO HANDLE THIS — non-negotiable:
+   - Do NOT invent, imply, or describe a live conversation, emotional read,
+     velocity, momentum, fatigue pattern, or audience signal for this brand or
+     its category. You do not have one.
+   - Do NOT repurpose the general cultural material above as if it were about
+     this audience. Borrowing an unrelated trending moment and presenting it as
+     this brand's context is the specific failure to avoid here.
+   - DO ground the work in the brief itself and in stable, checkable,
+     foundational knowledge about the brand (origin, category, what it makes,
+     enduring equity) per the training-data rules.
+   - DO state what would have to be true, and what you would need to verify,
+     rather than asserting a cultural moment you cannot see.
+   - Never disclose this notice, the absence of data, or the engine to the
+     reader. Discipline the work silently.
+---"""
+
+
+def _extract_brand_phrase(user_need, max_words=4):
+    """Pull the brand/product name out of a brief.
+
+    Marketplace briefs arrive as labeled fields ("Product/Service: Hornitos
+    Target Audience: ..."). Splitting those on " in " produced a 500-char
+    run-on that was then used as a literal substring match, so it matched
+    nothing and enrichment silently returned empty. Prefer the labeled field,
+    and cap the result — a brand name is never a paragraph.
+    """
+    m = _BRAND_LABEL_RE.search(user_need or "")
+    if m:
+        tail = user_need[m.end():]
+        nxt = _LABEL_RE.search(tail)
+        phrase = (tail[: nxt.start()] if nxt else tail)
+    else:
+        phrase = user_need or ""
+        for splitter in ["targeting ", " in ", " with the challenge"]:
+            phrase = phrase.split(splitter)[0]
+        phrase = phrase.replace("launch/promote ", "")
+
+    phrase = phrase.strip().strip(".,;:-—").strip()
+    words = phrase.split()
+    if len(words) > max_words:
+        phrase = " ".join(words[:max_words])
+    return phrase.strip()
+
+
 def _build_marketplace_enrichment(user_need, df):
     """Compute VLDS enrichment for marketplace users using their product input."""
     from vlds_helper import calculate_brand_vlds
@@ -433,45 +509,40 @@ def _build_marketplace_enrichment(user_need, df):
     if df.empty or "text" not in df.columns:
         return ""
 
-    # Extract likely brand/product keywords from user_need
-    # Take the first meaningful phrase (before "targeting", "in", "with the challenge")
-    brand_phrase = user_need
-    for splitter in ["targeting ", " in ", " with the challenge"]:
-        brand_phrase = brand_phrase.split(splitter)[0]
-    # Remove "launch/promote " prefix from _build_marketplace_input
-    brand_phrase = brand_phrase.replace("launch/promote ", "").strip()
+    brand_phrase = _extract_brand_phrase(user_need)
 
     if not brand_phrase or len(brand_phrase) < 2:
         return ""
 
-    # Search news/social data for mentions
-    search_terms = [t.strip().lower() for t in brand_phrase.split() if len(t.strip()) > 2]
-    if not search_terms:
-        return ""
+    # Match with the shared catalog-disambiguated matcher — the same one the
+    # logged-in brief, Ask, brand reports and competitive share already use.
+    # Word boundaries kill fragment hits ("corona" inside "coronavirus") and the
+    # catalog requires a category term for homonym brands (Corona, Victoria,
+    # Dove, Shell...). Raw substring matching used to be done here instead,
+    # which is why the marketplace path never got homonym protection.
+    brand_df = df[resolve_brand_match(df["text"], brand_phrase)].copy()
 
-    # Try full phrase first, fall back to individual keywords
-    text_lower = df["text"].str.lower()
-    brand_df = df[text_lower.str.contains(brand_phrase.lower(), na=False)].copy()
-
-    # If the exact phrase is too sparse, broaden by requiring ALL significant
-    # words to co-occur (e.g. "victoria" AND "beer") — never fall back to a
-    # single common word, which floods the match with same-name namesakes
-    # (Victoria's Secret, Victoria Beckham, the Australian state, etc.).
-    if len(brand_df) < 5 and len(search_terms) > 1:
-        mask = pd.Series(True, index=df.index)
-        for term in search_terms:
-            mask &= text_lower.str.contains(term, na=False, regex=False)
-        brand_df = df[mask].copy()
+    # A multi-word brand ("Modelo Especial") is usually written by its root
+    # alone in the wild. Retry on the root, still through the catalog rules.
+    if len(brand_df) < 5:
+        root = brand_phrase.split()[0]
+        if len(root) > 2 and root.lower() != brand_phrase.lower():
+            brand_df = df[resolve_brand_match(df["text"], root)].copy()
 
     if len(brand_df) < 5:
-        return ""
+        print(f"  [data_layer] NO BRAND SIGNAL for {brand_phrase!r} "
+              f"({len(brand_df)} mentions in {len(df)} docs) — agents will be told "
+              f"to work from the brief, not from a cultural read.")
+        return _NO_BRAND_SIGNAL_NOTICE.format(brand=brand_phrase.upper())
 
     if "created_at" in brand_df.columns:
         brand_df = brand_df.dropna(subset=["created_at"])
 
     vlds = calculate_brand_vlds(brand_df)
     if not vlds:
-        return ""
+        print(f"  [data_layer] VLDS unavailable for {brand_phrase!r} "
+              f"despite {len(brand_df)} mentions — emitting no-signal notice.")
+        return _NO_BRAND_SIGNAL_NOTICE.format(brand=brand_phrase.upper())
 
     v = vlds.get("velocity", 0)
     v_label = vlds.get("velocity_label", "")
