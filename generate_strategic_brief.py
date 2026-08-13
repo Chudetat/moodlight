@@ -34,6 +34,14 @@ ALCOHOL / SPIRITS / BEER / WINE:
 - Avoid associating alcohol with success, social acceptance, or sexual prowess
 - Cannot show excessive consumption or intoxication positively
 - Platform restrictions: Meta/Google have strict alcohol ad policies
+- TRADE PRACTICE (tied-house / inducement): a supplier cannot pay, subsidize, or give
+  anything of value to a licensed retailer — staff wages or overtime, event costs,
+  fixtures, signage, menu or shelf placement, free product. Flag ANY idea that moves
+  money, goods, or services to a bar, restaurant, or retail account; it is a TTB and
+  state-ABC violation in most markets even when the intent is generosity
+- Sampling, consumer sweepstakes, and alcohol-as-prize rules vary state by state —
+  any on-premise or retail activation needs state-by-state legal clearance, and the
+  recommendation should say so rather than assume a national rollout
 
 CANNABIS / CBD:
 - Highly fragmented state-by-state regulations — recommend geo-specific strategies
