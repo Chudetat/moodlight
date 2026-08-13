@@ -113,13 +113,28 @@ ONE_SPINE = (
 # Shared with the standalone report generators — single source of truth in shared_prompts.py
 from shared_prompts import CULTURAL_PRESENCE_NOT_SALIENCE
 
+# Alcohol CATEGORY names. The abstract terms below ("alcohol", "spirits",
+# "beer", "wine", "liquor") were the only alcohol triggers, so a brief that
+# simply named its category — "tequila" fifteen times, "bourbon", "vodka" —
+# matched nothing and the agent ran with no regulatory guidance at all.
+# Word-anchored on purpose: unanchored, "gin" matches engine/imagine/origin,
+# "rum" matches forum/drum/instrument, "cider" matches decider.
+_ALCOHOL_CATEGORY_TERMS = (
+    "tequila", "mezcal", "whiskey", "whisky", "bourbon", "scotch",
+    "vodka", "gin", "rum", "cognac", "brandy", "vermouth",
+    "prosecco", "champagne", "cider", "seltzer", "cocktail", "cocktails",
+    "distillery", "distilleries", "brewery", "breweries",
+    "winery", "wineries", "abv",
+)
+
 # Keywords that trigger inclusion of regulatory guidance
 _REGULATED_INDUSTRY_PATTERNS = re.compile(
     r"pharma|healthcare|medical|hospital|drug|rx|fda|"
     r"financial|banking|fintech|investment|insurance|"
     r"alcohol|spirits|beer|wine|liquor|"
     r"cannabis|cbd|marijuana|"
-    r"legal\s+service|law\s+firm|attorney",
+    r"legal\s+service|law\s+firm|attorney|"
+    r"\b(?:" + "|".join(_ALCOHOL_CATEGORY_TERMS) + r")\b",
     re.IGNORECASE,
 )
 
