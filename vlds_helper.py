@@ -46,9 +46,16 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict | None:
         if n_days >= 3:
             # Multi-window velocity: blend spike + trend detection
             # Window 1 (40%): 1-day vs up to 3-day baseline (spike detection)
+            # Baselines use the MEDIAN, not the mean. Daily post counts are
+            # heavy-tailed — one viral day inside a 3- or 5-day baseline window
+            # inflates the denominator, which suppresses velocity for a topic
+            # that is genuinely rising, then makes it jump for no reason once
+            # that day rolls out of the window. The median ignores the outlier.
+            # Recent windows deliberately keep the mean: r1_recent is a single
+            # day (the spike detector), and a 2-value median is the mean anyway.
             r1_recent = float(daily_counts.iloc[-1])
             r1_base = float(
-                daily_counts.iloc[max(0, n_days - 4):(n_days - 1)].mean()
+                daily_counts.iloc[max(0, n_days - 4):(n_days - 1)].median()
             )
             r1 = (r1_recent / r1_base) if r1_base > 0 else 1.0
 
@@ -56,7 +63,7 @@ def calculate_brand_vlds(df: pd.DataFrame) -> dict | None:
             r2_recent = float(daily_counts.iloc[-2:].mean())
             r2_base_slice = daily_counts.iloc[max(0, n_days - 7):(n_days - 2)]
             r2_base = (
-                float(r2_base_slice.mean()) if len(r2_base_slice) > 0 else r1_base
+                float(r2_base_slice.median()) if len(r2_base_slice) > 0 else r1_base
             )
             r2 = (r2_recent / r2_base) if r2_base > 0 else 1.0
 
