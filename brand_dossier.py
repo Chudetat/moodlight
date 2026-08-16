@@ -29,7 +29,12 @@ _TTL_SECONDS = 24 * 60 * 60
 
 _MODEL = "claude-sonnet-5"
 _MAX_TOKENS = 1500
-_TIMEOUT_SECONDS = 45.0
+# Web search with dynamic filtering runs several searches and fetches pages —
+# 45s was not close to enough and every lookup died on APITimeoutError. The
+# request is also streamed, which is the supported way to avoid timeouts on
+# long-running calls; a non-streamed call of this length is fragile regardless
+# of how generous the timeout is.
+_TIMEOUT_SECONDS = 150.0
 
 _SYSTEM = (
     "You are a research assistant compiling factual background on a brand for a "
@@ -127,7 +132,8 @@ def fetch_brand_dossier(brand, category_hint=""):
         hint = f"\nCATEGORY CONTEXT: {category_hint.strip()}" if category_hint else ""
 
         print(f"  [brand_dossier] looking up {brand!r} on the open web...")
-        resp = client.messages.create(
+        started = time.time()
+        with client.messages.stream(
             model=_MODEL,
             max_tokens=_MAX_TOKENS,
             system=_SYSTEM,
@@ -137,7 +143,9 @@ def fetch_brand_dossier(brand, category_hint=""):
             ],
             messages=[{"role": "user",
                        "content": _PROMPT.format(brand=brand, hint=hint)}],
-        )
+        ) as stream:
+            resp = stream.get_final_message()
+        print(f"  [brand_dossier] lookup took {time.time() - started:.0f}s")
 
         body = "".join(
             b.text for b in resp.content if getattr(b, "type", None) == "text"
