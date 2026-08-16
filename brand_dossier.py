@@ -31,20 +31,18 @@ _MODEL = "claude-sonnet-5"
 # Kept deliberately short. This is background, not an essay, and every token
 # is latency inside a request the caller is already waiting on.
 _MAX_TOKENS = 900
-# HARD CEILING, and the number matters. The marketplace endpoint sits behind a
-# 300s gateway timeout, and the agent call alone has been observed anywhere
-# from 82s to 230s. At 150s here a slow agent plus a slow lookup crossed 300s
-# and returned 502 - no output, no email, no DB row, five minutes of the user's
-# time for nothing. 60s bounds the worst case at roughly 290s.
+# Was briefly cut to 60s when the marketplace endpoint still held an HTTP
+# connection open for the whole run: a slow agent plus a slow lookup crossed
+# Railway's 300s gateway limit and returned 502, destroying the output, the
+# email and the log row together.
 #
-# The tradeoff is deliberate: a lookup that gives up is a deliverable without
-# background. A lookup that runs long is no deliverable at all. Fail the small
-# thing, never the whole request.
+# That constraint is gone. Marketplace runs are async now (job id + polling),
+# so nothing is tied to a connection and a slow lookup is just slow. At 60s the
+# lookup was giving up before web search finished, and brand facts came back
+# tagged [RECALL] instead of [SUBSTRATE] - the feature silently doing nothing.
 #
-# The real fix is making this endpoint async so a 4-minute synchronous HTTP
-# request stops being the architecture. Until then, this ceiling is load-bearing
-# - do not raise it without moving the endpoint off the gateway timeout first.
-_TIMEOUT_SECONDS = 60.0
+# 150s is sized to the work: several searches, page fetches, dynamic filtering.
+_TIMEOUT_SECONDS = 150.0
 
 _SYSTEM = (
     "You are a research assistant compiling factual background on a brand for a "
