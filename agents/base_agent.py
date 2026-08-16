@@ -37,6 +37,12 @@ NO_FOURTH_WALL = (
     "section headers, bullet labels, table captions, and footnotes: 'the intelligence snapshot', "
     "'the snapshot', 'the dataset', 'in the entire dataset', 'across our intelligence', 'the data shows', "
     "'the data indicates', and internal data source names (Polymarket, VLDS, opp_map, etc.). "
+    "ALSO BANNED — the 'tracked' family, which is the same leak said politely: 'tracked "
+    "conversation', 'the tracked climate', 'tracked media conversation', 'in tracked data', "
+    "'the conversation we track', 'our tracking'. Any adjective that describes the act of "
+    "observation points at the instrument. The reader does not know a corpus exists and must not "
+    "learn it here. Say 'the conversation' or 'right now' and stop — the qualifier adds nothing "
+    "except a glimpse of the machinery. "
     "Do NOT use 'VLDS Gaps', 'Snapshot Highlights', 'Dataset Findings' as section headers — "
     "use plain-English labels like 'Underserved Cultural Conversations' or 'Where the Conversation Is Quiet'. "
     "Banned deliberation parentheticals: '(despite X)', '(I considered Y but)', '(the data shows Z, however)'. "
@@ -68,13 +74,23 @@ SOURCE_CHECK = (
 )
 
 NO_INSTRUMENT_LEAKS = (
-    "Never quote your own metric values to the reader. Banned parenthetical and bracketed patterns: "
-    "'(scarcity 0.42)', '(MEDIUM opportunity)', '(363 mentions)', '(65K engagement)', '(density 0.85)', "
-    "'(velocity 0.72)', '(longevity 0.83)', '(empathy 0.1/100)', '[OPPORTUNITY]', '[HIGH OPPORTUNITY]', "
-    "or any exposure of system scores, percentiles, raw counts, or data-layer tags. Cite signals as "
-    "content the buyer would recognize — 'this week's most-shared piece on X', 'the cultural "
-    "conversation around responsible AI is accelerating but underserved' — NOT as instrumented data "
-    "points. Engagement counts and scarcity scores belong in your analysis, never in the deliverable."
+    "Never quote your own metric values to the reader.\n"
+    "THE TEST — apply it to every number you are about to write: could the reader have found this "
+    "number without this engine? If YES, use it freely — externally reported and citable figures "
+    "(market data, published research, a platform's own disclosure) are encouraged and make the work "
+    "stronger. If NO — if it exists only because this system measured its own corpus — cut it.\n"
+    "THE BAN IS ON THE NUMBER, NOT THE PUNCTUATION. It applies in body prose, mid-sentence, in a "
+    "clause, in a header, in a footnote — everywhere, not only in parentheses or brackets. Writing "
+    "'(65K engagement)' and writing 'a post with 54,000 engagements' are the same violation; the "
+    "second is worse because it reads as reportage. Spelling it out does not help either: "
+    "'fifty-odd thousand people', 'tens of thousands of engagements' and 'over 50k' are all the same "
+    "leak wearing different clothes. Rounding, approximating and hedging do not launder it.\n"
+    "Concretely banned however they are written: engagement counts, mention counts, post counts, "
+    "scarcity/velocity/longevity/density scores, empathy scores, percentiles, sample sizes, and "
+    "data-layer tags such as '[OPPORTUNITY]' or '(MEDIUM opportunity)'.\n"
+    "Say the same thing qualitatively instead. 'The most-shared piece on this topic this week was a "
+    "joke about AI-generated flyers' carries the whole point and leaks nothing. The size of a signal "
+    "belongs in your reasoning about what to say; it must never become the sentence you say."
 )
 
 NO_DATA_RECAP = (
