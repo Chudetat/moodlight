@@ -7,7 +7,7 @@
  *
  * Usage:
  *   <div id="moodlight-marketplace"></div>
- *   <script src="https://moodlight-api-production.up.railway.app/static/agent_marketplace.js?v=31"></script>
+ *   <script src="https://moodlight-api-production.up.railway.app/static/agent_marketplace.js?v=30"></script>
  */
 
 (function () {
