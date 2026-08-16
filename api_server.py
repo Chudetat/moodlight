@@ -665,6 +665,7 @@ class MarketplaceRequest(BaseModel):
     upstream_context: list | None = None  # [{agent_id, agent_label, output}] from prior agents in this session
     team_id: int | None = None  # If part of a saved team run
     team_step: int | None = None  # 1-indexed position in team chain
+    async_mode: bool = False  # True -> return a job_id immediately, poll /status/{id}
 
 _MARKETPLACE_AGENTS = {
     "new-business-win": ("agents", "NewBusinessWinAgent"),
@@ -865,6 +866,142 @@ def _log_marketplace_run(email: str, agent: str, user_input: str, engine,
         print(f"_log_marketplace_run failed (run not logged): {e}")
 
 
+def _ensure_marketplace_jobs_table(engine):
+    """Job state for async marketplace runs. Created on demand."""
+    with engine.connect() as conn:
+        conn.execute(sql_text("""
+            CREATE TABLE IF NOT EXISTS marketplace_jobs (
+                job_id VARCHAR(64) PRIMARY KEY,
+                status VARCHAR(20) NOT NULL,
+                agent VARCHAR(80) NOT NULL,
+                agent_label VARCHAR(160),
+                email VARCHAR(255) NOT NULL,
+                user_input TEXT,
+                output TEXT,
+                error TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
+        try:
+            conn.execute(sql_text(
+                "CREATE INDEX IF NOT EXISTS idx_marketplace_jobs_created "
+                "ON marketplace_jobs (created_at)"))
+        except Exception as e:
+            print(f"WARNING: marketplace_jobs index creation failed: {e}")
+        conn.commit()
+
+
+# A job still 'pending' past this is treated as dead. Background tasks run
+# in-process, so a redeploy mid-run leaves an orphan row that would otherwise
+# be polled forever.
+_JOB_STALE_MINUTES = 15
+
+
+def _marketplace_preview(output: str) -> str:
+    """First ~600 chars, cut at a newline so the break is clean."""
+    preview = output[:600]
+    last_newline = preview.rfind("\n")
+    return preview[:last_newline] if last_newline > 200 else preview
+
+
+def _run_marketplace_job(job_id: str, req: MarketplaceRequest, user_input: str):
+    """Execute an agent run and record the result. Runs in a background thread.
+
+    Mirrors the synchronous path exactly - same agent, same logging, same email -
+    so the two routes cannot drift in behaviour, only in how the caller waits.
+    """
+    import importlib
+
+    engine = get_engine()
+    label = _AGENT_LABELS.get(req.agent, req.agent)
+    try:
+        module_name, class_name = _MARKETPLACE_AGENTS[req.agent]
+        mod = importlib.import_module(module_name)
+        agent = getattr(mod, class_name)()
+        result = agent.run({
+            "user_input": user_input,
+            "upstream_context": req.upstream_context or [],
+        })
+        output = result["output"]
+
+        _log_marketplace_run(req.email, req.agent, user_input, engine,
+                             team_id=req.team_id, team_step=req.team_step,
+                             output=output)
+        try:
+            _email_marketplace_result(req.email, user_input, output, label, req.agent)
+        except Exception as e:
+            print(f"[job {job_id}] email failed (result still saved): "
+                  f"{type(e).__name__}: {e}")
+
+        if engine:
+            with engine.connect() as conn:
+                conn.execute(sql_text(
+                    "UPDATE marketplace_jobs SET status='done', output=:o, "
+                    "updated_at=NOW() WHERE job_id=:j"), {"o": output, "j": job_id})
+                conn.commit()
+        print(f"[job {job_id}] done ({len(output)} chars)")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        if engine:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(sql_text(
+                        "UPDATE marketplace_jobs SET status='error', error=:e, "
+                        "updated_at=NOW() WHERE job_id=:j"),
+                        {"e": f"{type(e).__name__}: {e}"[:2000], "j": job_id})
+                    conn.commit()
+            except Exception as inner:
+                print(f"[job {job_id}] could not record failure: {inner}")
+
+
+@app.get("/api/marketplace/status/{job_id}")
+def marketplace_status(job_id: str):
+    """Poll an async marketplace run.
+
+    Returns the same payload shape as the synchronous endpoint once done, so the
+    widget renders identically either way.
+    """
+    engine = get_engine()
+    if not engine:
+        raise HTTPException(status_code=503, detail="Service temporarily unavailable")
+
+    with engine.connect() as conn:
+        row = conn.execute(sql_text(
+            "SELECT status, agent, agent_label, email, output, error, "
+            "EXTRACT(EPOCH FROM (NOW() - created_at))/60 AS age_min "
+            "FROM marketplace_jobs WHERE job_id = :j"), {"j": job_id}).fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Unknown job")
+
+    status, agent, label, email, output, error, age_min = row
+
+    if status == "done":
+        return {
+            "status": "done",
+            "preview": _marketplace_preview(output or ""),
+            "full_output": output or "",
+            "agent_id": agent,
+            "agent_label": label or agent,
+            "message": f"Full brief sent to {email}",
+        }
+
+    if status == "error":
+        return {"status": "error",
+                "message": "Our agents are temporarily unavailable. Please try again."}
+
+    # Still pending. A run that outlives the staleness window is dead - the
+    # process almost certainly restarted underneath it.
+    if age_min is not None and float(age_min) > _JOB_STALE_MINUTES:
+        return {"status": "error",
+                "message": "That run was interrupted. Please try again."}
+
+    return {"status": "pending"}
+
+
 def _build_marketplace_input(req: MarketplaceRequest) -> str:
     """Assemble form fields into a single user_input string.
 
@@ -925,6 +1062,40 @@ def marketplace_run(req: MarketplaceRequest, request: Request, background_tasks:
     # Capture email (open access — no whitelist)
     _capture_marketplace_email(req.email, engine)
 
+    user_input = _build_marketplace_input(req)
+
+    if req.async_mode:
+        # Hand back a job id immediately and do the work off the request. The
+        # synchronous path holds an HTTP connection open for the whole agent
+        # run, and Railway's gateway kills anything past 300s - which destroyed
+        # the output, the email and the log row with it. Nothing here is tied to
+        # a connection, so a slow run is just a slow run.
+        label = _AGENT_LABELS.get(req.agent, req.agent)
+        job_id = secrets.token_urlsafe(24)
+        try:
+            _ensure_marketplace_jobs_table(engine)
+            with engine.connect() as conn:
+                conn.execute(sql_text(
+                    "INSERT INTO marketplace_jobs "
+                    "(job_id, status, agent, agent_label, email, user_input) "
+                    "VALUES (:j, 'pending', :a, :l, :e, :u)"),
+                    {"j": job_id, "a": req.agent, "l": label,
+                     "e": req.email.lower().strip(), "u": user_input})
+                conn.commit()
+        except Exception as e:
+            print(f"marketplace job create failed: {type(e).__name__}: {e}")
+            raise HTTPException(status_code=503,
+                                detail="Could not start that run. Please try again.")
+
+        background_tasks.add_task(_run_marketplace_job, job_id, req, user_input)
+        return {
+            "status": "pending",
+            "job_id": job_id,
+            "agent_id": req.agent,
+            "agent_label": label,
+            "message": f"Working on it. Full brief will be sent to {req.email}.",
+        }
+
     # Run agent synchronously so we can return a preview
     try:
         module_name, class_name = _MARKETPLACE_AGENTS[req.agent]
@@ -932,7 +1103,6 @@ def marketplace_run(req: MarketplaceRequest, request: Request, background_tasks:
         agent_cls = getattr(mod, class_name)
         agent = agent_cls()
 
-        user_input = _build_marketplace_input(req)
         result = agent.run({
             "user_input": user_input,
             "upstream_context": req.upstream_context or [],
