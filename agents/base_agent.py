@@ -326,7 +326,20 @@ class MoodlightAgent:
             if self.effort:
                 # output_config passed via extra_body for compatibility with the pinned SDK
                 kwargs["extra_body"] = {"output_config": {"effort": self.effort}}
-            return client.messages.create(**kwargs)
+            # Streamed, not create(). The SDK refuses a non-streamed call whose
+            # estimated duration crosses ten minutes, and it estimates from
+            # max_tokens - so full_deploy (24k) died instantly with
+            # "Streaming is required for operations that may take longer than
+            # 10 minutes" while every 16k agent squeaked under the bar. That
+            # killed the heaviest agent on the site from 5 May onward, and the
+            # user-facing message ("temporarily unavailable") made a permanent
+            # break look transient.
+            #
+            # Streaming is the documented way to run long generations and is
+            # correct for every agent here, not just the big one. Same Message
+            # object comes back, so stop_reason and content are unchanged.
+            with client.messages.stream(**kwargs) as stream:
+                return stream.get_final_message()
 
         response = _call(self.model)
         raw = _extract_text(response)
