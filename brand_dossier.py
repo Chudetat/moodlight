@@ -28,13 +28,23 @@ _CACHE = {}
 _TTL_SECONDS = 24 * 60 * 60
 
 _MODEL = "claude-sonnet-5"
-_MAX_TOKENS = 1500
-# Web search with dynamic filtering runs several searches and fetches pages —
-# 45s was not close to enough and every lookup died on APITimeoutError. The
-# request is also streamed, which is the supported way to avoid timeouts on
-# long-running calls; a non-streamed call of this length is fragile regardless
-# of how generous the timeout is.
-_TIMEOUT_SECONDS = 150.0
+# Kept deliberately short. This is background, not an essay, and every token
+# is latency inside a request the caller is already waiting on.
+_MAX_TOKENS = 900
+# HARD CEILING, and the number matters. The marketplace endpoint sits behind a
+# 300s gateway timeout, and the agent call alone has been observed anywhere
+# from 82s to 230s. At 150s here a slow agent plus a slow lookup crossed 300s
+# and returned 502 - no output, no email, no DB row, five minutes of the user's
+# time for nothing. 60s bounds the worst case at roughly 290s.
+#
+# The tradeoff is deliberate: a lookup that gives up is a deliverable without
+# background. A lookup that runs long is no deliverable at all. Fail the small
+# thing, never the whole request.
+#
+# The real fix is making this endpoint async so a 4-minute synchronous HTTP
+# request stops being the architecture. Until then, this ceiling is load-bearing
+# - do not raise it without moving the endpoint off the gateway timeout first.
+_TIMEOUT_SECONDS = 60.0
 
 _SYSTEM = (
     "You are a research assistant compiling factual background on a brand for a "
