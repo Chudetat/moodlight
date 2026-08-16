@@ -7,7 +7,7 @@
  *
  * Usage:
  *   <div id="moodlight-marketplace"></div>
- *   <script src="https://moodlight-api-production.up.railway.app/static/agent_marketplace.js?v=30"></script>
+ *   <script src="https://moodlight-api-production.up.railway.app/static/agent_marketplace.js?v=31"></script>
  */
 
 (function () {
@@ -1092,6 +1092,64 @@
     } catch (e) {}
   }
 
+  // Run an agent and return its result.
+  //
+  // The synchronous endpoint held a connection open for the whole run, and
+  // Railway closes anything past 300s — which threw away the output, the email
+  // and the log row together. We now ask for a job and poll instead, so a slow
+  // run is just slow rather than fatal.
+  //
+  // Works against both server versions on purpose: an older deploy ignores
+  // async_mode and answers with the finished payload, which we return as-is.
+  async function runMarketplaceAgent(body) {
+    const res = await fetch(API_BASE + "/api/marketplace/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) return { ok: false, data: data };
+    if (!data.job_id) return { ok: true, data: data };  // ran synchronously
+
+    const POLL_MS = 3000;
+    const GIVE_UP_MS = 8 * 60 * 1000;
+    const started = Date.now();
+    let consecutiveFailures = 0;
+
+    while (Date.now() - started < GIVE_UP_MS) {
+      await new Promise(function (r) { setTimeout(r, POLL_MS); });
+      try {
+        const poll = await fetch(
+          API_BASE + "/api/marketplace/status/" + encodeURIComponent(data.job_id)
+        );
+        if (!poll.ok) {
+          // A 404 means the job never existed; anything else is likely transient.
+          if (poll.status === 404) {
+            return { ok: false, data: { detail: "That run could not be found. Please try again." } };
+          }
+          consecutiveFailures++;
+          if (consecutiveFailures > 5) break;
+          continue;
+        }
+        consecutiveFailures = 0;
+        const state = await poll.json();
+        if (state.status === "done") return { ok: true, data: state };
+        if (state.status === "error") return { ok: false, data: { detail: state.message } };
+      } catch (e) {
+        // Wifi drop, sleep/wake, tab throttling. Keep trying.
+        consecutiveFailures++;
+        if (consecutiveFailures > 5) break;
+      }
+    }
+
+    // We stopped watching, but the job did not stop running — the email is
+    // still coming. Say that rather than implying the work was lost.
+    return {
+      ok: false,
+      data: { detail: "This one is taking a while. Your brief will still arrive by email." },
+    };
+  }
+
   function buildUI(container) {
     let selectedAgent = null;
     hydrateBriefFromStorage();
@@ -1634,25 +1692,25 @@
         }));
 
       try {
-        const res = await fetch(API_BASE + "/api/marketplace/run", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            agent: selectedAgent,
-            email: email,
-            product: product,
-            audience: inputs.audience.value || "",
-            markets: inputs.markets.value || "",
-            challenge: inputs.challenge.value || "",
-            timeline: inputs.timeline.value || "",
-            upstream_context: upstreamContext,
-          }),
+        const result = await runMarketplaceAgent({
+          agent: selectedAgent,
+          email: email,
+          product: product,
+          audience: inputs.audience.value || "",
+          markets: inputs.markets.value || "",
+          challenge: inputs.challenge.value || "",
+          timeline: inputs.timeline.value || "",
+          upstream_context: upstreamContext,
+          async_mode: true,
         });
 
+        // Cleared here, not before polling — the loading animation should run
+        // for the whole wait rather than stopping the moment the job is queued.
         clearInterval(stepInterval);
         loadingSection.classList.remove("ml-visible");
 
-        const data = await res.json();
+        const res = { ok: result.ok };
+        const data = result.data;
 
         if (res.ok && data.preview) {
           // Ship 2: capture the full output so future downstream
@@ -2291,26 +2349,27 @@
           stepEls[i].classList.add("ml-active");
 
           try {
-            var res = await fetch(API_BASE + "/api/marketplace/run", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                agent: agentId,
-                email: email,
-                product: inputs.product.value || "",
-                audience: inputs.audience.value || "",
-                markets: inputs.markets.value || "",
-                challenge: inputs.challenge.value || "",
-                timeline: inputs.timeline.value || "",
-                upstream_context: upstreamContext,
-                team_id: team.id || null,
-                team_step: i + 1,
-              }),
+            // Team runs are the most exposed to the old timeout: several agents
+            // back to back, each one chaining its output into the next. A single
+            // dropped connection killed the run and the accumulated context with
+            // it.
+            var result = await runMarketplaceAgent({
+              agent: agentId,
+              email: email,
+              product: inputs.product.value || "",
+              audience: inputs.audience.value || "",
+              markets: inputs.markets.value || "",
+              challenge: inputs.challenge.value || "",
+              timeline: inputs.timeline.value || "",
+              upstream_context: upstreamContext,
+              team_id: team.id || null,
+              team_step: i + 1,
+              async_mode: true,
             });
 
-            if (!res.ok) throw new Error("Agent failed");
+            if (!result.ok) throw new Error("Agent failed");
 
-            var data = await res.json();
+            var data = result.data;
             stepEls[i].classList.remove("ml-active");
             stepEls[i].classList.add("ml-done");
             stepEls[i].querySelector(".ml-run-step-icon").textContent = "\u2713";
