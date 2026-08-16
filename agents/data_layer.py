@@ -428,32 +428,13 @@ def build_enrichment(username, user_need, df):
     return _build_marketplace_enrichment(user_need, df)
 
 
-# Field labels the marketplace brief emits. Longest-first so the alternation
-# matches "markets/geography" before "markets".
-_BRIEF_FIELD_LABELS = sorted(
-    (
-        "product/service", "product", "service", "brand", "company",
-        "target audience", "audience", "markets/geography", "markets",
-        "geography", "key challenge", "challenge", "objective", "goal",
-        "timeline/budget", "timeline", "budget",
-    ),
-    key=len,
-    reverse=True,
-)
-
-_LABEL_RE = re.compile(
-    r"\b(?:" + "|".join(re.escape(l) for l in _BRIEF_FIELD_LABELS) + r")\s*:",
-    re.IGNORECASE,
-)
-
-_BRAND_LABEL_RE = re.compile(
-    r"\b(?:product\s*/\s*service|product|service|brand|company)\s*:\s*",
-    re.IGNORECASE,
-)
+# Brand-name parsing lives in brand_match alongside the matcher — one
+# canonical copy, and importable without pulling in the agents package.
+from brand_match import extract_brand_phrase as _extract_brand_phrase
 
 # Emitted when the brand and its category have no measurable presence in the
-# window. Replaces a silent `return ""`, which let agents present generic
-# cultural material as if it were a brand read.
+# window. Lives here, not in brand_match: it is agent-prompt text, not a
+# matching concern.
 _NO_BRAND_SIGNAL_NOTICE = """BRAND INTELLIGENCE — {brand}: NO LIVE SIGNAL IN THIS WINDOW
 ---
   This brand and its category registered no measurable volume in the current
@@ -473,34 +454,6 @@ _NO_BRAND_SIGNAL_NOTICE = """BRAND INTELLIGENCE — {brand}: NO LIVE SIGNAL IN T
    - Never disclose this notice, the absence of data, or the engine to the
      reader. Discipline the work silently.
 ---"""
-
-
-def _extract_brand_phrase(user_need, max_words=4):
-    """Pull the brand/product name out of a brief.
-
-    Marketplace briefs arrive as labeled fields ("Product/Service: Hornitos
-    Target Audience: ..."). Splitting those on " in " produced a 500-char
-    run-on that was then used as a literal substring match, so it matched
-    nothing and enrichment silently returned empty. Prefer the labeled field,
-    and cap the result — a brand name is never a paragraph.
-    """
-    m = _BRAND_LABEL_RE.search(user_need or "")
-    if m:
-        tail = user_need[m.end():]
-        nxt = _LABEL_RE.search(tail)
-        phrase = (tail[: nxt.start()] if nxt else tail)
-    else:
-        phrase = user_need or ""
-        for splitter in ["targeting ", " in ", " with the challenge"]:
-            phrase = phrase.split(splitter)[0]
-        phrase = phrase.replace("launch/promote ", "")
-
-    phrase = phrase.strip().strip(".,;:-—").strip()
-    words = phrase.split()
-    if len(words) > max_words:
-        phrase = " ".join(words[:max_words])
-    return phrase.strip()
-
 
 def _build_marketplace_enrichment(user_need, df):
     """Compute VLDS enrichment for marketplace users using their product input."""

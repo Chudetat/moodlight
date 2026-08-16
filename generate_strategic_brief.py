@@ -205,7 +205,10 @@ def _build_enrichment(engine, username: str, user_need: str, df: pd.DataFrame) -
 
         if sections:
             return "\n\n".join(sections)
-        return ""
+        # Watchlist brand matched but produced no measurable sections. Same
+        # situation the marketplace path handles: we know which brand, we just
+        # can't see it. Look it up rather than returning nothing.
+        return _brand_background_fallback(matched_brand, user_need)
 
     # Layer 2: Topic match
     with engine.connect() as conn:
@@ -247,8 +250,42 @@ def _build_enrichment(engine, username: str, user_need: str, df: pd.DataFrame) -
                 "---\n" + "\n".join(alert_lines) + "\n---"
             )
 
-    # Layer 3: No match
-    return ""
+    # Layer 3: No watchlist match. The user is briefing on something they never
+    # added to a watchlist — which is most real work. Pull the brand out of the
+    # brief itself and look it up, so the logged-in path is no worse informed
+    # than the marketplace one.
+    return _brand_background_fallback(None, user_need)
+
+
+def _brand_background_fallback(known_brand, user_need):
+    """Web-lookup background for a brand the substrate can't see.
+
+    known_brand: a watchlist brand that matched but had no measurable signal,
+    or None when nothing matched and the brand must be read out of the brief.
+
+    Returns "" on any failure — this is enrichment, never a hard dependency.
+    """
+    brand = known_brand
+    if not brand:
+        try:
+            from brand_match import extract_brand_phrase
+            brand = extract_brand_phrase(user_need or "")
+        except Exception as e:
+            print(f"  [enrichment] brand extraction unavailable: "
+                  f"{type(e).__name__}: {e}")
+            return ""
+
+    if not brand or len(brand.strip()) < 2:
+        return ""
+
+    try:
+        from brand_dossier import fetch_brand_dossier
+        dossier = fetch_brand_dossier(brand, category_hint=(user_need or "")[:300])
+        return dossier or ""
+    except Exception as e:
+        print(f"  [enrichment] brand dossier unavailable: "
+              f"{type(e).__name__}: {e}")
+        return ""
 
 
 def _load_campaign_precedents(user_need: str, df: pd.DataFrame) -> str:
