@@ -533,7 +533,23 @@ def _build_marketplace_enrichment(user_need, df):
         print(f"  [data_layer] NO BRAND SIGNAL for {brand_phrase!r} "
               f"({len(brand_df)} mentions in {len(df)} docs) — agents will be told "
               f"to work from the brief, not from a cultural read.")
-        return _NO_BRAND_SIGNAL_NOTICE.format(brand=brand_phrase.upper())
+        notice = _NO_BRAND_SIGNAL_NOTICE.format(brand=brand_phrase.upper())
+
+        # The standing corpus is news-shaped and misses product brands almost
+        # entirely. Look the brand up on the open web so the agent at least
+        # knows what it IS and what it is CURRENTLY RUNNING. Background only —
+        # the no-signal notice still stands, because a lookup is not a cultural
+        # read. Fails soft: any problem and we ship the notice alone.
+        try:
+            from brand_dossier import fetch_brand_dossier
+            dossier = fetch_brand_dossier(brand_phrase, category_hint=user_need[:300])
+            if dossier:
+                return f"{dossier}\n\n{notice}"
+        except Exception as e:
+            print(f"  [data_layer] brand dossier unavailable: "
+                  f"{type(e).__name__}: {e}")
+
+        return notice
 
     if "created_at" in brand_df.columns:
         brand_df = brand_df.dropna(subset=["created_at"])
