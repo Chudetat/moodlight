@@ -67,6 +67,22 @@ Search the web and report, in this order:
    the most important section. A strategist who does not know this will propose
    work that contradicts what the brand is already running.
 
+   SEARCH FOR THIS EXPLICITLY. Do not answer it from the brand's About page or
+   its heritage story - those describe what the brand IS, not what it is
+   currently SAYING, and a brand's live campaign is almost never on the page
+   that describes its founding. Run dedicated searches along the lines of:
+   "<brand> new campaign", "<brand> brand platform", "<brand> launches",
+   "<brand> advertising agency", "<brand> press release" - and repeat them
+   against the last two calendar years by name. Trade press (Ad Age, Adweek,
+   Campaign, Marketing Dive, Shots) and the parent company's newsroom carry this
+   when the brand's own site does not. A campaign launched 12-24 months ago is
+   very likely still the live platform; recency of the article is not evidence
+   that a platform has ended.
+
+   Getting this section wrong is the single most expensive failure in this brief.
+   Only write "NO CURRENT PLATFORM FOUND" after those searches have actually been
+   run and come back empty.
+
 3. RECENT ACTIVITY — notable launches, partnerships, events or announcements in
    roughly the last 18 months, each with a date.
 
