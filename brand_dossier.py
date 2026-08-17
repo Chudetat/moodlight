@@ -21,11 +21,23 @@ return None so the caller falls back to the honest no-signal path.
 import os
 import time
 
-# brand (lowercased) -> (fetched_at_epoch, dossier_text). Process-local, which
-# is enough: the API process is long-lived and a single brief usually runs 3+
-# agents against the same brand within a minute.
+# Process-local first hop: brand (lowercased) -> (fetched_at_epoch, text).
+# Fast, but wiped by every deploy, which is exactly how we lost a good result -
+# a lookup found Hornitos' live platform at 23:23, a deploy restarted the
+# container at 23:39, and the 23:44 run re-rolled the dice and missed it.
 _CACHE = {}
 _TTL_SECONDS = 24 * 60 * 60
+
+# Durable second hop. A brand's founding story and current platform do not
+# change week to week, so there is no reason to re-fetch and re-gamble every
+# time somebody asks. 30 days.
+_DB_TTL_DAYS = 30
+
+# Web search is genuinely variable: the same prompt finds a brand's live
+# platform on one run and misses it on the next. Rather than fight that with
+# ever-more-forceful prompt language, we keep the better answer - a stored
+# dossier that HAS a platform section beats a fresh one that does not.
+_NO_PLATFORM_MARKER = "NO CURRENT PLATFORM FOUND"
 
 _MODEL = "claude-sonnet-5"
 # Kept deliberately short. This is background, not an essay, and every token
@@ -128,8 +140,106 @@ def _cache_get(key):
     return text
 
 
+def _has_platform(body):
+    """Did the lookup actually establish what the brand is currently running?
+
+    This is the section that matters and the section that fails. Everything
+    else - founding, distillery, ownership - comes back reliably.
+    """
+    return bool(body) and _NO_PLATFORM_MARKER not in body.upper()
+
+
+def _ensure_table(engine):
+    from sqlalchemy import text as sql_text
+    with engine.connect() as conn:
+        conn.execute(sql_text("""
+            CREATE TABLE IF NOT EXISTS brand_dossiers (
+                brand VARCHAR(200) PRIMARY KEY,
+                dossier TEXT NOT NULL,
+                has_platform BOOLEAN DEFAULT FALSE,
+                fetched_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
+        conn.commit()
+
+
+def _db_get(key):
+    """Return (dossier_text, has_platform) from storage, or (None, False)."""
+    try:
+        from db_helper import get_engine
+        from sqlalchemy import text as sql_text
+        engine = get_engine()
+        if not engine:
+            return None, False
+        _ensure_table(engine)
+        with engine.connect() as conn:
+            row = conn.execute(sql_text(
+                "SELECT dossier, has_platform FROM brand_dossiers "
+                "WHERE brand = :b AND fetched_at > NOW() - INTERVAL '%d days'"
+                % _DB_TTL_DAYS), {"b": key}).fetchone()
+        return (row[0], bool(row[1])) if row else (None, False)
+    except Exception as e:
+        print(f"  [brand_dossier] store read failed: {type(e).__name__}: {e}")
+        return None, False
+
+
+def _db_put(key, dossier, has_platform):
+    """Persist, but never downgrade: a stored dossier that established the
+    current platform is not replaced by a fresh one that failed to."""
+    try:
+        from db_helper import get_engine
+        from sqlalchemy import text as sql_text
+        engine = get_engine()
+        if not engine:
+            return
+        _ensure_table(engine)
+        with engine.connect() as conn:
+            conn.execute(sql_text("""
+                INSERT INTO brand_dossiers (brand, dossier, has_platform, fetched_at)
+                VALUES (:b, :d, :p, NOW())
+                ON CONFLICT (brand) DO UPDATE SET
+                    dossier      = CASE WHEN brand_dossiers.has_platform AND NOT :p
+                                        THEN brand_dossiers.dossier ELSE EXCLUDED.dossier END,
+                    has_platform = brand_dossiers.has_platform OR EXCLUDED.has_platform,
+                    fetched_at   = NOW()
+            """), {"b": key, "d": dossier, "p": has_platform})
+            conn.commit()
+    except Exception as e:
+        print(f"  [brand_dossier] store write failed: {type(e).__name__}: {e}")
+
+
+def _run_lookup(client, brand, hint):
+    """One web-search pass. Returns the raw body text, or "" if unusable."""
+    from datetime import datetime, timezone
+    started = time.time()
+    with client.messages.stream(
+        model=_MODEL,
+        max_tokens=_MAX_TOKENS,
+        system=_SYSTEM,
+        tools=[
+            {"type": "web_search_20260209", "name": "web_search"},
+            {"type": "web_fetch_20260209", "name": "web_fetch"},
+        ],
+        messages=[{"role": "user",
+                   "content": _PROMPT.format(brand=brand, hint=hint)}],
+    ) as stream:
+        resp = stream.get_final_message()
+    print(f"  [brand_dossier] lookup took {time.time() - started:.0f}s")
+    body = "".join(
+        b.text for b in resp.content if getattr(b, "type", None) == "text"
+    ).strip()
+    if not body or "NO RELIABLE INFORMATION FOUND" in body.upper():
+        return ""
+    return body
+
+
 def fetch_brand_dossier(brand, category_hint=""):
     """Return a background block for `brand`, or None if nothing usable.
+
+    Three hops, cheapest first: process cache, durable store, then the web.
+    The store is what makes this reliable - web search finds a brand's live
+    platform on some runs and not others, so we keep the answer rather than
+    re-rolling the dice on every request.
 
     category_hint disambiguates common-word brands ("Corona" the beer, not the
     city). Pass whatever category context the brief supplies.
@@ -138,15 +248,23 @@ def fetch_brand_dossier(brand, category_hint=""):
         return None
 
     key = brand.strip().lower()
+
     cached = _cache_get(key)
     if cached is not None:
         print(f"  [brand_dossier] cache hit for {brand!r}")
         return cached
 
+    stored, stored_has_platform = _db_get(key)
+    if stored and stored_has_platform:
+        # Complete answer already on file. Nothing to gain from re-fetching.
+        print(f"  [brand_dossier] store hit for {brand!r} (with platform)")
+        _CACHE[key] = (time.time(), stored)
+        return stored
+
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        print("  [brand_dossier] ANTHROPIC_API_KEY not set — skipping lookup")
-        return None
+        print("  [brand_dossier] ANTHROPIC_API_KEY not set - skipping lookup")
+        return stored or None
 
     try:
         from anthropic import Anthropic
@@ -156,41 +274,42 @@ def fetch_brand_dossier(brand, category_hint=""):
         hint = f"\nCATEGORY CONTEXT: {category_hint.strip()}" if category_hint else ""
 
         print(f"  [brand_dossier] looking up {brand!r} on the open web...")
-        started = time.time()
-        with client.messages.stream(
-            model=_MODEL,
-            max_tokens=_MAX_TOKENS,
-            system=_SYSTEM,
-            tools=[
-                {"type": "web_search_20260209", "name": "web_search"},
-                {"type": "web_fetch_20260209", "name": "web_fetch"},
-            ],
-            messages=[{"role": "user",
-                       "content": _PROMPT.format(brand=brand, hint=hint)}],
-        ) as stream:
-            resp = stream.get_final_message()
-        print(f"  [brand_dossier] lookup took {time.time() - started:.0f}s")
+        body = _run_lookup(client, brand, hint)
 
-        body = "".join(
-            b.text for b in resp.content if getattr(b, "type", None) == "text"
-        ).strip()
+        # The platform section is the one that fails, and it fails as a dice
+        # roll rather than a dead end. One retry converts most misses.
+        if body and not _has_platform(body):
+            print(f"  [brand_dossier] no platform found for {brand!r} - retrying once")
+            retry = _run_lookup(client, brand, hint)
+            if _has_platform(retry):
+                body = retry
 
-        if not body or "NO RELIABLE INFORMATION FOUND" in body.upper():
+        if not body:
             print(f"  [brand_dossier] nothing usable found for {brand!r}")
-            _CACHE[key] = (time.time(), None)
-            return None
+            _CACHE[key] = (time.time(), stored)
+            return stored or None
 
         dossier = _HEADER.format(
             brand=brand.upper(),
             date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             body=body,
         )
+        has_platform = _has_platform(body)
+
+        # Never downgrade: if we already had a dossier WITH a platform and this
+        # one lacks it, keep the better one.
+        if stored and stored_has_platform and not has_platform:
+            print(f"  [brand_dossier] fresh lookup lost the platform - keeping stored")
+            dossier = stored
+
+        _db_put(key, dossier, has_platform or stored_has_platform)
         _CACHE[key] = (time.time(), dossier)
-        print(f"  [brand_dossier] retrieved {len(body)} chars for {brand!r}")
+        print(f"  [brand_dossier] retrieved {len(body)} chars for {brand!r} "
+              f"(platform: {'yes' if has_platform else 'NO'})")
         return dossier
 
     except Exception as e:
         # Never let a lookup failure take down an agent run.
         print(f"  [brand_dossier] lookup failed for {brand!r}: "
               f"{type(e).__name__}: {e}")
-        return None
+        return stored or None
