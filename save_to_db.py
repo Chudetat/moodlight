@@ -67,9 +67,25 @@ def save_to_db(csv_path: str, table_name: str):
 
     print(f"📊 Loaded {len(df)} rows from {csv_path}")
 
-    # Convert created_at to datetime with UTC
+    # Convert created_at to datetime with UTC.
+    #
+    # errors="coerce" turns anything unparseable into NaT, which lands in
+    # Postgres as NULL - and a NULL timestamp is permanent. Every consumer
+    # filters on created_at >= cutoff, so the row is invisible, and retention
+    # deletes on created_at < cutoff, which NULL never matches either. By
+    # 2026-08-22 that had accumulated 9,639 immortal rows in news_scored, 2.9%
+    # of the table, all of them real articles nothing could ever read.
+    #
+    # fetch_news_rss already defaults a missing pubdate to now (line ~1537);
+    # this does the same for a date that survives the fetch but fails to parse
+    # here. Ingest time is approximate but it is inside the retention window,
+    # which a NULL is not.
     if "created_at" in df.columns:
         df["created_at"] = pd.to_datetime(df["created_at"], format="mixed", utc=True, errors="coerce")
+        unparsed = int(df["created_at"].isna().sum())
+        if unparsed:
+            print(f"WARNING: {unparsed} unparseable created_at values -> ingest time")
+            df["created_at"] = df["created_at"].fillna(pd.Timestamp.now(tz="UTC"))
 
     # Only keep columns that exist in table
     valid_cols = ["id", "text", "created_at", "link", "source", "topic", "audience",
