@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from db_helper import make_engine
 
 load_dotenv()
 
@@ -362,7 +363,7 @@ def _get_subscriber_emails():
     try:
         from sqlalchemy import create_engine, text
         db_url = db_url.replace("postgres://", "postgresql://", 1)
-        engine = create_engine(db_url)
+        engine = make_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text("""
                 SELECT u.email FROM users u
@@ -384,7 +385,7 @@ def _get_cancelled_emails():
     try:
         from sqlalchemy import create_engine, text
         db_url = db_url.replace("postgres://", "postgresql://", 1)
-        engine = create_engine(db_url)
+        engine = make_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text("""
                 SELECT email FROM users

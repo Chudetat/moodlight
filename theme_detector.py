@@ -16,6 +16,7 @@ from datetime import datetime, timezone, timedelta
 import pandas as pd
 from anthropic import Anthropic
 from sqlalchemy import text as sql_text
+from db_helper import make_engine
 
 client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -583,7 +584,7 @@ if __name__ == "__main__":
 
     from sqlalchemy import create_engine
     db_url = db_url.replace("postgres://", "postgresql://", 1)
-    engine = create_engine(db_url)
+    engine = make_engine(db_url)
 
     print("=" * 60)
     print("Theme Detector — Standalone Run")

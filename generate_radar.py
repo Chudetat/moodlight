@@ -18,6 +18,7 @@ from email.mime.multipart import MIMEMultipart
 
 from anthropic import Anthropic
 from dotenv import load_dotenv
+from db_helper import make_engine
 
 load_dotenv()
 
@@ -31,7 +32,7 @@ def _get_engine():
         sys.exit(1)
     from sqlalchemy import create_engine
     db_url = db_url.replace("postgres://", "postgresql://", 1)
-    return create_engine(db_url)
+    return make_engine(db_url)
 
 
 def build_radar_context(engine):

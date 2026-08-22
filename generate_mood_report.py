@@ -24,6 +24,7 @@ from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from db_helper import make_engine
 
 load_dotenv()
 
@@ -40,7 +41,7 @@ def _get_engine():
     if not db_url:
         raise RuntimeError("DATABASE_URL not set")
     db_url = db_url.replace("postgres://", "postgresql://", 1)
-    return create_engine(db_url)
+    return make_engine(db_url)
 
 
 def load_mood_data(engine):

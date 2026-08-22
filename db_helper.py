@@ -18,6 +18,37 @@ ALLOWED_TABLES = {
 
 _engine_instance = None
 
+# Client-side TCP keepalives for every engine in the codebase.
+#
+# Measured 2026-08-22: the server's tcp_keepalives_idle is 7200s with 9 probes
+# at 75s, so it takes 7875s to notice a silently dropped link. With no client
+# keepalives nothing watches from this end either. The brief's 02:00 run hung
+# 8015s on exactly that before erroring with "server closed the connection
+# unexpectedly" - a match inside 90 seconds. Probing after 10s idle surfaces a
+# dead connection in ~35s instead of over two hours.
+#
+# These are psycopg2 connect args, so they only apply to the postgresql driver.
+KEEPALIVE_ARGS = {
+    "keepalives": 1,
+    "keepalives_idle": 10,
+    "keepalives_interval": 5,
+    "keepalives_count": 5,
+}
+
+
+def make_engine(db_url, **kwargs):
+    """create_engine with the keepalives a long read needs.
+
+    For callers that hold their own URL rather than sharing the pooled
+    get_engine() below. Any keyword overrides the defaults, so a caller wanting
+    its own pooling can still pass it.
+    """
+    url = db_url.replace("postgres://", "postgresql://", 1)
+    opts = {"pool_pre_ping": True, "connect_args": dict(KEEPALIVE_ARGS)}
+    opts.update(kwargs)
+    return create_engine(url, **opts)
+
+
 def get_engine():
     global _engine_instance
     if _engine_instance is not None:
@@ -31,6 +62,7 @@ def get_engine():
     _engine_instance = create_engine(
         url, pool_pre_ping=True, pool_recycle=300,
         pool_size=3, max_overflow=2, pool_timeout=30,
+        connect_args=dict(KEEPALIVE_ARGS),
     )
     return _engine_instance
 

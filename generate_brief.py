@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from db_helper import make_engine
 
 def get_cancelled_subscriber_emails():
     """Get emails of users who cancelled their subscription.
@@ -24,7 +25,7 @@ def get_cancelled_subscriber_emails():
     try:
         from sqlalchemy import create_engine, text
         db_url = db_url.replace("postgres://", "postgresql://", 1)
-        engine = create_engine(db_url)
+        engine = make_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text("""
                 SELECT email FROM users
@@ -231,7 +232,7 @@ def _get_subscriber_emails_for_brief():
     try:
         from sqlalchemy import create_engine, text
         db_url = db_url.replace("postgres://", "postgresql://", 1)
-        engine = create_engine(db_url)
+        engine = make_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text("""
                 SELECT u.email FROM users u
@@ -398,7 +399,7 @@ def load_social_data():
         try:
             from sqlalchemy import create_engine
             db_url = db_url.replace("postgres://", "postgresql://", 1)
-            engine = create_engine(db_url)
+            engine = make_engine(db_url)
             from sqlalchemy import text as sql_text
             cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
             df = pd.read_sql(sql_text("SELECT * FROM social_scored WHERE created_at >= :cutoff"), engine, params={"cutoff": cutoff_str})

@@ -12,6 +12,7 @@ from datetime import datetime, timezone, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
+from db_helper import make_engine
 
 load_dotenv()
 
@@ -30,7 +31,7 @@ def get_subscriber_emails():
         if "sslmode" not in db_url:
             sep = "&" if "?" in db_url else "?"
             db_url = db_url + sep + "sslmode=require"
-        engine = create_engine(db_url)
+        engine = make_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text("""
                 SELECT u.username, u.email FROM users u
@@ -55,7 +56,7 @@ def get_cancelled_emails():
         if "sslmode" not in db_url:
             sep = "&" if "?" in db_url else "?"
             db_url = db_url + sep + "sslmode=require"
-        engine = create_engine(db_url)
+        engine = make_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text("""
                 SELECT email FROM users
@@ -96,7 +97,7 @@ def _get_user_disabled_alert_types():
         if "sslmode" not in db_url:
             sep = "&" if "?" in db_url else "?"
             db_url = db_url + sep + "sslmode=require"
-        engine = create_engine(db_url)
+        engine = make_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text(
                 "SELECT username, alert_type FROM user_alert_preferences WHERE enabled = FALSE"
@@ -122,7 +123,7 @@ def _get_alert_opted_out_emails():
         if "sslmode" not in db_url:
             sep = "&" if "?" in db_url else "?"
             db_url = db_url + sep + "sslmode=require"
-        engine = create_engine(db_url)
+        engine = make_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text("""
                 SELECT u.email FROM users u

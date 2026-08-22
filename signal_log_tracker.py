@@ -14,6 +14,7 @@ import pandas as pd
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import create_engine, text as sql_text
 from dotenv import load_dotenv
+from db_helper import make_engine
 
 load_dotenv()
 
@@ -32,7 +33,7 @@ def _get_engine():
     if not db_url:
         raise RuntimeError("DATABASE_URL not set")
     db_url = db_url.replace("postgres://", "postgresql://", 1)
-    return create_engine(db_url)
+    return make_engine(db_url)
 
 
 def ensure_signal_log_table(engine):
