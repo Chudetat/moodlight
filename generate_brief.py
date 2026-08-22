@@ -5,6 +5,7 @@ Generates an executive intelligence brief using Claude AI
 """
 
 import os
+import time
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 from anthropic import Anthropic
@@ -309,34 +310,83 @@ load_dotenv()
 
 client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
+def _scored_engine(db_url):
+    """Engine for the scored-data reads, with TCP keepalives.
+
+    The 7-day news_scored read is ~46MB in one result set. With no keepalive a
+    long single stream looks idle to the network layer and gets dropped, which
+    is the "server closed the connection unexpectedly" that killed the 2026-08-22
+    brief mid-SELECT. pool_pre_ping validates a pooled connection BEFORE a query
+    and would not have caught this one, since it died during the query — the
+    keepalives are what actually address it.
+    """
+    from sqlalchemy import create_engine
+    return create_engine(
+        db_url.replace("postgres://", "postgresql://", 1),
+        pool_pre_ping=True,
+        connect_args={
+            # Measured 2026-08-22: the 7-day read takes ~20s, much of it server-side
+            # silence while 46MB is materialised before any bytes flow, and the
+            # server's own tcp_keepalives_idle is 7200s so it never probes. Idle
+            # must therefore be well under 20s or nothing guards that window.
+            "keepalives": 1,
+            "keepalives_idle": 10,
+            "keepalives_interval": 5,
+            "keepalives_count": 5,
+        },
+    )
+
+
 def load_recent_data():
-    """Load last 24 hours of intelligence data"""
-    # Try PostgreSQL first
+    """Load the last 7 days of scored news from PostgreSQL.
+
+    PostgreSQL is the only source. There is deliberately no CSV fallback:
+    news_scored.csv is written by a different Railway service, so it can never
+    exist in this container. Reading it only converted a recoverable connection
+    drop into a FileNotFoundError that hid the real cause for hours.
+    """
     db_url = os.getenv("DATABASE_URL", "")
-    if db_url:
-        try:
-            from sqlalchemy import create_engine
-            db_url = db_url.replace("postgres://", "postgresql://", 1)
-            engine = create_engine(db_url)
-            from sqlalchemy import text as sql_text
-            cutoff = datetime.now(timezone.utc) - pd.Timedelta(days=7)
-            cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
-            df = pd.read_sql(sql_text("SELECT * FROM news_scored WHERE created_at >= :cutoff"), engine, params={"cutoff": cutoff_str})
-            if not df.empty:
-                print(f"✅ Loaded {len(df)} rows from PostgreSQL")
-                df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
-                return df
-        except Exception as e:
-            print(f"DB error: {e}")
-    # Fallback to CSV
-    df = pd.read_csv("news_scored.csv")
-    df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
+    if not db_url:
+        raise RuntimeError(
+            "load_recent_data: DATABASE_URL is not set on this service"
+        )
 
-    # Last 7 days
+    from sqlalchemy import text as sql_text
+    from sqlalchemy.exc import OperationalError
+
     cutoff = datetime.now(timezone.utc) - pd.Timedelta(days=7)
-    recent = df[df['created_at'] >= cutoff]
+    cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
+    query = sql_text("SELECT * FROM news_scored WHERE created_at >= :cutoff")
 
-    return recent
+    last_error = None
+    for attempt in (1, 2):
+        engine = None
+        try:
+            engine = _scored_engine(db_url)
+            df = pd.read_sql(query, engine, params={"cutoff": cutoff_str})
+        except OperationalError as e:
+            last_error = e
+            print(f"DB connection dropped on attempt {attempt} of 2: {e}")
+            if attempt == 1:
+                time.sleep(5)
+            continue
+        finally:
+            if engine is not None:
+                engine.dispose()
+
+        if df.empty:
+            raise RuntimeError(
+                f"load_recent_data: news_scored returned 0 rows since {cutoff_str}. "
+                "The database is reachable, so the news fetch has stopped writing."
+            )
+        print(f"✅ Loaded {len(df)} rows from PostgreSQL")
+        df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
+        return df
+
+    raise RuntimeError(
+        f"load_recent_data: PostgreSQL unreachable after 2 attempts. "
+        f"Last error: {last_error}"
+    ) from last_error
 
 
 def load_social_data():
