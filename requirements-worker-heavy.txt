@@ -3,7 +3,7 @@ requests
 feedparser
 transformers
 torch
-anthropic
+anthropic==1.3.0
 python-dotenv>=1.0.0
 sqlalchemy
 psycopg2-binary
