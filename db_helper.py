@@ -59,9 +59,19 @@ def get_engine():
     if "sslmode" not in url:
         sep = "&" if "?" in url else "?"
         url = url + sep + "sslmode=require"
+    # Pool sized to how the dashboard actually loads: one page fires roughly
+    # fifteen endpoint calls at once, and each one wants a connection. At
+    # pool_size=3 / max_overflow=2 that is a ceiling of five, so the rest queued
+    # and then died at pool_timeout with "QueuePool limit of size 3 overflow 2
+    # reached" - surfacing as intermittent 500s on /api/brands/admin,
+    # /api/data/markets and /api/alerts/admin for anyone opening the dashboard.
+    #
+    # Measured 2026-09-01: the server allows 500 connections and 7 were in use.
+    # There was never a reason for a ceiling of five. 15+15 covers a full page
+    # load with headroom and is still a rounding error against 500.
     _engine_instance = create_engine(
         url, pool_pre_ping=True, pool_recycle=300,
-        pool_size=3, max_overflow=2, pool_timeout=30,
+        pool_size=15, max_overflow=15, pool_timeout=30,
         connect_args=dict(KEEPALIVE_ARGS),
     )
     return _engine_instance
