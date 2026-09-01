@@ -1910,10 +1910,15 @@ async def ask_moodlight(req: AskRequest, request: Request):
     last_err = None
     for _attempt in range(3):
         try:
+            # No temperature: newer anthropic SDKs dropped it from
+            # messages.create(), and an unpinned dependency meant the 2026-08-22
+            # rebuild picked that up. Every Ask call died on
+            # "unexpected keyword argument 'temperature'" and returned 503 for
+            # ten days. 1.0 was the default anyway, so nothing changes but the
+            # call surviving.
             response = client.messages.create(
                 model="claude-opus-5",
                 max_tokens=16000,
-                temperature=1.0,
                 system=system_prompt,
                 messages=messages,
                 extra_body={"output_config": {"effort": "medium"}},
