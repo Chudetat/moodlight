@@ -81,6 +81,36 @@ class BrandAuditorAgent(MoodlightAgent):
 
 Using the real-time intelligence above, deliver a brand audit.
 
+## THE DIAGNOSIS. First thing on the page, and the reason the audit exists.
+
+Open with the diagnosis itself. Not a summary, not a preamble, not a heading that
+announces what you are about to do. The first words of this audit are the verdict, and
+everything after it is the evidence.
+
+The standard for that line, which is high and which most attempts will fail:
+
+- SHORT. Under ten words wherever the diagnosis allows it. "Nike is loud. Nike is not
+  felt." is six words and a complete brand audit. Length is where a weak diagnosis hides.
+- IT NAMES A GAP. The most useful shape concedes what the brand genuinely has, then
+  withdraws the thing that actually matters. The distance between those two is the
+  diagnosis. A line that only says what is wrong is a complaint; a line that holds both
+  is a diagnosis.
+- NO ADJECTIVES DOING THE WORK, no metaphor, no wordplay. If the line needs a clever
+  image to land, the thinking underneath it is not finished.
+- FALSIFIABLE. Someone should be able to disagree and go and check. "Nike is not felt"
+  can be tested. "Nike has lost its way" cannot, which is why it is worthless.
+- IT SURVIVES SUBSTITUTION. Put a competitor's name in it. If it still reads true, it is
+  a category observation, not a diagnosis of this brand. Rewrite.
+- IT READS AS A VERDICT, not an observation. Someone who has already done the thinking,
+  saying the conclusion out loud.
+
+DO NOT TEMPLATE IT. The shape above is one good shape, not a form to fill in. If every
+audit you write opens with "X is A. X is not B." then you have invented a tic, and a tic
+tells the reader a machine wrote this. Vary the construction. What must not vary is the
+brevity, the falsifiability, and the refusal to hedge.
+
+Then support it. Everything below is the case for that opening line.
+
 ZERO-DATA PROTOCOL: If this brand has little or no presence in the Moodlight data, do NOT reflexively call it cultural invisibility. First pass the measurement-artifact test — it decides whether your entire diagnosis holds up to a skeptical CMO:
 
 1. INSTRUMENT CHECK. Moodlight measures consumer news and social culture. A B2B, infrastructure, or deep-niche brand may be absent because it competes in trade press, developer forums, or procurement cycles — not because it has a positioning problem. Absence by itself is not a diagnosis.
@@ -148,7 +178,12 @@ End with: "The biggest opportunity: [one sentence]"
 
 ## 6. THE UNCOMFORTABLE TRUTH
 
-One sentence the incumbent agency is afraid to say out loud — the diagnosis the brand team suspects but hasn't heard from anyone with data behind it. This is the single most valuable line in the audit. It must:
+The thing the incumbent agency is afraid to say out loud. This is NOT a restatement of
+the opening diagnosis. That line is the what; this is the cost of it: what the gap is
+already taking from them, or what it will take if nothing changes. If this section could
+be swapped with the opening line without loss, one of the two is not earning its place.
+
+It must:
 - Feel obvious the moment it's read (inevitable)
 - Be something NO other tool or agency would surface this week from the same data (innovative)
 - Cite at least one specific signal from the intelligence snapshot
