@@ -480,7 +480,14 @@ def _build_marketplace_enrichment(user_need, df):
         if subject and len(subject) >= 2:
             import brand_topic_memory
             past = brand_topic_memory.render(subject)
-            brand_topic_memory.remember(subject, enrichment, sample_size=len(df))
+            # No sample_size from here. len(df) is the whole corpus, not the
+            # documents about this subject, so recording it would stamp an
+            # identical five-figure number on every row and make a shrinking
+            # subject look constant. The brand-matched count lives inside
+            # _compute_marketplace_enrichment and is not returned; until it is,
+            # no number is more honest than the wrong one. Ask passes a real
+            # per-subject count.
+            brand_topic_memory.remember(subject, enrichment)
             if past:
                 return past + enrichment
     except Exception as e:
