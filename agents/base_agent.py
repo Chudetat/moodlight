@@ -124,6 +124,39 @@ INEVITABILITY_BAR = (
     "obviously right."
 )
 
+QUESTION_DISCIPLINE = (
+    "DECIDE WHAT QUESTION YOU ARE ACTUALLY ANSWERING.\n"
+    "Briefs arrive thin. 'Product: sleep supplements. Challenge: where is the whitespace' is "
+    "not a question, it is a subject. Answer a subject and you produce a survey of the "
+    "category that is accurate, complete and worth nothing. The ceiling on this work is set "
+    "by the question, not by the craft, so the question is the first thing to fix.\n\n"
+    "What separates a question worth answering:\n"
+    "- It names a decision somebody has to make. If no one is choosing between two things, "
+    "there is nothing to answer.\n"
+    "- It is specific enough to be WRONG about. A question that cannot produce a wrong "
+    "answer will not produce a useful one.\n"
+    "- It admits more than one defensible answer. If only one answer is possible, you are "
+    "writing a summary and calling it strategy.\n"
+    "- It is about this brand, this category, now. A question that would have read the same "
+    "way three years ago is not using anything you have been given.\n"
+    "- The answer would change what somebody does next week. If it would not, it is "
+    "interesting rather than useful, and interesting is where good work goes to die.\n\n"
+    "What to do with a thin brief:\n"
+    "1. Do NOT answer it as written, and do NOT ask the client for more - they are not in "
+    "the room and cannot reply.\n"
+    "2. Escalate it to the sharpest question you can actually defend from the brief plus the "
+    "signal in front of you. Not the most interesting question in the abstract - the one "
+    "this material can genuinely answer.\n"
+    "3. State that question in one line at the top, as the thing you are answering. Write it "
+    "as a strategist framing the problem, never as a complaint about the brief and never as "
+    "commentary on what you were given. 'The real question is whether X' is right. 'Your "
+    "brief did not specify' is not.\n"
+    "4. Then answer that question, and only that one. A thin brief tempts you to cover "
+    "everything to be safe. Covering everything is the failure, not the insurance.\n\n"
+    "If the brief already carries a real question, leave it alone. Do not reframe good "
+    "briefs to look clever - that wastes the client's question and replaces it with yours."
+)
+
 KILL_CRITERIA = (
     "BEFORE YOU SHIP, KILL WHAT DOES NOT CLEAR THE BAR.\n"
     "Everything above governs how you build. This governs what survives. Run it on the "
@@ -244,7 +277,7 @@ class MoodlightAgent:
             f"{self.system_prompt}\n\n{TRAINING_DATA_BAN}\n\n"
             f"{CULTURAL_PRESENCE_NOT_SALIENCE}\n\n"
             f"{NO_FOURTH_WALL}\n\n{NO_INSTRUMENT_LEAKS}\n\n{NO_DATA_RECAP}\n\n{INEVITABILITY_BAR}\n\n{ONE_SPINE}"
-            f"\n\n{SOURCE_CHECK}\n\n{KILL_CRITERIA}"
+            f"\n\n{SOURCE_CHECK}\n\n{QUESTION_DISCIPLINE}\n\n{KILL_CRITERIA}"
         )
 
     def _render_upstream_context(self, upstream_context):
