@@ -301,6 +301,19 @@ class MoodlightAgent:
         # Build prompt
         prompt = self.build_prompt(request, context)
 
+        # Test the brief before answering it. Sits closest to the brief because
+        # it is an instruction about how to read that brief, not background.
+        # Applied here rather than in each agent so every agent gets the same
+        # discipline and the four that already import strategic_frameworks do
+        # not drift from the ones that do not.
+        try:
+            from diagnostic_patterns import get_diagnostic_prompt
+            diagnostic = get_diagnostic_prompt()
+            if diagnostic:
+                prompt = diagnostic + "\n\n" + prompt
+        except Exception as e:
+            print(f"  [{self.agent_name}] diagnostic patterns unavailable: {type(e).__name__}: {e}")
+
         # Prepend upstream context from prior agents in this session (additive, not replacement)
         upstream_preamble = self._render_upstream_context(request.get("upstream_context"))
         if upstream_preamble:
