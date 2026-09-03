@@ -1861,6 +1861,34 @@ async def ask_moodlight(req: AskRequest, request: Request):
         except Exception as e:
             print(f"WARNING: loading intelligence context failed: {e}")
 
+    # 7b. Carry the subject forward across windows.
+    #
+    # The substrate retains ~30 days, so brand_section can only ever describe
+    # the last month - it cannot tell a spike from the flat middle of a long
+    # decline. Storing each read and handing back the earlier ones gives Ask a
+    # horizon longer than the data it sits on.
+    #
+    # Same store the marketplace agents write to, deliberately: a brand read in
+    # Ask and the same brand read by an agent are the same observation, and
+    # splitting them would leave each half blind to the other.
+    #
+    # Only brand_section goes in. It is computed from tracked posts and a brand
+    # name - the user's question is used to identify the brand and is never
+    # echoed into it - which is what makes it safe to pool across everyone.
+    # Nothing a user typed belongs in this table.
+    if brand_section and brand_name:
+        try:
+            import brand_topic_memory
+            _past = brand_topic_memory.render(brand_name)
+            # brand_posts is always bound when brand_section is non-empty -
+            # both are set inside the same branch.
+            brand_topic_memory.remember(brand_name, brand_section,
+                                        sample_size=len(brand_posts))
+            if _past:
+                brand_section = _past + brand_section
+        except Exception as e:
+            print(f"  [ask] brand/topic memory unavailable: {type(e).__name__}: {e}")
+
     # 8. Assemble context
     context_parts = []
     if brand_section:
