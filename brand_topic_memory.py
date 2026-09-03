@@ -60,6 +60,35 @@ def _norm(subject: str) -> str:
     return re.sub(r"\s+", " ", (subject or "").strip().lower())[:200]
 
 
+# Both surfaces express "this subject has no measurable presence" as a block of
+# prompt instructions rather than as data - "HOW TO HANDLE THIS - non-negotiable",
+# "Do NOT invent a live conversation", "Never disclose this notice". Storing that
+# verbatim and replaying it later as history is worse than storing nothing: the
+# agent is handed a hard directive from a window that has since rolled over, and
+# if the subject HAS signal today, the memory block sits there insisting it does
+# not. The observation worth keeping is one line long.
+_NO_SIGNAL_MARKERS = ("NO LIVE SIGNAL", "NO MOODLIGHT SUBSTRATE DATA")
+_NO_SIGNAL_SUMMARY = "No measurable signal for this subject in that window."
+
+# Ceiling on a stored read. Ask's block carries up to twenty post excerpts and
+# runs past 6KB; render truncates far below this anyway, so anything beyond it
+# is storage nobody will ever see.
+_MAX_STORE_CHARS = 8000
+
+
+def _condense(enrichment: str) -> str:
+    """Keep the observation, drop the instructions.
+
+    An enrichment block is part measurement and part directions to the model.
+    Only the measurement belongs in memory - directions are written for the run
+    that produced them and go stale the moment the window moves.
+    """
+    body = (enrichment or "").strip()
+    if any(m in body for m in _NO_SIGNAL_MARKERS):
+        return _NO_SIGNAL_SUMMARY
+    return body[:_MAX_STORE_CHARS]
+
+
 def _ensure_table(engine):
     from sqlalchemy import text as sql_text
     with engine.connect() as conn:
@@ -86,6 +115,7 @@ def remember(subject: str, enrichment: str, sample_size: int = None):
     key = _norm(subject)
     if not key or not enrichment or not enrichment.strip():
         return
+    enrichment = _condense(enrichment)
     try:
         from db_helper import get_engine
         from sqlalchemy import text as sql_text
