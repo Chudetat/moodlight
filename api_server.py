@@ -897,6 +897,114 @@ def _ensure_marketplace_jobs_table(engine):
 # be polled forever.
 _JOB_STALE_MINUTES = 15
 
+# How far back startup recovery will reach for orphans. Beyond a day, a brief
+# nobody has chased is stale enough that delivering it unannounced is worse
+# than not delivering it.
+_JOB_RECOVER_MAX_AGE_HOURS = 24
+
+# Attempts allowed per job. A run that dies twice is dying for its own reason,
+# not because of a restart, and retrying it forever would turn every deploy
+# into a stampede.
+_JOB_MAX_ATTEMPTS = 2
+
+# Ceiling on how many orphans one startup will pick up, so a bad night cannot
+# put the container straight back under load the moment it comes up.
+_JOB_RECOVER_LIMIT = 5
+
+
+def _recover_orphaned_marketplace_jobs():
+    """Finish the runs a restart killed, instead of quietly dropping them.
+
+    Marketplace runs execute as in-process background tasks, so any restart -
+    a deploy, a crash, Railway moving the container - kills whatever was in
+    flight. The row stays 'pending' and nothing ever picks it up again.
+
+    Fifteen minutes on, the status endpoint does tell a waiting browser the run
+    was interrupted. But the widget's promise is "full brief will be sent to
+    your email", and most people close the tab on that promise. For them there
+    is no browser left to tell: no brief is generated, no email arrives, and
+    nothing anywhere says so. That is the same silent broken promise as an
+    endpoint returning 503 to a user who is never told - the failure is not
+    that it broke, it is that nobody found out.
+
+    This runs at startup, when by definition nothing is in flight in this
+    process, so every 'pending' row is an orphan. Recent ones are re-run and
+    the brief goes out late rather than never. The rest are marked failed so
+    the table stops lying about what happened.
+
+    Bounded three ways - age, attempts, and count - because recovery that
+    stampedes on boot is a worse outage than the one it is fixing.
+    """
+    engine = get_engine()
+    if not engine:
+        return
+    try:
+        _ensure_marketplace_jobs_table(engine)
+        with engine.connect() as conn:
+            conn.execute(sql_text(
+                "ALTER TABLE marketplace_jobs ADD COLUMN IF NOT EXISTS attempts INTEGER DEFAULT 0"))
+            conn.commit()
+
+            # Anything too old or already retried enough is closed out honestly.
+            closed = conn.execute(sql_text(f"""
+                UPDATE marketplace_jobs
+                   SET status='error', updated_at=NOW(),
+                       error='Interrupted by a restart and not recoverable.'
+                 WHERE status='pending'
+                   AND (created_at < NOW() - INTERVAL '{_JOB_RECOVER_MAX_AGE_HOURS} hours'
+                        OR COALESCE(attempts, 0) >= {_JOB_MAX_ATTEMPTS})
+                RETURNING job_id
+            """)).fetchall()
+            conn.commit()
+            if closed:
+                print(f"[job recovery] closed {len(closed)} unrecoverable orphan(s)")
+
+            rows = conn.execute(sql_text(f"""
+                SELECT job_id, agent, email, user_input, COALESCE(attempts, 0)
+                  FROM marketplace_jobs
+                 WHERE status='pending'
+                 ORDER BY created_at DESC
+                 LIMIT {_JOB_RECOVER_LIMIT}
+            """)).fetchall()
+
+            for job_id, agent, email, user_input, attempts in rows:
+                conn.execute(sql_text(
+                    "UPDATE marketplace_jobs SET attempts=:a, updated_at=NOW() "
+                    "WHERE job_id=:j"), {"a": attempts + 1, "j": job_id})
+            conn.commit()
+    except Exception as e:
+        print(f"[job recovery] sweep failed (startup continues): {type(e).__name__}: {e}")
+        return
+
+    if not rows:
+        return
+
+    # Re-run off the request path, one at a time. The point is that the brief
+    # eventually arrives, not that it arrives quickly.
+    import threading
+
+    def _replay():
+        for job_id, agent, email, user_input, _ in rows:
+            try:
+                print(f"[job recovery] replaying {job_id} ({agent} for {email})")
+                req = MarketplaceRequest(agent=agent, email=email, product="",
+                                         async_mode=True)
+                _run_marketplace_job(job_id, req, user_input or "")
+            except Exception as e:
+                print(f"[job recovery] replay of {job_id} failed: {type(e).__name__}: {e}")
+
+    threading.Thread(target=_replay, daemon=True, name="job-recovery").start()
+    print(f"[job recovery] replaying {len(rows)} orphaned run(s)")
+
+
+@app.on_event("startup")
+def _on_startup():
+    """Pick up anything the last process was in the middle of."""
+    try:
+        _recover_orphaned_marketplace_jobs()
+    except Exception as e:
+        print(f"startup recovery failed (server still starting): {type(e).__name__}: {e}")
+
 
 def _marketplace_preview(output: str) -> str:
     """First ~600 chars, cut at a newline so the break is clean."""
