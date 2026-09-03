@@ -456,6 +456,40 @@ _NO_BRAND_SIGNAL_NOTICE = """BRAND INTELLIGENCE — {brand}: NO LIVE SIGNAL IN T
 ---"""
 
 def _build_marketplace_enrichment(user_need, df):
+    """Enrichment for marketplace users, carried forward across windows.
+
+    Thin wrapper over the computation below. It stores today's read of the
+    subject and prepends what the engine saw about it in earlier windows, so a
+    run can tell a spike from a trend instead of describing thirty days as
+    though they were the whole story.
+
+    Only the computed block is stored. That block is derived from the shared
+    substrate and a brand name - the user's brief is used to extract the name
+    and is never echoed back - which is what makes it safe to pool across
+    everyone. See brand_topic_memory for why nothing a user typed goes in.
+
+    Memory is additive: any failure here leaves the caller with exactly the
+    enrichment it would have had anyway.
+    """
+    enrichment = _compute_marketplace_enrichment(user_need, df)
+    if not enrichment:
+        return enrichment
+
+    try:
+        subject = _extract_brand_phrase(user_need)
+        if subject and len(subject) >= 2:
+            import brand_topic_memory
+            past = brand_topic_memory.render(subject)
+            brand_topic_memory.remember(subject, enrichment, sample_size=len(df))
+            if past:
+                return past + enrichment
+    except Exception as e:
+        print(f"  [data_layer] brand/topic memory unavailable: {type(e).__name__}: {e}")
+
+    return enrichment
+
+
+def _compute_marketplace_enrichment(user_need, df):
     """Compute VLDS enrichment for marketplace users using their product input."""
     from vlds_helper import calculate_brand_vlds
 
