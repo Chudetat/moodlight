@@ -306,6 +306,17 @@ class MoodlightAgent:
         if upstream_preamble:
             prompt = upstream_preamble + prompt
 
+        # Then this person's own earlier work, if any, outside it. Arrives
+        # already rendered because whether it may be read at all is an access
+        # decision, and that is made once at the endpoint where the signed
+        # token is available - never here, and never inside a memory module.
+        # Sits ahead of the upstream block so the prompt reads oldest first:
+        # what they did weeks ago, what the chain produced minutes ago, then
+        # the brief itself, which outranks both.
+        person_preamble = request.get("person_context") or ""
+        if person_preamble:
+            prompt = person_preamble + prompt
+
         # Call Claude
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:

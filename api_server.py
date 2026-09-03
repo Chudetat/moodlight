@@ -905,7 +905,8 @@ def _marketplace_preview(output: str) -> str:
     return preview[:last_newline] if last_newline > 200 else preview
 
 
-def _run_marketplace_job(job_id: str, req: MarketplaceRequest, user_input: str):
+def _run_marketplace_job(job_id: str, req: MarketplaceRequest, user_input: str,
+                         person_context: str = ""):
     """Execute an agent run and record the result. Runs in a background thread.
 
     Mirrors the synchronous path exactly - same agent, same logging, same email -
@@ -922,6 +923,7 @@ def _run_marketplace_job(job_id: str, req: MarketplaceRequest, user_input: str):
         result = agent.run({
             "user_input": user_input,
             "upstream_context": req.upstream_context or [],
+            "person_context": person_context,
         })
         output = result["output"]
 
@@ -1064,6 +1066,23 @@ def marketplace_run(req: MarketplaceRequest, request: Request, background_tasks:
 
     user_input = _build_marketplace_input(req)
 
+    # This person's own prior work on this business, if they can prove the
+    # address is theirs. The marketplace has no login on purpose, so an email
+    # alone proves nothing - anyone can type a colleague's. Recall is
+    # therefore gated on the signed token Team Builder mails out, which is an
+    # HMAC of the address under a server secret. No token, no recall, and the
+    # run behaves exactly as it did before.
+    #
+    # The check lives here rather than inside person_memory so there is one
+    # place to audit who is allowed to read someone's briefs.
+    person_context = ""
+    try:
+        if _verify_team_token(req.email, _get_team_token(request)):
+            import person_memory
+            person_context = person_memory.render(req.email, user_input, _AGENT_LABELS)
+    except Exception as e:
+        print(f"person memory unavailable (run continues): {type(e).__name__}: {e}")
+
     if req.async_mode:
         # Hand back a job id immediately and do the work off the request. The
         # synchronous path holds an HTTP connection open for the whole agent
@@ -1087,7 +1106,8 @@ def marketplace_run(req: MarketplaceRequest, request: Request, background_tasks:
             raise HTTPException(status_code=503,
                                 detail="Could not start that run. Please try again.")
 
-        background_tasks.add_task(_run_marketplace_job, job_id, req, user_input)
+        background_tasks.add_task(_run_marketplace_job, job_id, req, user_input,
+                                  person_context)
         return {
             "status": "pending",
             "job_id": job_id,
@@ -1106,6 +1126,7 @@ def marketplace_run(req: MarketplaceRequest, request: Request, background_tasks:
         result = agent.run({
             "user_input": user_input,
             "upstream_context": req.upstream_context or [],
+            "person_context": person_context,
         })
         output = result["output"]
     except Exception as e:
