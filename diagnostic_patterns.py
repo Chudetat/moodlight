@@ -54,6 +54,41 @@ DIAGNOSTIC_PATTERNS = [
         "ask": "When was the audience decided, and by whom? Would this brief still be written the same way today?",
         "source": "Daniel Chu, 2026-09-03",
     },
+    {
+        "stated": "We want to celebrate the ritual our drinkers already have.",
+        "actual": "The ritual was invented by the market rather than the culture, and the brand is about to claim a heritage it does not have.",
+        "tell": "Nobody in the origin market does it. The behaviour is real; the provenance is fiction. Claiming it anyway is the kind of thing that survives a pitch and dies in public.",
+        "ask": "Do people at home do this, or only here?",
+        "source": "Daniel Chu, from the Corona lime brief. Confirmed 2026-09-03.",
+    },
+    {
+        "stated": "We need a big cultural moment.",
+        "actual": "They need one concrete, human-scale idea. Spectacle briefs produce work you can describe but not picture.",
+        "tell": "Ask someone to describe the idea back. If they describe scale, it is dead. If they describe a scene with one person in it, it is alive.",
+        "ask": "What does one actual person do here, on a Tuesday?",
+        "source": "Daniel Chu, from Modelo March Madness. Confirmed 2026-09-03.",
+    },
+    {
+        "stated": "That line isn't landing. Can we reword it.",
+        "actual": "Not a wording problem. The claim does not survive the listener's arithmetic and they cannot say so politely.",
+        "tell": "A technical stakeholder rejects one specific sentence and cannot articulate why. Reword it and they reject it again. The objection is the maths, not the language.",
+        "ask": "What would have to be true for that number to hold?",
+        "source": "Daniel Chu, from the SpinCo diorama scripts. Confirmed 2026-09-03.",
+    },
+    {
+        "stated": "Engagement is good. People love it.",
+        "actual": "They are interested, not dependent. The two look identical right up until the thing breaks, and then they do not.",
+        "tell": "It broke and nobody said anything. People tell you when something they rely on stops working; silence measures how little the outage cost them.",
+        "ask": "Who complained the last time it went down?",
+        "source": "Daniel Chu, from Moodlight's own ten-day outage. Confirmed 2026-09-03.",
+    },
+    {
+        "stated": "We need better materials. The deck, the site, the way we describe it.",
+        "actual": "Nobody is asking to see anything. The problem sits upstream of the materials, and rewriting them changes nothing.",
+        "tell": "Count inbound requests over the last month. If it is near zero, the materials are not what is failing.",
+        "ask": "How many people asked you to send them something?",
+        "source": "Daniel Chu, 2026-09-03.",
+    },
 ]
 
 
