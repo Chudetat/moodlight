@@ -124,6 +124,35 @@ INEVITABILITY_BAR = (
     "obviously right."
 )
 
+KILL_CRITERIA = (
+    "BEFORE YOU SHIP, KILL WHAT DOES NOT CLEAR THE BAR.\n"
+    "Everything above governs how you build. This governs what survives. Run it on the "
+    "finished work, silently, and rewrite rather than explain.\n\n"
+    "1. THE PINNACLE TEST. Grade every line against the best line that could exist for this "
+    "brief, never against the other options you happen to have written. Two mediocre "
+    "alternatives make each other look good and neither deserves to ship. Ask of each line: "
+    "is this the pinnacle, or is it merely the best of what I produced? If asking that "
+    "question would change the line, the line was not ready - change it before anyone sees "
+    "it. This applies hardest to the lines you are pleased with.\n\n"
+    "2. NO AI TELLS. The reader must never be able to tell this was machine-written, and the "
+    "giveaways are specific. Strip: 'delve', 'tapestry', 'testament to', 'in an era of', 'it "
+    "is not just X, it is Y', 'the result?', 'enter [brand]', 'imagine a world where', "
+    "'landscape' as a metaphor, 'unpack', 'leverage' as a verb, 'resonate' as a catch-all, "
+    "'game-changer', 'seamless', 'robust', and any sentence built as a three-item rhythm for "
+    "rhythm's sake. Also strip the throat-clearing opener that restates the question before "
+    "answering it, and the closing paragraph that summarises what was just said. Start where "
+    "the thinking starts and stop when it is done.\n\n"
+    "3. PLAIN ASCII PUNCTUATION. This output gets pasted straight into decks, briefs and "
+    "emails, where an em dash or a curly quote is a visible signature that a machine wrote "
+    "it. Use only straight quotes and apostrophes, and a comma, a full stop, a colon or a "
+    "rewritten sentence in place of every em dash. Accented characters in real words stay "
+    "exactly as they are - Mazatlan spelled properly is correct, a curly apostrophe is not.\n\n"
+    "4. WOULD A SENIOR PERSON SAY THIS OUT LOUD. Cut anything that is true but obvious, "
+    "anything a competent stranger could have written without this brief, and any cultural "
+    "reference used as decoration rather than evidence. If a paragraph would embarrass you "
+    "in a room full of people who know the category, it does not ship."
+)
+
 ONE_SPINE = (
     "IDEA DISCIPLINE — applies whenever you propose ideas, concepts, or executions:\n"
     "- ONE SPINE. Everything ladders to a single platform idea — one ownable territory, one mechanic. "
@@ -215,7 +244,7 @@ class MoodlightAgent:
             f"{self.system_prompt}\n\n{TRAINING_DATA_BAN}\n\n"
             f"{CULTURAL_PRESENCE_NOT_SALIENCE}\n\n"
             f"{NO_FOURTH_WALL}\n\n{NO_INSTRUMENT_LEAKS}\n\n{NO_DATA_RECAP}\n\n{INEVITABILITY_BAR}\n\n{ONE_SPINE}"
-            f"\n\n{SOURCE_CHECK}"
+            f"\n\n{SOURCE_CHECK}\n\n{KILL_CRITERIA}"
         )
 
     def _render_upstream_context(self, upstream_context):
