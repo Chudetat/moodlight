@@ -104,10 +104,17 @@ def resolve_category(question: str, brand: str = "", topic: str = "", client=Non
         out = raw.strip().strip('."\'` \n').lower()
         if out in TRACKED_TOPICS:
             return out
-        for t in TRACKED_TOPICS:
-            if t in out:
-                print(f"  [category_read] loose match {raw.strip()!r} -> {t!r}")
-                return t
+        # Observed reply: "**economics**\n\nThis question concerns a financial
+        # services company's..." - markdown and prose despite being asked for
+        # the bare string. Containment handles that. Where more than one
+        # category is named, take the one the model LED with rather than
+        # whichever sits earliest in this file's list, which would be an
+        # arbitrary winner dressed as a decision.
+        found = [(out.index(t), t) for t in TRACKED_TOPICS if t in out]
+        if found:
+            _, t = min(found)
+            print(f"  [category_read] loose match {raw.strip()[:60]!r} -> {t!r}")
+            return t
         print(f"  [category_read] no category for {subject[:60]!r} (model said {raw.strip()[:40]!r})")
         return None
     except Exception as e:
