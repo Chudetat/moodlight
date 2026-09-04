@@ -740,14 +740,26 @@ _AGENT_LABELS = {
 
 _marketplace_rate: dict = {}  # {email: [timestamp, ...]}
 
+# Env-configurable so a live demo can be unblocked from the Railway dashboard
+# without a deploy. Three per email was too tight to show the product to
+# somebody: a genuine visitor working through several agents, or a demo, hits it
+# inside ten minutes. The per-IP ceiling is the limit that actually protects
+# spend, since each run is a large Opus call and an email address is free to
+# invent. Both counters are in process memory and reset on restart, so they
+# bound a burst rather than a determined abuser - raising the email one changes
+# very little about the real exposure.
+_MARKETPLACE_MAX_PER_EMAIL = int(os.getenv("MARKETPLACE_MAX_PER_EMAIL", "10"))
+_MARKETPLACE_MAX_PER_IP = int(os.getenv("MARKETPLACE_MAX_PER_IP", "15"))
+
+
 def _check_marketplace_rate(email: str) -> bool:
-    """Allow max 3 marketplace runs per email per hour."""
+    """Allow _MARKETPLACE_MAX_PER_EMAIL marketplace runs per email per hour."""
     import time
     now = time.time()
     key = email.lower().strip()
     times = _marketplace_rate.get(key, [])
     times = [t for t in times if now - t < 3600]
-    if len(times) >= 3:
+    if len(times) >= _MARKETPLACE_MAX_PER_EMAIL:
         return False
     times.append(now)
     _marketplace_rate[key] = times
@@ -757,13 +769,13 @@ def _check_marketplace_rate(email: str) -> bool:
 _marketplace_ip_rate: dict = {}  # {ip: [timestamp, ...]}
 
 def _check_marketplace_ip_rate(ip: str) -> bool:
-    """Allow max 15 marketplace runs per IP per hour. Closes the throwaway-email
+    """Allow _MARKETPLACE_MAX_PER_IP marketplace runs per IP per hour. Closes the throwaway-email
     bypass on the per-email limit. In-memory; resets on restart (matches the
     existing _check_marketplace_rate pattern)."""
     import time
     now = time.time()
     times = [t for t in _marketplace_ip_rate.get(ip, []) if now - t < 3600]
-    if len(times) >= 15:
+    if len(times) >= _MARKETPLACE_MAX_PER_IP:
         return False
     times.append(now)
     _marketplace_ip_rate[ip] = times

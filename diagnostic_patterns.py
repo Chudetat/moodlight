@@ -271,4 +271,17 @@ def get_diagnostic_prompt(patterns=None) -> str:
         "the conversation. Most briefs get no reframe at all, and that is the correct outcome."
     )
     lines.append("")
+    lines.append(
+        "AND IF YOU REASON FROM WHAT YOU KNOW, SAY SO IN THE SENTENCE. You are allowed to "
+        "argue from how a category normally behaves - that is judgement, and it is worth "
+        "paying for. What you may never do is dress your own knowledge as something the "
+        "client told you. 'Businesses of this size typically retain well, which makes "
+        "awareness an unlikely culprit' is honest and just as sharp. 'With retention in that "
+        "range' or 'at the rate you describe' is the same thought with a false source "
+        "attached, and the reader knows they never said it. Attribute a category norm to the "
+        "category, a figure to whoever supplied it, and never blur the two. This is the same "
+        "discipline as tagging a claim [RECALL] rather than [BRIEF]: the claim can stay, the "
+        "false sourcing cannot."
+    )
+    lines.append("")
     return "\n".join(lines)
