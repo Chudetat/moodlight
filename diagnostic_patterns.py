@@ -23,6 +23,35 @@ The way this compounds is the same method that built the standards layer: when
 a brief gets diagnosed wrongly and the reason is named out loud, that reason
 becomes an entry here.
 
+KNOWN LIMIT - PATTERN 1 AND FABRICATED FIGURES (2026-09-04, do not re-litigate)
+-------------------------------------------------------------------------------
+Given a deliberately bare brief - "we have an awareness problem, nobody in our
+category knows us", no other facts, no numbers - a run will sometimes invent a
+retention figure and state it as the client's. Observed across four attempts to
+prompt it away: "at the rate you're describing", then "with retention in that
+range", then a flat "a company retaining revenue at 118%". The number was
+hallucinated, not leaked; brand_topic_memory was checked and contains no such
+figure, and the stored job input confirms none was supplied.
+
+Why this pattern and no other: pattern 1's tell is a NUMBER, and a plausible
+number can be generated for any category from priors. Every other tell here is
+structural - does the parent share the brand's name, does the brief name a
+customer, does the idea target something the brand owns - and you cannot invent
+your way into those.
+
+Four rounds of guard text each changed the phrasing and not the behaviour:
+an explicit ban, a guard repeated after the list, checkable tells, then the
+attribution rule. A fifth wording is not expected to win, and the escalating
+guard text has its own cost.
+
+DECISION (Daniel, 2026-09-04): keep the pattern, document the limit, stop. It is
+the most valuable entry in the library and behaves correctly whenever the figure
+IS supplied. The failure needs a brief with essentially no content, which is not
+what real users send - the JASPAL and Old Mutual answers were dense with real,
+checkable sources. Do not remove pattern 1 and do not add a fifth guard. If
+fabrication is ever observed on a REAL brief, that is the trigger to revisit;
+a bare adversarial test case is not.
+
 NO MATCHER CODE ON PURPOSE
 --------------------------
 select_frameworks scores keywords. That is brittle, and routing prose has
