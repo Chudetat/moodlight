@@ -50,6 +50,11 @@ _MAX_PER_RUN = 25
 
 _ANSWER_EXCERPT = 320
 
+# Put this in a question when deliberately exercising production Ask, and it
+# will not be reported as inbound. Length alone does not separate our testing
+# from a real question - the dominant-mood probe is 64 characters.
+_TEST_MARKER = "[qa]"
+
 
 def _engine():
     from db_helper import make_engine
@@ -65,16 +70,36 @@ def _ensure_column(conn):
 
 
 def _fetch_new(conn):
+    """New, substantive, first-of-its-kind questions.
+
+    Three filters, and the second two exist because the first was not enough.
+    A dry run against real data showed 11 would-be alerts of which 5 were our
+    own testing: "In one sentence, what is the dominant mood in culture right
+    now?" is 64 characters, clears the length bar, and had been run three times
+    that week.
+
+    So: alert once per DISTINCT question. Testing repeats verbatim; a stranger
+    with a real problem does not ask the identical sentence three times. And
+    skip anything carrying the test marker, which is what we use when poking
+    production deliberately.
+    """
     from sqlalchemy import text as sql_text
     return conn.execute(sql_text(f"""
-        SELECT id, created_at, detected_brand, detected_topic,
+        SELECT DISTINCT ON (LOWER(TRIM(question)))
+               id, created_at, detected_brand, detected_topic,
                recommended_agent, question, COALESCE(answer, '')
           FROM ask_queries
          WHERE notified_at IS NULL
            AND created_at > NOW() - INTERVAL '{_MAX_AGE_HOURS} hours'
            AND LENGTH(question) >= {_MIN_QUESTION_CHARS}
            AND (detected_brand IS NOT NULL OR detected_topic IS NOT NULL)
-         ORDER BY created_at
+           AND question NOT ILIKE '%{_TEST_MARKER}%'
+           AND NOT EXISTS (
+                 SELECT 1 FROM ask_queries older
+                  WHERE LOWER(TRIM(older.question)) = LOWER(TRIM(ask_queries.question))
+                    AND older.notified_at IS NOT NULL
+               )
+         ORDER BY LOWER(TRIM(question)), created_at
          LIMIT {_MAX_PER_RUN}
     """)).fetchall()
 
