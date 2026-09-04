@@ -1836,6 +1836,31 @@ async def ask_moodlight(req: AskRequest, request: Request):
                 f"signal relevant to {brand_name}'s space, or state plainly that there is no tracked signal on it."
             )
 
+            # That notice has always told the model to lean on category signal
+            # and never supplied any, so the answer falls entirely to web
+            # search - which is good work, and reproducible by anyone with a
+            # search engine. The corpus is weak on individual brand names and
+            # strong on the conversations they sit inside, so read the category
+            # instead of apologising for the brand.
+            #
+            # Only on this path. A brand WITH tracked signal must not get a
+            # category block sitting next to its own numbers, because the two
+            # would be read as one.
+            try:
+                import category_read
+                _cat = category_read.resolve_category(question, brand_name,
+                                                      topic_name, client)
+                if _cat:
+                    # _get_engine() rather than `engine`: that local is not
+                    # bound until later in this function, so referencing it
+                    # here raises NameError, which the handler below would
+                    # swallow and the feature would never fire at all.
+                    _cat_block = category_read.build(_get_engine(), _cat)
+                    if _cat_block:
+                        brand_section = brand_section + "\n\n" + _cat_block
+            except Exception as e:
+                print(f"  [ask] category read unavailable: {type(e).__name__}: {e}")
+
     # 5. Web section
     web_section = ""
     if web_articles:
