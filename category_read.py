@@ -95,8 +95,21 @@ def resolve_category(question: str, brand: str = "", topic: str = "", client=Non
             ),
             messages=[{"role": "user", "content": subject}],
         )
-        out = "".join(getattr(b, "text", "") for b in resp.content).strip().lower()
-        return out if out in TRACKED_TOPICS else None
+        raw = "".join(getattr(b, "text", "") for b in resp.content)
+        # Exact match alone is too brittle: a trailing full stop, a wrapping
+        # quote or a capitalised reply all fail it, and the function then
+        # returns None with nothing logged - the feature silently does nothing
+        # and looks like the model ignoring the block. Normalise, then fall back
+        # to containment.
+        out = raw.strip().strip('."\'` \n').lower()
+        if out in TRACKED_TOPICS:
+            return out
+        for t in TRACKED_TOPICS:
+            if t in out:
+                print(f"  [category_read] loose match {raw.strip()!r} -> {t!r}")
+                return t
+        print(f"  [category_read] no category for {subject[:60]!r} (model said {raw.strip()[:40]!r})")
+        return None
     except Exception as e:
         print(f"  [category_read] resolve failed: {type(e).__name__}: {e}")
         return None
