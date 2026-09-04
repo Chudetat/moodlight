@@ -38,6 +38,10 @@ JOBS = {
         "module": "signal_log_tracker",
         "label": "Signal Log Outcome Tracker",
     },
+    "ask-alerts": {
+        "module": "ask_alerts",
+        "label": "Ask Inbound Alerts",
+    },
     "prediction-log": {
         "module": "prediction_tracker",
         "label": "Prediction Tracker (Daily Resolution Pass)",
