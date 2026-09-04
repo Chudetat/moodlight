@@ -232,8 +232,10 @@ def get_diagnostic_prompt(patterns=None) -> str:
         "",
         "How to use them, in order:",
         "1. Most briefs are what they say they are. Assume the brief is right unless the "
-        "TELL below is actually visible in the data or in the brief itself. Do not "
-        "reframe a problem on suspicion, and never reframe more than one thing.",
+        "TELL below is written, in words, in the brief or the data in front of you. A tell "
+        "you inferred from the kind of company this is, or assumed because the pattern "
+        "would be interesting if true, is not a tell - it is you making the evidence up. "
+        "Do not reframe on suspicion, and never reframe more than one thing.",
         "2. If a tell IS present, lead with the real problem and solve that. Do not solve "
         "both, and do not present the reframe as a discovery about the client's blind spot.",
         "3. State the reframe as a strategic position you are taking, with the evidence "
@@ -249,4 +251,24 @@ def get_diagnostic_prompt(patterns=None) -> str:
         lines.append(f"   THE TELL: {p['tell']}")
         lines.append(f"   WHAT WOULD SETTLE IT: {p['ask']}")
         lines.append("")
+
+    # Repeated after the list, not only before it. At seven patterns the opening
+    # guard sat ~1,500 characters from the end; at 24 it is ~12,000 away, and the
+    # last thing read is the most tempting substitution rather than the caution.
+    # Measured 2026-09-04: with 24 patterns and a brief that named NO evidence, a
+    # run opened "if customers expand their spend with you at the rate you're
+    # describing" - inventing a tell and attributing it to the client. Not a
+    # wrong diagnosis; a fabricated quote.
+    lines.append("BEFORE YOU USE ANY OF THE ABOVE, ONE LAST CHECK.")
+    lines.append(
+        "Point at the words. For whichever pattern you are about to apply, find the sentence "
+        "in the brief or the data that states its tell, and if you cannot find one, answer "
+        "the brief exactly as written and use none of this. You may NOT infer a tell from the "
+        "type of business, assume a number nobody gave you, or write phrases like 'at the "
+        "rate you describe', 'given your retention' or 'with your kind of growth' unless that "
+        "figure appears above. Attributing evidence to someone who never supplied it is worse "
+        "than missing the diagnosis: the diagnosis can be argued with, the invented quote ends "
+        "the conversation. Most briefs get no reframe at all, and that is the correct outcome."
+    )
+    lines.append("")
     return "\n".join(lines)
