@@ -8,6 +8,7 @@ intentionally separate from the widget version (ask_moodlight_api.py).
 """
 
 import os
+from shared_prompts import ask_discipline_block
 import re
 import json
 import requests
@@ -1222,7 +1223,7 @@ When you DO emit a sequence:
 ROUTING BLOCK BEHAVIOR:
 - This block is CONSUMED BY THE INTERFACE — the user never sees it. It determines which marketplace agent card gets pre-selected and, when a sequence is present, populates the workflow ladder shown below the primary CTA. A wrong or missing agent ID breaks the handoff.
 - Emit the block even if you already recommended an agent in-line in the answer. Emit exactly ONE block. Never skip it. Never wrap it in code fences.
-- When you omit the sequence, omit BOTH `sequence:` and `sequence_reasoning:` lines entirely — do not emit them as empty."""
+- When you omit the sequence, omit BOTH `sequence:` and `sequence_reasoning:` lines entirely — do not emit them as empty.""" + "\n\n" + ask_discipline_block()
 
 
 # ---------------------------------------------------------------------------
