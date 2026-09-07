@@ -390,8 +390,19 @@ def radar_to_html(radar_md):
             f'letter-spacing: 2px;">{label}</span>{dig}</a></div>'
         )
 
+    # Digits, $ and % are allowed inside a headline but it must still START with a
+    # letter. The old class was letters-and-punctuation only, so any headline
+    # carrying a number fell through and rendered as plain body copy - not orange,
+    # not clickable, no deep dive. "THE 200-APPLICATION THRESHOLD" (2026-09-07) is
+    # what surfaced it, and "THE 4-DAY WEEK" or "THE $200M QUESTION" would have
+    # failed the same way. Numbers are what make a Radar headline concrete, so this
+    # was silently losing the best ones.
+    # Must start with a letter, digit or $ (a headline can legitimately open with a
+    # number - "87% COLD", "8X AND CLIMBING") and must contain at least one letter,
+    # so a bare figure on its own line is not mistaken for a headline.
     html_body = re.sub(
-        r'^([A-Z][A-Z\s\'\'\-&,]{6,})$', _wrap_topic, html_body, flags=re.MULTILINE
+        r'^(?=[A-Z0-9$\'\'][A-Z0-9\s\'\'\-&,$%\.]*[A-Z])([A-Z0-9$][A-Z0-9\s\'\'\-&,$%\.]{6,})$',
+        _wrap_topic, html_body, flags=re.MULTILINE
     )
 
     # Inline labels
