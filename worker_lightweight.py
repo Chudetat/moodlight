@@ -42,6 +42,10 @@ JOBS = {
         "module": "ask_alerts",
         "label": "Ask Inbound Alerts",
     },
+    "prediction-propose": {
+        "module": "prediction_tracker",
+        "label": "Prediction Proposals (Weekly)",
+    },
     "prediction-log": {
         "module": "prediction_tracker",
         "label": "Prediction Tracker (Daily Resolution Pass)",

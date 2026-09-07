@@ -26,6 +26,7 @@ Cron (via worker_lightweight.py prediction-log): runs the daily pass.
 """
 
 import os
+import re
 import sys
 import json
 import math
@@ -326,6 +327,122 @@ def _capture_evidence(engine, brand=None, topic=None, top_n=EVIDENCE_TOP_N,
         pass
 
     return _json_safe(ev)
+
+
+# Topics that move a lot and are not callable subjects for a brand-intelligence
+# product. Excluded from auto-proposal, not from the substrate: a sharp call
+# about nuclear threats is useless to the buyer and breaks the nonpartisan rule
+# the briefs already hold to.
+_UNCALLABLE_TOPICS = {
+    "war & foreign policy", "nuclear & wmd threats", "humanitarian crises & migration",
+    "social unrest & protests", "crime & safety", "politics", "government",
+    "immigration", "disinformation & propaganda", "religion & values",
+    "race & ethnicity", "other",
+}
+
+# A topic worth calling is MOVING and DURABLE at once. High velocity alone is a
+# spike, and a spike resolves before the horizon does; high longevity alone is
+# furniture. The product's whole thesis is climate over weather, so the score
+# leans on longevity.
+_PROPOSE_MIN_LONGEVITY = 0.55
+
+
+def propose_candidates(engine, n=3, model="claude-opus-5", max_tokens=2000):
+    """Pick callable subjects from live VLDS and draft falsifiable calls for them.
+
+    READ-ONLY: returns candidates, writes nothing. Committing a call is a
+    separate, deliberate act - see _cli_propose. The engine may propose; a
+    person decides what it goes on record predicting.
+    """
+    ensure_predictions_table(engine)
+    try:
+        df = pd.read_sql(sql_text(
+            "SELECT topic, velocity_score, density_score, longevity_score, scarcity_score "
+            "FROM topic_vlds_snapshots WHERE snapshot_date = "
+            "(SELECT MAX(snapshot_date) FROM topic_vlds_snapshots)"), engine)
+    except Exception as e:
+        print(f"  propose: could not read VLDS: {e}")
+        return []
+    if df.empty:
+        print("  propose: no VLDS snapshot available")
+        return []
+
+    df = df[~df["topic"].str.lower().isin(_UNCALLABLE_TOPICS)]
+    df = df[df["longevity_score"].fillna(0) >= _PROPOSE_MIN_LONGEVITY]
+    if df.empty:
+        print("  propose: nothing both callable and durable in today's snapshot")
+        return []
+
+    # Durable first, moving second. Both matter; longevity decides ties.
+    df["_score"] = (df["longevity_score"].fillna(0) * 2.0
+                    + df["velocity_score"].fillna(0)
+                    + df["density_score"].fillna(0) * 0.5)
+    df = df.sort_values("_score", ascending=False).head(n)
+
+    # Skip subjects already carrying an open call - a second call on the same
+    # topic while the first is unresolved is padding, not a track record.
+    try:
+        open_topics = set(pd.read_sql(sql_text(
+            "SELECT DISTINCT LOWER(topic) t FROM predictions WHERE outcome_status IS NULL"),
+            engine)["t"].dropna())
+    except Exception:
+        open_topics = set()
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        print("  propose: ANTHROPIC_API_KEY not set")
+        return []
+    from anthropic import Anthropic
+    client = Anthropic(api_key=api_key)
+
+    out = []
+    for _, r in df.iterrows():
+        topic = r["topic"]
+        if str(topic).lower() in open_topics:
+            print(f"  propose: skipping {topic!r}, already has an open call")
+            continue
+        ev = _capture_evidence(engine, None, topic, statement=str(topic))
+        heads = [str(x.get("text", ""))[:180] for x in (ev.get("top_news") or [])[:8]]
+        prompt = (
+            f"Topic: {topic}\n"
+            f"Velocity {r['velocity_score']}, longevity {r['longevity_score']}, "
+            f"density {r['density_score']}.\n\n"
+            "Recent signal:\n" + "\n".join(f"- {h}" for h in heads) +
+            "\n\nWrite ONE falsifiable call about where this is heading."
+        )
+        system = (
+            "You write falsifiable cultural calls for a public, dated track record. "
+            "Someone will check this against reality in 60 to 90 days, so it has to be "
+            "capable of being WRONG.\n\n"
+            "Requirements, all of them:\n"
+            "- Name a specific, checkable outcome: a named brand acting, a category "
+            "crossing into commerce, a term entering mainstream use, a measurable move.\n"
+            "- Something a reasonable person could disagree with today. If it is already "
+            "obviously true, it is worthless.\n"
+            "- No hedging. No 'may', 'could', 'is likely to', 'continues to'.\n"
+            "- Commercially useful to a brand or marketing decision-maker.\n"
+            "- Nonpartisan. No political prediction, no election, no policy outcome.\n\n"
+            "Return JSON only: {\"statement\": str, \"horizon_days\": int (30-120), "
+            "\"confidence\": int (1-10), \"disconfirming\": str}. "
+            "`disconfirming` is what would prove it wrong - be concrete."
+        )
+        try:
+            resp = client.messages.create(
+                model=model, max_tokens=max_tokens, system=system,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            txt = "".join(getattr(b, "text", "") for b in resp.content).strip()
+            txt = re.sub(r"^```(?:json)?|```$", "", txt, flags=re.M).strip()
+            cand = json.loads(txt)
+        except Exception as e:
+            print(f"  propose: draft failed for {topic!r}: {type(e).__name__}: {e}")
+            continue
+        cand["topic"] = topic
+        cand["vlds"] = {k: _json_safe(r[k]) for k in
+                        ("velocity_score", "density_score", "longevity_score", "scarcity_score")}
+        cand["evidence_preview"] = heads[:3]
+        out.append(cand)
+    return out
 
 
 def log_prediction(engine, statement, brand=None, topic=None, confidence=None,
@@ -1087,8 +1204,116 @@ def send_due_digest(engine, due_df):
         return False
 
 
+def _cli_propose(engine, args):
+    """propose [n] [--commit] — draft falsifiable calls from live signal.
+
+    Without --commit this prints and emails candidates and writes nothing. With
+    --commit it logs and seals them, which is what the weekly cron does: the
+    engine going on record before it knows the answer is the whole product
+    claim. Resolution stays human either way - a machine that grades its own
+    calls has no track record, it has an opinion of itself.
+    """
+    commit = "--commit" in args
+    nums = [a for a in args if a.isdigit()]
+    n = int(nums[0]) if nums else 3
+
+    cands = propose_candidates(engine, n=n)
+    if not cands:
+        print("  No candidates proposed.")
+        return
+
+    logged = []
+    for c in cands:
+        print("\n  " + "-" * 66)
+        print(f"  TOPIC      {c['topic']}")
+        print(f"  CALL       {c['statement']}")
+        print(f"  HORIZON    {c.get('horizon_days')} days   CONFIDENCE {c.get('confidence')}/10")
+        print(f"  WRONG IF   {c.get('disconfirming')}")
+        if commit:
+            pid = log_prediction(
+                engine, c["statement"], brand=None, topic=c["topic"],
+                confidence=c.get("confidence"), horizon_days=c.get("horizon_days"),
+                source=f"auto-propose:{date.today().isoformat()}",
+            )
+            if pid:
+                print(f"  LOGGED     #{pid} (sealed)")
+                c["id"] = pid
+                logged.append(c)
+            else:
+                print("  SKIPPED    duplicate for today")
+    send_proposal_digest(cands, committed=commit)
+    if commit:
+        print(f"\n  {len(logged)} call(s) logged and sealed.")
+
+
+def send_proposal_digest(cands, committed=False):
+    """Email the proposed calls. Sent whether or not they were committed, so
+    there is always a record in an inbox of what the engine said and when."""
+    sender = os.getenv("EMAIL_ADDRESS")
+    password = os.getenv("EMAIL_PASSWORD")
+    recipient = (os.getenv("PREDICTION_DIGEST_TO")
+                 or "daniel@moodlightintel.com")
+    if not all([sender, password, recipient]) or not cands:
+        return False
+    verb = "logged and sealed" if committed else "proposed (not logged)"
+    rows = []
+    for c in cands:
+        pid = f"#{c['id']} &middot; " if c.get("id") else ""
+        rows.append(
+            f'<div style="margin:0 0 26px 0;padding:16px 18px;border-left:4px solid #F97316;'
+            f'background:#fafafa;">'
+            f'<div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;'
+            f'color:#F97316;font-weight:700;">{pid}{html.escape(str(c["topic"]))}</div>'
+            f'<div style="font-size:16px;line-height:1.5;margin:8px 0 12px;">'
+            f'{html.escape(str(c["statement"]))}</div>'
+            f'<div style="font-size:12px;color:#555;">'
+            f'Horizon {c.get("horizon_days")} days &middot; confidence '
+            f'{c.get("confidence")}/10</div>'
+            f'<div style="font-size:12px;color:#555;margin-top:6px;">'
+            f'<strong>Wrong if:</strong> {html.escape(str(c.get("disconfirming") or ""))}</div>'
+            f'</div>'
+        )
+    body = (
+        f'<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;'
+        f'max-width:640px;margin:0 auto;padding:24px;">'
+        f'<div style="font-size:20px;font-weight:700;">Moodlight — {len(cands)} call(s) {verb}</div>'
+        f'<div style="font-size:13px;color:#666;margin:6px 0 24px;">'
+        f'Drafted from live signal on {date.today():%B %d, %Y}. '
+        f'Resolution stays manual.</div>'
+        + "".join(rows) +
+        f'<div style="font-size:12px;color:#888;border-top:1px solid #eee;padding-top:14px;">'
+        f'Resolve with: prediction_tracker.py resolve &lt;id&gt; played_out|missed|partial "summary"'
+        f'</div></div>'
+    )
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"Moodlight — {len(cands)} prediction call(s) {verb}"
+    msg["From"] = sender
+    msg["To"] = recipient.split(",")[0].strip()
+    msg.attach(MIMEText(body, "html"))
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender, password)
+            for a in [x.strip() for x in recipient.split(",") if x.strip()]:
+                msg.replace_header("To", a)
+                server.send_message(msg)
+                print(f"  Proposal email sent to {a}")
+        return True
+    except Exception as e:
+        print(f"  Proposal email failed: {e}")
+        return False
+
+
 def _daily_pass(engine):
-    """Default (cron) pass: surface due-for-resolution calls + print the record."""
+    """Default (cron) pass: surface due calls, draft a proposed verdict for each,
+    and print the record.
+
+    Drafting here is what makes the daily pass useful rather than a nag. A due
+    call arrives with a proposed verdict and the fresh signal behind it, so the
+    decision is accept-or-edit instead of go-and-research. It still writes
+    nothing: resolve_prediction is the only path that records an outcome, and
+    only a person calls it. An engine that grades itself has an opinion of
+    itself, not a track record.
+    """
     due = list_due(engine)
     if not due.empty:
         print(f"\n  {len(due)} call(s) due for resolution:")
@@ -1096,6 +1321,10 @@ def _daily_pass(engine):
             who = r["brand"] or r["topic"] or "—"
             print(f"    #{int(r['id'])} (due {r['due_date']}) [{who}] "
                   f"{str(r['statement'])[:80]}")
+            try:
+                draft_resolution(engine, int(r["id"]))
+            except Exception as e:
+                print(f"      draft unavailable: {type(e).__name__}: {e}")
         send_due_digest(engine, due)
     else:
         print("\n  No calls currently due for resolution.")
@@ -1137,6 +1366,13 @@ def main():
             print("  usage: prediction_tracker.py draft <id>")
         else:
             draft_resolution(engine, int(sys.argv[2]))
+    elif cmd == "propose":
+        _cli_propose(engine, sys.argv[2:])
+    elif cmd == "prediction-propose":
+        # The weekly worker job name. Commits by default: the engine going on
+        # record BEFORE it knows the answer is the whole claim, and a proposal
+        # sitting unlogged in an inbox proves nothing. Grading stays manual.
+        _cli_propose(engine, ["--commit"])
     elif cmd == "seal-existing":
         seal_existing(engine)
     else:
