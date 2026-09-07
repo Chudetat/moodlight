@@ -4,6 +4,7 @@ python-dotenv>=1.0.0
 sqlalchemy
 psycopg2-binary
 fastapi
+python-multipart
 uvicorn
 requests
 feedparser

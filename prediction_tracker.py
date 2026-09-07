@@ -1125,6 +1125,17 @@ def _cli_resolve(engine, args):
                        outcome_evidence_override=oev_override)
 
 
+def _resolve_buttons(prediction_id):
+    """One-click resolution buttons for the email. Never raises - a missing
+    signing secret drops the buttons rather than breaking the send."""
+    try:
+        from prediction_resolve_link import buttons_html
+        return buttons_html(prediction_id)
+    except Exception as e:
+        print(f"  resolve buttons unavailable: {type(e).__name__}: {e}")
+        return ""
+
+
 def _due_digest_html(due_df, record_txt):
     """Build the due-for-resolution reminder email (HTML)."""
     today = datetime.now(timezone.utc).date()
@@ -1145,9 +1156,7 @@ def _due_digest_html(due_df, record_txt):
             f'font-weight:600;letter-spacing:.04em;">#{int(r["id"])} · due {due}{overdue} · {who}</div>'
             f'<div style="font-family:Georgia,serif;font-size:16px;color:#171A22;line-height:1.4;'
             f'margin:6px 0 8px;">{stmt}</div>'
-            f'<div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#5A616E;">'
-            f'Resolve: <code style="background:#F1F2F4;padding:1px 5px;border-radius:2px;">'
-            f'prediction_tracker.py resolve {int(r["id"])} played_out|partial|missed "…"</code></div>'
+            f'{_resolve_buttons(int(r["id"]))}'
             f'</td></tr>'
         )
     record_html = html.escape(record_txt).replace("\n", "<br>")

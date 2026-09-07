@@ -3662,3 +3662,108 @@ if os.path.isdir(_static_dir):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
+
+
+def _h(v) -> str:
+    """HTML-escape for the small server-rendered pages below."""
+    import html as _html
+    return _html.escape(str(v if v is not None else ""))
+
+
+# ---------------------------------------------------------------------------
+# Prediction resolution — signed links from the daily due-call email.
+#
+# The tracker used to tell Daniel to run a shell command. He will not, and an
+# unresolved ledger is worse than none: calls visibly going stale read as
+# abandonment rather than accountability. These two routes turn the email into
+# buttons.
+#
+# GET renders a confirmation page; POST records. Mail scanners follow GETs on
+# their own, so a one-click link that wrote would let a scanner grade a call.
+# ---------------------------------------------------------------------------
+
+def _pred_page(title: str, body: str, ok: bool = True) -> "HTMLResponse":
+    from fastapi.responses import HTMLResponse
+    accent = "#15803D" if ok else "#B91C1C"
+    return HTMLResponse(
+        f'<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">'
+        f'<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:620px;'
+        f'margin:56px auto;padding:0 20px;color:#171A22;">'
+        f'<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;'
+        f'color:{accent};font-weight:700;">Moodlight proof library</div>'
+        f'<h1 style="font-weight:600;font-size:23px;margin:10px 0 18px;">{title}</h1>'
+        f'{body}</div>'
+    )
+
+
+@app.get("/api/predictions/{prediction_id}/resolve")
+def prediction_resolve_page(prediction_id: int, t: str = "", status: str = ""):
+    """Confirmation page for a signed resolution link."""
+    import prediction_resolve_link as prl
+    if not prl.verify(prediction_id, t):
+        return _pred_page("Link not valid",
+                          "<p>This link is not valid for that call.</p>", ok=False)
+    engine = get_engine()
+    with engine.connect() as conn:
+        row = conn.execute(sql_text(
+            "SELECT statement, topic, due_date, outcome_status FROM predictions "
+            "WHERE id = :i"), {"i": prediction_id}).fetchone()
+    if not row:
+        return _pred_page("Not found", "<p>No such call.</p>", ok=False)
+    stmt, topic, due, existing = row
+    if existing:
+        return _pred_page("Already resolved",
+                          f'<p style="font-size:16px;line-height:1.5;">{_h(stmt)}</p>'
+                          f'<p style="color:#5A616E;">Recorded as <strong>{_h(existing)}</strong>. '
+                          f'Re-grading is deliberate and stays a manual step.</p>')
+    choice = status if status in ("played_out", "partial", "missed") else ""
+    buttons = "".join(
+        f'<button name="status" value="{v}" style="padding:11px 18px;margin:0 8px 8px 0;'
+        f'background:{c};color:#fff;border:0;border-radius:3px;font-size:14px;'
+        f'font-weight:600;cursor:pointer;">{lab}</button>'
+        for v, lab, c in (("played_out", "Played out", "#15803D"),
+                          ("partial", "Partial", "#B45309"),
+                          ("missed", "Missed", "#B91C1C"))
+    )
+    pre = (f'<p style="color:#5A616E;">You picked <strong>{_h(choice.replace("_", " "))}</strong>. '
+           f'Confirm below, or choose differently.</p>') if choice else ""
+    return _pred_page(
+        f"Call #{prediction_id}",
+        f'<div style="font-size:12px;color:#5A616E;">{_h(str(topic or ""))} &middot; due {due}</div>'
+        f'<p style="font-size:17px;line-height:1.5;margin:10px 0 18px;">{_h(stmt)}</p>'
+        f'{pre}'
+        f'<form method="post" action="/api/predictions/{prediction_id}/resolve?t={_h(t)}">'
+        f'<div>{buttons}</div>'
+        f'<textarea name="summary" rows="3" placeholder="What actually happened (optional)" '
+        f'style="width:100%;margin-top:10px;padding:9px;border:1px solid #D6D9DE;'
+        f'border-radius:3px;font-family:inherit;font-size:14px;"></textarea>'
+        f'</form>'
+    )
+
+
+@app.post("/api/predictions/{prediction_id}/resolve")
+async def prediction_resolve_submit(prediction_id: int, request: Request, t: str = ""):
+    """Record the outcome. The only path that writes a verdict."""
+    import prediction_resolve_link as prl
+    if not prl.verify(prediction_id, t):
+        return _pred_page("Link not valid",
+                          "<p>This link is not valid for that call.</p>", ok=False)
+    form = await request.form()
+    status = str(form.get("status") or "")
+    summary = str(form.get("summary") or "").strip()
+    if status not in ("played_out", "partial", "missed"):
+        return _pred_page("Pick an outcome",
+                          "<p>Choose played out, partial or missed.</p>", ok=False)
+    try:
+        import prediction_tracker as pt
+        engine = pt._get_engine()
+        pt.resolve_prediction(engine, prediction_id, status, summary or "")
+    except Exception as e:
+        print(f"prediction resolve failed: {type(e).__name__}: {e}")
+        return _pred_page("Could not record that",
+                          "<p>Something went wrong. The call is unchanged.</p>", ok=False)
+    return _pred_page(
+        "Recorded",
+        f'<p style="font-size:16px;">Call #{prediction_id} is now '
+        f'<strong>{_h(status.replace("_", " "))}</strong>.</p>'
+        f'<p style="color:#5A616E;">The track record is up to date.</p>')
