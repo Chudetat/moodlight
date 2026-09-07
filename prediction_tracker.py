@@ -173,30 +173,100 @@ def _rows_subset(df, keys, limit):
     return out
 
 
-def _capture_evidence(engine, brand=None, topic=None, top_n=EVIDENCE_TOP_N):
+_EVIDENCE_STOPWORDS = {
+    "the", "a", "an", "and", "or", "but", "into", "from", "with", "that", "this",
+    "within", "days", "not", "than", "over", "under", "about", "becomes", "become",
+    "crosses", "cross", "surfaces", "runs", "begins", "begin", "consolidates",
+    "mainstream", "major", "explicit", "explicitly", "brand", "brands", "campaign",
+    "product", "signal", "movement", "trend", "term", "named", "label", "central",
+    "message", "tied", "top", "tier", "its", "their", "for", "are", "will", "when",
+    "what", "which", "more", "most", "some", "also", "just", "like", "such",
+}
+
+
+def _statement_terms(statement, limit=8):
+    """Distinctive words from the call itself, for finding evidence about IT.
+
+    Topic alone is far too coarse: a World Cup prediction and a March Madness
+    story are both 'sports'. These terms are what let the search find signal
+    about the actual subject.
+    """
+    import re as _re
+    words = _re.findall(r"[A-Za-z][A-Za-z'-]{3,}", (statement or "").lower())
+    seen, out = set(), []
+    for w in words:
+        if w in _EVIDENCE_STOPWORDS or w in seen:
+            continue
+        seen.add(w)
+        out.append(w)
+    # longest first: distinctive words carry more meaning than short common ones
+    return sorted(out, key=len, reverse=True)[:limit]
+
+
+def _capture_evidence(engine, brand=None, topic=None, top_n=EVIDENCE_TOP_N,
+                      statement=None):
     """Snapshot the signals supporting a call, self-contained (survives the wipe).
-    Never raises — partial capture records a 'capture_errors' note instead."""
+    Never raises — partial capture records a 'capture_errors' note instead.
+
+    The `statement` argument is what makes the capture about the CALL rather than
+    about its topic. Without it this fell back to "the 8 newest rows in this
+    topic", which is how a World Cup prediction (2026-07-06) came to seal three
+    ESPN headlines about March Madness, an NFL trade and a marijuana arrest. The
+    hash was valid and what it sealed was irrelevant, which is worse than no
+    evidence: it makes an honest mechanism look like theatre the first time
+    somebody opens the trace.
+    """
     brand, topic = _na(brand), _na(topic)
     ev = {"captured_at": datetime.now(timezone.utc).isoformat(),
           "brand": brand, "topic": topic}
+    terms = _statement_terms(statement) if statement else []
+    if terms:
+        ev["match_terms"] = terms
 
     # Top recent news/social signals — full text + scores kept INLINE
     news_keys = ["text", "source", "link", "topic", "empathy_score",
                  "intensity", "emotion_top_1", "created_at"]
     for table, key in (("news_scored", "top_news"), ("social_scored", "top_social")):
         try:
-            conds, params = [], {"n": top_n}
+            # Rank by how well a row matches the call, then take the newest of
+            # the best. The old query ordered by created_at alone inside a broad
+            # topic, so it captured whatever happened to be latest.
+            params = {"n": top_n}
+            score_parts, conds = [], []
+
             if brand:
-                conds.append("text ILIKE :brand")
                 params["brand"] = f"%{brand}%"
+                score_parts.append("(CASE WHEN text ILIKE :brand THEN 10 ELSE 0 END)")
+                conds.append("text ILIKE :brand")
+
+            for i, term in enumerate(terms):
+                params[f"t{i}"] = f"%{term}%"
+                score_parts.append(f"(CASE WHEN text ILIKE :t{i} THEN 2 ELSE 0 END)")
+                conds.append(f"text ILIKE :t{i}")
+
             if topic:
-                conds.append("topic = :topic")
                 params["topic"] = topic
-            where = (" WHERE " + " OR ".join(conds)) if conds else ""
+                score_parts.append("(CASE WHEN topic = :topic THEN 1 ELSE 0 END)")
+
+            score = " + ".join(score_parts) if score_parts else "0"
+            # Require an actual textual match to the brand or the call's own
+            # words. Topic contributes to RANK but can never qualify a row on
+            # its own - that is precisely what let unrelated rows in.
+            if conds:
+                where = " WHERE (" + " OR ".join(conds) + ")"
+            elif topic:
+                where = " WHERE topic = :topic"
+            else:
+                where = ""
+
             df = pd.read_sql(
-                sql_text(f"SELECT * FROM {table}{where} ORDER BY created_at DESC LIMIT :n"),
+                sql_text(f"SELECT *, ({score}) AS _match FROM {table}{where} "
+                         f"ORDER BY _match DESC, created_at DESC LIMIT :n"),
                 engine, params=params,
             )
+            if "_match" in df.columns:
+                ev.setdefault("match_scores", {})[key] = [int(x) for x in df["_match"].tolist()]
+                df = df.drop(columns=["_match"])
             ev[key] = _rows_subset(df, news_keys, top_n)
             ev.setdefault("counts", {})[table] = int(len(df))
         except Exception as e:
@@ -282,7 +352,7 @@ def log_prediction(engine, statement, brand=None, topic=None, confidence=None,
     if evidence_override is not None:
         evidence = _json_safe(evidence_override)
     elif capture:
-        evidence = _capture_evidence(engine, brand, topic)
+        evidence = _capture_evidence(engine, brand, topic, statement=statement)
     else:
         evidence = None
 
@@ -371,11 +441,12 @@ def resolve_prediction(engine, prediction_id, status, summary="", capture_outcom
         outcome_ev = _json_safe(outcome_evidence_override)
     elif capture_outcome:
         row = pd.read_sql(
-            sql_text("SELECT brand, topic FROM predictions WHERE id = :id"),
+            sql_text("SELECT brand, topic, statement FROM predictions WHERE id = :id"),
             engine, params={"id": int(prediction_id)},
         )
         outcome_ev = _capture_evidence(
-            engine, _na(row.iloc[0]["brand"]), _na(row.iloc[0]["topic"])
+            engine, _na(row.iloc[0]["brand"]), _na(row.iloc[0]["topic"]),
+            statement=_na(row.iloc[0]["statement"]),
         ) if not row.empty else None
     else:
         outcome_ev = None
@@ -466,7 +537,7 @@ def draft_resolution(engine, prediction_id, model="claude-opus-4-6", max_tokens=
         return None
 
     brand, topic = _na(r["brand"]), _na(r["topic"])
-    fresh = _capture_evidence(engine, brand, topic)  # fresh signal at resolution time
+    fresh = _capture_evidence(engine, brand, topic, statement=_na(r["statement"]))  # fresh signal, matched to the call
     try:
         original = r["evidence"] if isinstance(r["evidence"], dict) else json.loads(r["evidence"] or "{}")
     except Exception:
