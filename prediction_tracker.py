@@ -671,13 +671,24 @@ def draft_resolution(engine, prediction_id, model="claude-opus-4-6", max_tokens=
 
     system = (
         "You are a rigorous forecasting analyst helping a human resolve a cultural "
-        "prediction. You DRAFT a proposed verdict for the human to accept or edit — you "
-        "do NOT decide. Be skeptical and honest: distinguish 'the predicted thing "
-        "actually happened' from 'there is merely signal in the space.' Signal presence "
-        "is not confirmation. If the evidence is insufficient to judge, say so and "
-        "propose 'partial' or recommend external verification. Never inflate a call to "
-        "played_out on thin or tangential evidence. Cite the SPECIFIC markers (dated "
-        "items, metric moves) behind your read."
+        "prediction. You DRAFT a proposed verdict for the human to accept or edit - you "
+        "do NOT decide. Cite the SPECIFIC markers (dated items, named campaigns, metric "
+        "moves) behind your read.\n\n"
+        "BE SKEPTICAL IN BOTH DIRECTIONS. Two failures, equally bad:\n"
+        "- Inflating to played_out because there is signal in the space. Signal presence "
+        "is not confirmation of the specific thing predicted.\n"
+        "- Defaulting to missed because you could not find evidence. The tracked window "
+        "is roughly 30 days of news and social. It cannot see a brand campaign's creative "
+        "message, retail sales data, app-store ranks, or a term trending on TikTok. Not "
+        "finding something in that sample is NOT evidence it did not happen, and a call "
+        "graded missed on a blind instrument corrupts the record exactly as much as one "
+        "inflated to played_out.\n\n"
+        "So: propose MISSED only when you can point to positive evidence the thing did "
+        "not occur, or when the window has passed and the event would unmistakably have "
+        "shown up in the material in front of you. If you simply cannot verify, propose "
+        "UNVERIFIED, say plainly what you could not see, and name the external check that "
+        "would settle it. Unverified is an honest answer and the human can resolve it "
+        "themselves. A confident wrong verdict is not."
     )
     prompt = f"""A falsifiable cultural prediction is now due for resolution. Draft a PROPOSED verdict for the human to accept or edit.
 
@@ -692,7 +703,8 @@ FRESH SIGNAL (captured now, at resolution time):
 {_evidence_digest(fresh)}{homonym_note}
 
 Produce, in this exact structure:
-1. PROPOSED VERDICT: one of played_out | missed | partial
+1. PROPOSED VERDICT: one of played_out | partial | missed | unverified
+   (unverified = you could not check it with what you have; do NOT call that a miss)
 2. CONFIDENCE IN THIS VERDICT: low | medium | high
 3. OUTCOME MARKERS: the 2-5 specific, dated signals (from FRESH SIGNAL or verifiable public record) that support the verdict — or state plainly that the in-dashboard signal is insufficient and external verification is needed.
 4. REASONING: 3-5 sentences. Explicitly separate 'the predicted event occurred' from 'the topic is merely active.'
@@ -700,10 +712,28 @@ Produce, in this exact structure:
 
 Remember: this is a DRAFT. The human makes the final call and may edit freely."""
 
-    resp = client.messages.create(
-        model=model, max_tokens=max_tokens, system=system,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    # Web search, because the substrate cannot resolve these calls on its own.
+    # The tracked window is ~30 days of news and social; the calls are about a
+    # sponsor's creative message, retail sales, an app-store rank, a term
+    # trending on TikTok. Grading those from the substrate alone produced three
+    # confident "missed" verdicts on 2026-09-08 that were really "I cannot see
+    # it" - the same absence-is-not-evidence error the agent prompts already
+    # guard against for thin brand signal.
+    try:
+        resp = client.messages.create(
+            model=model, max_tokens=max_tokens, system=system,
+            messages=[{"role": "user", "content": prompt}],
+            tools=[{"type": "web_search_20260209", "name": "web_search"}],
+        )
+    except Exception as e:
+        # Never let a search problem block the draft - a substrate-only read is
+        # still better than nothing, and the prompt now says so honestly.
+        print(f"  web search unavailable, drafting from substrate only: "
+              f"{type(e).__name__}: {e}")
+        resp = client.messages.create(
+            model=model, max_tokens=max_tokens, system=system,
+            messages=[{"role": "user", "content": prompt}],
+        )
     draft = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text").strip()
 
     print("=" * 60)
