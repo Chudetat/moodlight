@@ -3682,6 +3682,27 @@ def _h(v) -> str:
 # their own, so a one-click link that wrote would let a scanner grade a call.
 # ---------------------------------------------------------------------------
 
+
+def _markers_from_draft(draft: str) -> str:
+    """Pull the OUTCOME MARKERS section out of an assisted-resolution draft.
+
+    The draft is long and structured for a reader deciding; what belongs on the
+    public page is the specific evidence - a named campaign with a date, a
+    reported figure. Prefilling it means the human edits and approves rather
+    than retyping, and nothing model-written reaches the page unread.
+    """
+    if not draft:
+        return ""
+    import re as _re
+    txt = str(draft)
+    m = _re.search(r"OUTCOME MARKERS?:?\**\s*(.+?)(?=\n#+\s*\d*\.?\s*(REASONING|WHAT WOULD)|\Z)",
+                   txt, _re.S | _re.I)
+    body = (m.group(1) if m else txt).strip()
+    body = _re.sub(r"\*\*(.+?)\*\*", r"\1", body)
+    body = _re.sub(r"^[-*]\s*", "- ", body, flags=_re.M)
+    body = _re.sub(r"\n{3,}", "\n\n", body)
+    return body[:1400].strip()
+
 def _pred_page(title: str, body: str, ok: bool = True) -> "HTMLResponse":
     from fastapi.responses import HTMLResponse
     accent = "#15803D" if ok else "#B91C1C"
@@ -3706,11 +3727,11 @@ def prediction_resolve_page(prediction_id: int, t: str = "", status: str = ""):
     engine = get_engine()
     with engine.connect() as conn:
         row = conn.execute(sql_text(
-            "SELECT statement, topic, due_date, outcome_status FROM predictions "
-            "WHERE id = :i"), {"i": prediction_id}).fetchone()
+            "SELECT statement, topic, due_date, outcome_status, resolution_draft "
+            "FROM predictions WHERE id = :i"), {"i": prediction_id}).fetchone()
     if not row:
         return _pred_page("Not found", "<p>No such call.</p>", ok=False)
-    stmt, topic, due, existing = row
+    stmt, topic, due, existing, draft = row
     if existing:
         return _pred_page("Already resolved",
                           f'<p style="font-size:16px;line-height:1.5;">{_h(stmt)}</p>'
@@ -3734,9 +3755,13 @@ def prediction_resolve_page(prediction_id: int, t: str = "", status: str = ""):
         f'{pre}'
         f'<form method="post" action="/api/predictions/{prediction_id}/resolve?t={_h(t)}">'
         f'<div>{buttons}</div>'
-        f'<textarea name="summary" rows="3" placeholder="What actually happened (optional)" '
+        f'<textarea name="summary" rows="7" placeholder="What actually happened" '
         f'style="width:100%;margin-top:10px;padding:9px;border:1px solid #D6D9DE;'
-        f'border-radius:3px;font-family:inherit;font-size:14px;"></textarea>'
+        f'border-radius:3px;font-family:inherit;font-size:14px;line-height:1.5;">'
+        f'{_h(_markers_from_draft(draft))}</textarea>'
+        f'<div style="font-size:12px;color:#5A616E;margin-top:6px;">'
+        f'Prefilled from the research. Edit it down to what you want published, '
+        f'or clear it. This text appears on the public proof library.</div>'
         f'</form>'
     )
 
@@ -3823,7 +3848,18 @@ def public_proof_library():
             badge = (f'<span style="display:inline-block;padding:3px 10px;border-radius:2px;'
                      f'background:{bg};color:{fg};font-size:11px;font-weight:700;'
                      f'letter-spacing:.08em;text-transform:uppercase;">{label}</span>')
-            note = f'<div style="margin-top:8px;color:#3C4453;">{_h(summary)}</div>' if summary else ""
+            if summary and summary.strip():
+                note = (
+                    '<details style="margin-top:12px;">'
+                    '<summary style="cursor:pointer;color:#C57A11;font-size:13px;'
+                    'font-weight:600;list-style:none;">What happened &rsaquo;</summary>'
+                    '<div style="margin-top:10px;padding:14px 16px;background:#FAFBFC;'
+                    'border-left:3px solid #C57A11;font-size:14px;line-height:1.65;'
+                    'color:#2B2F38;white-space:pre-wrap;">'
+                    f'{_h(summary.strip())}</div></details>'
+                )
+            else:
+                note = ""
             foot = (f'<div style="color:#5A616E;font-size:13px;margin-top:10px;">'
                     f'Due {due} &middot; resolved {resolved}</div>{note}')
         return (

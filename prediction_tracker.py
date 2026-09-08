@@ -101,6 +101,13 @@ def ensure_predictions_table(engine):
             "ALTER TABLE predictions ADD COLUMN IF NOT EXISTS evidence_sealed TEXT",
             "ALTER TABLE predictions ADD COLUMN IF NOT EXISTS evidence_sha256 VARCHAR(64)",
             "ALTER TABLE predictions ADD COLUMN IF NOT EXISTS sealed_at TIMESTAMPTZ",
+            # The assisted-resolution draft, kept so the resolve page can
+            # prefill it and the human edits rather than retypes. Before this
+            # the draft was printed, emailed and thrown away - and the specific
+            # markers in it (a named campaign, a dated sales figure) are the
+            # most persuasive thing the whole system produces.
+            "ALTER TABLE predictions ADD COLUMN IF NOT EXISTS resolution_draft TEXT",
+            "ALTER TABLE predictions ADD COLUMN IF NOT EXISTS draft_at TIMESTAMPTZ",
         ):
             conn.execute(sql_text(stmt))
         conn.commit()
@@ -741,6 +748,17 @@ Remember: this is a DRAFT. The human makes the final call and may edit freely.""
     print("=" * 60)
     print(draft)
     print("-" * 60)
+    # Persist the draft. This is the ONLY thing draft_resolution writes, and it
+    # writes no verdict - resolve_prediction remains the only path to an outcome.
+    try:
+        with engine.connect() as conn:
+            conn.execute(sql_text(
+                "UPDATE predictions SET resolution_draft = :d, draft_at = NOW() "
+                "WHERE id = :i"), {"d": draft, "i": int(prediction_id)})
+            conn.commit()
+    except Exception as e:
+        print(f"  could not store draft: {type(e).__name__}: {e}")
+
     print("This wrote NOTHING. To commit YOUR verdict (edit the summary as you see fit):")
     print(f'  python3 prediction_tracker.py resolve {prediction_id} '
           '<played_out|missed|partial> "<your summary>"')
