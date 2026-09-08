@@ -3767,3 +3767,104 @@ async def prediction_resolve_submit(prediction_id: int, request: Request, t: str
         f'<p style="font-size:16px;">Call #{prediction_id} is now '
         f'<strong>{_h(status.replace("_", " "))}</strong>.</p>'
         f'<p style="color:#5A616E;">The track record is up to date.</p>')
+
+
+# ---------------------------------------------------------------------------
+# Public proof library — /predictions
+#
+# The differentiator claimed everywhere else ("our calls are dated and verified
+# against what actually happened") had nothing behind it a stranger could open.
+#
+# Deliberately an OPEN LEDGER rather than a scoreboard. Unresolved calls lead,
+# because a bet whose outcome nobody knows yet is the only part that cannot be
+# faked; a page of wins reads as cherry-picking, which is the exact suspicion
+# this exists to kill. Resolved calls sit underneath as history, misses
+# included.
+#
+# Evidence payloads are NOT exposed. Rows sealed before the 2026-09-08 capture
+# fix carry evidence matched to a broad topic rather than to the call, and a
+# reader opening those would find unrelated headlines. Statements, dates,
+# confidence and verdicts only until newer calls age in.
+# ---------------------------------------------------------------------------
+
+_VERDICT_STYLE = {
+    "played_out": ("Played out", "#15803D", "#EAF6EE"),
+    "partial":    ("Partial",    "#B45309", "#FDF3E7"),
+    "missed":     ("Missed",     "#B91C1C", "#FBECEC"),
+}
+
+
+@app.get("/predictions")
+def public_proof_library():
+    """The open ledger. No auth: the point is that anyone can check it."""
+    from fastapi.responses import HTMLResponse
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(sql_text(
+            "SELECT id, statement, topic, confidence, prediction_date, due_date, "
+            "outcome_status, outcome_summary, resolved_date "
+            "FROM predictions ORDER BY prediction_date DESC, id DESC")).fetchall()
+
+    openc = [r for r in rows if not r[6]]
+    done = [r for r in rows if r[6]]
+    counts = {}
+    for r in done:
+        counts[r[6]] = counts.get(r[6], 0) + 1
+
+    def card(r, is_open):
+        (pid, stmt, topic, conf, called, due, status, summary, resolved) = r
+        if is_open:
+            badge = ('<span style="display:inline-block;padding:3px 10px;border-radius:2px;'
+                     'background:#EEF1F5;color:#3C4453;font-size:11px;font-weight:700;'
+                     'letter-spacing:.08em;text-transform:uppercase;">Open</span>')
+            foot = f'<div style="color:#5A616E;font-size:13px;margin-top:10px;">Resolves {due}</div>'
+        else:
+            label, fg, bg = _VERDICT_STYLE.get(status, (status, "#3C4453", "#EEF1F5"))
+            badge = (f'<span style="display:inline-block;padding:3px 10px;border-radius:2px;'
+                     f'background:{bg};color:{fg};font-size:11px;font-weight:700;'
+                     f'letter-spacing:.08em;text-transform:uppercase;">{label}</span>')
+            note = f'<div style="margin-top:8px;color:#3C4453;">{_h(summary)}</div>' if summary else ""
+            foot = (f'<div style="color:#5A616E;font-size:13px;margin-top:10px;">'
+                    f'Due {due} &middot; resolved {resolved}</div>{note}')
+        return (
+            f'<div style="padding:20px 0;border-bottom:1px solid #E7E9ED;">'
+            f'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">'
+            f'{badge}'
+            f'<span style="color:#5A616E;font-size:12px;font-family:ui-monospace,Menlo,monospace;">'
+            f'called {called} &middot; {_h(topic or "")}'
+            f'{" &middot; confidence " + str(conf) + "/10" if conf else ""}</span></div>'
+            f'<div style="font-size:17px;line-height:1.5;margin-top:10px;color:#12151C;">'
+            f'{_h(stmt)}</div>{foot}</div>'
+        )
+
+    tally = " &middot; ".join(
+        f"{_VERDICT_STYLE.get(k, (k,))[0].lower()} {v}" for k, v in sorted(counts.items())
+    ) or "none resolved yet"
+
+    return HTMLResponse(
+        '<!doctype html><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        '<title>Proof Library | Moodlight</title>'
+        '<div style="font-family:system-ui,-apple-system,Segoe UI,Helvetica,sans-serif;'
+        'max-width:720px;margin:0 auto;padding:56px 22px 80px;color:#12151C;">'
+        '<div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;'
+        'color:#C57A11;font-weight:700;">Moodlight</div>'
+        '<h1 style="font-size:32px;font-weight:600;margin:12px 0 10px;line-height:1.2;">'
+        'The proof library</h1>'
+        '<p style="font-size:16px;line-height:1.6;color:#3C4453;margin:0 0 6px;">'
+        'Every call Moodlight makes is written down, dated, and checked against what '
+        'actually happened. Including the ones we get wrong.</p>'
+        '<p style="font-size:14px;line-height:1.6;color:#5A616E;margin:0 0 40px;">'
+        f'{len(rows)} calls &middot; {len(openc)} still open &middot; {tally}</p>'
+        + (f'<h2 style="font-size:13px;letter-spacing:.14em;text-transform:uppercase;'
+           f'color:#5A616E;font-weight:700;margin:0 0 4px;">Open &mdash; outcome not yet known</h2>'
+           + "".join(card(r, True) for r in openc) if openc else "")
+        + (f'<h2 style="font-size:13px;letter-spacing:.14em;text-transform:uppercase;'
+           f'color:#5A616E;font-weight:700;margin:44px 0 4px;">Resolved</h2>'
+           + "".join(card(r, False) for r in done) if done else "")
+        + '<p style="font-size:13px;color:#6B7280;margin-top:44px;line-height:1.6;">'
+        'Calls are recorded before their outcome is known and the supporting evidence is '
+        'hashed at the moment each one is made. Resolution is a human judgement, never the '
+        'engine grading itself.</p>'
+        '</div>'
+    )
