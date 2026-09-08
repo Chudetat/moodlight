@@ -1155,6 +1155,30 @@ def _cli_resolve(engine, args):
                        outcome_evidence_override=oev_override)
 
 
+def _draft_block(draft_text):
+    """Render the proposed verdict inside the due-call email.
+
+    Without this the draft existed only in Railway logs, so the email said a
+    call was due and gave no read on it - which is most of the work. Truncated,
+    because the point is a decision, not a report.
+    """
+    if not draft_text:
+        return ""
+    txt = str(draft_text).strip()
+    if len(txt) > 1800:
+        txt = txt[:1800].rsplit("\n", 1)[0] + "\n..."
+    body = html.escape(txt).replace("\n", "<br>")
+    return (
+        '<div style="margin:10px 0 0;padding:12px 14px;background:#F7F8FA;'
+        'border:1px solid #E4E6EA;border-radius:3px;font-family:system-ui,sans-serif;'
+        'font-size:13px;line-height:1.55;color:#2B2F38;">'
+        '<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;'
+        'color:#5A616E;font-weight:700;margin-bottom:7px;">Proposed read &middot; '
+        'yours to accept or override</div>'
+        f'{body}</div>'
+    )
+
+
 def _resolve_buttons(prediction_id):
     """One-click resolution buttons for the email. Never raises - a missing
     signing secret drops the buttons rather than breaking the send."""
@@ -1166,7 +1190,7 @@ def _resolve_buttons(prediction_id):
         return ""
 
 
-def _due_digest_html(due_df, record_txt):
+def _due_digest_html(due_df, record_txt, drafts=None):
     """Build the due-for-resolution reminder email (HTML)."""
     today = datetime.now(timezone.utc).date()
     rows = ""
@@ -1186,6 +1210,7 @@ def _due_digest_html(due_df, record_txt):
             f'font-weight:600;letter-spacing:.04em;">#{int(r["id"])} · due {due}{overdue} · {who}</div>'
             f'<div style="font-family:Georgia,serif;font-size:16px;color:#171A22;line-height:1.4;'
             f'margin:6px 0 8px;">{stmt}</div>'
+            f'{_draft_block((drafts or {}).get(int(r["id"])))}'
             f'{_resolve_buttons(int(r["id"]))}'
             f'</td></tr>'
         )
@@ -1207,7 +1232,7 @@ def _due_digest_html(due_df, record_txt):
     )
 
 
-def send_due_digest(engine, due_df):
+def send_due_digest(engine, due_df, drafts=None):
     """Email the due-for-resolution list. Sends only when there are due calls.
     Recipient: PREDICTION_DIGEST_TO > EMAIL_RECIPIENT > daniel@moodlightintel.com."""
     if due_df is None or due_df.empty:
@@ -1223,7 +1248,7 @@ def send_due_digest(engine, due_df):
 
     n = len(due_df)
     subject = f"Moodlight — {n} prediction call{'' if n == 1 else 's'} due for resolution"
-    body = _due_digest_html(due_df, accuracy_report(engine))
+    body = _due_digest_html(due_df, accuracy_report(engine), drafts)
 
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
@@ -1354,6 +1379,7 @@ def _daily_pass(engine):
     itself, not a track record.
     """
     due = list_due(engine)
+    drafts = {}
     if not due.empty:
         print(f"\n  {len(due)} call(s) due for resolution:")
         for _, r in due.iterrows():
@@ -1361,10 +1387,12 @@ def _daily_pass(engine):
             print(f"    #{int(r['id'])} (due {r['due_date']}) [{who}] "
                   f"{str(r['statement'])[:80]}")
             try:
-                draft_resolution(engine, int(r["id"]))
+                d = draft_resolution(engine, int(r["id"]))
+                if d and d.get("draft"):
+                    drafts[int(r["id"])] = d["draft"]
             except Exception as e:
                 print(f"      draft unavailable: {type(e).__name__}: {e}")
-        send_due_digest(engine, due)
+        send_due_digest(engine, due, drafts)
     else:
         print("\n  No calls currently due for resolution.")
     print("\n  Track record:")
