@@ -3904,3 +3904,44 @@ def public_proof_library():
         'engine grading itself.</p>'
         '</div>'
     )
+
+
+@app.get("/api/predictions/public")
+def public_proof_library_json():
+    """The ledger as data, for the embeddable proof-library script.
+
+    Same rules as the HTML page: no auth, and no evidence payloads. What is
+    exposed is the call, its dates, the verdict, and the human-approved account
+    of what happened - never the sealed evidence blob, which for rows predating
+    the 2026-09-08 capture fix is matched to a broad topic rather than to the
+    call.
+    """
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(sql_text(
+            "SELECT id, statement, topic, confidence, prediction_date, due_date, "
+            "outcome_status, outcome_summary, resolved_date "
+            "FROM predictions ORDER BY prediction_date DESC, id DESC")).fetchall()
+    out = []
+    for (pid, stmt, topic, conf, called, due, status, summary, resolved) in rows:
+        out.append({
+            "id": pid,
+            "statement": stmt,
+            "topic": topic,
+            "confidence": conf,
+            "called": str(called) if called else None,
+            "due": str(due) if due else None,
+            "status": status,
+            "what_happened": (summary or "").strip() or None,
+            "resolved": str(resolved) if resolved else None,
+        })
+    counts = {}
+    for r in out:
+        if r["status"]:
+            counts[r["status"]] = counts.get(r["status"], 0) + 1
+    return {
+        "calls": out,
+        "total": len(out),
+        "open": sum(1 for r in out if not r["status"]),
+        "counts": counts,
+    }
