@@ -86,9 +86,15 @@
     root.appendChild(el("div",
       "font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#C57A11;font-weight:700;",
       "The proof library"));
-    root.appendChild(el("h2",
-      "font-size:30px;font-weight:600;margin:12px 0 10px;line-height:1.2;",
-      "What we predicted. What actually happened."));
+    // Each sentence is its own inline-block, so a narrow screen breaks BETWEEN
+    // the two sentences instead of orphaning "What" at the end of line one.
+    // clamp() lets the type shrink on a phone rather than forcing the wrap.
+    var h2 = el("h2",
+      "font-size:clamp(22px,6vw,30px);font-weight:600;margin:12px 0 10px;line-height:1.25;");
+    h2.appendChild(el("span", "display:inline-block;", "What we predicted."));
+    h2.appendChild(document.createTextNode(" "));
+    h2.appendChild(el("span", "display:inline-block;", "What actually happened."));
+    root.appendChild(h2);
     root.appendChild(el("p",
       "font-size:16px;line-height:1.6;color:#3C4453;margin:0 0 6px;",
       "Every call is dated and the evidence is sealed the moment it is made. " +
