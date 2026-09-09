@@ -1111,6 +1111,38 @@ _ROUTE_RE = re.compile(
 )
 
 
+
+_URL_RE = _re_url = __import__("re").compile(r"https?://[^\s<>\"')]+", __import__("re").I)
+
+
+def _urls_in(text: str, limit: int = 3):
+    """URLs the user pasted into their question.
+
+    People paste their own site when the name alone is ambiguous - "wrong
+    product, https://ao2clear.com/", "Wrong store, instead do
+    https://www.lowesmarket.com/". Both of those were a second attempt after the
+    first answer had picked the wrong company. 14 of 506 questions carry a URL
+    and every one of them is someone saying exactly who they are; the system was
+    reading past it and guessing from the name.
+
+    They are also, almost without exception, brands the substrate cannot see -
+    ClearTelligence, AU Vodka, Travel Collection, DocPod. Name-based retrieval
+    is at its weakest precisely where a URL is most useful.
+    """
+    if not text:
+        return []
+    out, seen = [], set()
+    for u in _URL_RE.findall(text):
+        u = u.rstrip(".,);:]")
+        if u.lower() in seen:
+            continue
+        seen.add(u.lower())
+        out.append(u)
+        if len(out) >= limit:
+            break
+    return out
+
+
 def _extract_text(response):
     """Concatenate the text blocks of a Claude response. Thinking-default models
     (e.g. Opus 5) emit a thinking block first, so response.content[0] is NOT the
@@ -1970,13 +2002,33 @@ async def ask_moodlight(req: AskRequest, request: Request):
             # "unexpected keyword argument 'temperature'" and returned 503 for
             # ten days. 1.0 was the default anyway, so nothing changes but the
             # call surviving.
-            response = client.messages.create(
-                model="claude-opus-5",
-                max_tokens=16000,
-                system=system_prompt,
-                messages=messages,
-                extra_body={"output_config": {"effort": "medium"}},
-            )
+            # Read a pasted URL rather than guessing from the brand name. Only
+            # when one is present: the tool is useless otherwise and every extra
+            # tool is latency on a request somebody is waiting through.
+            _kwargs = {
+                "model": "claude-opus-5",
+                "max_tokens": 16000,
+                "system": system_prompt,
+                "messages": messages,
+                "extra_body": {"output_config": {"effort": "medium"}},
+            }
+            _pasted = _urls_in(question)
+            if _pasted:
+                _kwargs["tools"] = [
+                    {"type": "web_fetch_20260209", "name": "web_fetch", "max_uses": 4},
+                    {"type": "web_search_20260209", "name": "web_search"},
+                ]
+                print(f"  [ask] user pasted {len(_pasted)} URL(s); web_fetch enabled")
+            try:
+                response = client.messages.create(**_kwargs)
+            except Exception as _tool_err:
+                if "tools" not in _kwargs:
+                    raise
+                # Never let a tool problem cost the answer.
+                print(f"  [ask] web_fetch unavailable, answering without it: "
+                      f"{type(_tool_err).__name__}: {_tool_err}")
+                _kwargs.pop("tools", None)
+                response = client.messages.create(**_kwargs)
             answer = _extract_text(response)
             break
         except Exception as e:
