@@ -104,20 +104,41 @@
       "font-size:14px;line-height:1.6;color:#5A616E;margin:0 0 36px;",
       data.total + " calls  ·  " + data.open + " still open  ·  " + tally));
 
-    var openCalls = data.calls.filter(function (c) { return !c.status; });
+    // Capped on purpose. The weekly proposer adds up to three calls a week, so
+    // uncapped this is ~46 calls by December and 150+ within a year - at which
+    // point it is the page rather than a section on it, and the marketplace
+    // below never gets seen. The full record lives at /predictions.
+    var SHOW_OPEN = 4, SHOW_DONE = 4;
+
+    // Soonest to resolve first: "resolves next week" is a live bet a reader can
+    // come back and check, while one due in four months is not yet interesting.
+    var openCalls = data.calls.filter(function (c) { return !c.status; })
+      .sort(function (a, b) { return (a.due || "") < (b.due || "") ? -1 : 1; });
+    // Newest first, so the freshest evidence is the evidence on show.
     var done = data.calls.filter(function (c) { return c.status; });
 
     if (openCalls.length) {
       root.appendChild(el("h3",
         "font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#5A616E;" +
         "font-weight:700;margin:0 0 4px;", "Open — outcome not yet known"));
-      openCalls.forEach(function (c) { root.appendChild(card(c)); });
+      openCalls.slice(0, SHOW_OPEN).forEach(function (c) { root.appendChild(card(c)); });
     }
     if (done.length) {
       root.appendChild(el("h3",
         "font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#5A616E;" +
         "font-weight:700;margin:44px 0 4px;", "Resolved"));
-      done.forEach(function (c) { root.appendChild(card(c)); });
+      done.slice(0, SHOW_DONE).forEach(function (c) { root.appendChild(card(c)); });
+    }
+
+    if (data.total > SHOW_OPEN + SHOW_DONE) {
+      var more = el("a",
+        "display:inline-block;margin-top:26px;color:#C57A11;font-size:14px;" +
+        "font-weight:600;text-decoration:none;border-bottom:1px solid #C57A11;" +
+        "padding-bottom:2px;", "See all " + data.total + " calls \u203A");
+      more.href = API + "/predictions";
+      more.target = "_blank";
+      more.rel = "noopener";
+      root.appendChild(more);
     }
 
     root.appendChild(el("p",
