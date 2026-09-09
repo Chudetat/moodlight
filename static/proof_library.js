@@ -83,9 +83,6 @@
       "font-family:system-ui,-apple-system,'Segoe UI',Helvetica,sans-serif;" +
       "max-width:720px;margin:0 auto;color:#12151C;");
 
-    root.appendChild(el("div",
-      "font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#C57A11;font-weight:700;",
-      "The proof library"));
     // Each sentence is its own inline-block, so a narrow screen breaks BETWEEN
     // the two sentences instead of orphaning "What" at the end of line one.
     // clamp() lets the type shrink on a phone rather than forcing the wrap.
