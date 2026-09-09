@@ -88,11 +88,11 @@
       "The proof library"));
     root.appendChild(el("h2",
       "font-size:30px;font-weight:600;margin:12px 0 10px;line-height:1.2;",
-      "We write the call down before we know the answer."));
+      "What we predicted. What actually happened."));
     root.appendChild(el("p",
       "font-size:16px;line-height:1.6;color:#3C4453;margin:0 0 6px;",
-      "Every call is dated, the evidence is sealed the moment it is made, and it gets " +
-      "checked against what actually happened. Including the ones we get wrong."));
+      "Every call is dated and the evidence is sealed the moment it is made. " +
+      "Including the ones we get wrong."));
 
     var tally = Object.keys(data.counts || {}).map(function (k) {
       return (VERDICT[k] ? VERDICT[k][0].toLowerCase() : k) + " " + data.counts[k];
