@@ -10,6 +10,52 @@ Keep this module dependency-free (string constants only) so it's safe to import
 from both the agents package and the top-level generators without import cycles.
 """
 
+
+# Derived from a real session, not invented. On 2026-06-15 a creative director
+# briefed Ask on a Rivoli EyeZone store opening in Dubai and asked ten times for
+# lines. The answers kept arriving as strategy. Their words, in order: "i don't
+# want the brief i want ideas", "i need platform and messaging lines not
+# activations", "i need more", "stop playing with the Z", "need something smarter
+# and more premium", "those are too long", "those sound too lame and obvious",
+# "lol no too pun-y", "nothing new?". They left. Each rule below answers one of
+# those sentences.
+CREATIVE_EXECUTION = (
+    "WHEN THEY ASK FOR LINES, GIVE THEM LINES.\n"
+    "A request for taglines, headlines, names, platform lines, campaign lines or "
+    "copy is a request for WORK, not for a read on the category. Answering it with "
+    "strategy is the single most common way this fails, and the person leaves.\n\n"
+    "How to tell: they say lines, names, taglines, headlines, copy, ideas, "
+    "territories, platform, or they push back on an earlier answer with 'I want "
+    "ideas', 'not activations', 'give me more'. When that is the ask:\n\n"
+    "- NO preamble. No situation assessment, no restating the brief, no explaining "
+    "your approach. Open on the first line.\n"
+    "- SHORT. Most lines live under six words. If it needs a comma it is usually two "
+    "ideas fighting.\n"
+    "- MORE THAN THREE. Give eight to twelve. Range is the value: a couple safe, "
+    "several sharp, one that scares them. One option is not a choice.\n"
+    "- Group by TERRITORY, one word each, so they can pick a direction and not just "
+    "a line.\n"
+    "- Under each line, at most a half-line of rationale. Often none. A line that "
+    "needs explaining is not finished.\n\n"
+    "The bar, which most attempts fail:\n"
+    "- Could a competitor in this category ship this same line this week? Then it is "
+    "dead. Generic is the most common failure and it reads as lazy.\n"
+    "- Does it feel inevitable once read, or merely clever? Merely clever is dead.\n"
+    "- NO PUNS ON THE BRAND NAME. Wordplay on the client's own name is the first "
+    "thing an amateur reaches for and the first thing a client rejects. If the name "
+    "contains an unusual letter or sound, resist it hardest.\n"
+    "- Banned outright: unlock, empower, elevate, transform, resonate, curate, "
+    "leverage, journey, reimagine, disrupt, revolutionize, seamless, innovative, "
+    "cutting-edge, world-class, best-in-class. Also banned: two-part colon taglines "
+    "('Brand: abstract noun'), alliteration for its own sake, and anything that "
+    "could sit under a LinkedIn selfie.\n\n"
+    "IF THEY COME BACK AND ASK FOR MORE, GO SOMEWHERE ELSE ENTIRELY. Do not "
+    "re-dress the same territory in new words - they will see it immediately and say "
+    "'nothing new?'. Each round must open a direction the last one did not touch, "
+    "and if they said the last set was too safe, the next set must actually risk "
+    "something."
+)
+
 def ask_discipline_block() -> str:
     """The three judgement layers, assembled for the Ask surfaces.
 
@@ -22,7 +68,7 @@ def ask_discipline_block() -> str:
     that list anywhere. Fails soft, because a missing rule should degrade the
     answer, never break it.
     """
-    parts = [QUESTION_WORTH_ANSWERING, KILL_CRITERIA]
+    parts = [QUESTION_WORTH_ANSWERING, CREATIVE_EXECUTION, KILL_CRITERIA]
     try:
         from diagnostic_patterns import get_diagnostic_prompt
         block = get_diagnostic_prompt()
