@@ -16,6 +16,9 @@
 
   const scriptTag = document.currentScript;
   const scriptSrc = scriptTag ? scriptTag.src : "";
+  // The marketplace run endpoint lives on moodlight-api, not on this widget's
+  // own backend. CORS there already allows the Squarespace origin.
+  const ML_MARKETPLACE_API = "https://moodlight-api-production.up.railway.app";
   const API_BASE = scriptSrc
     ? scriptSrc.replace(/\/static\/ask_moodlight_widget\.js.*$/, "")
     : "https://ask-moodlight.up.railway.app";
@@ -339,6 +342,44 @@
       line-height: 1.45;
       margin-bottom: 12px;
       font-style: italic;
+    }
+    /* Inline handoff: capture the email in the conversation instead of
+       scrolling the reader away to a form. 506 questions had produced 26
+       addresses, and the drop-off was the context switch, not the CTA. */
+    .ml-inline-run { margin-top: 12px; }
+    .ml-inline-run-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .ml-inline-run input {
+      flex: 1 1 190px;
+      min-width: 170px;
+      padding: 9px 13px;
+      border: 1px solid rgba(0,0,0,0.18);
+      border-radius: 20px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+    .ml-inline-run input:focus { border-color: #6B46C1; }
+    .ml-inline-run-note {
+      font-size: 11.5px;
+      opacity: 0.65;
+      margin-top: 7px;
+      line-height: 1.45;
+    }
+    .ml-inline-run-done {
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .ml-inline-run-alt {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 12px;
+      text-decoration: underline;
+      cursor: pointer;
+      opacity: 0.7;
+      font-family: inherit;
+      color: inherit;
     }
     .ml-agent-cta-btn {
       display: inline-block;
@@ -1189,11 +1230,87 @@
       }, 500);
     }
 
-    var btn = document.createElement("button");
-    btn.className = "ml-agent-cta-btn";
-    btn.textContent = "Run " + agentName + " \u2193";
-    btn.onclick = function () { handoffTo(agentId, agentName); };
-    el.appendChild(btn);
+    // Run it from here. Previously the only path was a button that scrolled
+    // the reader down to the marketplace form - a context switch at the exact
+    // moment they were most engaged. The brief fields are already extracted, so
+    // the only thing actually missing is an address to send it to.
+    var run = document.createElement("div");
+    run.className = "ml-inline-run";
+
+    var row = document.createElement("div");
+    row.className = "ml-inline-run-row";
+
+    var mail = document.createElement("input");
+    mail.type = "email";
+    mail.placeholder = "you@company.com";
+    mail.autocomplete = "email";
+    try { mail.value = localStorage.getItem("ml_team_email") || ""; } catch (e) {}
+
+    var go = document.createElement("button");
+    go.className = "ml-agent-cta-btn";
+    go.textContent = "Send me the brief";
+
+    row.appendChild(mail);
+    row.appendChild(go);
+    run.appendChild(row);
+
+    var note = document.createElement("div");
+    note.className = "ml-inline-run-note";
+    note.textContent = agentName + " runs on your question and emails the full brief. Usually a couple of minutes.";
+    run.appendChild(note);
+
+    var alt = document.createElement("button");
+    alt.className = "ml-inline-run-alt";
+    alt.textContent = "or edit the brief first";
+    alt.onclick = function () { handoffTo(agentId, agentName); };
+    run.appendChild(alt);
+
+    go.onclick = function () {
+      var addr = (mail.value || "").trim();
+      if (!addr || addr.indexOf("@") < 1) {
+        mail.focus();
+        note.textContent = "Need a valid email to send it to.";
+        return;
+      }
+      try { localStorage.setItem("ml_team_email", addr); } catch (e) {}
+      go.disabled = true;
+      go.textContent = "Sending\u2026";
+      var f = parsedFields || {};
+      fetch(ML_MARKETPLACE_API + "/api/marketplace/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agent: agentId,
+          email: addr,
+          product: f.product || detectedBrand || rawQuestion.slice(0, 120) || "(from Ask)",
+          audience: f.audience || "",
+          markets: f.markets || "",
+          challenge: f.challenge || rawQuestion || "",
+          timeline: f.timeline || "",
+          async_mode: true
+        })
+      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          run.innerHTML = "";
+          var done = document.createElement("div");
+          done.className = "ml-inline-run-done";
+          if (res.ok) {
+            done.textContent = "On its way to " + addr + ". " + agentName +
+              " is working on it now \u2014 the full brief lands in a couple of minutes.";
+          } else {
+            done.textContent = (res.j && res.j.detail) ||
+              "Could not start that run. Please try again shortly.";
+          }
+          run.appendChild(done);
+        })
+        .catch(function () {
+          go.disabled = false;
+          go.textContent = "Send me the brief";
+          note.textContent = "Something went wrong. Try again, or edit the brief below.";
+        });
+    };
+
+    el.appendChild(run);
 
     // Ship 3: Moodlight Methodology workflow ladder. When Claude
     // emits a multi-step sequence, render it as numbered clickable
