@@ -3945,3 +3945,124 @@ def public_proof_library_json():
         "open": sum(1 for r in out if not r["status"]),
         "counts": counts,
     }
+
+
+# ---------------------------------------------------------------------------
+# Ask -> PDF capture
+#
+# On 2026-09-09 someone building a B2B decision-intelligence service in Colombia
+# asked Ask four questions, got a 4,000-word strategic read that reframed their
+# whole business, and left. No email. The only thing captured was a hashed IP.
+#
+# The existing handoff asks them to run ANOTHER agent, which is mistimed: after
+# a long strategic read they already have what they came for. This offers
+# something they actually want for the work they just received - it as a
+# document - and the email is the price.
+#
+# Lives on moodlight-api rather than the widget backend because the mail
+# credentials are here; the widget already calls this service for marketplace
+# runs and CORS allows the Squarespace origin.
+# ---------------------------------------------------------------------------
+
+_ask_pdf_rate: dict = {}          # {ip: [timestamp, ...]}
+_ASK_PDF_MAX_PER_IP = int(os.getenv("ASK_PDF_MAX_PER_IP", "6"))
+_ASK_PDF_MAX_CHARS = 60000        # a long Ask answer is ~15k; this is generous
+
+
+def _check_ask_pdf_rate(ip: str) -> bool:
+    import time
+    now = time.time()
+    times = [t for t in _ask_pdf_rate.get(ip, []) if now - t < 3600]
+    if len(times) >= _ASK_PDF_MAX_PER_IP:
+        return False
+    times.append(now)
+    _ask_pdf_rate[ip] = times
+    return True
+
+
+class AskPdfRequest(BaseModel):
+    email: str
+    answer: str
+    question: str = ""
+
+
+def _send_ask_pdf(email: str, question: str, answer: str):
+    """Background task: render the answer and mail it as an attachment."""
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.mime.application import MIMEApplication
+
+    sender = os.getenv("EMAIL_ADDRESS")
+    password = os.getenv("EMAIL_PASSWORD")
+    if not all([sender, password]):
+        print("ask-pdf: mail credentials not configured")
+        return
+    try:
+        from pdf_export import generate_brief_pdf
+        label = (question or "Moodlight read").strip()[:80]
+        pdf = generate_brief_pdf(answer, label)
+    except Exception as e:
+        print(f"ask-pdf: render failed: {type(e).__name__}: {e}")
+        return
+
+    msg = MIMEMultipart()
+    msg["Subject"] = "Your Moodlight read"
+    msg["From"] = sender
+    msg["To"] = email
+    msg.attach(MIMEText(
+        "The read you asked for is attached.\n\n"
+        "If it is useful and you want to go further on it, reply to this email.\n\n"
+        "Moodlight\n", "plain"))
+    part = MIMEApplication(pdf, _subtype="pdf")
+    part.add_header("Content-Disposition", "attachment", filename="moodlight-read.pdf")
+    msg.attach(part)
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender, password)
+            server.send_message(msg)
+        print(f"ask-pdf: sent to {email}")
+    except Exception as e:
+        print(f"ask-pdf: send failed: {type(e).__name__}: {e}")
+
+
+@app.post("/api/ask/pdf")
+def ask_pdf(req: AskPdfRequest, request: Request, background_tasks: BackgroundTasks):
+    """Email the Ask answer as a PDF, and record the address.
+
+    The address is written back onto the ask_queries row so the inbound-alert
+    job surfaces it: an alert that says who asked AND how to reach them is worth
+    far more than one that says a question arrived.
+    """
+    addr = (req.email or "").strip()
+    if "@" not in addr or len(addr) < 6:
+        raise HTTPException(status_code=400, detail="A valid email is required.")
+    if not (req.answer or "").strip():
+        raise HTTPException(status_code=400, detail="Nothing to send.")
+    if not _check_ask_pdf_rate(_get_client_ip(request)):
+        raise HTTPException(status_code=429,
+                            detail="Too many requests from this network. Try again in an hour.")
+
+    answer = req.answer[:_ASK_PDF_MAX_CHARS]
+
+    # Attach the address to the most recent matching question from this asker,
+    # so the alert email can say who to reply to. Best-effort: never block the
+    # send on a logging problem.
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            conn.execute(sql_text(
+                "ALTER TABLE ask_queries ADD COLUMN IF NOT EXISTS email VARCHAR(255)"))
+            conn.commit()
+            conn.execute(sql_text(
+                "UPDATE ask_queries SET email = :e WHERE id = ("
+                "  SELECT id FROM ask_queries"
+                "   WHERE answer IS NOT NULL AND LEFT(answer, 120) = LEFT(:a, 120)"
+                "   ORDER BY created_at DESC LIMIT 1)"),
+                {"e": addr, "a": answer})
+            conn.commit()
+    except Exception as e:
+        print(f"ask-pdf: could not record email: {type(e).__name__}: {e}")
+
+    background_tasks.add_task(_send_ask_pdf, addr, req.question, answer)
+    return {"status": "sending", "email": addr}

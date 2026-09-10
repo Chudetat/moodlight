@@ -346,6 +346,26 @@
     /* Inline handoff: capture the email in the conversation instead of
        scrolling the reader away to a form. 506 questions had produced 26
        addresses, and the drop-off was the context switch, not the CTA. */
+    /* Take the read as a document. A strategic answer is something people want
+       in a file, and after 4,000 words the last thing they want is to run
+       another agent - so this is the primary ask and the agent handoff is
+       secondary. Built after someone briefed Ask on their whole company, got a
+       read that reframed it, and left no way to reach them. */
+    .ml-pdf-offer {
+      margin: 14px 0 4px;
+      padding: 14px 16px;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 10px;
+    }
+    .ml-pdf-offer-label { font-size: 14px; font-weight: 500; margin-bottom: 9px; }
+    .ml-pdf-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .ml-pdf-row input {
+      flex: 1 1 180px; min-width: 160px; padding: 9px 13px;
+      border: 1px solid rgba(0,0,0,0.18); border-radius: 20px;
+      font-size: 13px; font-family: inherit; outline: none;
+    }
+    .ml-pdf-row input:focus { border-color: #6B46C1; }
+    .ml-pdf-note { font-size: 11.5px; opacity: 0.65; margin-top: 8px; line-height: 1.45; }
     .ml-inline-run { margin-top: 12px; }
     .ml-inline-run-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .ml-inline-run input {
@@ -729,6 +749,7 @@
 
       var answerEl = addResult(messages, "assistant", data.answer);
       mlSaveRecent((preset && preset.label) || question, data.answer);
+      mlPdfOffer(messages, question, data.answer);
 
       // Persist brief fields immediately so the marketplace can
       // auto-fill even if the user scrolls down manually instead
@@ -1248,7 +1269,7 @@
 
     var go = document.createElement("button");
     go.className = "ml-agent-cta-btn";
-    go.textContent = "Send me the brief";
+    go.textContent = "Run it";
 
     row.appendChild(mail);
     row.appendChild(go);
@@ -1256,7 +1277,7 @@
 
     var note = document.createElement("div");
     note.className = "ml-inline-run-note";
-    note.textContent = agentName + " runs on your question and emails the full brief. Usually a couple of minutes.";
+    note.textContent = "Or take it further: " + agentName + " runs on this question and emails the full brief.";
     run.appendChild(note);
 
     var alt = document.createElement("button");
@@ -1305,7 +1326,7 @@
         })
         .catch(function () {
           go.disabled = false;
-          go.textContent = "Send me the brief";
+          go.textContent = "Run it";
           note.textContent = "Something went wrong. Try again, or edit the brief below.";
         });
     };
@@ -1380,6 +1401,69 @@
       var arr = JSON.parse(localStorage.getItem(ML_RECENT_KEY) || "[]");
       return Array.isArray(arr) ? arr : [];
     } catch (e) { return []; }
+  }
+
+
+  // Offer the read as a PDF, in exchange for an address. Placed immediately
+  // under the answer because that is the moment it is wanted; the agent handoff
+  // sits below it and asks for more work, which is the wrong ask at this point.
+  function mlPdfOffer(container, question, answer) {
+    if (!container || !answer || answer.length < 900) return;  // short answers are not documents
+    var box = document.createElement("div");
+    box.className = "ml-pdf-offer";
+
+    var label = document.createElement("div");
+    label.className = "ml-pdf-offer-label";
+    label.textContent = "Want this as a PDF?";
+    box.appendChild(label);
+
+    var row = document.createElement("div");
+    row.className = "ml-pdf-row";
+    var mail = document.createElement("input");
+    mail.type = "email";
+    mail.placeholder = "you@company.com";
+    mail.autocomplete = "email";
+    try { mail.value = localStorage.getItem("ml_team_email") || ""; } catch (e) {}
+    var go = document.createElement("button");
+    go.className = "ml-agent-cta-btn";
+    go.textContent = "Send it";
+    row.appendChild(mail); row.appendChild(go);
+    box.appendChild(row);
+
+    var note = document.createElement("div");
+    note.className = "ml-pdf-note";
+    note.textContent = "The full read, formatted, in your inbox.";
+    box.appendChild(note);
+
+    go.onclick = function () {
+      var addr = (mail.value || "").trim();
+      if (!addr || addr.indexOf("@") < 1) {
+        mail.focus(); note.textContent = "Need a valid email to send it to."; return;
+      }
+      try { localStorage.setItem("ml_team_email", addr); } catch (e) {}
+      go.disabled = true; go.textContent = "Sending\u2026";
+      fetch(ML_MARKETPLACE_API + "/api/ask/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: addr, question: question || "", answer: answer })
+      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          box.innerHTML = "";
+          var done = document.createElement("div");
+          done.className = "ml-pdf-offer-label";
+          done.style.marginBottom = "0";
+          done.textContent = res.ok
+            ? "On its way to " + addr + "."
+            : ((res.j && res.j.detail) || "Could not send that. Please try again.");
+          box.appendChild(done);
+        })
+        .catch(function () {
+          go.disabled = false; go.textContent = "Send it";
+          note.textContent = "Something went wrong. Try again.";
+        });
+    };
+    container.appendChild(box);
+    return box;
   }
 
   function mlSaveRecent(question, answer) {
