@@ -89,7 +89,17 @@ def _fetch_new(conn):
     return conn.execute(sql_text(f"""
         SELECT DISTINCT ON (LOWER(TRIM(question)))
                id, created_at, detected_brand, detected_topic,
-               recommended_agent, question, COALESCE(answer, '')
+               recommended_agent, question, COALESCE(answer, ''),
+               -- Any address left against THIS question, not just the row
+               -- DISTINCT ON happened to keep. The PDF button writes the email
+               -- onto the row whose answer it matched; if the same question was
+               -- asked twice, that is not the earliest row, and the earliest is
+               -- the one this query returns. Reading the row's own email column
+               -- would silently drop the only thing that makes a lead reachable.
+               COALESCE((SELECT e.email FROM ask_queries e
+                          WHERE LOWER(TRIM(e.question)) = LOWER(TRIM(ask_queries.question))
+                            AND e.email IS NOT NULL AND e.email <> ''
+                          ORDER BY e.created_at DESC LIMIT 1), '')
           FROM ask_queries
          WHERE notified_at IS NULL
            AND created_at > NOW() - INTERVAL '{_MAX_AGE_HOURS} hours'
@@ -115,19 +125,28 @@ def _mark(conn, ids):
 
 def _compose(rows):
     named = [r[2] for r in rows if r[2]]
+    reachable = sum(1 for r in rows if r[7])
     if named:
         subject = f"Ask Moodlight: {named[0]}" + (f" and {len(rows)-1} more" if len(rows) > 1 else "")
     else:
         subject = f"Ask Moodlight: {len(rows)} question{'s' if len(rows) > 1 else ''}"
+    if reachable:
+        subject = f"[{reachable} reachable] " + subject
 
     parts = [
-        f"{len(rows)} question{'s' if len(rows) > 1 else ''} worth a look.",
+        f"{len(rows)} question{'s' if len(rows) > 1 else ''} worth a look."
+        + (f" {reachable} left an email address." if reachable else ""),
         "",
         "-" * 62,
         "",
     ]
-    for _id, ts, brand, topic, agent, question, answer in rows:
+    # NOTE: this unpack must match the SELECT in _fetch_new exactly. Adding a
+    # column there without adding it here raises ValueError on every run and
+    # stops lead alerts entirely.
+    for _id, ts, brand, topic, agent, question, answer, email in rows:
         parts.append(f"{ts:%b %d, %H:%M UTC}")
+        if email:
+            parts.append(f"REPLY TO: {email}")
         if brand:
             parts.append(f"Brand: {brand}")
         if topic:
