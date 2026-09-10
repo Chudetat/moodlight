@@ -89,8 +89,11 @@ everything after it is the evidence.
 
 The standard for that line, which is high and which most attempts will fail:
 
-- SHORT. Under ten words wherever the diagnosis allows it. "Nike is loud. Nike is not
-  felt." is six words and a complete brand audit. Length is where a weak diagnosis hides.
+- SHORT. Under ten words wherever the diagnosis allows it. "[BRAND] is loud. [BRAND] is
+  not felt." is six words and a complete brand audit. That is the SHAPE and not a sentence
+  to reuse: never reproduce an example from these instructions as your line, and never fill
+  that template in, least of all when the brand you are auditing is the one in the example.
+  Length is where a weak diagnosis hides.
 - IT NAMES A GAP. The most useful shape concedes what the brand genuinely has, then
   withdraws the thing that actually matters. The distance between those two is the
   diagnosis. A line that only says what is wrong is a complaint; a line that holds both
