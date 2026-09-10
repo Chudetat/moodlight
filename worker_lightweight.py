@@ -45,7 +45,7 @@ JOBS = {
         # visitors we answered, punt_monitor reports the ones we turned away.
         # Non-blocking pre-step, so a classifier or mail failure here can never
         # cost an inbound lead alert.
-        "pre": ["punt_monitor"],
+        "pre": ["punt_monitor", "marketplace_alerts"],
     },
     "prediction-propose": {
         "module": "prediction_tracker",
