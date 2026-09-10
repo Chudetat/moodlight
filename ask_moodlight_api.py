@@ -2012,13 +2012,32 @@ async def ask_moodlight(req: AskRequest, request: Request):
                 "messages": messages,
                 "extra_body": {"output_config": {"effort": "medium"}},
             }
+            # Attach web tools when the answer would otherwise be guesswork.
+            #
+            # Originally gated on a pasted URL alone, on the reasoning that the
+            # tools were useless otherwise. That was exactly backwards for the
+            # case that matters most. MSQDX (2026-09-10) had zero substrate
+            # mentions and is too small for NewsAPI, so the model had nothing at
+            # all and had to ask the user what the company was - while a single
+            # web search would have found their site instantly.
+            #
+            # So: a URL means fetch that page. No brand signal, or a brand the
+            # news index cannot see, means search for it. Both are the same
+            # question - does this answer have anything real underneath it.
             _pasted = _urls_in(question)
-            if _pasted:
-                _kwargs["tools"] = [
-                    {"type": "web_fetch_20260209", "name": "web_fetch", "max_uses": 4},
-                    {"type": "web_search_20260209", "name": "web_search"},
-                ]
-                print(f"  [ask] user pasted {len(_pasted)} URL(s); web_fetch enabled")
+            _thin_brand = bool(brand_name) and not brand_section.startswith(
+                "[BRAND-SPECIFIC SIGNALS")
+            _no_web = not web_articles
+            if _pasted or _thin_brand or (brand_name and _no_web):
+                _tools = [{"type": "web_search_20260209", "name": "web_search"}]
+                if _pasted:
+                    _tools.insert(0, {"type": "web_fetch_20260209",
+                                      "name": "web_fetch", "max_uses": 4})
+                _kwargs["tools"] = _tools
+                _why = ("pasted URL" if _pasted else
+                        "no tracked signal on the brand" if _thin_brand else
+                        "no news results")
+                print(f"  [ask] web tools on ({_why}) for {brand_name or 'query'!r}")
             try:
                 response = client.messages.create(**_kwargs)
             except Exception as _tool_err:
