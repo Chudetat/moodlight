@@ -7,6 +7,7 @@ Rate-limited to 25 queries per visitor per day.
 
 import os
 from shared_prompts import ask_discipline_block
+from web_tools import attach as attach_web_tools, urls_in as _urls_in
 import re
 import json
 import time
@@ -1112,35 +1113,8 @@ _ROUTE_RE = re.compile(
 
 
 
-_URL_RE = _re_url = __import__("re").compile(r"https?://[^\s<>\"')]+", __import__("re").I)
-
-
-def _urls_in(text: str, limit: int = 3):
-    """URLs the user pasted into their question.
-
-    People paste their own site when the name alone is ambiguous - "wrong
-    product, https://ao2clear.com/", "Wrong store, instead do
-    https://www.lowesmarket.com/". Both of those were a second attempt after the
-    first answer had picked the wrong company. 14 of 506 questions carry a URL
-    and every one of them is someone saying exactly who they are; the system was
-    reading past it and guessing from the name.
-
-    They are also, almost without exception, brands the substrate cannot see -
-    ClearTelligence, AU Vodka, Travel Collection, DocPod. Name-based retrieval
-    is at its weakest precisely where a URL is most useful.
-    """
-    if not text:
-        return []
-    out, seen = [], set()
-    for u in _URL_RE.findall(text):
-        u = u.rstrip(".,);:]")
-        if u.lower() in seen:
-            continue
-        seen.add(u.lower())
-        out.append(u)
-        if len(out) >= limit:
-            break
-    return out
+# _urls_in and the URL regex moved to web_tools.py, shared with the dashboard
+# twin. A local definition here would shadow the import above.
 
 
 def _extract_text(response):
@@ -2011,35 +1985,13 @@ async def ask_moodlight(req: AskRequest, request: Request):
                 "messages": messages,
                 "extra_body": {"output_config": {"effort": "medium"}},
             }
-            # WEB SEARCH IS ALWAYS ATTACHED. Never put a condition in front of
-            # it again.
-            #
-            # It was gated on a pasted URL first, which meant a stranger asking
-            # about a company we do not track got nothing. Then it was gated on
-            # a brand name having been extracted, which is worse than it sounds:
-            # extraction is a Haiku call, and on the bare token a real person
-            # actually types ("MSQDX") it returns no brand at all, so the gate
-            # stayed shut for precisely the queries that need the web most. MSQ
-            # DX is a 600-person company inside a 1,900-person group; Moodlight
-            # asked them to explain who they were.
-            #
-            # Attaching a tool is not calling it. An unused tool costs nothing,
-            # and the model is a better judge of whether the material in front
-            # of it can answer the question than a Python condition guessing in
-            # advance. So the decision belongs to the model, every time.
-            #
-            # web_fetch stays conditional - it needs a URL to be meaningful.
-            _pasted = _urls_in(question)
-            _tools = [{"type": "web_search_20260209", "name": "web_search"}]
-            if _pasted:
-                _tools.insert(0, {"type": "web_fetch_20260209",
-                                  "name": "web_fetch", "max_uses": 4})
-            _kwargs["tools"] = _tools
-            _thin_brand = bool(brand_name) and not brand_section.startswith(
-                "[BRAND-SPECIFIC SIGNALS")
-            _why = ("pasted URL + search" if _pasted else
-                    "no tracked signal on the brand" if _thin_brand else
-                    "no news results" if not web_articles else "standing")
+            # Web tools are attached unconditionally. The rule, and the two
+            # times it was got wrong, live in web_tools.py - shared with the
+            # dashboard twin so the two surfaces cannot drift apart again.
+            _why = attach_web_tools(
+                _kwargs, question, brand_name=brand_name,
+                brand_has_signal=brand_section.startswith("[BRAND-SPECIFIC SIGNALS"),
+                has_web_articles=bool(web_articles))
             print(f"  [ask] web tools on ({_why}) for {brand_name or 'query'!r}")
             try:
                 response = client.messages.create(**_kwargs)

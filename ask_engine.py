@@ -9,6 +9,7 @@ intentionally separate from the widget version (ask_moodlight_api.py).
 
 import os
 from shared_prompts import ask_discipline_block
+from web_tools import attach as attach_web_tools
 import re
 import json
 import requests
@@ -1355,14 +1356,30 @@ def ask_moodlight(
     messages.append({"role": "user", "content": message})
 
     # --- Call Claude ---
+    # Web tools are attached unconditionally, exactly as on the widget. This
+    # surface had none at all until 2026-09-10, so a company the substrate
+    # cannot see got the same answer MSQ DX got: a request to explain itself.
+    # See web_tools.py for why there is no condition in front of this.
+    _kwargs = {
+        "model": "claude-opus-5",
+        "max_tokens": 16000,
+        "system": system_prompt,
+        "messages": messages,
+        "extra_body": {"output_config": {"effort": "medium"}},
+    }
+    _why = attach_web_tools(_kwargs, message, brand_name=brand_name,
+                            brand_has_signal=bool(web_articles),
+                            has_web_articles=bool(web_articles))
+    print(f"  [ask-dash] web tools on ({_why}) for {brand_name or 'query'!r}")
     try:
-        response = client.messages.create(
-            model="claude-opus-5",
-            max_tokens=16000,
-            system=system_prompt,
-            messages=messages,
-            extra_body={"output_config": {"effort": "medium"}},
-        )
+        try:
+            response = client.messages.create(**_kwargs)
+        except Exception as _tool_err:
+            # Never let a tool problem cost the answer.
+            print(f"  [ask-dash] web tools unavailable, answering without them: "
+                  f"{type(_tool_err).__name__}: {_tool_err}")
+            _kwargs.pop("tools", None)
+            response = client.messages.create(**_kwargs)
         assistant_message = _extract_text(response)
     except Exception as e:
         assistant_message = f"Sorry, I encountered an error: {str(e)}"
