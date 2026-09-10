@@ -79,6 +79,10 @@ def _pdf_safe(text: str) -> str:
         return ""
     for bad, good in _PDF_ASCII.items():
         text = text.replace(bad, good)
+    # An em dash usually arrives already spaced (" - " becomes "  -  "), so
+    # collapse runs of spaces and tabs. Newlines are preserved: the markdown
+    # renderer downstream needs them for paragraphs and bullets.
+    text = re.sub(r"[ \t]{2,}", " ", text)
     try:
         text.encode("latin-1")
         return text
