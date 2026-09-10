@@ -29,6 +29,8 @@ Re-run monthly. Read the pushback list first.
 import os
 import psycopg2
 
+from qa_marker import SQL_EXCLUDE_QA
+
 PUSHBACK = (
     "no,", "not ", "wrong", "i don't want", "i dont want", "instead", "too ",
     "stop ", "again", "actually", "i said", "that's not", "thats not",
@@ -48,14 +50,24 @@ def main():
     print("MOODLIGHT QUERY LOG SWEEP")
     print("=" * 72)
 
-    cur.execute("SELECT COUNT(*), MIN(created_at)::date, MAX(created_at)::date FROM ask_queries")
+    # Our own production pokes are not users, and this report exists to read
+    # users. Rather than bolt a filter onto each of the nine queries below,
+    # define the honest population once and let every query read from it. The
+    # excluded count is printed, never silently swallowed - if that number
+    # starts climbing it means testing is drowning the signal.
+    cur.execute(f"CREATE TEMP VIEW real_queries AS "
+                f"SELECT * FROM ask_queries WHERE {SQL_EXCLUDE_QA}")
+    cur.execute(f"SELECT COUNT(*) FROM ask_queries WHERE NOT {SQL_EXCLUDE_QA}")
+    print(f"\n({cur.fetchone()[0]} of our own test rows excluded)")
+
+    cur.execute("SELECT COUNT(*), MIN(created_at)::date, MAX(created_at)::date FROM real_queries")
     n, lo, hi = cur.fetchone()
     print(f"\n{n} questions, {lo} to {hi}")
 
     # 1. THE IMPORTANT ONE. A follow-up that corrects or rejects is the product
     #    failing a real person, in their own words.
     print("\n--- CORRECTIVE FOLLOW-UPS (read these first) ---")
-    cur.execute("SELECT ip_hash, created_at, question FROM ask_queries ORDER BY ip_hash, created_at")
+    cur.execute("SELECT ip_hash, created_at, question FROM real_queries ORDER BY ip_hash, created_at")
     seen, hits = set(), []
     for h, ts, q in cur.fetchall():
         key = (h, ts.date())
@@ -71,7 +83,7 @@ def main():
     print("\n--- SESSION DEPTH ---")
     cur.execute("""SELECT q, COUNT(*) FROM (
                      SELECT ip_hash, DATE(created_at) d, COUNT(*) q
-                       FROM ask_queries GROUP BY ip_hash, d) t
+                       FROM real_queries GROUP BY ip_hash, d) t
                    GROUP BY q ORDER BY q""")
     rows = cur.fetchall()
     tot = sum(x for _, x in rows)
@@ -81,10 +93,10 @@ def main():
     print(f"  -> {100*one/tot:.0f}% single-question")
 
     print("\n--- DEEP SESSIONS (5+ questions: who is doing real work) ---")
-    cur.execute("""SELECT ip_hash, DATE(created_at) d, COUNT(*) q FROM ask_queries
+    cur.execute("""SELECT ip_hash, DATE(created_at) d, COUNT(*) q FROM real_queries
                     GROUP BY ip_hash, d HAVING COUNT(*) >= 5 ORDER BY q DESC LIMIT 10""")
     for h, d, q in cur.fetchall():
-        cur.execute("""SELECT LEFT(question,90) FROM ask_queries
+        cur.execute("""SELECT LEFT(question,90) FROM real_queries
                         WHERE ip_hash=%s AND DATE(created_at)=%s ORDER BY created_at LIMIT 3""", (h, d))
         first = [r[0] for r in cur.fetchall()]
         print(f"  {d} [{h[:8]}] {q} questions")
@@ -95,14 +107,14 @@ def main():
     print("\n--- MISSING ANSWERS BY MONTH (pre-May is historical, ignore) ---")
     cur.execute("""SELECT TO_CHAR(created_at,'YYYY-MM'), COUNT(*),
                           COUNT(*) FILTER (WHERE answer IS NULL OR LENGTH(answer)<40)
-                     FROM ask_queries GROUP BY 1 ORDER BY 1""")
+                     FROM real_queries GROUP BY 1 ORDER BY 1""")
     for m, t, x in cur.fetchall():
         flag = "  <-- CHECK" if x and m >= "2026-06" else ""
         print(f"  {m}: {x:4}/{t:4} missing{flag}")
 
     # 4. Capture rate. The number that says whether any of this converts.
     print("\n--- CAPTURE ---")
-    cur.execute("SELECT COUNT(*) FROM ask_queries")
+    cur.execute("SELECT COUNT(*) FROM real_queries")
     asks = cur.fetchone()[0]
     cur.execute("SELECT COUNT(DISTINCT email) FROM marketplace_runs")
     emails = cur.fetchone()[0]
@@ -110,7 +122,7 @@ def main():
     print("  (was 5.1% on 2026-09-09, before the inline handoff shipped)")
 
     print("\n--- URLS PASTED (web_fetch should be firing on these) ---")
-    cur.execute("""SELECT COUNT(*) FROM ask_queries WHERE question ILIKE '%http%'""")
+    cur.execute("""SELECT COUNT(*) FROM real_queries WHERE question ILIKE '%http%'""")
     print(f"  {cur.fetchone()[0]} questions contain a URL")
 
     print("\nDone. The pushback list is the part that matters.")

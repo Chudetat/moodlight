@@ -58,7 +58,7 @@ _MAX_PER_RUN = 60
 _ANSWER_EXCERPT = 400
 
 # Shared with ask_alerts: our own production pokes are not visitors.
-_TEST_MARKER = "[qa]"
+from qa_marker import SQL_EXCLUDE_QA
 
 _CLASSIFIER_MODEL = "claude-haiku-4-5-20251001"
 
@@ -102,7 +102,7 @@ def _fetch_unchecked(conn):
           FROM ask_queries
          WHERE punt_checked_at IS NULL
            AND created_at > NOW() - INTERVAL '{_MAX_AGE_HOURS} hours'
-           AND question NOT ILIKE '%{_TEST_MARKER}%'
+           AND {SQL_EXCLUDE_QA}
          ORDER BY created_at
          LIMIT {_MAX_PER_RUN}
     """)).fetchall()

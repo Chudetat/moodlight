@@ -2121,13 +2121,21 @@ def render_admin_panel():
         st.subheader("Ask Moodlight — Widget Queries")
         st.caption("Questions asked through the sales site embed")
         try:
-            _aq_df = pd.read_sql(sql_text("""
+            # Excludes our own QA rows - the four metrics below are visitor
+            # counts, and a day of testing would swamp them. The excluded
+            # count is shown rather than quietly dropped.
+            from qa_marker import SQL_EXCLUDE_QA
+            _aq_df = pd.read_sql(sql_text(f"""
                 SELECT id, question, detected_brand, detected_topic,
                        is_paid, ip_hash, created_at
                 FROM ask_queries
+                WHERE {SQL_EXCLUDE_QA}
                 ORDER BY created_at DESC
                 LIMIT 200
             """), engine)
+            _aq_qa = pd.read_sql(sql_text(
+                f"SELECT COUNT(*) n FROM ask_queries WHERE NOT {SQL_EXCLUDE_QA}"
+            ), engine)["n"].iloc[0]
             if not _aq_df.empty:
                 _aq_total = len(_aq_df)
                 _aq_paid = _aq_df["is_paid"].sum()
@@ -2138,6 +2146,8 @@ def render_admin_panel():
                 _aq_c2.metric("Free", int(_aq_free))
                 _aq_c3.metric("Paid", int(_aq_paid))
                 _aq_c4.metric("Unique Visitors", _aq_unique)
+                if _aq_qa:
+                    st.caption(f"{_aq_qa} of our own QA rows excluded from these figures")
 
                 # Top brands asked about
                 _aq_brands = _aq_df["detected_brand"].dropna()

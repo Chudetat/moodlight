@@ -2262,11 +2262,20 @@ def admin_ask_queries(payload: dict = Depends(require_auth)):
 
     try:
         with engine.connect() as conn:
+            # Our own test pokes are excluded here, not because they are secret
+            # but because this endpoint's counts (unique visitors, top brands)
+            # are meaningless if a day of QA outnumbers a week of strangers.
+            # The excluded count is returned so nothing is hidden silently.
+            from qa_marker import SQL_EXCLUDE_QA
             rows = conn.execute(sql_text(
                 "SELECT id, question, detected_brand, detected_topic, "
                 "is_paid, ip_hash, created_at, answer, recommended_agent "
-                "FROM ask_queries ORDER BY created_at DESC LIMIT 200"
+                f"FROM ask_queries WHERE {SQL_EXCLUDE_QA} "
+                "ORDER BY created_at DESC LIMIT 200"
             )).fetchall()
+            qa_excluded = conn.execute(sql_text(
+                f"SELECT COUNT(*) FROM ask_queries WHERE NOT {SQL_EXCLUDE_QA}"
+            )).scalar() or 0
 
         queries = []
         paid_count = 0
@@ -2304,6 +2313,7 @@ def admin_ask_queries(payload: dict = Depends(require_auth)):
             "free": len(queries) - paid_count,
             "unique_visitors": len(ip_hashes),
             "top_brands": top_brands,
+            "qa_excluded": qa_excluded,
         }
     except Exception as e:
         # Graceful fallback if ask_queries table doesn't exist
@@ -2315,6 +2325,7 @@ def admin_ask_queries(payload: dict = Depends(require_auth)):
                 "free": 0,
                 "unique_visitors": 0,
                 "top_brands": [],
+                "qa_excluded": 0,
             }
         raise HTTPException(status_code=500, detail=str(e))
 

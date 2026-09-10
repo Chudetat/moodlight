@@ -50,10 +50,12 @@ _MAX_PER_RUN = 25
 
 _ANSWER_EXCERPT = 320
 
-# Put this in a question when deliberately exercising production Ask, and it
-# will not be reported as inbound. Length alone does not separate our testing
-# from a real question - the dominant-mood probe is 64 characters.
-_TEST_MARKER = "[qa]"
+# Start a question with [qa or (qa when deliberately exercising production Ask
+# and it will not be reported as inbound. Length alone does not separate our
+# testing from a real question - the dominant-mood probe is 64 characters.
+# This used to match the literal "[qa]" and nothing else, which let "(Qa)",
+# "[qa2]" and "[qa live]" through as visitor traffic. See qa_marker.py.
+from qa_marker import SQL_EXCLUDE_QA
 
 
 def _engine():
@@ -93,7 +95,7 @@ def _fetch_new(conn):
            AND created_at > NOW() - INTERVAL '{_MAX_AGE_HOURS} hours'
            AND LENGTH(question) >= {_MIN_QUESTION_CHARS}
            AND (detected_brand IS NOT NULL OR detected_topic IS NOT NULL)
-           AND question NOT ILIKE '%{_TEST_MARKER}%'
+           AND {SQL_EXCLUDE_QA}
            AND NOT EXISTS (
                  SELECT 1 FROM ask_queries older
                   WHERE LOWER(TRIM(older.question)) = LOWER(TRIM(ask_queries.question))
