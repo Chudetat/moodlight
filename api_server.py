@@ -3819,10 +3819,53 @@ _VERDICT_STYLE = {
 }
 
 
+
+# ---------------------------------------------------------------------------
+# Proof-library page views.
+#
+# The one question worth answering is whether anyone reaches this from OUTSIDE
+# moodlightintel.com. A hit from the Squarespace section is Daniel's own funnel
+# working; a hit from LinkedIn, a DM, or direct means the artifact is travelling
+# on its own, which is a different and much better signal.
+#
+# Own data, no third-party script, no cookie. IP is hashed rather than stored -
+# the question is "how many distinct people", never "who".
+# ---------------------------------------------------------------------------
+
+def _log_proof_view(request: "Request"):
+    """Fire-and-forget. Never let analytics cost a page view."""
+    try:
+        import hashlib
+        engine = get_engine()
+        if not engine:
+            return
+        ref = (request.headers.get("Referer") or "").strip()[:400]
+        ua = (request.headers.get("User-Agent") or "").strip()[:300]
+        ip = _get_client_ip(request)
+        with engine.connect() as conn:
+            conn.execute(sql_text("""
+                CREATE TABLE IF NOT EXISTS proof_views (
+                    id SERIAL PRIMARY KEY,
+                    referer TEXT,
+                    user_agent TEXT,
+                    ip_hash VARCHAR(16),
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """))
+            conn.execute(sql_text(
+                "INSERT INTO proof_views (referer, user_agent, ip_hash) "
+                "VALUES (:r, :u, :h)"),
+                {"r": ref or None, "u": ua or None,
+                 "h": hashlib.sha256(ip.encode()).hexdigest()[:16]})
+            conn.commit()
+    except Exception as e:
+        print(f"proof view log failed: {type(e).__name__}: {e}")
+
 @app.get("/predictions")
-def public_proof_library():
+def public_proof_library(request: Request, background_tasks: BackgroundTasks):
     """The open ledger. No auth: the point is that anyone can check it."""
     from fastapi.responses import HTMLResponse
+    background_tasks.add_task(_log_proof_view, request)
     engine = get_engine()
     with engine.connect() as conn:
         rows = conn.execute(sql_text(
