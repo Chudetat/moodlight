@@ -3999,9 +3999,8 @@ def _send_ask_pdf(email: str, question: str, answer: str):
         print("ask-pdf: mail credentials not configured")
         return
     try:
-        from pdf_export import generate_brief_pdf
-        label = (question or "Moodlight read").strip()[:80]
-        pdf = generate_brief_pdf(answer, label)
+        from pdf_export import generate_ask_pdf
+        pdf = generate_ask_pdf(answer, question or "")
     except Exception as e:
         print(f"ask-pdf: render failed: {type(e).__name__}: {e}")
         return

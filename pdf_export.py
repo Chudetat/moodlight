@@ -194,3 +194,44 @@ def generate_brief_pdf(brief_text: str, product: str) -> bytes:
     _render_markdown_to_pdf(pdf, brief_text or "")
 
     return bytes(pdf.output())
+
+
+def generate_ask_pdf(answer_text: str, question: str = "") -> bytes:
+    """The read a visitor asked for, as a document they can keep.
+
+    Deliberately NOT generate_brief_pdf: that titles everything "Strategic
+    Brief", which is the brief generator's name for its own output and wrong for
+    an answer to a question somebody typed. It also printed the raw question as
+    a subtitle, and a real Ask question runs to hundreds of characters - the
+    GoodNews one was 1,800 - so it overflowed.
+
+    Carries the site in the footer. The whole point of this document is that
+    someone keeps it and can find their way back three weeks later; without a
+    URL on the page it is an orphan.
+    """
+    pdf = MoodlightPDF(title="Moodlight Read")
+    pdf.alias_nb_pages()
+    pdf.add_page()
+
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_text_color(*BRAND_COLOR)
+    pdf.cell(0, 12, "Moodlight Read", ln=True)
+
+    # One line, ending on a word rather than mid-syllable.
+    q = " ".join((question or "").split())
+    if len(q) > 92:
+        q = q[:92].rsplit(" ", 1)[0] + "..."
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_text_color(100, 100, 100)
+    stamp = datetime.now(timezone.utc).strftime("%B %d, %Y")
+    pdf.cell(0, 7, f"{q}  |  {stamp}" if q else stamp, ln=True)
+    pdf.ln(5)
+
+    _render_markdown_to_pdf(pdf, answer_text or "")
+
+    pdf.ln(6)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 6, "Generated from live cultural signal at moodlightintel.com", ln=True)
+
+    return bytes(pdf.output())
