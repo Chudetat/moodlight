@@ -94,8 +94,8 @@
     root.appendChild(h2);
     root.appendChild(el("p",
       "font-size:16px;line-height:1.6;color:#3C4453;margin:0 0 6px;",
-      "Every call is dated and the evidence is sealed the moment it is made. " +
-      "Including the ones we get wrong."));
+      "Every call Moodlight makes is written down, dated, and checked against what " +
+      "actually happened. Including the ones we get wrong."));
 
     var tally = Object.keys(data.counts || {}).map(function (k) {
       return (VERDICT[k] ? VERDICT[k][0].toLowerCase() : k) + " " + data.counts[k];
