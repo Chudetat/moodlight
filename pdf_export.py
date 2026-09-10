@@ -260,14 +260,27 @@ def generate_ask_pdf(answer_text: str, question: str = "") -> bytes:
     pdf.set_text_color(*BRAND_COLOR)
     pdf.cell(0, 12, "Moodlight Read", ln=True)
 
-    # One line, ending on a word rather than mid-syllable.
-    q = _pdf_safe(" ".join((question or "").split()))
-    if len(q) > 92:
-        q = q[:92].rsplit(" ", 1)[0] + "..."
+    # Measure the string instead of guessing a character count. A 92-char cap
+    # looked safe and still ran off the page, because the date that follows it
+    # was never counted - the first real two-page read came out reading
+    # "September 10, 20" with the rest past the right margin.
     pdf.set_font("Helvetica", "", 11)
     pdf.set_text_color(100, 100, 100)
     stamp = datetime.now(timezone.utc).strftime("%B %d, %Y")
-    pdf.cell(0, 7, f"{q}  |  {stamp}" if q else stamp, ln=True)
+    q = _pdf_safe(" ".join((question or "").split()))
+    avail = pdf.w - pdf.l_margin - pdf.r_margin
+    sep = "  |  "
+    if q:
+        # Trim the question, on word boundaries, until the whole line fits.
+        while q and pdf.get_string_width(q + sep + stamp) > avail:
+            cut = q.rsplit(" ", 1)[0] if " " in q else ""
+            q = (cut + "...") if cut else ""
+            if q.endswith("......"):
+                q = q[:-3]
+        line = f"{q}{sep}{stamp}" if q else stamp
+    else:
+        line = stamp
+    pdf.cell(0, 7, line, ln=True)
     pdf.ln(5)
 
     _render_markdown_to_pdf(pdf, _pdf_safe(answer_text or ""))
