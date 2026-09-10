@@ -143,7 +143,9 @@
 
     root.appendChild(el("p",
       "font-size:13px;color:#6B7280;margin-top:36px;line-height:1.6;",
-      "Resolution is a human judgement, never the engine grading itself."));
+      "Calls are recorded before their outcome is known and the supporting evidence "  +
+      "is hashed at the moment each one is made. Resolution is a human judgement, " +
+      "never the engine grading itself."));
     host.appendChild(root);
   }
 
