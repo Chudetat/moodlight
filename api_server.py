@@ -4045,7 +4045,12 @@ def _send_ask_pdf(email: str, question: str, answer: str):
         from pdf_export import generate_ask_pdf
         pdf = generate_ask_pdf(answer, question or "")
     except Exception as e:
-        print(f"ask-pdf: render failed: {type(e).__name__}: {e}")
+        # Loud, with the text that broke it. The first real send failed on a
+        # single em dash and produced no visible error at all, while the visitor
+        # had already been told "on its way".
+        import traceback
+        print(f"ask-pdf: RENDER FAILED for {email}: {type(e).__name__}: {e}")
+        traceback.print_exc()
         return
 
     msg = MIMEMultipart()

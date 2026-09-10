@@ -47,6 +47,45 @@ class MoodlightPDF(FPDF):
         self.cell(0, 10, f"Generated {date_str}  |  Page {self.page_no()}/{{nb}}", align="C")
 
 
+
+# fpdf2's core fonts are latin-1 only, so a single em dash raises
+# FPDFUnicodeEncodingException and the whole document fails. Real Ask answers
+# are full of them, along with curly quotes and arrows - which is why every
+# synthetic ASCII test passed and the first real send produced nothing.
+#
+# Transliterating rather than embedding a Unicode font is the right trade here:
+# it is one function instead of a font file in the image, and plain ASCII is
+# already the house rule for anything that gets pasted into a deck.
+_PDF_ASCII = {
+    "\u2014": " - ", "\u2013": "-", "\u2018": "'", "\u2019": "'",
+    "\u201c": '"', "\u201d": '"', "\u2026": "...", "\u2192": "->",
+    "\u2190": "<-", "\u2022": "-", "\u00a0": " ", "\u2032": "'",
+    "\u2033": '"', "\u2212": "-", "\u00b7": "-", "\u203a": ">",
+    "\u2039": "<", "\u2265": ">=", "\u2264": "<=", "\u00d7": "x",
+    "\u2248": "~", "\u20ac": "EUR", "\u00a3": "GBP", "\u2122": "(TM)",
+    "\u00ae": "(R)", "\u00a9": "(c)",
+}
+
+
+def _pdf_safe(text: str) -> str:
+    """Make text renderable by a latin-1 core font without losing meaning.
+
+    Accented characters in real words are preserved: latin-1 covers them, and
+    Mazatlan spelled properly matters more than tidiness. Anything still outside
+    the range after substitution is dropped rather than allowed to fail the
+    document.
+    """
+    if not text:
+        return ""
+    for bad, good in _PDF_ASCII.items():
+        text = text.replace(bad, good)
+    try:
+        text.encode("latin-1")
+        return text
+    except UnicodeEncodeError:
+        return text.encode("latin-1", "ignore").decode("latin-1")
+
+
 def _render_markdown_to_pdf(pdf: MoodlightPDF, text: str):
     """Parse markdown text and render to PDF."""
     lines = text.split("\n")
@@ -169,7 +208,7 @@ def generate_report_pdf(report_text: str, subject: str, days: int = 7) -> bytes:
     pdf.ln(5)
 
     # Render report content
-    _render_markdown_to_pdf(pdf, report_text or "")
+    _render_markdown_to_pdf(pdf, _pdf_safe(report_text or ""))
 
     return bytes(pdf.output())
 
@@ -187,11 +226,11 @@ def generate_brief_pdf(brief_text: str, product: str) -> bytes:
     pdf.cell(0, 12, "Strategic Brief", ln=True)
     pdf.set_font("Helvetica", "", 11)
     pdf.set_text_color(100, 100, 100)
-    label = product[:80] if product else "Brief"
+    label = _pdf_safe(product[:80] if product else "Brief")
     pdf.cell(0, 7, f"{label}  |  {datetime.now(timezone.utc).strftime('%B %d, %Y')}", ln=True)
     pdf.ln(5)
 
-    _render_markdown_to_pdf(pdf, brief_text or "")
+    _render_markdown_to_pdf(pdf, _pdf_safe(brief_text or ""))
 
     return bytes(pdf.output())
 
@@ -218,7 +257,7 @@ def generate_ask_pdf(answer_text: str, question: str = "") -> bytes:
     pdf.cell(0, 12, "Moodlight Read", ln=True)
 
     # One line, ending on a word rather than mid-syllable.
-    q = " ".join((question or "").split())
+    q = _pdf_safe(" ".join((question or "").split()))
     if len(q) > 92:
         q = q[:92].rsplit(" ", 1)[0] + "..."
     pdf.set_font("Helvetica", "", 11)
@@ -227,7 +266,7 @@ def generate_ask_pdf(answer_text: str, question: str = "") -> bytes:
     pdf.cell(0, 7, f"{q}  |  {stamp}" if q else stamp, ln=True)
     pdf.ln(5)
 
-    _render_markdown_to_pdf(pdf, answer_text or "")
+    _render_markdown_to_pdf(pdf, _pdf_safe(answer_text or ""))
 
     pdf.ln(6)
     pdf.set_font("Helvetica", "", 9)
