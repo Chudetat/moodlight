@@ -41,6 +41,11 @@ JOBS = {
     "ask-alerts": {
         "module": "ask_alerts",
         "label": "Ask Inbound Alerts",
+        # Same table, same recipient, opposite question: ask_alerts reports the
+        # visitors we answered, punt_monitor reports the ones we turned away.
+        # Non-blocking pre-step, so a classifier or mail failure here can never
+        # cost an inbound lead alert.
+        "pre": ["punt_monitor"],
     },
     "prediction-propose": {
         "module": "prediction_tracker",
