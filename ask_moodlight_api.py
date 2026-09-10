@@ -1361,6 +1361,8 @@ When a user asks about a specific brand or company, you are producing a COMPETIT
 
 6. BE SPECIFIC AND ACTIONABLE: Never give generic advice like "leverage social media" or "connect with younger audiences." Every recommendation should reference a specific data point, trend, or competitive dynamic.
 
+7. YOU HAVE A LIVE WEB SEARCH TOOL. Use it whenever the material below cannot answer what was asked - an unfamiliar company or acronym, a name you cannot place, a claim you would otherwise have to guess at, or a specific external figure you need. Never ask the person to explain who or what they are asking about: search for it. A five-character company name you do not recognize is a search, not a question back to the user. Do not search when the tracked signal and web results below already answer the question - they are faster and they are the product.
+
 EVENT-SPECIFIC AND TIME-SENSITIVE QUESTIONS:
 When a user asks about a specific event (Super Bowl, Olympics, CES, elections, etc.) or uses time-sensitive language ("yesterday", "today", "this week", "recent", "latest"):
 
@@ -2002,9 +2004,6 @@ async def ask_moodlight(req: AskRequest, request: Request):
             # "unexpected keyword argument 'temperature'" and returned 503 for
             # ten days. 1.0 was the default anyway, so nothing changes but the
             # call surviving.
-            # Read a pasted URL rather than guessing from the brand name. Only
-            # when one is present: the tool is useless otherwise and every extra
-            # tool is latency on a request somebody is waiting through.
             _kwargs = {
                 "model": "claude-opus-5",
                 "max_tokens": 16000,
@@ -2012,32 +2011,36 @@ async def ask_moodlight(req: AskRequest, request: Request):
                 "messages": messages,
                 "extra_body": {"output_config": {"effort": "medium"}},
             }
-            # Attach web tools when the answer would otherwise be guesswork.
+            # WEB SEARCH IS ALWAYS ATTACHED. Never put a condition in front of
+            # it again.
             #
-            # Originally gated on a pasted URL alone, on the reasoning that the
-            # tools were useless otherwise. That was exactly backwards for the
-            # case that matters most. MSQDX (2026-09-10) had zero substrate
-            # mentions and is too small for NewsAPI, so the model had nothing at
-            # all and had to ask the user what the company was - while a single
-            # web search would have found their site instantly.
+            # It was gated on a pasted URL first, which meant a stranger asking
+            # about a company we do not track got nothing. Then it was gated on
+            # a brand name having been extracted, which is worse than it sounds:
+            # extraction is a Haiku call, and on the bare token a real person
+            # actually types ("MSQDX") it returns no brand at all, so the gate
+            # stayed shut for precisely the queries that need the web most. MSQ
+            # DX is a 600-person company inside a 1,900-person group; Moodlight
+            # asked them to explain who they were.
             #
-            # So: a URL means fetch that page. No brand signal, or a brand the
-            # news index cannot see, means search for it. Both are the same
-            # question - does this answer have anything real underneath it.
+            # Attaching a tool is not calling it. An unused tool costs nothing,
+            # and the model is a better judge of whether the material in front
+            # of it can answer the question than a Python condition guessing in
+            # advance. So the decision belongs to the model, every time.
+            #
+            # web_fetch stays conditional - it needs a URL to be meaningful.
             _pasted = _urls_in(question)
+            _tools = [{"type": "web_search_20260209", "name": "web_search"}]
+            if _pasted:
+                _tools.insert(0, {"type": "web_fetch_20260209",
+                                  "name": "web_fetch", "max_uses": 4})
+            _kwargs["tools"] = _tools
             _thin_brand = bool(brand_name) and not brand_section.startswith(
                 "[BRAND-SPECIFIC SIGNALS")
-            _no_web = not web_articles
-            if _pasted or _thin_brand or (brand_name and _no_web):
-                _tools = [{"type": "web_search_20260209", "name": "web_search"}]
-                if _pasted:
-                    _tools.insert(0, {"type": "web_fetch_20260209",
-                                      "name": "web_fetch", "max_uses": 4})
-                _kwargs["tools"] = _tools
-                _why = ("pasted URL" if _pasted else
-                        "no tracked signal on the brand" if _thin_brand else
-                        "no news results")
-                print(f"  [ask] web tools on ({_why}) for {brand_name or 'query'!r}")
+            _why = ("pasted URL + search" if _pasted else
+                    "no tracked signal on the brand" if _thin_brand else
+                    "no news results" if not web_articles else "standing")
+            print(f"  [ask] web tools on ({_why}) for {brand_name or 'query'!r}")
             try:
                 response = client.messages.create(**_kwargs)
             except Exception as _tool_err:
