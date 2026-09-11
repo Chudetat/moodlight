@@ -28,10 +28,14 @@ that cannot point at the words does not get to make the claim.
   follow_through   the load-bearing recommendation left as a bare clause
   attribution      an external figure with no source, or an aggregator credited
                    as though it were the authority
-  ai_tells         banned phrases, or an example sentence from the prompt reused
-                   verbatim as the answer's own line
+  ai_tells         banned phrases, the contrastive-negation tic, or an example
+                   sentence from the prompt reused verbatim as its own line
+  addressee        orders issued to a brand's management when the question never
+                   said the reader works there
 
-All five are failures found in real answers, not invented categories.
+All six are failures found in real answers, not invented categories. The last
+was found by Layer 2 reading a week of answers end to end, which is what that
+layer is for: a checklist only ever encodes the mistakes already known.
 
 THE EMAIL GATE
 --------------
@@ -62,14 +66,15 @@ _MAX_PER_RUN = 12
 
 _QUOTE_MAX = 200
 
-CHECKS = ("coverage", "evidence_hygiene", "follow_through", "attribution", "ai_tells")
+CHECKS = ("coverage", "evidence_hygiene", "follow_through", "attribution", "ai_tells",
+          "addressee")
 
 _SYSTEM = """You are an adversarial reviewer of a strategic intelligence answer. You are
 not its author and you gain nothing by approving it. Your job is to find where it falls
 short, precisely, or to say clearly that it does not.
 
 You are NOT judging whether the strategy is correct or whether the writing is good. You
-are checking five specific defects, each of which has a right answer.
+are checking six specific defects, each of which has a right answer.
 
 1. coverage - The question named something (a competitor, market, product, audience,
    sub-question) that then vanished from the answer with no word about it. Deliberately
@@ -101,7 +106,15 @@ are checking five specific defects, each of which has a right answer.
      - qualitative or directional statements carrying no specific number.
    If the answer cites no external figures at all, it passes.
 
-5. ai_tells - Flag any of:
+5. addressee - The answer assumes the reader works for the brand in question and issues
+   instructions to that brand's management ("do not let the two swap costumes", "put this
+   in front of legal early"), when the question never said who was asking. A brand name
+   alone carries no principal: the asker may be an agency, investor, competitor or
+   candidate. PASSES if the question states who is asking, if the answer names whose call
+   it is, or if the read holds from any seat. Flag the imperative aimed at an assumed
+   employer, and quote it.
+
+6. ai_tells - Flag any of:
      - CONTRASTIVE NEGATION, the whole family, in every phrasing: "it is not just X it is
        Y", "X is not A, it is B", "That is not a sentimental story, it is a
        product-integrity story", the two-sentence split ("The tell is not a brand launch.
