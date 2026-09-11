@@ -242,8 +242,16 @@ def _record(conn, qid, findings):
     conn.commit()
 
 
+# Sent on the first hourly run at or after this hour, UTC. 15:00 UTC is 8am
+# Pacific, so it is waiting when Daniel starts. Anchoring to an hour matters:
+# a pure "20 hours since the last one" rule drifts four hours earlier each day
+# and wanders round the clock, and a report that arrives at 3am is a report
+# nobody reads.
+_DIGEST_HOUR_UTC = int(os.getenv("ANSWER_QUALITY_DIGEST_HOUR", "15"))
+
+
 def _should_digest(conn):
-    """One digest a day, not one email per defect.
+    """One digest a day, at a predictable hour, not one email per defect.
 
     Calibration on 2026-09-11 showed essentially every answer carries one or
     two findings. Mailing per finding would put an email in the inbox for every
@@ -252,13 +260,18 @@ def _should_digest(conn):
     report daily, and make the report about the RATE, because a rate is the
     thing that would have shown a rule firing 16% of the time.
     """
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    if now.hour < _DIGEST_HOUR_UTC:
+        return False
     from sqlalchemy import text as sql_text
     last = conn.execute(sql_text(
         "SELECT MAX(ran_at) FROM answer_quality_runs WHERE digest_sent")).scalar()
     if last is None:
         return True
-    from datetime import datetime, timezone, timedelta
-    return datetime.now(timezone.utc) - last > timedelta(hours=20)
+    # Once per calendar day. A run that missed its hour (deploy, outage) still
+    # sends later the same day rather than skipping the day entirely.
+    return last.date() < now.date() or (now - last) > timedelta(hours=23)
 
 
 def _digest(conn):
