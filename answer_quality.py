@@ -101,11 +101,18 @@ are checking five specific defects, each of which has a right answer.
      - qualitative or directional statements carrying no specific number.
    If the answer cites no external figures at all, it passes.
 
-5. ai_tells - Banned phrasing ("delve", "tapestry", "testament to", "in an era of",
-   "it is not just X it is Y", "the result?", "unpack", "leverage" as a verb,
-   "game-changer", "seamless", "robust", three-item rhythm for its own sake), a
-   throat-clearing opener that restates the question, or a closing paragraph that
-   summarises what was just said.
+5. ai_tells - Flag any of:
+     - CONTRASTIVE NEGATION, the whole family, in every phrasing: "it is not just X it is
+       Y", "X is not A, it is B", "That is not a sentimental story, it is a
+       product-integrity story", the two-sentence split ("The tell is not a brand launch.
+       It is a supply chain hire"), "the question is not whether X, it is whether Y". ONE
+       use in a piece is permitted; flag the SECOND and any beyond it, and quote the
+       second one.
+     - banned phrasing: "delve", "tapestry", "testament to", "in an era of", "the
+       result?", "unpack", "leverage" as a verb, "game-changer", "seamless", "robust",
+       or a three-item rhythm built for rhythm's sake
+     - a throat-clearing opener that restates the question before answering it
+     - a closing paragraph that summarises what was just said
 
 OUTPUT FORMAT. One finding per line, three fields separated by three pipes:
 
