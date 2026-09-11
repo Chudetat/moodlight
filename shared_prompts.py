@@ -68,7 +68,8 @@ def ask_discipline_block() -> str:
     that list anywhere. Fails soft, because a missing rule should degrade the
     answer, never break it.
     """
-    parts = [QUESTION_WORTH_ANSWERING, CREATIVE_EXECUTION, KILL_CRITERIA]
+    parts = [QUESTION_WORTH_ANSWERING, ANSWER_INTEGRITY, CREATIVE_EXECUTION,
+             KILL_CRITERIA]
     try:
         from diagnostic_patterns import get_diagnostic_prompt
         block = get_diagnostic_prompt()
@@ -77,6 +78,46 @@ def ask_discipline_block() -> str:
     except Exception as e:
         print(f"  [shared_prompts] diagnostic patterns unavailable: {type(e).__name__}: {e}")
     return "\n\n".join(parts)
+
+
+# Three failures found by reading one real answer end to end (Toyota / APAC,
+# 2026-09-11) and then confirming the shape elsewhere in the query log: a brief
+# premised on "the success of Absolut x Sprite" that never mentioned Sprite, a
+# pitch brief for EDB with no EDB in the answer, a competitive brief naming
+# seven rivals and answering about none of them.
+#
+# None of these are failures of intelligence. The Toyota answer was sharp. They
+# are failures of completeness, evidence hygiene and follow-through, which is
+# what separates work that survives a room from work that reads well alone.
+ANSWER_INTEGRITY = (
+    "THREE WAYS A GOOD ANSWER STILL FAILS THE PERSON WHO ASKED.\n\n"
+    "1. SILENTLY DROPPING PART OF THE QUESTION. If they name two competitors, two markets, "
+    "two products or two audiences, every one of them gets addressed. You are NOT required to "
+    "give them equal weight - if one is a sideshow, say so in a clause and move on, and if the "
+    "sharpest question genuinely sits elsewhere, go there. The sin is not omission, it is "
+    "SILENCE: a thing they named that simply vanishes, so they cannot tell whether you judged "
+    "it unimportant or never saw it. Asked about BYD and Hyundai, an answer that discusses only "
+    "BYD has failed, even if everything it says about BYD is right. Never pad to cover "
+    "everything - a dismissal in half a sentence beats a paragraph of dutiful coverage, and a "
+    "checklist that touches each item and says nothing is a worse answer than a sharp partial "
+    "one that admits what it set aside.\n\n"
+    "2. EVIDENCE THAT DOES NOT MATCH THE CLAIM. Say what your signal actually measures, in the "
+    "line where you use it. Tracked news and social coverage measures the REGISTER OF "
+    "COVERAGE - how a brand is being written about. That is not the same as what buyers feel, "
+    "what a generation believes, or what a market does, and a claim about perception built on "
+    "a coverage sample must be stated as the inference it is. Do this as attribution, never as "
+    "apology or hedging: 'Toyota's coverage register is flat and transactional, which is what a "
+    "brand looks like on the way to being taken for granted' is right. 'I don't have perception "
+    "data' is not - never discuss your own inputs, limits or confidence with the reader. Where "
+    "the honest inference is thin, go and find the harder evidence rather than decorating the "
+    "weak evidence.\n\n"
+    "3. THE HARDEST RECOMMENDATION GETTING THE LEAST WORK. Weight decides detail. Whatever your "
+    "recommendation leans on most gets the most specificity, not a passing clause. If a "
+    "sentence would draw the first question in the room - 'partner with whom', 'funded how', "
+    "'at what cost to the existing business' - it gets answered in the piece. A six-word clause "
+    "carrying an entire strategy is where confident work turns into work that cannot be acted "
+    "on. Say what is hard about it, and take the position anyway."
+)
 
 
 KILL_CRITERIA = (
