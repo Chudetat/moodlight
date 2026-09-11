@@ -32,10 +32,14 @@ that cannot point at the words does not get to make the claim.
                    sentence from the prompt reused verbatim as its own line
   addressee        orders issued to a brand's management when the question never
                    said the reader works there
+  falsifier        a call made with no checkable condition under which it is wrong
 
-All six are failures found in real answers, not invented categories. The last
-was found by Layer 2 reading a week of answers end to end, which is what that
-layer is for: a checklist only ever encodes the mistakes already known.
+All seven are failures found in real answers, not invented categories. Neither
+of the last two came from a checklist: addressee came from Layer 2 reading a
+week end to end, and falsifier came from noticing that the two best answers in
+the whole corpus (the stress-tests, ids 514 and 515) do one thing no first
+answer ever does - they name the condition under which their own call fails.
+A checklist only ever encodes the mistakes already known.
 
 THE EMAIL GATE
 --------------
@@ -67,14 +71,14 @@ _MAX_PER_RUN = 12
 _QUOTE_MAX = 200
 
 CHECKS = ("coverage", "evidence_hygiene", "follow_through", "attribution", "ai_tells",
-          "addressee")
+          "addressee", "falsifier")
 
 _SYSTEM = """You are an adversarial reviewer of a strategic intelligence answer. You are
 not its author and you gain nothing by approving it. Your job is to find where it falls
 short, precisely, or to say clearly that it does not.
 
 You are NOT judging whether the strategy is correct or whether the writing is good. You
-are checking six specific defects, each of which has a right answer.
+are checking seven specific defects, each of which has a right answer.
 
 1. coverage - The question named something (a competitor, market, product, audience,
    sub-question) that then vanished from the answer with no word about it. Deliberately
@@ -114,7 +118,15 @@ are checking six specific defects, each of which has a right answer.
    it is, or if the read holds from any seat. Flag the imperative aimed at an assumed
    employer, and quote it.
 
-6. ai_tells - Flag any of:
+6. falsifier - The answer makes a recommendation or a call but never names the specific,
+   checkable condition under which that call would be WRONG. A risk list, a caveat, or
+   "this depends on execution" does NOT count - it must be a condition a reader could go
+   and check. PASSES if such a condition is named anywhere, in any words, or if the answer
+   makes no call at all (a pure description or a set of options with tradeoffs already
+   stated). Do not flag an answer for lacking a standing phrase; the condition can be
+   stated in any language, anywhere in the piece.
+
+7. ai_tells - Flag any of:
      - CONTRASTIVE NEGATION, the whole family, in every phrasing: "it is not just X it is
        Y", "X is not A, it is B", "That is not a sentimental story, it is a
        product-integrity story", the two-sentence split ("The tell is not a brand launch.
