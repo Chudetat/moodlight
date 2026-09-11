@@ -29,6 +29,10 @@ JOBS = {
     "weekly-digest": {
         "module": "generate_weekly_digest",
         "label": "Weekly Strategic Digest",
+        # Layer 2. Rides here because Railway cron is dashboard-only and this
+        # service already runs Mondays 15:00 UTC. Non-blocking: a failed review
+        # can never cost the digest.
+        "pre": ["weekly_review"],
     },
     "scheduled-reports": {
         "module": "run_scheduled_reports",
