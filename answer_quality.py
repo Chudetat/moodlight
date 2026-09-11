@@ -130,9 +130,15 @@ are checking seven specific defects, each of which has a right answer.
      - CONTRASTIVE NEGATION, the whole family, in every phrasing: "it is not just X it is
        Y", "X is not A, it is B", "That is not a sentimental story, it is a
        product-integrity story", the two-sentence split ("The tell is not a brand launch.
-       It is a supply chain hire"), "the question is not whether X, it is whether Y". ONE
-       use in a piece is permitted; flag the SECOND and any beyond it, and quote the
-       second one.
+       It is a supply chain hire"), the trailing form ("underwritten by mix and cost, not
+       volume"), "the question is not whether X, it is whether Y".
+       COUNT THEM. Flag this ONLY at THREE OR MORE in one piece, and quote the third.
+       One or two is not a finding and must not be reported.
+       The prompt asks for at most one and three attempts to enforce that failed, because
+       the construction is native to analytical writing and the lines it produces are
+       often the best in the answer. The rule stays as a brake; the counter measures the
+       thing that actually matters, which is a piece BUILT on the device. A check that
+       fires on every answer forever teaches the reader to ignore the report.
      - banned phrasing: "delve", "tapestry", "testament to", "in an era of", "the
        result?", "unpack", "leverage" as a verb, "game-changer", "seamless", "robust",
        or a three-item rhythm built for rhythm's sake
