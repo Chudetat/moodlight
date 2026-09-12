@@ -354,7 +354,12 @@ _UNCALLABLE_TOPICS = {
 _PROPOSE_MIN_LONGEVITY = 0.55
 
 
-def propose_candidates(engine, n=3, model="claude-opus-5", max_tokens=2000):
+# 2000 truncated real drafts mid-JSON ("Unterminated string ... char 599" on
+# 'terrorism & extremism', 2026-09-12), so a weekly digest that asked for three
+# calls arrived with one and said nothing about the other two. These payloads
+# are genuinely long - a good call runs 400+ chars and its disconfirming clause
+# nearly as much - and on a thinking model the budget is shared.
+def propose_candidates(engine, n=3, model="claude-opus-5", max_tokens=4000):
     """Pick callable subjects from live VLDS and draft falsifiable calls for them.
 
     READ-ONLY: returns candidates, writes nothing. Committing a call is a
@@ -402,7 +407,7 @@ def propose_candidates(engine, n=3, model="claude-opus-5", max_tokens=2000):
     from anthropic import Anthropic
     client = Anthropic(api_key=api_key)
 
-    out = []
+    out, skipped = [], []
     for _, r in df.iterrows():
         topic = r["topic"]
         if str(topic).lower() in open_topics:
@@ -433,22 +438,37 @@ def propose_candidates(engine, n=3, model="claude-opus-5", max_tokens=2000):
             "\"confidence\": int (1-10), \"disconfirming\": str}. "
             "`disconfirming` is what would prove it wrong - be concrete."
         )
-        try:
-            resp = client.messages.create(
-                model=model, max_tokens=max_tokens, system=system,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            txt = "".join(getattr(b, "text", "") for b in resp.content).strip()
-            txt = re.sub(r"^```(?:json)?|```$", "", txt, flags=re.M).strip()
-            cand = json.loads(txt)
-        except Exception as e:
-            print(f"  propose: draft failed for {topic!r}: {type(e).__name__}: {e}")
+        # One retry. A truncated or malformed draft is a per-call accident, not
+        # a property of the topic, and losing a week's call to one bad response
+        # is worse than spending a second request.
+        cand = None
+        for _try in range(2):
+            try:
+                resp = client.messages.create(
+                    model=model, max_tokens=max_tokens, system=system,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                txt = "".join(getattr(b, "text", "") for b in resp.content).strip()
+                txt = re.sub(r"^```(?:json)?|```$", "", txt, flags=re.M).strip()
+                cand = json.loads(txt)
+                break
+            except Exception as e:
+                print(f"  propose: draft attempt {_try + 1} failed for {topic!r}: "
+                      f"{type(e).__name__}: {e}")
+        if cand is None:
+            skipped.append(topic)
             continue
         cand["topic"] = topic
         cand["vlds"] = {k: _json_safe(r[k]) for k in
                         ("velocity_score", "density_score", "longevity_score", "scarcity_score")}
         cand["evidence_preview"] = heads[:3]
         out.append(cand)
+    if skipped:
+        # Say it out loud. A digest that asks for three calls and delivers one
+        # with no explanation reads as the engine having nothing to say, which
+        # is the opposite of what happened.
+        print(f"  propose: {len(skipped)} topic(s) produced no usable draft after "
+              f"a retry: {', '.join(skipped)}")
     return out
 
 
