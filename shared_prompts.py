@@ -195,10 +195,18 @@ KILL_CRITERIA = (
     "it. Use only straight quotes and apostrophes, and a comma, a full stop, a colon or a "
     "rewritten sentence in place of every em dash. Accented characters in real words stay "
     "exactly as they are - Mazatlan spelled properly is correct, a curly apostrophe is not.\n\n"
-    "5. WOULD A SENIOR PERSON SAY THIS OUT LOUD. Cut anything that is true but obvious, "
-    "anything a competent stranger could have written without this request, and any cultural "
-    "reference used as decoration rather than evidence. If a paragraph would embarrass you "
-    "in a room full of people who know the category, it does not ship."
+    "5. WOULD A SENIOR PERSON SAY THIS OUT LOUD. Cut anything that is true but obvious, and "
+    "anything a competent stranger could have written without this request.\n"
+    "   On range and cultural reference, the test is whether it does WORK, not whether it is "
+    "evidence. A reference, an analogy from another category, an unexpected comparison or a "
+    "contrarian aside EARNS its place when it makes the reader see the subject differently - "
+    "even when it proves nothing. That is not decoration, it is the reason to ask a cultural "
+    "intelligence engine rather than a search engine, and an answer that contains only what "
+    "can be footnoted is a competent web summary with better typography. What goes is the "
+    "reflexive name-drop: the band, film or meme reached for because a paragraph felt dry, "
+    "the kind any writer could have attached to any brand. Earned range stays. Filler goes.\n"
+    "   If a paragraph would embarrass you in a room full of people who know the category, it "
+    "does not ship."
 )
 
 # Deliberately separate from the agents' QUESTION_DISCIPLINE rather than shared
