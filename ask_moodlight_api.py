@@ -1773,9 +1773,15 @@ async def ask_moodlight(req: AskRequest, request: Request):
 
     # 4. Build brand-specific signals
     brand_section = ""
+    # Counted here rather than inside the branch: section 4b below needs to know
+    # how thin the brand signal was, and a name that matched nothing and a name
+    # that matched two posts are the same situation for its purposes.
+    from alert_detector import WHITE_SPACE_MIN_MENTIONS
+    _brand_post_count = 0
     if brand_name and not df_all.empty and "text" in df_all.columns:
         brand_mask = resolve_brand_match(df_all["text"], brand_name)
         brand_posts = df_all[brand_mask]
+        _brand_post_count = len(brand_posts)
 
         if len(brand_posts) > 0:
             brand_lines = []
@@ -1809,7 +1815,6 @@ async def ask_moodlight(req: AskRequest, request: Request):
             # measurement artifact the SOV guard already suppresses. Reuse the
             # alert engine's volume floor so there is ONE source of truth; below
             # it, hand the model an explicit caveat instead of a number.
-            from alert_detector import WHITE_SPACE_MIN_MENTIONS
             _empathy_thin = len(brand_posts) < WHITE_SPACE_MIN_MENTIONS
             if "empathy_label" in brand_posts.columns:
                 brand_empathy = brand_posts["empathy_label"].value_counts().to_dict()
@@ -1851,24 +1856,57 @@ async def ask_moodlight(req: AskRequest, request: Request):
             # search engine. The corpus is weak on individual brand names and
             # strong on the conversations they sit inside, so read the category
             # instead of apologising for the brand.
-            #
-            # Only on this path. A brand WITH tracked signal must not get a
-            # category block sitting next to its own numbers, because the two
-            # would be read as one.
-            try:
-                import category_read
-                _cat = category_read.resolve_category(question, brand_name,
-                                                      topic_name, client)
-                if _cat:
-                    # _get_engine() rather than `engine`: that local is not
-                    # bound until later in this function, so referencing it
-                    # here raises NameError, which the handler below would
-                    # swallow and the feature would never fire at all.
-                    _cat_block = category_read.build(_get_engine(), _cat)
-                    if _cat_block:
-                        brand_section = brand_section + "\n\n" + _cat_block
-            except Exception as e:
-                print(f"  [ask] category read unavailable: {type(e).__name__}: {e}")
+            pass
+
+    # 4b. The category the subject sits inside.
+    #
+    # This used to fire ONLY when zero rows matched the brand name, on the
+    # reasoning that a brand with its own numbers must not have category numbers
+    # sitting beside them. That guard cost a real answer. "Corona" matched 91
+    # rows - Coronation Street, coronavirus, the sun's corona, an Irish band
+    # called The Coronas - so the brand block looked full, the category read was
+    # suppressed, and the model then correctly discounted all 91 as namesakes.
+    # The answer was left with no Moodlight data at all, on a question
+    # ("sober-curious, premium NA beers") whose category the corpus knows well.
+    #
+    # Namesake pollution does double damage: it supplies garbage AND it hides
+    # the fallback. So the trigger is no longer "is the brand block empty" but
+    # "is the brand signal thin, or is this a category question anyway".
+    #
+    # The conflation risk the old guard protected against is real and is handled
+    # by labelling instead - category_read.build() heads its own block, and the
+    # line below states what it measures. evidence_hygiene in answer_quality.py
+    # polices exactly the failure of attributing category numbers to a brand.
+    try:
+        import category_read
+        _thin_brand_signal = _brand_post_count < WHITE_SPACE_MIN_MENTIONS
+        if brand_name and (_thin_brand_signal or topic_name):
+            # Free path first: detect_search_topic already ran, so if it handed
+            # back a tracked topic there is nothing to resolve and no model call
+            # to make. Corona's topic came back as "sober-curious movement,
+            # non-alcoholic beverages, Gen Z marketing" and was sitting unused.
+            _cat = (topic_name if topic_name in category_read.TRACKED_TOPICS
+                    else category_read.resolve_category(question, brand_name,
+                                                        topic_name, client))
+            if _cat:
+                # _get_engine() rather than `engine`: that local is not bound
+                # until later in this function, so referencing it here raises
+                # NameError, which the handler below would swallow and the
+                # feature would never fire at all.
+                _cat_block = category_read.build(_get_engine(), _cat)
+                if _cat_block:
+                    _frame = (
+                        f"The block below measures the CONVERSATION {brand_name} sits inside, "
+                        f"not {brand_name} itself. These numbers are the category's. Never "
+                        f"attribute them to the brand, and never present them as the brand's "
+                        f"own performance."
+                    )
+                    brand_section = (brand_section + "\n\n" + _frame + "\n" + _cat_block
+                                     if brand_section else _frame + "\n" + _cat_block)
+                    print(f"  [ask] category read attached ({_cat!r}) for "
+                          f"{brand_name!r}, brand posts={_brand_post_count}")
+    except Exception as e:
+        print(f"  [ask] category read unavailable: {type(e).__name__}: {e}")
 
     # 5. Web section
     web_section = ""
