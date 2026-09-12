@@ -364,6 +364,27 @@ def _send(subject, body):
     return True
 
 
+def _maybe_digest(conn, graded, clean, defective):
+    """Record the run and send the daily digest if one is due.
+
+    Called on BOTH paths - after grading, and when there was nothing new to
+    grade - because the digest reports the last 24 hours, not this hour's work.
+    """
+    from sqlalchemy import text as sql_text
+    sent = False
+    if _should_digest(conn):
+        subject, body = _digest(conn)
+        if subject:
+            sent = _send(subject, body)
+        else:
+            print("answer_quality: digest due but nothing graded in 24h, nothing sent")
+    conn.execute(sql_text(
+        "INSERT INTO answer_quality_runs (graded, clean, defective, digest_sent) "
+        "VALUES (:g, :c, :d, :s)"),
+        {"g": graded, "c": clean, "d": defective, "s": sent})
+    conn.commit()
+
+
 def _client():
     key = os.getenv("ANTHROPIC_API_KEY")
     if not key:
@@ -423,7 +444,13 @@ def main():
         _ensure_schema(conn)
         rows = _fetch(conn)
         if not rows:
-            print("answer_quality: nothing to grade")
+            # NOT an early return. The daily digest lives below, and at three
+            # real questions a day most hours have nothing new to grade - so an
+            # early return here meant the digest could only ever fire in an hour
+            # that happened to carry a fresh answer, and on a quiet day the
+            # report simply never arrived while findings sat unreported.
+            print("answer_quality: nothing new to grade")
+            _maybe_digest(conn, graded=0, clean=0, defective=0)
             return
         print(f"answer_quality: grading {len(rows)} answer(s)")
         defective, graded, clean = [], 0, 0
@@ -437,20 +464,8 @@ def main():
                 defective.append((qid, q, f))
             else:
                 clean += 1
-        from sqlalchemy import text as sql_text
         print(f"answer_quality: {graded} graded, {clean} clean, {len(defective)} defective")
-
-        # Record every run. Report once a day, on the rate.
-        sent = False
-        if _should_digest(conn):
-            subject, body = _digest(conn)
-            if subject:
-                sent = _send(subject, body)
-        conn.execute(sql_text(
-            "INSERT INTO answer_quality_runs (graded, clean, defective, digest_sent) "
-            "VALUES (:g, :c, :d, :s)"),
-            {"g": graded, "c": clean, "d": len(defective), "s": sent})
-        conn.commit()
+        _maybe_digest(conn, graded, clean, len(defective))
 
 
 if __name__ == "__main__":
