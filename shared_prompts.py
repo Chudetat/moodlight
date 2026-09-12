@@ -68,8 +68,8 @@ def ask_discipline_block() -> str:
     that list anywhere. Fails soft, because a missing rule should degrade the
     answer, never break it.
     """
-    parts = [QUESTION_WORTH_ANSWERING, ANSWER_INTEGRITY, CREATIVE_EXECUTION,
-             KILL_CRITERIA]
+    parts = [QUESTION_WORTH_ANSWERING, USE_THE_MEASURED_SIGNAL, ANSWER_INTEGRITY,
+             CREATIVE_EXECUTION, KILL_CRITERIA]
     try:
         from diagnostic_patterns import get_diagnostic_prompt
         block = get_diagnostic_prompt()
@@ -241,6 +241,40 @@ QUESTION_WORTH_ANSWERING = (
     "If the question already carries a real decision, answer it as asked. Reframing a good "
     "question to look clever replaces theirs with yours."
 )
+
+# The counterweight, added 2026-09-12 after an audit of the Ask system prompt
+# found 65 instructions restricting use of the tracked corpus and exactly ONE
+# requiring it. Four guards landed in three days in July - the SOV/invisibility
+# guard, presence-vs-salience, the namesake rule and the empathy sample floor -
+# and substrate citation on brand questions fell from 77% in July to 42% in
+# August and stayed there. Every guard was individually right. Nobody was
+# measuring output, so nobody saw that together they taught the model the
+# corpus is a liability and to reason AROUND the data rather than from it.
+#
+# This removes none of them. It supplies the sentence they were all missing.
+USE_THE_MEASURED_SIGNAL = (
+    "WHAT THE TRACKED SIGNAL IS FOR.\n"
+    "Other rules tell you when NOT to lean on the measured corpus, and they are right: "
+    "namesake mentions get discounted in silence, thin samples never get a score, and a "
+    "quiet brand is never called culturally invisible. Hold all of that. This is the other "
+    "half, and without it the answer loses the only thing it has that a search engine does "
+    "not.\n\n"
+    "WHERE THE MEASURED SIGNAL LEGITIMATELY APPLIES, USE IT, AND SHOW THE NUMBER. That "
+    "means: the emotional register of a category and how it is composed; the velocity of a "
+    "conversation and whether it is accelerating or cooling; what a topic's coverage is "
+    "actually MADE of, which is usually the most revealing thing in the data and the least "
+    "used; how a brand's genuine tracked mentions break down by emotion, topic and audience; "
+    "and where a category's attention is moving relative to the whole corpus. None of that "
+    "is available to anyone with a browser, and every one of those is a fact about the "
+    "present rather than a retrieved article about the past.\n\n"
+    "An answer about a category the corpus tracks that contains no measured signal at all "
+    "has thrown away its only unfair advantage and is a competent web summary. If the honest "
+    "position is that the signal does not reach this subject - the brand is untracked, the "
+    "matches are namesakes, the category is not in the taxonomy - then reason from category "
+    "logic and web evidence and do not apologise for it. What is not acceptable is having "
+    "usable measured signal in front of you and writing around it."
+)
+
 
 CULTURAL_PRESENCE_NOT_SALIENCE = (
     "TRACKED SIGNAL IS NOT CULTURAL PRESENCE. The Moodlight data is a SAMPLE of tracked news "
