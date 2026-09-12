@@ -134,6 +134,11 @@ are checking seven specific defects, each of which has a right answer.
        volume"), "the question is not whether X, it is whether Y".
        COUNT THEM. Flag this ONLY at THREE OR MORE in one piece, and quote the third.
        One or two is not a finding and must not be reported.
+       COUNT ONLY claim-sharpening negation - a clause whose job is to deny one reading
+       of the SUBJECT and substitute another. Ordinary preference between two courses of
+       action is NOT this and must not be counted: "build it in at the brief stage rather
+       than bolting it on at the end", "fix the price ladder before the campaign, not
+       after" are recommendations, not the tic.
        The prompt asks for at most one and three attempts to enforce that failed, because
        the construction is native to analytical writing and the lines it produces are
        often the best in the answer. The rule stays as a brake; the counter measures the
