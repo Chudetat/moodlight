@@ -1862,16 +1862,22 @@ async def ask_moodlight(req: AskRequest, request: Request):
     #
     # This used to fire ONLY when zero rows matched the brand name, on the
     # reasoning that a brand with its own numbers must not have category numbers
-    # sitting beside them. That guard cost a real answer. "Corona" matched 91
-    # rows - Coronation Street, coronavirus, the sun's corona, an Irish band
-    # called The Coronas - so the brand block looked full, the category read was
-    # suppressed, and the model then correctly discounted all 91 as namesakes.
-    # The answer was left with no Moodlight data at all, on a question
-    # ("sober-curious, premium NA beers") whose category the corpus knows well.
+    # sitting beside them. It now also fires when the brand's signal is present
+    # but below the mention floor, or when the question carries a topic at all -
+    # a brand with three real mentions is, for this purpose, the same situation
+    # as a brand with none.
     #
-    # Namesake pollution does double damage: it supplies garbage AND it hides
-    # the fallback. So the trigger is no longer "is the brand block empty" but
-    # "is the brand signal thin, or is this a category question anyway".
+    # NOTE, because the first version of this comment was wrong and a wrong
+    # comment outlives the person who wrote it: this was NOT what left the
+    # 2026-09-12 Corona answer with no Moodlight data. resolve_brand_match
+    # already carries a homonym catalog (corona requires beer/cerveza/modelo/
+    # lager/extra/constellation/ab inbev to co-occur), it correctly rejected
+    # every Coronation Street and solar-corona row, and the query therefore took
+    # the no-substrate path and DID get a category read under the old rule too.
+    # What it got was "branding & advertising", because TRACKED_TOPICS has no
+    # food or drink category at all - beer content scatters across "other" (218
+    # docs in 30 days), business, and even war & foreign policy. The taxonomy is
+    # the bottleneck there, not this gate and not the classifier.
     #
     # The conflation risk the old guard protected against is real and is handled
     # by labelling instead - category_read.build() heads its own block, and the
