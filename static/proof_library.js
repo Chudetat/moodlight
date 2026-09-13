@@ -83,20 +83,14 @@
       "font-family:system-ui,-apple-system,'Segoe UI',Helvetica,sans-serif;" +
       "max-width:720px;margin:0 auto;color:#12151C;");
 
-    // Each sentence is its own inline-block, so a narrow screen breaks BETWEEN
-    // the two sentences instead of orphaning "What" at the end of line one.
-    // clamp() lets the type shrink on a phone rather than forcing the wrap.
-    var h2 = el("h2",
-      "font-size:clamp(22px,6vw,30px);font-weight:600;margin:12px 0 10px;line-height:1.25;");
-    h2.appendChild(el("span", "display:inline-block;", "What we predicted."));
-    h2.appendChild(document.createTextNode(" "));
-    h2.appendChild(el("span", "display:inline-block;", "What actually happened."));
-    root.appendChild(h2);
-    root.appendChild(el("p",
-      "font-size:16px;line-height:1.6;color:#3C4453;margin:0 0 6px;",
-      "Every call Moodlight makes is written down, dated, and checked against what " +
-      "actually happened. Including the ones we get wrong."));
-
+    // The subhead ("What we predicted. What actually happened.") and the
+    // description paragraph used to be drawn here, in system-ui. They are
+    // static copy, and copy drawn by a script never quite matches the
+    // Squarespace type around it - the block read a hair off from the rest of
+    // the page. Both now live as native text blocks above the embed, where
+    // they inherit the site's fonts. Only the data-driven tally stays here.
+    // The standalone /predictions page renders its own header server-side and
+    // never loads this script, so nothing else is affected.
     var tally = Object.keys(data.counts || {}).map(function (k) {
       return (VERDICT[k] ? VERDICT[k][0].toLowerCase() : k) + " " + data.counts[k];
     }).join("  ·  ") || "none resolved yet";
